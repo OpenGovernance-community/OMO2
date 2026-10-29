@@ -27,9 +27,9 @@ function omoDeferredEditorT(string $key): string
         'save' => ['text' => 'Enregistrer la modification', 'context' => 'Deferred proposal save action'],
         'cancel' => ['text' => 'Annuler', 'context' => 'Deferred proposal cancel action'],
         'move_destination' => ['text' => 'Destination', 'context' => 'Deferred holon move destination'],
-        'move_help' => ['text' => 'Le deplacement sera applique apres validation de la proposition.', 'context' => 'Deferred holon move explanation'],
-        'move_empty' => ['text' => 'Aucune destination compatible et autorisee.', 'context' => 'Deferred holon move without destination'],
-        'creation_space' => ['text' => 'Espace de creation', 'context' => 'Space receiving an object created by a PV proposal'],
+        'move_help' => ['text' => 'Le déplacement sera appliqué après validation de la proposition.', 'context' => 'Deferred holon move explanation'],
+        'move_empty' => ['text' => 'Aucune destination compatible et autorisée.', 'context' => 'Deferred holon move without destination'],
+        'creation_space' => ['text' => 'Espace de création', 'context' => 'Space receiving an object created by a PV proposal'],
         'creation_space_hint' => ['text' => 'Choisissez un espace autorise par les droits collectifs du holon du PV.', 'context' => 'Collective permission boundary for a PV proposal creation destination'],
     ];
     static $bundle = null;

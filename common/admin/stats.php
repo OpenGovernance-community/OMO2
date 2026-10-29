@@ -53,7 +53,7 @@ function siteStatsSourceLang(): array
     return [
         'stats.page.title' => ['text' => 'Statistiques du site', 'context' => 'Page title for the global site statistics dashboard.'],
         'stats.page.eyebrow' => ['text' => 'Vue globale', 'context' => 'Small eyebrow above the global site statistics title.'],
-        'stats.page.intro' => ['text' => 'Un premier aperçu de la croissance et de l activité de la plateforme.', 'context' => 'Introductory copy for the global site statistics dashboard.'],
+        'stats.page.intro' => ['text' => 'Un premier aperçu de la croissance et de l’activité de la plateforme.', 'context' => 'Introductory copy for the global site statistics dashboard.'],
         'stats.period.label' => ['text' => 'Période des graphiques', 'context' => 'Label above the global chart period selector.'],
         'stats.period.days_30' => ['text' => '30 jours', 'context' => 'Thirty-day chart period option.'],
         'stats.period.days_90' => ['text' => '90 jours', 'context' => 'Ninety-day chart period option.'],
@@ -66,10 +66,10 @@ function siteStatsSourceLang(): array
         'stats.organizations.new_month' => ['text' => 'Nouvelles ce mois', 'context' => 'Metric label for organizations created during the current month.'],
         'stats.organizations.chart' => ['text' => 'Nouvelles organisations par date', 'context' => 'Chart title for organization creation counts.'],
         'stats.users.title' => ['text' => 'Utilisateurs', 'context' => 'Title of the users statistics block.'],
-        'stats.users.total' => ['text' => 'Total d utilisateurs', 'context' => 'Metric label for the total number of users.'],
+        'stats.users.total' => ['text' => 'Total d’utilisateurs', 'context' => 'Metric label for the total number of users.'],
         'stats.users.active_30' => ['text' => 'Connectés ces 30 derniers jours', 'context' => 'Metric label for users with a recent connection.'],
         'stats.users.chart' => ['text' => 'Connexions par date', 'context' => 'Chart title for user connection activity.'],
-        'stats.users.chart_note' => ['text' => 'Ce graphique repose sur la derniere connexion connue. L activite HTTP figure dans les graphiques de performance.', 'context' => 'Note explaining the current limitation of the user activity chart.'],
+        'stats.users.chart_note' => ['text' => 'Ce graphique repose sur la dernière connexion connue. L’activité HTTP figure dans les graphiques de performance.', 'context' => 'Note explaining the current limitation of the user activity chart.'],
 		'stats.holons.title' => ['text' => 'Espaces', 'context' => 'Title of the spaces statistics block.'],
         'stats.holons.total' => ['text' => 'Total d’espaces', 'context' => 'Metric label for the total number of active spaces.'],
         'stats.holons.modified_30' => ['text' => 'Modifiés ces 30 derniers jours', 'context' => 'Metric label for holons modified during the last thirty days.'],
@@ -80,7 +80,7 @@ function siteStatsSourceLang(): array
         'stats.chart.empty' => ['text' => 'Aucune donnée sur cette période.', 'context' => 'Empty state for a statistics bar chart.'],
         'stats.chart.value' => ['one' => '{count} élément', 'other' => '{count} éléments', 'context' => 'Accessible chart bar value label.'],
         'stats.access.title' => ['text' => 'Accès réservé', 'context' => 'Title shown when global site statistics are not available.'],
-        'stats.access.message' => ['text' => 'Cette page est reservee aux super administrateurs du site.', 'context' => 'Message shown to users without the site administrator role.'],
+        'stats.access.message' => ['text' => 'Cette page est réservée aux super administrateurs du site.', 'context' => 'Message shown to users without the site administrator role.'],
         'stats.access.back' => ['text' => 'Retour à OMO', 'context' => 'Back link shown on the statistics access page.'],
     ] + array_map(static fn($text) => ['text' => $text, 'context' => 'Site performance dashboard.'], $monitoring);
 }

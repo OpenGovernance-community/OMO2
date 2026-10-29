@@ -14,7 +14,7 @@ $sourceLang = [
     'action' => ['text' => 'Action', 'context' => 'Deferred holon proposal action label'],
     'create' => ['text' => 'Créer un rôle ou cercle', 'context' => 'Deferred holon proposal create action'],
     'update' => ['text' => 'Modifier un rôle ou cercle', 'context' => 'Deferred holon proposal update action'],
-    'move' => ['text' => 'Deplacer un role ou cercle', 'context' => 'Deferred holon move action'],
+    'move' => ['text' => 'Déplacer un rôle ou cercle', 'context' => 'Deferred holon move action'],
     'delete' => ['text' => 'Supprimer un rôle ou cercle', 'context' => 'Deferred holon proposal delete action'],
     'holon' => ['text' => 'Espace concerné', 'context' => 'Deferred holon proposal target label'],
     'open_holon' => ['text' => 'Choisir un espace dans la structure', 'context' => 'Deferred holon proposal open picker label'],

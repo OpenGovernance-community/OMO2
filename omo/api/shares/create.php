@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once __DIR__ . '/context.php';
 
 header('Content-Type: application/json; charset=UTF-8');
@@ -32,7 +33,7 @@ if (!$allowStructure && !$allowPeople && !$allowPeopleDetail) {
     http_response_code(400);
     echo json_encode(array(
         'status' => false,
-        'message' => 'Choisissez au moins un droit d acces.',
+        'message' => omoSharesUiT('choisissez_au_moins_un_droit_d_acces'),
     ));
     exit;
 }
@@ -45,7 +46,7 @@ if ($expirationRaw !== '') {
         http_response_code(400);
         echo json_encode(array(
             'status' => false,
-            'message' => 'Date d expiration invalide.',
+            'message' => omoSharesUiT('date_d_expiration_invalide'),
         ));
         exit;
     }
@@ -60,7 +61,7 @@ if ($isUpdate) {
         http_response_code(404);
         echo json_encode(array(
             'status' => false,
-            'message' => 'Lien de partage introuvable.',
+            'message' => omoSharesUiT('lien_de_partage_introuvable'),
         ));
         exit;
     }
@@ -82,7 +83,7 @@ if ($isUpdate) {
         http_response_code(500);
         echo json_encode(array(
             'status' => false,
-            'message' => 'Impossible de mettre a jour le lien de partage.',
+            'message' => omoSharesUiT('impossible_de_mettre_a_jour_le_lien_de_partage'),
         ));
         exit;
     }
@@ -101,7 +102,7 @@ if ($isUpdate) {
         http_response_code(500);
         echo json_encode(array(
             'status' => false,
-            'message' => 'Impossible de creer le lien de partage.',
+            'message' => omoSharesUiT('impossible_de_creer_le_lien_de_partage'),
         ));
         exit;
     }

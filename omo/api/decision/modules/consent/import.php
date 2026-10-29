@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../ui_translations.php';
 
 require_once dirname(__DIR__) . '/import_common.php';
 require_once __DIR__ . '/shared.php';
@@ -13,7 +14,7 @@ if (!function_exists('omoDecisionConsentImportBlock')) {
         if (count($proposals) < 1) {
             return [
                 'status' => false,
-                'message' => 'Le consentement importe au moins une proposition par bloc.',
+                'message' => omoDecisionUiT('le_consentement_importe_au_moins_une_proposition_par_bloc'),
             ];
         }
 
@@ -38,7 +39,7 @@ if (!function_exists('omoDecisionConsentImportBlock')) {
         if (empty($saveGroup['status'])) {
             return [
                 'status' => false,
-                'message' => 'Impossible d enregistrer le bloc de consentement importe.',
+                'message' => omoDecisionUiT('impossible_d_enregistrer_le_bloc_de_consentement_importe'),
             ];
         }
 
@@ -50,7 +51,7 @@ if (!function_exists('omoDecisionConsentImportBlock')) {
             if (empty($saveDecision['status'])) {
                 return [
                     'status' => false,
-                    'message' => 'Impossible de synchroniser le processus importe.',
+                    'message' => omoDecisionUiT('impossible_de_synchroniser_le_processus_importe'),
                 ];
             }
         }

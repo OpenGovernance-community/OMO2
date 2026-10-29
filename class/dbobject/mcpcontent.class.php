@@ -120,13 +120,25 @@ final class McpContent
                 $parts[] = 'measurement: ' . \omoSearchPreviewText($value->get('measured_at')) . ' = ' . \omoSearchPreviewText($value->get('value'));
             }
         }
+        $record = McpBrowse::summary($organization, $context, $module, $object);
+        if ($module === 'structure') {
+            $values = [];
+            foreach ($preview['sections'] ?? [] as $section) foreach ($section['items'] ?? [] as $item) {
+                if (isset($item['value'])) $values[$item['value']['value_id']] = $item['value'];
+            }
+            $record['values'] = array_values($values);
+        }
+        if ($object instanceof Rule) {
+            $record = array_replace($record, McpValues::forRule($object, $organization, true));
+            if ($record['value']) $parts[] = 'value: ' . $record['value']['title'] . "\n" . $record['value']['principle'];
+        }
         $text = implode("\n\n", array_filter($parts, static fn ($part) => trim($part) !== ''));
         $chunk = mb_substr($text, $offset, $limit, 'UTF-8');
         return ['organization_id' => (int)$organization->getId(), 'module' => $module, 'record_id' => $id,
             'context_holon_id' => $context['currentHolonId'] ?: null, 'mission_id' => $missionId ?: null,
             'archived' => $archived,
             'title' => \omoSearchPreviewText($preview['title'] ?? ''),
-            'record' => McpBrowse::summary($organization, $context, $module, $object),
+            'record' => $record,
             'url' => self::sourceUrl((int)$organization->getId(), $module, $id, $context['currentHolonId'], $missionId, $archived),
             'text' => $chunk, 'offset' => $offset, 'next_offset' => $offset + mb_strlen($chunk, 'UTF-8') < mb_strlen($text, 'UTF-8')
                 ? $offset + mb_strlen($chunk, 'UTF-8') : null,

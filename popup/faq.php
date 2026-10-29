@@ -13,7 +13,7 @@ $faqContext = \dbObject\FAQ::resolvePopupRequestContext($_GET, $responderRequest
 if ($faqContext === false) {
 	http_response_code(403);
 	?>
-	<div class="faq-popup__empty generic-drawer-content">Contexte FAQ invalide.</div>
+	<div class="faq-popup__empty generic-drawer-content"><?= htmlspecialchars(faqPopupT('contexte_faq_invalide'), ENT_QUOTES, 'UTF-8') ?></div>
 	<?php
 	return;
 }
@@ -180,7 +180,7 @@ if (!$canManageFaqCollection && $canCreateContextualFaq) {
 							<div
 								class="faq-popup__scope-toggle omo-segmented"
 								role="tablist"
-							aria-label="Portée de la FAQ"
+							aria-label="<?= htmlspecialchars(faqPopupT('portee_de_la_faq'), ENT_QUOTES, 'UTF-8') ?>"
 								data-faq-scope-switch="<?= htmlspecialchars($faqScope, ENT_QUOTES, 'UTF-8') ?>"
 							>
 								<?php foreach ($faqAvailableScopes as $scopeOption): ?>
@@ -201,7 +201,7 @@ if (!$canManageFaqCollection && $canCreateContextualFaq) {
 					</div>
 					<div class="faq-popup__toolbar-actions generic-action-row">
 						<?php if ($canAddFaq): ?>
-							<button type="button" class="faq-popup__add generic-action-button generic-action-button--main" data-faq-add>Ajouter une FAQ</button>
+							<button type="button" class="faq-popup__add generic-action-button generic-action-button--main" data-faq-add><?= htmlspecialchars(faqPopupT('ajouter_une_faq'), ENT_QUOTES, 'UTF-8') ?></button>
 						<?php endif; ?>
 					</div>
 				</div>
@@ -214,21 +214,21 @@ if (!$canManageFaqCollection && $canCreateContextualFaq) {
 							type="search"
 							class="faq-popup__search-input"
 							data-faq-search-input
-							placeholder="Rechercher une question, une réponse ou un mot-clé…"
-							aria-label="Rechercher dans la FAQ"
+							placeholder="<?= htmlspecialchars(faqPopupT('rechercher_une_question_une_reponse_ou_un_mot_cle'), ENT_QUOTES, 'UTF-8') ?>"
+							aria-label="<?= htmlspecialchars(faqPopupT('rechercher_dans_la_faq'), ENT_QUOTES, 'UTF-8') ?>"
 						>
 					</label>
 				</div>
 			<?php endif; ?>
 		</div>
 		<?php if (!$faqStorageAvailable): ?>
-			<div class="faq-popup__helper generic-soft-panel generic-help-text generic-help-text--regular"><strong>Module FAQ indisponible.</strong> La table `faq` n existe pas encore dans cette base. Lancez les migrations SQL pour activer cette fonctionnalite.</div>
+			<div class="faq-popup__helper generic-soft-panel generic-help-text generic-help-text--regular"><strong><?= htmlspecialchars(faqPopupT('module_faq_indisponible'), ENT_QUOTES, 'UTF-8') ?></strong> <?= htmlspecialchars(faqPopupT('la_table_faq_n_existe_pas_encore_dans_cette_base_lancez_les_migrations_sql_pour_activer_ce'), ENT_QUOTES, 'UTF-8') ?></div>
 		<?php endif; ?>
 		<div class="faq-popup__no-result generic-soft-panel generic-help-text generic-help-text--regular" data-faq-no-result hidden>
-			Aucune FAQ ne correspond a cette recherche.
+			<?= htmlspecialchars(faqPopupT('aucune_faq_ne_correspond_a_cette_recherche'), ENT_QUOTES, 'UTF-8') ?>
 		</div>
 		<?php if (count($allFAQ) === 0): ?>
-			<div class="faq-popup__empty generic-soft-panel generic-help-text generic-help-text--regular">Aucune FAQ n'est disponible pour le moment.</div>
+			<div class="faq-popup__empty generic-soft-panel generic-help-text generic-help-text--regular"><?= htmlspecialchars(faqPopupT('aucune_faq_n_est_disponible_pour_le_moment'), ENT_QUOTES, 'UTF-8') ?></div>
 		<?php endif; ?>
 		<div class="faq-popup__list generic-stack generic-stack--compact" data-faq-list<?= count($allFAQ) === 0 ? ' hidden' : '' ?>>
 			<?php $faqIndex = 0; ?>
@@ -267,7 +267,7 @@ if (!$canManageFaqCollection && $canCreateContextualFaq) {
 									<span class="faq-popup__meta-badge faq-popup__meta-badge--generic"><?= $faq->isPendingRequest() ? 'À traiter' : 'Inactive' ?></span>
 								<?php endif; ?>
 								<?php if ($faq->canBeEditedInContext($faqContext ?: array())): ?>
-									<span class="faq-popup__meta-badge">Editable</span>
+									<span class="faq-popup__meta-badge"><?= htmlspecialchars(faqPopupT('editable'), ENT_QUOTES, 'UTF-8') ?></span>
 								<?php endif; ?>
 							</span>
 						</span>
@@ -275,7 +275,7 @@ if (!$canManageFaqCollection && $canCreateContextualFaq) {
 					</button>
 					<div class="faq-popup__answer" data-faq-answer>
 						<div class="faq-popup__answer-body generic-stack generic-stack--compact">
-							<div class="faq-popup__answer-caption generic-meta-label">Réponse résumée</div>
+							<div class="faq-popup__answer-caption generic-meta-label"><?= htmlspecialchars(faqPopupT('reponse_resumee'), ENT_QUOTES, 'UTF-8') ?></div>
 							<div class="faq-popup__answer-text generic-description generic-description--card generic-description--primary" data-faq-answer-text><?= nl2br(htmlspecialchars($faq->getShortAnswer(220))) ?></div>
 						</div>
 						<div class="faq-popup__answer-footer">
@@ -285,7 +285,7 @@ if (!$canManageFaqCollection && $canCreateContextualFaq) {
 									class="faq-popup__detail-link"
 									data-faq-detail
 									data-faq-id="<?= (int)$faq->get("id") ?>"
-								>Voir le detail</button>
+								><?= htmlspecialchars(faqPopupT('voir_le_detail'), ENT_QUOTES, 'UTF-8') ?></button>
 							</div>
 							<?php faqPopupRenderVoteBlock($faq, array('compact' => true, 'reliabilityRange' => $faqReliabilityRange)); ?>
 						</div>
@@ -296,11 +296,11 @@ if (!$canManageFaqCollection && $canCreateContextualFaq) {
 		</div>
 		<div class="faq-popup__ask generic-soft-panel generic-stack generic-stack--compact" data-faq-ask-shell hidden>
 			<div><?= htmlspecialchars(faqAiT('ask_help'), ENT_QUOTES, 'UTF-8') ?></div>
-			<button type="button" class="generic-action-button generic-action-button--main" data-faq-ask>Poser la question</button>
+			<button type="button" class="generic-action-button generic-action-button--main" data-faq-ask><?= htmlspecialchars(faqPopupT('poser_la_question'), ENT_QUOTES, 'UTF-8') ?></button>
 		</div>
 		<div class="faq-popup__footer" data-faq-load-more-shell<?= $initialRemainingFaqCount > 0 ? '' : ' hidden' ?>>
 			<button type="button" class="faq-popup__detail-link" data-faq-load-more<?= $initialRemainingFaqCount > 0 ? '' : ' hidden' ?>>Voir <?= (int)$initialLoadMoreCount ?> de plus</button>
-			<div class="faq-popup__load-more-note">Ou chercher par mot cle en haut de la page.</div>
+			<div class="faq-popup__load-more-note"><?= htmlspecialchars(faqPopupT('ou_chercher_par_mot_cle_en_haut_de_la_page'), ENT_QUOTES, 'UTF-8') ?></div>
 		</div>
 	</div>
 
@@ -312,9 +312,9 @@ if (!$canManageFaqCollection && $canCreateContextualFaq) {
 				data-sending="<?= htmlspecialchars(faqAiT('sending'), ENT_QUOTES, 'UTF-8') ?>"
 				data-error="<?= htmlspecialchars(faqAiT('error'), ENT_QUOTES, 'UTF-8') ?>">
 				<?php faqPopupRenderBackButton(); ?>
-				<h4 class="generic-title generic-title--section" data-faq-view-title>Poser une question</h4>
-				<label class="generic-form-field"><span class="generic-form-label">Votre question</span><input class="generic-form-control" type="text" name="question" maxlength="255" required></label>
-				<label class="generic-form-field"><span class="generic-form-label">Description du problème</span><textarea class="generic-form-control" name="request_description" rows="5" maxlength="10000" required></textarea></label>
+				<h4 class="generic-title generic-title--section" data-faq-view-title><?= htmlspecialchars(faqPopupT('poser_une_question'), ENT_QUOTES, 'UTF-8') ?></h4>
+				<label class="generic-form-field"><span class="generic-form-label"><?= htmlspecialchars(faqPopupT('votre_question'), ENT_QUOTES, 'UTF-8') ?></span><input class="generic-form-control" type="text" name="question" maxlength="255" required></label>
+				<label class="generic-form-field"><span class="generic-form-label"><?= htmlspecialchars(faqPopupT('description_du_probleme'), ENT_QUOTES, 'UTF-8') ?></span><textarea class="generic-form-control" name="request_description" rows="5" maxlength="10000" required></textarea></label>
 				<div class="generic-action-row" data-faq-request-search><button type="submit" class="generic-action-button generic-action-button--main"><?= htmlspecialchars(faqAiT('search'), ENT_QUOTES, 'UTF-8') ?></button></div>
 				<div data-faq-request-message role="status" aria-live="polite"></div>
 				<p data-faq-ai-notice class="generic-help-text" role="status" aria-live="polite" hidden><?= htmlspecialchars(faqAiT('notice'), ENT_QUOTES, 'UTF-8') ?></p>
@@ -368,8 +368,8 @@ if (!$canManageFaqCollection && $canCreateContextualFaq) {
 				?>
 				</div>
 				<footer class="faq-popup__editor-actions generic-drawer-footer generic-drawer-footer--sticky">
-					<button type="button" class="faq-popup__back generic-action-button generic-action-button--secondary" data-faq-back>Annuler</button>
-					<button type="button" class="faq-popup__add generic-action-button generic-action-button--main" data-faq-save>Enregistrer</button>
+					<button type="button" class="faq-popup__back generic-action-button generic-action-button--secondary" data-faq-back><?= htmlspecialchars(faqPopupT('annuler'), ENT_QUOTES, 'UTF-8') ?></button>
+					<button type="button" class="faq-popup__add generic-action-button generic-action-button--main" data-faq-save><?= htmlspecialchars(faqPopupT('enregistrer'), ENT_QUOTES, 'UTF-8') ?></button>
 				</footer>
 			</div>
 		</div>

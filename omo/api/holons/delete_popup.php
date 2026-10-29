@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once dirname(__DIR__, 3) . '/common/choice/holon-removal-fields.php';
 
@@ -12,11 +13,11 @@ $holon = new Holon();
 $errorMessage = '';
 
 if ($organizationId <= 0 || $holonId <= 0) {
-$errorMessage = "L’espace à supprimer est invalide.";
+$errorMessage = omoHolonsUiT('l_espace_a_supprimer_est_invalide');
 } elseif (!$organization->load($organizationId) || !$holon->load($holonId) || !$organization->containsHolon($holon)) {
-$errorMessage = 'L’espace demandé est introuvable.';
+$errorMessage = omoHolonsUiT('l_espace_demande_est_introuvable');
 } elseif (!$holon->isAllowed('CAN_DELETE_HOLON') || !$holon->canDelete() || !in_array((int)$holon->get('IDtypeholon'), array(1, 2, 3), true)) {
-$errorMessage = "Vous n'avez pas les droits pour supprimer cet espace.";
+$errorMessage = omoHolonsUiT('vous_n_avez_pas_les_droits_pour_supprimer_cet_espace');
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -42,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         http_response_code(422);
         echo json_encode(array(
             'status' => false,
-        'message' => (string)($result['message'] ?? "L’espace n’a pas pu être supprimé."),
+        'message' => (string)($result['message'] ?? omoHolonsUiT('l_espace_n_a_pas_pu_etre_supprime')),
             'parent' => $result['parent'] ?? null,
             'holon' => $result['holon'] ?? null,
         ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -51,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     echo json_encode(array(
         'status' => true,
-        'message' => (string)($result['message'] ?? 'Espace supprimé.'),
+        'message' => (string)($result['message'] ?? omoHolonsUiT('espace_supprime')),
         'parent' => $result['parent'] ?? null,
         'holon' => $result['holon'] ?? null,
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -75,15 +76,15 @@ $typeLabel = strtolower((string)$holon->getTemplateLabel(true));
     >
         <div class="omo-holon-delete__header generic-drawer-header generic-drawer-header--sticky">
             <div class="generic-drawer-header__copy omo-holon-delete__header-copy">
-                <div class="generic-card-title generic-card-title--eyebrow">Suppression</div>
-    <h3 class="generic-card-title generic-card-title--medium">Supprimer un espace</h3>
+                <div class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoHolonsUiT('suppression'), ENT_QUOTES, 'UTF-8') ?></div>
+    <h3 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(omoHolonsUiT('supprimer_un_espace'), ENT_QUOTES, 'UTF-8') ?></h3>
             </div>
         </div>
         <div class="omo-holon-delete__shell generic-drawer-content">
         <div class="omo-holon-delete__intro">
-            <div class="omo-holon-delete__eyebrow generic-title generic-title--eyebrow">Suppression</div>
+            <div class="omo-holon-delete__eyebrow generic-title generic-title--eyebrow"><?= htmlspecialchars(omoHolonsUiT('suppression'), ENT_QUOTES, 'UTF-8') ?></div>
             <div class="omo-holon-delete__title generic-title generic-title--medium">
-                Supprimer <?= omoApiEscape($typeLabel) ?> <strong><?= omoApiEscape($holon->getDisplayName()) ?></strong> ?
+                <?= htmlspecialchars(omoHolonsUiT('supprimer'), ENT_QUOTES, 'UTF-8') ?> <?= omoApiEscape($typeLabel) ?> <strong><?= omoApiEscape($holon->getDisplayName()) ?></strong> ?
             </div>
         </div>
 
@@ -99,10 +100,10 @@ $typeLabel = strtolower((string)$holon->getTemplateLabel(true));
 
         <div class="omo-holon-delete__actions generic-action-row">
             <button type="button" id="omoHolonDeletePopupCancel" class="omo-holon-delete__button generic-action-button generic-action-button--secondary">
-                Annuler
+                <?= htmlspecialchars(omoHolonsUiT('annuler'), ENT_QUOTES, 'UTF-8') ?>
             </button>
             <button type="submit" id="omoHolonDeletePopupSubmit" class="omo-holon-delete__button generic-action-button generic-action-button--danger">
-                Supprimer
+                <?= htmlspecialchars(omoHolonsUiT('supprimer'), ENT_QUOTES, 'UTF-8') ?>
             </button>
         </div>
         </div>

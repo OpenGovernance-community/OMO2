@@ -23,10 +23,10 @@
 			return [
 				'id' => 'ID',
 				'IDorganization' => 'Organisation',
-				'name' => 'Competence',
+				'name' => 'Compétence',
 				'normalized_name' => 'Nom normalise',
 				'category' => 'Type',
-				'datecreation' => 'Creation',
+				'datecreation' => 'Création',
 			];
 		}
 

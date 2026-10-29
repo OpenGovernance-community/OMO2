@@ -5,7 +5,7 @@ require_once dirname(__DIR__) . '/omo/translations.php';
 checklogin();
 $sourceLang = [
     'support.title' => ['text' => 'Soutenir OpenGovernance', 'context' => 'Title of the support popup.'],
-    'support.description' => ['text' => 'Votre soutien sur Patreon contribue au developpement des outils OpenGovernance.', 'context' => 'Explain how to support the project.'],
+    'support.description' => ['text' => 'Votre soutien sur Patreon contribue au développement des outils OpenGovernance.', 'context' => 'Explain how to support the project.'],
     'support.profile_hint' => ['text' => 'Ouvrez Mon profil > Patreon pour relier votre compte et synchroniser votre soutien.', 'context' => 'Explain where the Patreon account connection is available.'],
     'support.patreon' => ['text' => 'Soutenir sur Patreon', 'context' => 'Action opening the project Patreon campaign.'],
 ];

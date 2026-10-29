@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 (function () {
     var root = typeof window.omoFindApplicationRoot === 'function'
         ? window.omoFindApplicationRoot('omo-policy-root')
@@ -566,7 +568,7 @@
             if (!input) return;
             window.omoSimpleHtmlField.mount(host, {
                 value: input.value || '',
-                placeholder: 'Saisissez le contenu de la règle…',
+                placeholder: omoUiText("saisissez_le_contenu_de_la_regle", "Saisissez le contenu de la règle…"),
                 simpleOnly: true,
                 onChange: function (value) { input.value = String(value || ''); }
             });

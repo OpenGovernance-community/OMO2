@@ -3,6 +3,16 @@ namespace dbObject;
 
 class Valeur extends DbObject
 {
+    protected static function uiMessageSourceLang(): array
+    {
+        return [
+            'invalid' => ['text' => 'La valeur doit avoir un titre et un espace valide.', 'context' => 'Value title and owning space validation.'],
+            'organization' => ['text' => 'Organisation de la valeur introuvable.', 'context' => 'Missing organization for a value.'],
+            'space' => ['text' => 'Espace de la valeur introuvable.', 'context' => 'Missing owning space while synchronizing a value.'],
+            'not_found' => ['text' => 'Valeur introuvable dans cette organisation.', 'context' => 'Value reference outside the current organization.'],
+            'save' => ['text' => 'Enregistrement de la valeur impossible.', 'context' => 'Value synchronization save failure.'],
+        ];
+    }
     public static function tableName() { return 'valeur'; }
     public static function rules()
     {
@@ -27,12 +37,12 @@ class Valeur extends DbObject
         $title = trim((string)$this->get('title'));
         $holon = new Holon();
         if ($title === '' || mb_strlen($title) > 255 || !$holon->load((int)$this->get('IDholon'))) {
-            return ['status' => false, 'text' => 'La valeur doit avoir un titre et un espace valide.'];
+            return ['status' => false, 'text' => self::uiMessage('invalid')];
         }
         $root = new Holon();
         $organizationId = (int)$holon->get('IDorganization');
         if (!$organizationId && $root->load((int)$holon->get('IDholon_org'))) $organizationId = (int)$root->get('IDorganization');
-        if ($organizationId <= 0) return ['status' => false, 'text' => 'Organisation de la valeur introuvable.'];
+        if ($organizationId <= 0) return ['status' => false, 'text' => self::uiMessage('organization')];
         $this->set('IDorganization', $organizationId);
         $this->set('title', $title);
         $this->set('principle', PropertyFormat::sanitizeHtml($this->get('principle')));
@@ -64,7 +74,7 @@ class Valeur extends DbObject
         $format = (int)$definition->get('IDpropertyformat');
         $parts = Property::listConversionParts($raw, $format);
         $holon = new Holon();
-        if (!$holon->load((int)$property->get('IDholon'))) throw new \RuntimeException('Espace de la valeur introuvable.');
+        if (!$holon->load((int)$property->get('IDholon'))) throw new \RuntimeException(self::uiMessage('space'));
         $root = new Holon();
         $organizationId = (int)$holon->get('IDorganization');
         if (!$organizationId && $root->load((int)$holon->get('IDholon_org'))) $organizationId = (int)$root->get('IDorganization');
@@ -80,7 +90,7 @@ class Valeur extends DbObject
         foreach ($parts['items'] as $draft) {
             $id = is_array($draft) ? (int)($draft['id'] ?? 0) : (int)$draft;
             $value = $id > 0 ? self::loadInOrganization($id, $organizationId) : null;
-            if ($id > 0 && !$value) throw new \RuntimeException('Valeur introuvable dans cette organisation.');
+            if ($id > 0 && !$value) throw new \RuntimeException(self::uiMessage('not_found'));
             $title = is_array($draft) ? trim((string)($draft['title'] ?? '')) : ($value ? (string)$value->get('title') : trim((string)$draft));
             $principle = is_array($draft) ? PropertyFormat::sanitizeHtml($draft['principle'] ?? '') : ($value ? (string)$value->get('principle') : '');
             if ($title === '' && PropertyFormat::isEmptyValue(PropertyFormat::FORMAT_HTML, $principle) && !$id) continue;
@@ -92,7 +102,7 @@ class Valeur extends DbObject
                 $value->set('title', $title);
                 $value->set('principle', $principle);
                 $result = $value->save();
-                if (empty($result['status'])) throw new \RuntimeException($result['text'] ?? 'Enregistrement de la valeur impossible.');
+                if (empty($result['status'])) throw new \RuntimeException($result['text'] ?? self::uiMessage('save'));
             }
             $items[] = ['id' => (int)$value->getId(), 'title' => (string)$value->get('title'), 'principle' => (string)$value->get('principle')];
         }

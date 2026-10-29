@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
 require_once dirname(__DIR__) . '/modules/context.php';
 require_once dirname(__DIR__) . '/modules/consent/shared.php';
@@ -30,14 +31,14 @@ $respond = static function ($code, array $payload) {
 };
 
 if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
-    $respond(405, ['status' => false, 'message' => 'Méthode non autorisée.']);
+    $respond(405, ['status' => false, 'message' => omoDecisionUiT('methode_non_autorisee')]);
 }
 
 $context = omoDecisionResolveManagementContext($_POST);
 if (empty($context['status'])) {
     $respond((int)($context['code'] ?? 400), [
         'status' => false,
-        'message' => 'Contexte de création invalide.',
+        'message' => omoDecisionUiT('contexte_de_creation_invalide'),
     ]);
 }
 
@@ -92,7 +93,7 @@ if (!$targetHolon->load($targetHolonId)
 
 if ($wasExistingDecision) {
     if (!$decision->isGovernanceWorkflow()) {
-        $respond(400, ['status' => false, 'message' => 'Cette prise de décision n’est pas un processus hors réorganisation.']);
+        $respond(400, ['status' => false, 'message' => omoDecisionUiT('cette_prise_de_decision_n_est_pas_un_processus_hors_reorganisation')]);
     }
     if ($decision->hasConsultationEnded()) {
         $respond(409, ['status' => false, 'message' => omoDecisionGovernanceT('governance.error.locked')]);
@@ -108,25 +109,25 @@ $processTitle = trim((string)($_POST['process_title'] ?? ''));
 $processDescription = trim((string)($_POST['process_description'] ?? ''));
 $consentQuestion = trim((string)($_POST['consent_question'] ?? ''));
 if ($processTitle === '' || mb_strlen($processTitle, 'UTF-8') > 190) {
-    $respond(422, ['status' => false, 'message' => 'Le titre est obligatoire et doit contenir 190 caractères au maximum.']);
+    $respond(422, ['status' => false, 'message' => omoDecisionUiT('le_titre_est_obligatoire_et_doit_contenir_190_caracteres_au_maximum')]);
 }
 if ($consentQuestion === '' || mb_strlen($consentQuestion, 'UTF-8') > 1000) {
-    $respond(422, ['status' => false, 'message' => 'La question est obligatoire.']);
+    $respond(422, ['status' => false, 'message' => omoDecisionUiT('la_question_est_obligatoire')]);
 }
 
 try {
     $consultationEnd = new DateTimeImmutable(trim((string)($_POST['consultation_end_at'] ?? '')));
     $evaluationEnd = new DateTimeImmutable(trim((string)($_POST['evaluation_end_at'] ?? '')));
 } catch (Throwable $exception) {
-    $respond(422, ['status' => false, 'message' => 'Les dates du processus sont invalides.']);
+    $respond(422, ['status' => false, 'message' => omoDecisionUiT('les_dates_du_processus_sont_invalides')]);
 }
 if ($evaluationEnd <= $consultationEnd) {
-    $respond(422, ['status' => false, 'message' => 'La fin du vote doit suivre la fin de la consultation.']);
+    $respond(422, ['status' => false, 'message' => omoDecisionUiT('la_fin_du_vote_doit_suivre_la_fin_de_la_consultation')]);
 }
 
 $blueprint = json_decode((string)($_POST['governance_blueprint'] ?? ''), true);
 if (!is_array($blueprint) || count($blueprint) < 1 || count($blueprint) > 50) {
-    $respond(422, ['status' => false, 'message' => 'Ajoutez au moins une proposition valide.']);
+    $respond(422, ['status' => false, 'message' => omoDecisionUiT('ajoutez_au_moins_une_proposition_valide')]);
 }
 
 $contextOrganization = ($context['organization'] ?? null) instanceof \dbObject\Organization ? $context['organization'] : null;
@@ -159,15 +160,15 @@ $usedTargetIds = [];
 $holonTargetCatalog = null;
 foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
     if (!is_array($proposalInput)) {
-        $respond(422, ['status' => false, 'message' => 'Une proposition est invalide.']);
+        $respond(422, ['status' => false, 'message' => omoDecisionUiT('une_proposition_est_invalide')]);
     }
     $proposalId = (int)($proposalInput['id'] ?? 0);
     if ($proposalId > 0 && !isset($existingProposals[$proposalId])) {
-        $respond(422, ['status' => false, 'message' => 'Une proposition ne correspond pas à ce scrutin.']);
+        $respond(422, ['status' => false, 'message' => omoDecisionUiT('une_proposition_ne_correspond_pas_a_ce_scrutin')]);
     }
     $actionInputs = is_array($proposalInput['actions'] ?? null) ? array_values($proposalInput['actions']) : [];
     if (count($actionInputs) < 1 || count($actionInputs) > 50) {
-        $respond(422, ['status' => false, 'message' => 'Chaque proposition doit contenir au moins une modification.']);
+        $respond(422, ['status' => false, 'message' => omoDecisionUiT('chaque_proposition_doit_contenir_au_moins_une_modification')]);
     }
 
     $normalizedActions = [];
@@ -183,7 +184,7 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
             : null;
         if ($actionStorage === 'deferred' && $clientActionId > 0
             && (!$existingDeferred instanceof DeferredProposal || (string)$existingDeferred->get('status') !== DeferredProposal::STATUS_PENDING)) {
-            $respond(422, ['status' => false, 'message' => 'Cette modification différée ne peut plus être modifiée.']);
+            $respond(422, ['status' => false, 'message' => omoDecisionUiT('cette_modification_differee_ne_peut_plus_etre_modifiee')]);
         }
         $actionId = $actionStorage === 'legacy' ? $clientActionId : 0;
         $actionContextHolonId = (int)($actionInput['holonId'] ?? $targetHolonId);
@@ -192,7 +193,7 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
             if ($existingType !== $actionType
                 || (int)$existingDeferred->get('target_id') !== (int)($actionInput['targetId'] ?? 0)
                 || (int)$existingDeferred->get('IDholon') !== $actionContextHolonId) {
-                $respond(422, ['status' => false, 'message' => 'Le contexte d’une modification existante ne peut pas être remplacé.']);
+                $respond(422, ['status' => false, 'message' => omoDecisionUiT('le_contexte_d_une_modification_existante_ne_peut_pas_etre_remplace')]);
             }
         }
         $isRoleAction = in_array($actionType, [
@@ -221,15 +222,15 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
                     DeferredProposal::getHolonTargetsForContext($roleContext, $operation, $holonTargetCatalog),
                     static fn (Holon $target): bool => (int)$target->getId() === $targetId
                 ))) {
-                $respond(422, ['status' => false, 'message' => 'Le rôle choisi n’appartient pas à ce cercle.']);
+                $respond(422, ['status' => false, 'message' => omoDecisionUiT('le_role_choisi_n_appartient_pas_a_ce_cercle')]);
             }
             if (!$isCreate && isset($usedTargetIds['role:' . $targetId])) {
-                $respond(422, ['status' => false, 'message' => 'Un même rôle ne peut pas être modifié plusieurs fois dans ce scrutin.']);
+                $respond(422, ['status' => false, 'message' => omoDecisionUiT('un_meme_role_ne_peut_pas_etre_modifie_plusieurs_fois_dans_ce_scrutin')]);
             }
             if (!$isCreate) $usedTargetIds['role:' . $targetId] = true;
             $existingAction = $actionId > 0 ? ($existingActionsByProposal[$proposalId][$actionId] ?? null) : null;
             if ($actionId > 0 && (!$existingAction instanceof DecisionGovernanceAction || (string)$existingAction->get('action_type') !== $actionType || (int)$existingAction->get('target_id') !== $targetId || (string)$existingAction->get('status') !== DecisionGovernanceAction::STATUS_PENDING)) {
-                $respond(422, ['status' => false, 'message' => 'Une modification existante ne peut plus être remplacée.']);
+                $respond(422, ['status' => false, 'message' => omoDecisionUiT('une_modification_existante_ne_peut_plus_etre_remplacee')]);
             }
             $beforeState = [];
             $afterState = [];
@@ -240,7 +241,7 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
                 $afterState = (array)$validation['state'];
                 $roleName = $afterState['name'];
                 $suggestedTitles[] = 'Créer le rôle ' . $roleName;
-                $actionDescriptions[] = '<h4>Créer le rôle ' . htmlspecialchars($roleName, ENT_QUOTES, 'UTF-8') . '</h4>' . DecisionGovernanceAction::buildRoleStateDescription($afterState);
+                $actionDescriptions[] = ('<h4>' . htmlspecialchars(omoDecisionUiT('creer_le_role'), ENT_QUOTES, 'UTF-8')) . htmlspecialchars($roleName, ENT_QUOTES, 'UTF-8') . '</h4>' . DecisionGovernanceAction::buildRoleStateDescription($afterState);
             } else {
                 $beforeState = $existingDeferred instanceof DeferredProposal
                     ? DeferredProposal::normalizeState($existingDeferred->get('before_state'))
@@ -264,15 +265,15 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
                     }
                     $afterState = ['authority_choice' => $actionInput['after']['authority_choice']];
                     $suggestedTitles[] = 'Supprimer le rôle ' . $roleName;
-                    $actionDescriptions[] = '<h4>Supprimer le rôle ' . htmlspecialchars($roleName, ENT_QUOTES, 'UTF-8') . '</h4>' . DecisionGovernanceAction::buildRoleStateDescription($beforeState);
+                    $actionDescriptions[] = ('<h4>' . htmlspecialchars(omoDecisionUiT('supprimer_le_role'), ENT_QUOTES, 'UTF-8')) . htmlspecialchars($roleName, ENT_QUOTES, 'UTF-8') . '</h4>' . DecisionGovernanceAction::buildRoleStateDescription($beforeState);
                     $actionDescriptions[] = '<p>' . htmlspecialchars(omoHolonRemovalT($afterState['authority_choice']), ENT_QUOTES, 'UTF-8') . '</p>';
                 } else {
                     $validation = DecisionGovernanceAction::validateRoleState((array)($actionInput['after'] ?? []), $roleContext, $role);
                     if (empty($validation['status'])) $respond(422, ['status' => false, 'message' => (string)$validation['message']]);
                     $afterState = (array)$validation['state'];
-                    if ($beforeState === $afterState) $respond(422, ['status' => false, 'message' => 'La modification du rôle ne contient aucun changement.']);
+                    if ($beforeState === $afterState) $respond(422, ['status' => false, 'message' => omoDecisionUiT('la_modification_du_role_ne_contient_aucun_changement')]);
                     $suggestedTitles[] = 'Modifier le rôle ' . $roleName;
-                    $actionDescriptions[] = '<h4>Modifier le rôle ' . htmlspecialchars($roleName, ENT_QUOTES, 'UTF-8') . '</h4>' . DecisionGovernanceAction::buildRoleUpdateDescription($beforeState, $afterState);
+                    $actionDescriptions[] = ('<h4>' . htmlspecialchars(omoDecisionUiT('modifier_le_role'), ENT_QUOTES, 'UTF-8')) . htmlspecialchars($roleName, ENT_QUOTES, 'UTF-8') . '</h4>' . DecisionGovernanceAction::buildRoleUpdateDescription($beforeState, $afterState);
                 }
             }
             $normalizedActions[] = ['id' => $actionId, 'existing' => $existingAction, 'existing_deferred' => $existingDeferred, 'action_type' => $actionType, 'operation' => $operation, 'holon_id' => $actionContextHolonId, 'target_id' => $targetId, 'target_type' => DeferredProposal::TARGET_HOLON, 'before' => $beforeState, 'after' => $afterState, 'position' => $actionIndex + 1];
@@ -282,15 +283,15 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
             $operation = substr($actionType, strpos($actionType, '.') + 1);
             $isCreation = DeferredProposal::isProjectCreationOperation($operation);
             $targetId = (int)($actionInput['targetId'] ?? 0);
-            if ($isCreation && $targetId !== 0) $respond(422, ['status' => false, 'message' => 'La cible du nouveau projet est invalide.']);
+            if ($isCreation && $targetId !== 0) $respond(422, ['status' => false, 'message' => omoDecisionUiT('la_cible_du_nouveau_projet_est_invalide')]);
             $contextHolon = DeferredProposal::loadAllowedProjectTargetHolon($organizationId, $actionContextHolonId, $operation, $targetHolonId);
-            if (!($contextHolon instanceof Holon)) $respond(403, ['status' => false, 'message' => 'Le collectif ne dispose pas du droit nécessaire pour ce projet.']);
+            if (!($contextHolon instanceof Holon)) $respond(403, ['status' => false, 'message' => omoDecisionUiT('le_collectif_ne_dispose_pas_du_droit_necessaire_pour_ce_projet')]);
             $project = new Project();
             if (!$isCreation
                 && (!$project->load($targetId) || (int)$project->get('IDorganization') !== $organizationId || (int)$project->get('IDholon') !== $actionContextHolonId)) {
-                $respond(422, ['status' => false, 'message' => 'Le projet choisi n’appartient pas à cet espace.']);
+                $respond(422, ['status' => false, 'message' => omoDecisionUiT('le_projet_choisi_n_appartient_pas_a_cet_espace')]);
             }
-            if (!$isCreation && isset($usedTargetIds['project:' . $targetId])) $respond(422, ['status' => false, 'message' => 'Un même projet ne peut pas être modifié plusieurs fois dans ce scrutin.']);
+            if (!$isCreation && isset($usedTargetIds['project:' . $targetId])) $respond(422, ['status' => false, 'message' => omoDecisionUiT('un_meme_projet_ne_peut_pas_etre_modifie_plusieurs_fois_dans_ce_scrutin')]);
             if (!$isCreation) $usedTargetIds['project:' . $targetId] = true;
             $beforeState = $isCreation ? [] : ($existingDeferred instanceof DeferredProposal ? DeferredProposal::normalizeState($existingDeferred->get('before_state')) : DeferredProposal::captureProjectState($project));
             $afterState = $operation === DeferredProposal::OPERATION_DELETE ? [] : DeferredProposal::normalizeProjectState((array)($actionInput['after'] ?? []), $operation === DeferredProposal::OPERATION_UPDATE ? $project : null);
@@ -298,19 +299,19 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
             if ($operation !== DeferredProposal::OPERATION_DELETE && (int)$afterState['IDuser_proposed'] > 0
                 && !\dbObject\UserOrganization::hasActiveMembership((int)$afterState['IDuser_proposed'], $organizationId)
                 && ($isCreation || (int)$afterState['IDuser_proposed'] !== (int)$project->get('IDuser_proposed'))) {
-                $respond(422, ['status' => false, 'message' => 'La personne proposant le projet doit etre membre de l organisation.']);
+                $respond(422, ['status' => false, 'message' => omoDecisionUiT('la_personne_proposant_le_projet_doit_etre_membre_de_l_organisation')]);
             }
-            if ($operation !== DeferredProposal::OPERATION_DELETE && trim((string)($afterState['title'] ?? '')) === '') $respond(422, ['status' => false, 'message' => 'Le titre du projet est obligatoire.']);
+            if ($operation !== DeferredProposal::OPERATION_DELETE && trim((string)($afterState['title'] ?? '')) === '') $respond(422, ['status' => false, 'message' => omoDecisionUiT('le_titre_du_projet_est_obligatoire')]);
             if ($operation !== DeferredProposal::OPERATION_DELETE
                 && (string)($afterState['planned_start_date'] ?? '') !== ''
                 && (string)($afterState['planned_end_date'] ?? '') !== ''
                 && (string)$afterState['planned_end_date'] < (string)$afterState['planned_start_date']) {
-                $respond(422, ['status' => false, 'message' => 'La fin planifiée doit suivre le début planifié.']);
+                $respond(422, ['status' => false, 'message' => omoDecisionUiT('la_fin_planifiee_doit_suivre_le_debut_planifie')]);
             }
             if ($operation !== DeferredProposal::OPERATION_DELETE
                 && (string)($afterState['status'] ?? '') === Project::STATUS_BLOCKED
                 && !Project::hasValidBlockedDetails($organizationId, $afterState['blocked_reason'] ?? null, $afterState['blocked_until'] ?? null)) {
-                $respond(422, ['status' => false, 'message' => 'Renseignez les champs de blocage obligatoires selon les paramètres de votre organisation.']);
+                $respond(422, ['status' => false, 'message' => omoDecisionUiT('renseignez_les_champs_de_blocage_obligatoires_selon_les_parametres_de_votre_organisation')]);
             }
             $projectTitle = trim((string)(($operation === DeferredProposal::OPERATION_DELETE ? $beforeState : $afterState)['title'] ?? ''));
             $verb = $operation === DeferredProposal::OPERATION_PROPOSE ? 'Proposer' : ($isCreation ? 'Créer' : ($operation === DeferredProposal::OPERATION_UPDATE ? 'Modifier' : 'Supprimer'));
@@ -323,14 +324,14 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
             [$targetType, $operation] = explode('.', $actionType, 2);
             $targetId = (int)($actionInput['targetId'] ?? 0);
             $contextHolon = DeferredProposal::loadAllowedObjectTargetHolon($organizationId, $actionContextHolonId, $operation, $targetHolonId, $targetType);
-            if (!($contextHolon instanceof Holon)) $respond(403, ['status' => false, 'message' => 'Le collectif ne dispose pas du droit nécessaire pour cet élément.']);
+            if (!($contextHolon instanceof Holon)) $respond(403, ['status' => false, 'message' => omoDecisionUiT('le_collectif_ne_dispose_pas_du_droit_necessaire_pour_cet_element')]);
             $object = $targetType === DeferredProposal::TARGET_RECURRING_TASK ? new \dbObject\ControlActivity() : new \dbObject\StatIndicator();
             if ($operation !== DeferredProposal::OPERATION_CREATE
                 && (!$object->load($targetId) || (int)$object->get('IDorganization') !== $organizationId || (int)$object->get('IDholon') !== $actionContextHolonId)) {
-                $respond(422, ['status' => false, 'message' => 'L’élément choisi n’appartient pas à cet espace.']);
+                $respond(422, ['status' => false, 'message' => omoDecisionUiT('l_element_choisi_n_appartient_pas_a_cet_espace')]);
             }
             $uniqueTargetKey = $targetType . ':' . $targetId;
-            if ($operation !== DeferredProposal::OPERATION_CREATE && isset($usedTargetIds[$uniqueTargetKey])) $respond(422, ['status' => false, 'message' => 'Un même élément ne peut pas être modifié plusieurs fois dans ce scrutin.']);
+            if ($operation !== DeferredProposal::OPERATION_CREATE && isset($usedTargetIds[$uniqueTargetKey])) $respond(422, ['status' => false, 'message' => omoDecisionUiT('un_meme_element_ne_peut_pas_etre_modifie_plusieurs_fois_dans_ce_scrutin')]);
             if ($operation !== DeferredProposal::OPERATION_CREATE) $usedTargetIds[$uniqueTargetKey] = true;
             $beforeState = $operation === DeferredProposal::OPERATION_CREATE ? [] : ($existingDeferred instanceof DeferredProposal
                 ? DeferredProposal::normalizeState($existingDeferred->get('before_state'))
@@ -339,17 +340,17 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
                 $afterState = [];
             } elseif ($targetType === DeferredProposal::TARGET_RECURRING_TASK) {
                 $afterState = DeferredProposal::normalizeRecurringTaskState((array)($actionInput['after'] ?? []), $operation === DeferredProposal::OPERATION_UPDATE ? $object : null);
-                if ($afterState['title'] === '') $respond(422, ['status' => false, 'message' => 'Le titre de la tâche récurrente est obligatoire.']);
+                if ($afterState['title'] === '') $respond(422, ['status' => false, 'message' => omoDecisionUiT('le_titre_de_la_tache_recurrente_est_obligatoire')]);
             } else {
                 try {
                     $afterState = DeferredProposal::normalizeIndicatorEditorState((array)($actionInput['after'] ?? []), $organizationId, $operation === DeferredProposal::OPERATION_UPDATE ? $object : null);
                 } catch (InvalidArgumentException $exception) {
                     $respond(422, ['status' => false, 'message' => $exception->getMessage()]);
                 }
-                if ($afterState['name'] === '') $respond(422, ['status' => false, 'message' => 'Le nom de l’indicateur est obligatoire.']);
+                if ($afterState['name'] === '') $respond(422, ['status' => false, 'message' => omoDecisionUiT('le_nom_de_l_indicateur_est_obligatoire')]);
             }
             if ((int)($afterState['IDuser_responsible'] ?? 0) > 0 && !\dbObject\UserOrganization::hasActiveMembership((int)$afterState['IDuser_responsible'], $organizationId)) $afterState['IDuser_responsible'] = null;
-            if ($operation === DeferredProposal::OPERATION_UPDATE && $beforeState === $afterState) $respond(422, ['status' => false, 'message' => 'Cette modification ne contient aucun changement.']);
+            if ($operation === DeferredProposal::OPERATION_UPDATE && $beforeState === $afterState) $respond(422, ['status' => false, 'message' => omoDecisionUiT('cette_modification_ne_contient_aucun_changement')]);
             if ($operation !== DeferredProposal::OPERATION_DELETE) $afterState['IDholon'] = $actionContextHolonId;
             $displayState = $operation === DeferredProposal::OPERATION_DELETE ? $beforeState : $afterState;
             $objectLabel = trim((string)($displayState[$targetType === DeferredProposal::TARGET_INDICATOR ? 'name' : 'title'] ?? ''));
@@ -366,23 +367,23 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
                 DecisionGovernanceAction::TYPE_RULE_UPDATE,
                 DecisionGovernanceAction::TYPE_RULE_DELETE,
             ], true)) {
-            $respond(422, ['status' => false, 'message' => 'Cette modification n’est pas encore disponible.']);
+            $respond(422, ['status' => false, 'message' => omoDecisionUiT('cette_modification_n_est_pas_encore_disponible')]);
         }
         $targetId = (int)($actionInput['targetId'] ?? 0);
         $operation = substr($actionType, strpos($actionType, '.') + 1);
         $allowedRuleHolon = DeferredProposal::loadAllowedRuleTargetHolon($organizationId, $actionContextHolonId, $operation, $targetHolonId);
-        if (!($allowedRuleHolon instanceof Holon)) $respond(403, ['status' => false, 'message' => 'Le collectif ne dispose pas du droit nécessaire pour cette règle.']);
+        if (!($allowedRuleHolon instanceof Holon)) $respond(403, ['status' => false, 'message' => omoDecisionUiT('le_collectif_ne_dispose_pas_du_droit_necessaire_pour_cette_regle')]);
         $requiresExistingRule = $actionType !== DecisionGovernanceAction::TYPE_RULE_CREATE;
         if (!$requiresExistingRule && $targetId !== 0) {
-            $respond(422, ['status' => false, 'message' => 'La création d’une règle ne peut pas cibler une règle existante.']);
+            $respond(422, ['status' => false, 'message' => omoDecisionUiT('la_creation_d_une_regle_ne_peut_pas_cibler_une_regle_existante')]);
         }
         $rule = new Rule();
         $ruleHolon = $requiresExistingRule && $rule->load($targetId) ? $rule->getHolon() : null;
         if ($requiresExistingRule && ($targetId <= 0 || !($ruleHolon instanceof Holon) || (int)$ruleHolon->getId() !== $actionContextHolonId)) {
-            $respond(422, ['status' => false, 'message' => 'La règle choisie n’appartient pas à ce contexte.']);
+            $respond(422, ['status' => false, 'message' => omoDecisionUiT('la_regle_choisie_n_appartient_pas_a_ce_contexte')]);
         }
         if ($requiresExistingRule && isset($usedTargetIds[$targetId])) {
-            $respond(422, ['status' => false, 'message' => 'Une même règle ne peut pas être modifiée ou supprimée plusieurs fois dans ce scrutin.']);
+            $respond(422, ['status' => false, 'message' => omoDecisionUiT('une_meme_regle_ne_peut_pas_etre_modifiee_ou_supprimee_plusieurs_fois_dans_ce_scrutin')]);
         }
         if ($requiresExistingRule) {
             $usedTargetIds[$targetId] = true;
@@ -395,7 +396,7 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
                 || (string)$existingAction->get('action_type') !== $actionType
                 || (int)$existingAction->get('target_id') !== $targetId
                 || (string)$existingAction->get('status') !== DecisionGovernanceAction::STATUS_PENDING) {
-                $respond(422, ['status' => false, 'message' => 'Une modification existante ne peut plus être remplacée.']);
+                $respond(422, ['status' => false, 'message' => omoDecisionUiT('une_modification_existante_ne_peut_plus_etre_remplacee')]);
             }
         }
 
@@ -408,7 +409,7 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
                 $actionContextHolonId
             );
             if (empty($validation['status'])) {
-                $respond(422, ['status' => false, 'message' => (string)($validation['message'] ?? 'Création invalide.')]);
+                $respond(422, ['status' => false, 'message' => (string)($validation['message'] ?? omoDecisionUiT('creation_invalide'))]);
             }
             $beforeState = $existingDeferred instanceof DeferredProposal
                 ? DeferredProposal::normalizeState($existingDeferred->get('before_state'))
@@ -418,12 +419,12 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
             $afterState = (array)$validation['state'];
             $ruleTitle = trim((string)$afterState['title']);
             $suggestedTitles[] = 'Créer la règle ' . $ruleTitle;
-            $actionDescriptions[] = '<h4>Créer la règle ' . htmlspecialchars($ruleTitle, ENT_QUOTES, 'UTF-8') . '</h4>'
+            $actionDescriptions[] = ('<h4>' . htmlspecialchars(omoDecisionUiT('creer_la_regle'), ENT_QUOTES, 'UTF-8')) . htmlspecialchars($ruleTitle, ENT_QUOTES, 'UTF-8') . '</h4>'
                 . DecisionGovernanceAction::buildRuleStateDescription($afterState);
         } elseif ($actionType === DecisionGovernanceAction::TYPE_RULE_DELETE) {
             $validation = DecisionGovernanceAction::validateRuleDelete($rule, $actionContextHolonId);
             if (empty($validation['status'])) {
-                $respond(422, ['status' => false, 'message' => (string)($validation['message'] ?? 'Suppression invalide.')]);
+                $respond(422, ['status' => false, 'message' => (string)($validation['message'] ?? omoDecisionUiT('suppression_invalide'))]);
             }
             $beforeState = $existingDeferred instanceof DeferredProposal
                 ? DeferredProposal::normalizeState($existingDeferred->get('before_state'))
@@ -433,7 +434,7 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
             $afterState = [];
             $ruleTitle = trim((string)$beforeState['title']);
             $suggestedTitles[] = 'Supprimer la règle ' . $ruleTitle;
-            $actionDescriptions[] = '<h4>Supprimer la règle ' . htmlspecialchars($ruleTitle, ENT_QUOTES, 'UTF-8') . '</h4>'
+            $actionDescriptions[] = ('<h4>' . htmlspecialchars(omoDecisionUiT('supprimer_la_regle'), ENT_QUOTES, 'UTF-8')) . htmlspecialchars($ruleTitle, ENT_QUOTES, 'UTF-8') . '</h4>'
                 . DecisionGovernanceAction::buildRuleStateDescription($beforeState);
         } else {
             $beforeState = $existingDeferred instanceof DeferredProposal
@@ -447,15 +448,15 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
                 $actionContextHolonId
             );
             if (empty($validation['status'])) {
-                $respond(422, ['status' => false, 'message' => (string)($validation['message'] ?? 'Modification invalide.')]);
+                $respond(422, ['status' => false, 'message' => (string)($validation['message'] ?? omoDecisionUiT('modification_invalide'))]);
             }
             $afterState = (array)$validation['state'];
             if ($beforeState === $afterState) {
-                $respond(422, ['status' => false, 'message' => 'La modification de la règle ' . trim((string)$rule->get('title')) . ' ne contient aucun changement.']);
+                $respond(422, ['status' => false, 'message' => omoDecisionUiT('la_modification_de_la_regle') . trim((string)$rule->get('title')) . ' ne contient aucun changement.']);
             }
             $ruleTitle = trim((string)$rule->get('title'));
             $suggestedTitles[] = 'Modifier la règle ' . $ruleTitle;
-            $actionDescriptions[] = '<h4>Modifier la règle ' . htmlspecialchars($ruleTitle, ENT_QUOTES, 'UTF-8') . '</h4>'
+            $actionDescriptions[] = ('<h4>' . htmlspecialchars(omoDecisionUiT('modifier_la_regle'), ENT_QUOTES, 'UTF-8')) . htmlspecialchars($ruleTitle, ENT_QUOTES, 'UTF-8') . '</h4>'
                 . DecisionGovernanceAction::buildRuleUpdateDescription($beforeState, $afterState);
         }
         $ruleTitles[] = $ruleTitle;
@@ -481,11 +482,11 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
             : 'Modifier la gouvernance';
     }
     if (mb_strlen($proposalTitle, 'UTF-8') > 190) {
-        $respond(422, ['status' => false, 'message' => 'Le titre d’une proposition est trop long.']);
+        $respond(422, ['status' => false, 'message' => omoDecisionUiT('le_titre_d_une_proposition_est_trop_long')]);
     }
     $proposalDescription = \dbObject\PropertyFormat::sanitizeHtml((string)($proposalInput['description'] ?? ''));
     if (mb_strlen($proposalDescription, 'UTF-8') > 10000) {
-        $respond(422, ['status' => false, 'message' => 'La description d’une proposition est trop longue.']);
+        $respond(422, ['status' => false, 'message' => omoDecisionUiT('la_description_d_une_proposition_est_trop_longue')]);
     }
     if (!Rule::hasContentText($proposalDescription)) {
         $proposalDescription = implode('', $actionDescriptions);
@@ -501,7 +502,7 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
 
 $pdo = DbObject::getPdo();
 if (!$pdo) {
-    $respond(500, ['status' => false, 'message' => 'Connexion à la base impossible.']);
+    $respond(500, ['status' => false, 'message' => omoDecisionUiT('connexion_a_la_base_impossible')]);
 }
 
 $newProposalIds = [];

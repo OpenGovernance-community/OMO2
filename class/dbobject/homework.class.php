@@ -26,11 +26,11 @@
 			return [
 				'id' => 'ID',
 				'title' => 'Titre',
-				'detail' => 'Detail',
-				'onlyAdmin' => 'Reserve aux admins de l organisation',
+				'detail' => 'Détail',
+				'onlyAdmin' => 'Reserve aux admins de l’organisation',
 				'position' => 'Position',
-				'datecreation' => 'Date de creation',
-				'dateupdate' => 'Date de mise a jour',
+				'datecreation' => 'Date de création',
+				'dateupdate' => 'Date de mise à jour',
 			];
 		}
 

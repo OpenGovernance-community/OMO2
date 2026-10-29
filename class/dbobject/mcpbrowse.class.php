@@ -84,6 +84,7 @@ final class McpBrowse
         foreach (McpContent::enabledModules($organization, (int)$grant['IDuser']) as $module) {
             $definition = self::definitions()[$module];
             $filters = ['query', 'date_from', 'date_to'];
+            if ($module === 'rules') $filters[] = 'value_id';
             if ($definition['users']) array_push($filters, 'user_id', 'user_relation');
             if (isset($definition['holon']) || $module === 'team') $filters[] = 'context_holon_id';
             if (isset($definition['parent'])) $filters[] = 'parent_id';
@@ -93,6 +94,9 @@ final class McpBrowse
                 'date_field' => substr($definition['date'], strpos($definition['date'], '.') + 1)];
         }
         return ['organization_id' => (int)$organization->getId(), 'modules' => $modules,
+            'values' => ['list_tool' => 'omo_list_values', 'read_tool' => 'omo_get_value',
+                'rules_tool' => 'omo_list_value_rules', 'rule_value_tool' => 'omo_get_rule_value',
+                'description' => 'Current value titles and principles; associated rules in both directions. Requires Structure for values and Policy for rules. Follow pagination to enumerate visible results.'],
             'permission_inspection' => ['catalog_tool' => 'omo_permission_catalog', 'query_tool' => 'omo_list_permissions',
                 'holon_tool' => 'omo_get_holon_permissions', 'instructions' => \omoApiAgentPermissionInstructions(),
                 'filters' => ['user_id', 'holon_id', 'permission_key'], 'default_mode' => 'normal',
@@ -200,6 +204,11 @@ final class McpBrowse
         $context = McpContent::context($grant, $organization, $args['context_holon_id'] ?? null);
         $params = ['organization_id' => (int)$organization->getId()];
         $where = [$definition['where']];
+        if (isset($args['value_id'])) {
+            if ($module !== 'rules' || !McpValues::accessible($organization, $args['value_id'])) throw new \DomainException('Value unavailable.');
+            $where[] = 't.IDvaleur = :value_id';
+            $params['value_id'] = $args['value_id'];
+        }
         if ($module === 'tutorials') {
             unset($params['organization_id']);
             $rows = Parcours::fetchForOrganizationWithProgress((int)$organization->getId(), (int)$grant['IDuser'], true, false);
@@ -333,6 +342,7 @@ final class McpBrowse
         if ($module === 'calendar' && empty($context['archived'])) {
             $result['effective_invitees'] = self::eventInvitees((int)$organization->getId(), (int)$object->getId());
         }
+        if ($object instanceof Rule) $result += McpValues::forRule($object, $organization);
         return $result;
     }
 

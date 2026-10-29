@@ -7,6 +7,159 @@
 
 	class Organization extends DbObject
 	{
+        protected static function uiMessageSourceLang(): array
+        {
+            return [
+                'type_de_stockage_invalide' => ['text' => 'Type de stockage invalide.', 'context' => 'Validation or action feedback for organization.'],
+                'curl_est_requis_pour_tester_la_connexion_kdrive' => ['text' => 'cURL est requis pour tester la connexion kDrive.', 'context' => 'Validation or action feedback for organization.'],
+                'connexion_kdrive_reussie_le_compte_webdav_est_accessible' => ['text' => 'Connexion kDrive réussie. Le compte WebDAV est accessible.', 'context' => 'Validation or action feedback for organization.'],
+                'kdrive_a_refuse_la_connexion_http_403_verifiez_votre_offre_l_acces_webdav_necessite_ksuite' => ['text' => 'kDrive a refusé la connexion (HTTP 403). Vérifiez votre offre : l’accès WebDAV nécessite kSuite Business ou supérieur ; kSuite Standard ne le permet pas.', 'context' => 'Validation or action feedback for organization.'],
+                'kdrive_refuse_les_identifiants_ou_le_mot_de_passe_d_application' => ['text' => 'kDrive refuse les identifiants ou le mot de passe d’application.', 'context' => 'Validation or action feedback for organization.'],
+                'configuration_kdrive_invalide' => ['text' => 'Configuration kDrive invalide.', 'context' => 'Validation or action feedback for organization.'],
+                'le_stockage_de_documents_n_est_pas_configure_pour_cette_organisation' => ['text' => 'Le stockage de documents n’est pas configuré pour cette organisation.', 'context' => 'Validation or action feedback for organization.'],
+                'aucun_fichier_valide_n_a_ete_televerse' => ['text' => 'Aucun fichier valide n’a été téléversé.', 'context' => 'Validation or action feedback for organization.'],
+                'impossible_de_lire_le_fichier_a_envoyer' => ['text' => 'Impossible de lire le fichier à envoyer.', 'context' => 'Validation or action feedback for organization.'],
+                'chemin_de_fichier_distant_invalide' => ['text' => 'Chemin de fichier distant invalide.', 'context' => 'Validation or action feedback for organization.'],
+                'le_stockage_kdrive_est_indisponible' => ['text' => 'Le stockage kDrive est indisponible.', 'context' => 'Validation or action feedback for organization.'],
+                'la_reponse_webdav_du_dossier_kdrive_est_invalide' => ['text' => 'La réponse WebDAV du dossier kDrive est invalide.', 'context' => 'Validation or action feedback for organization.'],
+                'chemin_kdrive_invalide' => ['text' => 'Chemin kDrive invalide.', 'context' => 'Validation or action feedback for organization.'],
+                'le_dossier_kdrive_est_introuvable' => ['text' => 'Le dossier kDrive est introuvable.', 'context' => 'Validation or action feedback for organization.'],
+                'renseignez_une_url_un_utilisateur_et_un_mot_de_passe_applicatif_nextcloud_valides' => ['text' => 'Renseignez une URL, un utilisateur et un mot de passe applicatif Nextcloud valides.', 'context' => 'Validation or action feedback for organization.'],
+                'curl_est_requis_pour_tester_la_connexion_nextcloud' => ['text' => 'cURL est requis pour tester la connexion Nextcloud.', 'context' => 'Validation or action feedback for organization.'],
+                'connexion_nextcloud_reussie_le_compte_webdav_est_accessible' => ['text' => 'Connexion Nextcloud réussie. Le compte WebDAV est accessible.', 'context' => 'Validation or action feedback for organization.'],
+                'nextcloud_refuse_les_identifiants_ou_le_mot_de_passe_applicatif' => ['text' => 'Nextcloud refuse les identifiants ou le mot de passe applicatif.', 'context' => 'Validation or action feedback for organization.'],
+                'le_stockage_nextcloud_n_est_pas_configure_pour_cette_organisation' => ['text' => 'Le stockage Nextcloud n’est pas configuré pour cette organisation.', 'context' => 'Validation or action feedback for organization.'],
+                'curl_est_requis_pour_communiquer_avec_nextcloud' => ['text' => 'cURL est requis pour communiquer avec Nextcloud.', 'context' => 'Validation or action feedback for organization.'],
+                'url_nextcloud_invalide' => ['text' => 'URL Nextcloud invalide.', 'context' => 'Validation or action feedback for organization.'],
+                'impossible_de_creer_le_dossier_distant' => ['text' => 'Impossible de créer le dossier distant.', 'context' => 'Validation or action feedback for organization.'],
+                'document_invalide_pour_le_stockage_distant' => ['text' => 'Document invalide pour le stockage distant.', 'context' => 'Validation or action feedback for organization.'],
+                'impossible_de_lire_le_fichier_a_envoyer_2' => ['text' => 'Impossible de lire le fichier à envoyer.', 'context' => 'Validation or action feedback for organization.'],
+                'impossible_de_supprimer_le_fichier_distant' => ['text' => 'Impossible de supprimer le fichier distant.', 'context' => 'Validation or action feedback for organization.'],
+                'la_reponse_webdav_du_dossier_nextcloud_est_invalide' => ['text' => 'La réponse WebDAV du dossier NextCloud est invalide.', 'context' => 'Validation or action feedback for organization.'],
+                'chemin_nextcloud_invalide' => ['text' => 'Chemin NextCloud invalide.', 'context' => 'Validation or action feedback for organization.'],
+                'le_dossier_nextcloud_est_introuvable' => ['text' => 'Le dossier NextCloud est introuvable.', 'context' => 'Validation or action feedback for organization.'],
+                'les_informations_du_dossier_nextcloud_sont_indisponibles' => ['text' => 'Les informations du dossier NextCloud sont indisponibles.', 'context' => 'Validation or action feedback for organization.'],
+                'identifiant_nextcloud_invalide' => ['text' => 'Identifiant NextCloud invalide.', 'context' => 'Validation or action feedback for organization.'],
+                'configuration_nextcloud_invalide' => ['text' => 'Configuration NextCloud invalide.', 'context' => 'Validation or action feedback for organization.'],
+                'la_reponse_de_recherche_nextcloud_est_invalide' => ['text' => 'La réponse de recherche NextCloud est invalide.', 'context' => 'Validation or action feedback for organization.'],
+                'le_chemin_du_dossier_nextcloud_est_introuvable' => ['text' => 'Le chemin du dossier NextCloud est introuvable.', 'context' => 'Validation or action feedback for organization.'],
+                'l_identifiant_url_ne_peut_contenir_que_des_lettres_chiffres_tirets_et_underscores' => ['text' => 'L’identifiant URL ne peut contenir que des lettres, chiffres, tirets et underscores.', 'context' => 'Validation or action feedback for organization.'],
+                'cet_identifiant_url_est_deja_utilise_par_une_autre_organisation_choisissez_en_un_autre' => ['text' => 'Cet identifiant URL est déjà utilisé par une autre organisation. Choisissez-en un autre.', 'context' => 'Validation or action feedback for organization.'],
+                'l_url_doit_etre_une_adresse_http_ou_https_valide_2048_caracteres_maximum' => ['text' => 'L’URL doit être une adresse HTTP ou HTTPS valide (2048 caractères maximum).', 'context' => 'Validation or action feedback for organization.'],
+                'l_identifiant_url_de_l_organisation_est_invalide' => ['text' => 'L’identifiant URL de l\'organisation est invalide.', 'context' => 'Validation or action feedback for organization.'],
+                'organisation_invalide' => ['text' => 'Organisation invalide.', 'context' => 'Validation or action feedback for organization.'],
+                'impossible_d_initialiser_les_applications_de_l_organisation' => ['text' => 'Impossible d’initialiser les applications de l’organisation.', 'context' => 'Validation or action feedback for organization.'],
+                'impossible_de_configurer_les_applications_de_l_organisation_importee' => ['text' => 'Impossible de configurer les applications de l’organisation importée.', 'context' => 'Validation or action feedback for organization.'],
+                'membre_ou_organisation_invalide' => ['text' => 'Membre ou organisation invalide.', 'context' => 'Validation or action feedback for organization.'],
+                'le_compte_a_retirer_est_introuvable' => ['text' => 'Le compte a retirer est introuvable.', 'context' => 'Validation or action feedback for organization.'],
+                'le_dernier_superadmin_ne_peut_pas_quitter_l_organisation_de_base' => ['text' => 'Le dernier superadmin ne peut pas quitter l\'organisation de base.', 'context' => 'Validation or action feedback for organization.'],
+                'connexion_base_de_donnees_indisponible' => ['text' => 'Connexion base de données indisponible.', 'context' => 'Validation or action feedback for organization.'],
+                'ce_membre_n_est_pas_actif_dans_cette_organisation' => ['text' => 'Ce membre n\'est pas actif dans cette organisation.', 'context' => 'Validation or action feedback for organization.'],
+                'le_dernier_membre_ne_peut_pas_quitter_l_organisation_de_base' => ['text' => 'Le dernier membre ne peut pas quitter l\'organisation de base.', 'context' => 'Validation or action feedback for organization.'],
+                'vous_n_avez_pas_le_droit_de_modifier_cette_organisation' => ['text' => 'Vous n\'avez pas le droit de modifier cette organisation.', 'context' => 'Validation or action feedback for organization.'],
+                'le_dernier_admin_ne_peut_pas_quitter_l_organisation_nommez_un_autre_admin_ou_supprimez_l_o' => ['text' => 'Le dernier admin ne peut pas quitter l\'organisation. Nommez un autre admin ou supprimez l\'organisation.', 'context' => 'Validation or action feedback for organization.'],
+                'l_organisation_cible_est_invalide' => ['text' => 'L\'organisation cible est invalide.', 'context' => 'Validation or action feedback for organization.'],
+                'l_organisation_demandee_est_invalide' => ['text' => 'L\'organisation demandée est invalide.', 'context' => 'Validation or action feedback for organization.'],
+                'vous_ne_pouvez_demander_cet_acces_que_pour_votre_propre_compte' => ['text' => 'Vous ne pouvez demander cet accès que pour votre propre compte.', 'context' => 'Validation or action feedback for organization.'],
+                'votre_profil_utilisateur_est_introuvable' => ['text' => 'Votre profil utilisateur est introuvable.', 'context' => 'Validation or action feedback for organization.'],
+                'votre_compte_a_deja_acces_a_cette_organisation' => ['text' => 'Votre compte a déjà accès à cette organisation.', 'context' => 'Validation or action feedback for organization.'],
+                'votre_compte_doit_disposer_d_une_adresse_e_mail_valide_pour_envoyer_cette_demande' => ['text' => 'Votre compte doit disposer d\'une adresse e-mail valide pour envoyer cette demande.', 'context' => 'Validation or action feedback for organization.'],
+                'une_invitation_est_deja_en_attente_pour_cette_organisation' => ['text' => 'Une invitation est déjà en attente pour cette organisation.', 'context' => 'Validation or action feedback for organization.'],
+                'le_fichier_d_import_ne_contient_pas_d_espaces_valides' => ['text' => 'Le fichier d’import ne contient pas d’espaces valides.', 'context' => 'Validation or action feedback for organization.'],
+                'impossible_d_identifier_la_racine_de_l_organisation_dans_le_fichier_compact' => ['text' => 'Impossible d\'identifier la racine de l\'organisation dans le fichier compact.', 'context' => 'Validation or action feedback for organization.'],
+                'la_connexion_a_la_base_de_donnees_est_indisponible' => ['text' => 'La connexion à la base de données est indisponible.', 'context' => 'Validation or action feedback for organization.'],
+                'l_organisation_a_ete_importee_depuis_le_format_compact' => ['text' => 'L\'organisation a été importée depuis le format compact.', 'context' => 'Validation or action feedback for organization.'],
+                'connexion_requise' => ['text' => 'Connexion requise.', 'context' => 'Validation or action feedback for organization.'],
+                'choisissez_explicitement_si_les_e_mails_d_invitation_aux_membres_doivent_etre_envoyes' => ['text' => 'Choisissez explicitement si les e-mails d’invitation aux membres doivent être envoyés.', 'context' => 'Validation or action feedback for organization.'],
+                'le_fichier_doit_etre_un_export_omo_compact_version_4' => ['text' => 'Le fichier doit être un export OMO compact version 4.', 'context' => 'Validation or action feedback for organization.'],
+                'les_proces_verbaux_omo_1_necessitent_aussi_la_section_calendrier' => ['text' => 'Les procès-verbaux OMO 1 nécessitent aussi la section calendrier.', 'context' => 'Validation or action feedback for organization.'],
+                'la_structure_doit_etre_selectionnee_pour_creer_une_organisation_importee' => ['text' => 'La structure doit être sélectionnée pour créer une organisation importée.', 'context' => 'Validation or action feedback for organization.'],
+                'le_nom_de_la_nouvelle_organisation_est_obligatoire' => ['text' => 'Le nom de la nouvelle organisation est obligatoire.', 'context' => 'Validation or action feedback for organization.'],
+                'la_nouvelle_organisation_n_a_pas_pu_etre_creee' => ['text' => 'La nouvelle organisation n’a pas pu être créée.', 'context' => 'Validation or action feedback for organization.'],
+                'la_nouvelle_organisation_a_ete_importee' => ['text' => 'La nouvelle organisation a été importée.', 'context' => 'Validation or action feedback for organization.'],
+                'le_modele_public_selectionne_est_introuvable' => ['text' => 'Le modèle public sélectionné est introuvable.', 'context' => 'Validation or action feedback for organization.'],
+                'le_nom_de_l_organisation_est_obligatoire' => ['text' => 'Le nom de l’organisation est obligatoire.', 'context' => 'Validation or action feedback for organization.'],
+                'configuration_de_modele_invalide' => ['text' => 'Configuration de modèle invalide.', 'context' => 'Validation or action feedback for organization.'],
+                'l_organisation_demandee_est_introuvable' => ['text' => 'L\'organisation demandée est introuvable.', 'context' => 'Validation or action feedback for organization.'],
+                'cette_organisation_a_deja_une_structure' => ['text' => 'Cette organisation a déjà une structure.', 'context' => 'Validation or action feedback for organization.'],
+                'le_fichier_d_import_doit_etre_un_export_omo_au_format_compact_version_4' => ['text' => 'Le fichier d\'import doit être un export OMO au format compact version 4.', 'context' => 'Validation or action feedback for organization.'],
+                'le_fichier_d_import_ne_contient_pas_d_espaces_dans_le_format_compact_attendu' => ['text' => 'Le fichier d’import ne contient pas d’espaces dans le format compact attendu.', 'context' => 'Validation or action feedback for organization.'],
+                'impossible_de_copier_les_types_de_proprietes_du_modele' => ['text' => 'Impossible de copier les types de propriétés du modèle.', 'context' => 'Validation or action feedback for organization.'],
+                'l_espace_racine_n_a_pas_pu_etre_cree' => ['text' => 'L’espace racine n’a pas pu être créé.', 'context' => 'Validation or action feedback for organization.'],
+                'les_droits_du_modele_n_ont_pas_pu_etre_dupliques' => ['text' => 'Les droits du modèle n\'ont pas pu être dupliques.', 'context' => 'Validation or action feedback for organization.'],
+                'organisation_initialisee_depuis_le_modele_selectionne' => ['text' => 'Organisation initialisée depuis le modèle selectionne.', 'context' => 'Validation or action feedback for organization.'],
+                'choisissez_un_modele_predefini_pour_initialiser_cette_organisation' => ['text' => 'Choisissez un modèle predefini pour initialiser cette organisation.', 'context' => 'Validation or action feedback for organization.'],
+                'organisation_creee' => ['text' => 'Organisation créée.', 'context' => 'Validation or action feedback for organization.'],
+                'type_ou_definition_de_propriete_invalide' => ['text' => 'Type ou définition de propriété invalide.', 'context' => 'Validation or action feedback for organization.'],
+                'cette_propriete_heritee_est_verrouillee' => ['text' => 'Cette propriété héritée est verrouillée.', 'context' => 'Validation or action feedback for organization.'],
+                'vous_n_avez_pas_les_droits_pour_modifier_cet_espace' => ['text' => 'Vous n’avez pas les droits pour modifier cet espace.', 'context' => 'Validation or action feedback for organization.'],
+                'une_autorite_existante_ne_peut_pas_etre_ajoutee_a_cette_propriete' => ['text' => 'Une autorité existante ne peut pas être ajoutée à cette propriété.', 'context' => 'Validation or action feedback for organization.'],
+                'cette_autorite_ne_peut_pas_etre_modifiee_depuis_cet_espace' => ['text' => 'Cette autorité ne peut pas être modifiée depuis cet espace.', 'context' => 'Validation or action feedback for organization.'],
+                'cette_autorite_est_geree_par_son_modele_et_ne_peut_pas_etre_modifiee_ici' => ['text' => 'Cette autorité est geree par son modèle et ne peut pas être modifiée ici.', 'context' => 'Validation or action feedback for organization.'],
+                'l_autorite_parente_doit_etre_confiee_au_premier_cercle_parent' => ['text' => 'L’autorité parente doit être confiee au premier cercle parent.', 'context' => 'Validation or action feedback for organization.'],
+                'cette_autorite_n_a_pas_pu_etre_modifiee' => ['text' => 'Cette autorité n’a pas pu être modifiée.', 'context' => 'Validation or action feedback for organization.'],
+                'l_autorite_parente_est_introuvable' => ['text' => 'L’autorité parente est introuvable.', 'context' => 'Validation or action feedback for organization.'],
+                'une_coquille_de_delegation_complete_ne_peut_pas_etre_la_source_d_une_delegation_partielle' => ['text' => 'Une coquille de délégation complete ne peut pas être la source d’une délégation partielle.', 'context' => 'Validation or action feedback for organization.'],
+                'la_nouvelle_autorite_n_a_pas_pu_etre_creee' => ['text' => 'La nouvelle autorité n’a pas pu être créée.', 'context' => 'Validation or action feedback for organization.'],
+                'l_espace_a_modifier_est_introuvable' => ['text' => 'L’espace à modifier est introuvable.', 'context' => 'Validation or action feedback for organization.'],
+                'les_modeles_d_espaces_ne_sont_pas_disponibles_en_mode_decouverte' => ['text' => 'Les modèles d’espaces ne sont pas disponibles en mode découverte.', 'context' => 'Validation or action feedback for organization.'],
+                'aucun_espace_racine_n_a_ete_trouve_pour_cette_organisation' => ['text' => 'Aucun espace racine n’a été trouvé pour cette organisation.', 'context' => 'Validation or action feedback for organization.'],
+                'le_modele_parent_selectionne_n_est_pas_disponible_ici' => ['text' => 'Le modèle parent selectionne n\'est pas disponible ici.', 'context' => 'Validation or action feedback for organization.'],
+                'le_modele_parent_doit_etre_du_meme_type_que_cet_espace_modele' => ['text' => 'Le modèle parent doit être du même type que cet espace modèle.', 'context' => 'Validation or action feedback for organization.'],
+                'le_modele_parent_choisi_creerait_une_boucle' => ['text' => 'Le modèle parent choisi créerait une boucle.', 'context' => 'Validation or action feedback for organization.'],
+                'le_modele_de_reference_est_obligatoire' => ['text' => 'Le modèle de référence est obligatoire.', 'context' => 'Validation or action feedback for organization.'],
+                'le_modele_selectionne_n_est_pas_disponible_ici' => ['text' => 'Le modèle selectionne n\'est pas disponible ici.', 'context' => 'Validation or action feedback for organization.'],
+                'le_modele_choisi_ne_peut_pas_etre_instancie_ici' => ['text' => 'Le modèle choisi ne peut pas être instancie ici.', 'context' => 'Validation or action feedback for organization.'],
+                'le_nombre_maximum_d_admins_doit_etre_superieur_ou_egal_au_minimum' => ['text' => 'Le nombre maximum d’admins doit être supérieur ou egal au minimum.', 'context' => 'Validation or action feedback for organization.'],
+                'le_nom_de_l_espace_est_obligatoire' => ['text' => 'Le nom de l’espace est obligatoire.', 'context' => 'Validation or action feedback for organization.'],
+                'l_espace_n_a_pas_pu_etre_enregistre' => ['text' => 'L’espace n’a pas pu être enregistré.', 'context' => 'Validation or action feedback for organization.'],
+                'les_droits_de_l_espace_n_ont_pas_pu_etre_enregistres' => ['text' => 'Les droits de l’espace n’ont pas pu être enregistrés.', 'context' => 'Validation or action feedback for organization.'],
+                'l_espace_a_supprimer_est_invalide' => ['text' => 'L’espace à supprimer est invalide.', 'context' => 'Validation or action feedback for organization.'],
+                'l_espace_a_supprimer_est_introuvable' => ['text' => 'L’espace à supprimer est introuvable.', 'context' => 'Validation or action feedback for organization.'],
+                'vous_n_avez_pas_les_droits_pour_supprimer_cet_espace' => ['text' => 'Vous n’avez pas les droits pour supprimer cet espace.', 'context' => 'Validation or action feedback for organization.'],
+                'le_parent_de_cet_espace_est_introuvable' => ['text' => 'Le parent de cet espace est introuvable.', 'context' => 'Validation or action feedback for organization.'],
+                'choisissez_le_traitement_des_autorites' => ['text' => 'Choisissez le traitement des autorités.', 'context' => 'Validation or action feedback for organization.'],
+                'l_espace_et_ses_autorites_n_ont_pas_pu_etre_supprimes' => ['text' => 'L’espace et ses autorités n’ont pas pu être supprimés.', 'context' => 'Validation or action feedback for organization.'],
+                'espace_supprime' => ['text' => 'Espace supprimé.', 'context' => 'Validation or action feedback for organization.'],
+                'le_deplacement_demande_est_invalide' => ['text' => 'Le déplacement demandé est invalide.', 'context' => 'Validation or action feedback for organization.'],
+                'l_espace_a_deplacer_est_introuvable' => ['text' => 'L’espace à déplacer est introuvable.', 'context' => 'Validation or action feedback for organization.'],
+                'le_parent_actuel_de_cet_espace_est_introuvable' => ['text' => 'Le parent actuel de cet espace est introuvable.', 'context' => 'Validation or action feedback for organization.'],
+                'le_parent_cible_est_introuvable' => ['text' => 'Le parent cible est introuvable.', 'context' => 'Validation or action feedback for organization.'],
+                'cet_espace_est_deja_rattache_a_cet_emplacement' => ['text' => 'Cet espace est déjà rattaché à cet emplacement.', 'context' => 'Validation or action feedback for organization.'],
+                'vous_n_avez_pas_les_droits_pour_deplacer_cet_espace' => ['text' => 'Vous n’avez pas les droits pour déplacer cet espace.', 'context' => 'Validation or action feedback for organization.'],
+                'le_parent_cible_n_est_pas_compatible_avec_ce_deplacement' => ['text' => 'Le parent cible n\'est pas compatible avec ce déplacement.', 'context' => 'Validation or action feedback for organization.'],
+                'l_espace_n_a_pas_pu_etre_deplace' => ['text' => 'L’espace n’a pas pu être déplacé.', 'context' => 'Validation or action feedback for organization.'],
+                'espace_deplace' => ['text' => 'Espace déplacé.', 'context' => 'Validation or action feedback for organization.'],
+                'le_contexte_de_definition_du_modele_est_invalide' => ['text' => 'Le contexte de définition du modèle est invalide.', 'context' => 'Validation or action feedback for organization.'],
+                'le_nom_du_modele_est_obligatoire' => ['text' => 'Le nom du modèle est obligatoire.', 'context' => 'Validation or action feedback for organization.'],
+                'le_type_de_base_est_obligatoire' => ['text' => 'Le type de base est obligatoire.', 'context' => 'Validation or action feedback for organization.'],
+                'le_type_d_espace_demande_est_introuvable' => ['text' => 'Le type d’espace demandé est introuvable.', 'context' => 'Validation or action feedback for organization.'],
+                'le_modele_a_modifier_est_introuvable' => ['text' => 'Le modèle à modifier est introuvable.', 'context' => 'Validation or action feedback for organization.'],
+                'vous_n_avez_pas_les_droits_pour_modifier_ce_modele' => ['text' => 'Vous n\'avez pas les droits pour modifier ce modèle.', 'context' => 'Validation or action feedback for organization.'],
+                'ce_modele_n_appartient_pas_a_cette_organisation' => ['text' => 'Ce modèle n\'appartient pas à cette organisation.', 'context' => 'Validation or action feedback for organization.'],
+                'l_espace_choisi_ne_peut_pas_accueillir_ce_modele_sans_depasser_une_instance_existante' => ['text' => 'L’espace choisi ne peut pas accueillir ce modèle sans dépasser une instance existante.', 'context' => 'Validation or action feedback for organization.'],
+                'vous_n_avez_pas_les_droits_pour_modifier_les_modeles_de_cet_espace' => ['text' => 'Vous n’avez pas les droits pour modifier les modèles de cet espace.', 'context' => 'Validation or action feedback for organization.'],
+                'le_modele_d_heritage_choisi_est_invalide' => ['text' => 'Le modèle d\'héritage choisi est invalide.', 'context' => 'Validation or action feedback for organization.'],
+                'le_modele_d_heritage_choisi_creerait_une_boucle' => ['text' => 'Le modèle d\'héritage choisi créerait une boucle.', 'context' => 'Validation or action feedback for organization.'],
+                'un_modele_ne_peut_pas_heriter_de_lui_meme' => ['text' => 'Un modèle ne peut pas heriter de lui-même.', 'context' => 'Validation or action feedback for organization.'],
+                'le_modele_n_a_pas_pu_etre_enregistre' => ['text' => 'Le modèle n\'a pas pu être enregistre.', 'context' => 'Validation or action feedback for organization.'],
+                'les_droits_du_modele_n_ont_pas_pu_etre_enregistres' => ['text' => 'Les droits du modèle n\'ont pas pu être enregistrés.', 'context' => 'Validation or action feedback for organization.'],
+                'modele_enregistre' => ['text' => 'Modèle enregistre.', 'context' => 'Validation or action feedback for organization.'],
+                'le_modele_a_supprimer_est_invalide' => ['text' => 'Le modèle à supprimer est invalide.', 'context' => 'Validation or action feedback for organization.'],
+                'le_modele_a_supprimer_est_introuvable' => ['text' => 'Le modèle à supprimer est introuvable.', 'context' => 'Validation or action feedback for organization.'],
+                'vous_n_avez_pas_les_droits_pour_supprimer_ce_modele' => ['text' => 'Vous n\'avez pas les droits pour supprimer ce modèle.', 'context' => 'Validation or action feedback for organization.'],
+                'le_modele_n_a_pas_pu_etre_supprime' => ['text' => 'Le modèle n\'a pas pu être supprime.', 'context' => 'Validation or action feedback for organization.'],
+                'modele_supprime' => ['text' => 'Modèle supprime.', 'context' => 'Validation or action feedback for organization.'],
+                'l_espace_d_organisation_a_modifier_est_invalide' => ['text' => 'L’espace d’organisation à modifier est invalide.', 'context' => 'Validation or action feedback for organization.'],
+                'l_espace_d_organisation_a_modifier_est_introuvable' => ['text' => 'L’espace d’organisation à modifier est introuvable.', 'context' => 'Validation or action feedback for organization.'],
+                'vous_n_avez_pas_les_droits_pour_modifier_cette_organisation' => ['text' => 'Vous n\'avez pas les droits pour modifier cette organisation.', 'context' => 'Validation or action feedback for organization.'],
+                'le_nom_de_l_organisation_est_obligatoire_2' => ['text' => 'Le nom de l\'organisation est obligatoire.', 'context' => 'Validation or action feedback for organization.'],
+                'l_organisation_n_a_pas_pu_etre_enregistree' => ['text' => 'L\'organisation n\'a pas pu être enregistrée.', 'context' => 'Validation or action feedback for organization.'],
+                'les_droits_de_l_organisation_n_ont_pas_pu_etre_enregistres' => ['text' => 'Les droits de l\'organisation n\'ont pas pu être enregistrés.', 'context' => 'Validation or action feedback for organization.'],
+                'organisation_enregistree' => ['text' => 'Organisation enregistrée.', 'context' => 'Validation or action feedback for organization.'],
+            ];
+        }
+
 		public const SYSTEM_ORGANIZATION_ID = 1;
 		public const INTERFACE_LEVEL_DISCOVERY = 1;
 		public const INTERFACE_LEVEL_AUTONOMOUS = 2;
@@ -52,27 +205,27 @@
 				'url' => 'URL pour en savoir plus',
 				'shortname' => 'Identifiant URL',
 				'domain' => 'Domaine',
-				'interface_level' => 'Niveau d utilisation',
-				'isModel' => 'Modele public',
-				'latlong' => 'Position geographique',
+				'interface_level' => 'Niveau d’utilisation',
+				'isModel' => 'Modèle public',
+				'latlong' => 'Position géographique',
 				'logo' => 'Logo',
-				'banner' => 'Banniere',
+				'banner' => 'Bannière',
 				'color' => 'Couleur',
-				'datecreation' => 'Date de creation',
+				'datecreation' => 'Date de création',
 			];
 		}
 
 		public static function attributeDescriptions() {
 			return [
 				'name' => 'Nom complet de l\'organisation',
-				'description' => 'Presentation libre en texte simple, affichee dans les fiches de modeles.',
-				'url' => 'Adresse HTTP ou HTTPS du lien En savoir plus dans les fiches de modeles.',
+				'description' => 'Présentation libre en texte simple, affichée dans les fiches de modèles.',
+				'url' => 'Adresse HTTP ou HTTPS du lien En savoir plus dans les fiches de modèles.',
 				'shortname' => 'Identifiant utilise dans l\'URL de l\'organisation',
 				'domain' => 'Nom de domaine principal de l\'organisation',
-				'interface_level' => 'Niveau global de complexite de l interface, utilise pour afficher progressivement les options du logiciel.',
-				'latlong' => 'Position geographique facultative de l organisation pour l affichage sur une carte.',
+				'interface_level' => 'Niveau global de complexite de l’interface, utilise pour afficher progressivement les options du logiciel.',
+				'latlong' => 'Position géographique facultative de l’organisation pour l’affichage sur une carte.',
 				'logo' => 'Logo de l\'organisation',
-				'banner' => 'Image de banniere de l\'organisation',
+				'banner' => 'Image de bannière de l\'organisation',
 				'color' => 'Couleur principale au format hexadecimal ou texte court',
 			];
 		}
@@ -974,11 +1127,11 @@
 			}
 
 			if (($config['type'] ?? '') !== 'kdrive') {
-				return array('status' => false, 'text' => 'Type de stockage invalide.');
+				return array('status' => false, 'text' => self::uiMessage('type_de_stockage_invalide'));
 			}
 
 			if (!function_exists('curl_init')) {
-				return array('status' => false, 'text' => 'cURL est requis pour tester la connexion kDrive.');
+				return array('status' => false, 'text' => self::uiMessage('curl_est_requis_pour_tester_la_connexion_kdrive'));
 			}
 
 			$testConfig = $config;
@@ -988,15 +1141,15 @@
 				'headers' => array('Depth: 0', 'Content-Length: 0'),
 			));
 			if (is_array($result) && !empty($result['status'])) {
-				return array('status' => true, 'text' => 'Connexion kDrive réussie. Le compte WebDAV est accessible.');
+				return array('status' => true, 'text' => self::uiMessage('connexion_kdrive_reussie_le_compte_webdav_est_accessible'));
 			}
 
 			$httpCode = (int)($result['httpCode'] ?? 0);
 			if ($httpCode === 403) {
-				return array('status' => false, 'text' => 'kDrive a refusé la connexion (HTTP 403). Vérifiez votre offre : l’accès WebDAV nécessite kSuite Business ou supérieur ; kSuite Standard ne le permet pas.');
+				return array('status' => false, 'text' => self::uiMessage('kdrive_a_refuse_la_connexion_http_403_verifiez_votre_offre_l_acces_webdav_necessite_ksuite'));
 			}
 			if ($httpCode === 401) {
-				return array('status' => false, 'text' => 'kDrive refuse les identifiants ou le mot de passe d’application.');
+				return array('status' => false, 'text' => self::uiMessage('kdrive_refuse_les_identifiants_ou_le_mot_de_passe_d_application'));
 			}
 
 			return array('status' => false, 'text' => trim((string)($result['text'] ?? 'La connexion kDrive a échoué.')));
@@ -1028,7 +1181,7 @@
 			$username = trim((string)($config['username'] ?? ''));
 			$appPassword = trim((string)($config['appPassword'] ?? ''));
 			if ($url === '' || $username === '' || $appPassword === '') {
-				return array('status' => false, 'text' => 'Configuration kDrive invalide.');
+				return array('status' => false, 'text' => self::uiMessage('configuration_kdrive_invalide'));
 			}
 
 			$curl = curl_init($url);
@@ -1111,7 +1264,7 @@
 			$config = $this->getDocumentStorageConfig();
 			if (($config['type'] ?? '') !== 'kdrive') {
 				if (($config['type'] ?? '') !== 'nextcloud' || !$this->hasDocumentStorage()) {
-					return array('status' => false, 'text' => 'Le stockage de documents n est pas configure pour cette organisation.');
+					return array('status' => false, 'text' => self::uiMessage('le_stockage_de_documents_n_est_pas_configure_pour_cette_organisation'));
 				}
 				return $this->uploadDocumentFileToNextcloud($documentId, $uploadedFile);
 			}
@@ -1120,7 +1273,7 @@
 			$tmpName = trim((string)($uploadedFile['tmp_name'] ?? ''));
 			$errorCode = (int)($uploadedFile['error'] ?? UPLOAD_ERR_NO_FILE);
 			if ($documentId <= 0 || $errorCode !== UPLOAD_ERR_OK || $tmpName === '' || !is_file($tmpName)) {
-				return array('status' => false, 'text' => 'Aucun fichier valide n’a été téléversé.');
+				return array('status' => false, 'text' => self::uiMessage('aucun_fichier_valide_n_a_ete_televerse'));
 			}
 
 			$originalName = trim((string)($uploadedFile['name'] ?? ''));
@@ -1139,7 +1292,7 @@
 
 			$fileContent = file_get_contents($tmpName);
 			if ($fileContent === false) {
-				return array('status' => false, 'text' => 'Impossible de lire le fichier à envoyer.');
+				return array('status' => false, 'text' => self::uiMessage('impossible_de_lire_le_fichier_a_envoyer'));
 			}
 			$relativePath = $storageDirectory . '/' . $remoteFilename;
 			$uploadResult = $this->executeKdriveDocumentsRequest('PUT', $relativePath, $config, array(
@@ -1165,7 +1318,7 @@
 			$config = $storageConfig ?: $this->getDocumentStorageConfig();
 			if (($config['type'] ?? '') !== 'kdrive') {
 				if (($config['type'] ?? '') !== 'nextcloud' || !$this->hasDocumentStorage()) {
-					return array('status' => false, 'text' => 'Le stockage de documents n est pas configure pour cette organisation.');
+					return array('status' => false, 'text' => self::uiMessage('le_stockage_de_documents_n_est_pas_configure_pour_cette_organisation'));
 				}
 				return $this->deleteDocumentFileFromNextcloud($relativePath);
 			}
@@ -1186,14 +1339,14 @@
 			$config = $this->getDocumentStorageConfig();
 			if (($config['type'] ?? '') !== 'kdrive') {
 				if (($config['type'] ?? '') !== 'nextcloud' || !$this->hasDocumentStorage()) {
-					return array('status' => false, 'text' => 'Le stockage de documents n est pas configure pour cette organisation.');
+					return array('status' => false, 'text' => self::uiMessage('le_stockage_de_documents_n_est_pas_configure_pour_cette_organisation'));
 				}
 				return $this->downloadDocumentFileFromNextcloud($relativePath);
 			}
 
 			$normalizedPath = trim(str_replace('\\', '/', $relativePath), '/');
 			if ($normalizedPath === '') {
-				return array('status' => false, 'text' => 'Chemin de fichier distant invalide.');
+				return array('status' => false, 'text' => self::uiMessage('chemin_de_fichier_distant_invalide'));
 			}
 			$result = $this->executeKdriveDocumentsRequest('GET', $normalizedPath, $config, array('timeout' => 300, 'headers' => array('Accept: */*')));
 			if (!is_array($result) || empty($result['status'])) {
@@ -1213,14 +1366,14 @@
 			$config = $this->getDocumentStorageConfig();
 			if (($config['type'] ?? '') !== 'kdrive') {
 				if (($config['type'] ?? '') !== 'nextcloud' || !$this->hasDocumentStorage()) {
-					return array('status' => false, 'text' => 'Le stockage de documents n est pas configure pour cette organisation.');
+					return array('status' => false, 'text' => self::uiMessage('le_stockage_de_documents_n_est_pas_configure_pour_cette_organisation'));
 				}
 				return $this->updateDocumentFileContentsOnNextcloud($relativePath, $contents, $mimeType);
 			}
 
 			$normalizedPath = trim(str_replace('\\', '/', $relativePath), '/');
 			if ($normalizedPath === '') {
-				return array('status' => false, 'text' => 'Chemin de fichier distant invalide.');
+				return array('status' => false, 'text' => self::uiMessage('chemin_de_fichier_distant_invalide'));
 			}
 			$result = $this->executeKdriveDocumentsRequest('PUT', $normalizedPath, $config, array(
 				'body' => $contents,
@@ -1236,7 +1389,7 @@
 		{
 			$config = $this->getDocumentStorageConfig();
 			if (($config['type'] ?? '') !== 'kdrive' || !$this->hasDocumentStorage()) {
-				return array('status' => false, 'text' => 'Le stockage kDrive est indisponible.');
+				return array('status' => false, 'text' => self::uiMessage('le_stockage_kdrive_est_indisponible'));
 			}
 
 			$relativePath = trim(str_replace('\\', '/', $relativePath), '/');
@@ -1250,7 +1403,7 @@
 
 			$xml = @simplexml_load_string((string)($result['body'] ?? ''));
 			if (!($xml instanceof \SimpleXMLElement)) {
-				return array('status' => false, 'text' => 'La reponse WebDAV du dossier kDrive est invalide.');
+				return array('status' => false, 'text' => self::uiMessage('la_reponse_webdav_du_dossier_kdrive_est_invalide'));
 			}
 			$xml->registerXPathNamespace('d', 'DAV:');
 			$responses = $xml->xpath('//d:response');
@@ -1304,7 +1457,7 @@
 			$config = $this->getDocumentStorageConfig();
 			$relativePath = trim(str_replace('\\', '/', $relativePath), '/');
 			if (($config['type'] ?? '') !== 'kdrive' || !$this->hasDocumentStorage() || $relativePath === '') {
-				return array('status' => false, 'text' => 'Chemin kDrive invalide.');
+				return array('status' => false, 'text' => self::uiMessage('chemin_kdrive_invalide'));
 			}
 			$result = $this->executeKdriveDocumentsRequest('PROPFIND', $relativePath, $config, array(
 				'timeout' => 60,
@@ -1315,7 +1468,7 @@
 			}
 			$xml = @simplexml_load_string((string)($result['body'] ?? ''));
 			if (!($xml instanceof \SimpleXMLElement)) {
-				return array('status' => false, 'text' => 'La reponse WebDAV du dossier kDrive est invalide.');
+				return array('status' => false, 'text' => self::uiMessage('la_reponse_webdav_du_dossier_kdrive_est_invalide'));
 			}
 			$xml->registerXPathNamespace('d', 'DAV:');
 			$responses = $xml->xpath('//d:response');
@@ -1323,7 +1476,7 @@
 			$propertyNodes = $response instanceof \SimpleXMLElement ? $response->xpath('./d:propstat/d:prop') : array();
 			$property = is_array($propertyNodes) && isset($propertyNodes[0]) ? $propertyNodes[0] : null;
 			if (!($property instanceof \SimpleXMLElement)) {
-				return array('status' => false, 'text' => 'Le dossier kDrive est introuvable.');
+				return array('status' => false, 'text' => self::uiMessage('le_dossier_kdrive_est_introuvable'));
 			}
 			$collectionNodes = $property->xpath('./d:resourcetype/d:collection');
 			return array('status' => true, 'path' => $relativePath, 'fileId' => '', 'isFolder' => is_array($collectionNodes) && count($collectionNodes) > 0);
@@ -1357,11 +1510,11 @@
 				|| $username === ''
 				|| $appPassword === ''
 			) {
-				return array('status' => false, 'text' => 'Renseignez une URL, un utilisateur et un mot de passe applicatif Nextcloud valides.');
+				return array('status' => false, 'text' => self::uiMessage('renseignez_une_url_un_utilisateur_et_un_mot_de_passe_applicatif_nextcloud_valides'));
 			}
 
 			if (!function_exists('curl_init')) {
-				return array('status' => false, 'text' => 'cURL est requis pour tester la connexion Nextcloud.');
+				return array('status' => false, 'text' => self::uiMessage('curl_est_requis_pour_tester_la_connexion_nextcloud'));
 			}
 
 			$url = $baseUrl . '/remote.php/dav/files/' . rawurlencode($username) . '/';
@@ -1396,14 +1549,14 @@
 			}
 
 			if ($httpCode >= 200 && $httpCode < 300) {
-				return array('status' => true, 'text' => 'Connexion Nextcloud reussie. Le compte WebDAV est accessible.');
+				return array('status' => true, 'text' => self::uiMessage('connexion_nextcloud_reussie_le_compte_webdav_est_accessible'));
 			}
 
 			if (in_array($httpCode, array(401, 403), true)) {
-				return array('status' => false, 'text' => 'Nextcloud refuse les identifiants ou le mot de passe applicatif.');
+				return array('status' => false, 'text' => self::uiMessage('nextcloud_refuse_les_identifiants_ou_le_mot_de_passe_applicatif'));
 			}
 
-			return array('status' => false, 'text' => 'Nextcloud a repondu avec le code HTTP ' . $httpCode . '.');
+			return array('status' => false, 'text' => 'Nextcloud a répondu avec le code HTTP ' . $httpCode . '.');
 		}
 
 		protected function buildNextcloudDocumentsDavUrl(string $relativePath = ''): string
@@ -1436,14 +1589,14 @@
 			if (!$this->hasNextcloudDocumentStorage()) {
 				return array(
 					'status' => false,
-					'text' => 'Le stockage Nextcloud n est pas configure pour cette organisation.',
+					'text' => self::uiMessage('le_stockage_nextcloud_n_est_pas_configure_pour_cette_organisation'),
 				);
 			}
 
 			if (!function_exists('curl_init')) {
 				return array(
 					'status' => false,
-					'text' => 'cURL est requis pour communiquer avec Nextcloud.',
+					'text' => self::uiMessage('curl_est_requis_pour_communiquer_avec_nextcloud'),
 				);
 			}
 
@@ -1454,7 +1607,7 @@
 			if ($url === '') {
 				return array(
 					'status' => false,
-					'text' => 'URL Nextcloud invalide.',
+					'text' => self::uiMessage('url_nextcloud_invalide'),
 				);
 			}
 
@@ -1555,7 +1708,7 @@
 				if (!is_array($result)) {
 					return array(
 						'status' => false,
-						'text' => 'Impossible de creer le dossier distant.',
+						'text' => self::uiMessage('impossible_de_creer_le_dossier_distant'),
 					);
 				}
 
@@ -1598,7 +1751,7 @@
 			if ($documentId <= 0) {
 				return array(
 					'status' => false,
-					'text' => 'Document invalide pour le stockage distant.',
+					'text' => self::uiMessage('document_invalide_pour_le_stockage_distant'),
 				);
 			}
 
@@ -1607,7 +1760,7 @@
 			if ($errorCode !== UPLOAD_ERR_OK || $tmpName === '' || !is_file($tmpName)) {
 				return array(
 					'status' => false,
-					'text' => 'Aucun fichier valide n a ete televerse.',
+					'text' => self::uiMessage('aucun_fichier_valide_n_a_ete_televerse'),
 				);
 			}
 
@@ -1633,7 +1786,7 @@
 			if ($fileContent === false) {
 				return array(
 					'status' => false,
-					'text' => 'Impossible de lire le fichier a envoyer.',
+					'text' => self::uiMessage('impossible_de_lire_le_fichier_a_envoyer_2'),
 				);
 			}
 
@@ -1676,7 +1829,7 @@
 			if (!is_array($result)) {
 				return array(
 					'status' => false,
-					'text' => 'Impossible de supprimer le fichier distant.',
+					'text' => self::uiMessage('impossible_de_supprimer_le_fichier_distant'),
 				);
 			}
 
@@ -1697,7 +1850,7 @@
 			if ($normalizedPath === '') {
 				return array(
 					'status' => false,
-					'text' => 'Chemin de fichier distant invalide.',
+					'text' => self::uiMessage('chemin_de_fichier_distant_invalide'),
 				);
 			}
 
@@ -1738,7 +1891,7 @@
 
 			$xml = @simplexml_load_string((string)($result['body'] ?? ''));
 			if (!($xml instanceof \SimpleXMLElement)) {
-				return array('status' => false, 'text' => 'La reponse WebDAV du dossier NextCloud est invalide.');
+				return array('status' => false, 'text' => self::uiMessage('la_reponse_webdav_du_dossier_nextcloud_est_invalide'));
 			}
 
 			$xml->registerXPathNamespace('d', 'DAV:');
@@ -1799,7 +1952,7 @@
 		{
 			$relativePath = trim(str_replace('\\', '/', $relativePath), '/');
 			if ($relativePath === '') {
-				return array('status' => false, 'text' => 'Chemin NextCloud invalide.');
+				return array('status' => false, 'text' => self::uiMessage('chemin_nextcloud_invalide'));
 			}
 
 			$result = $this->executeNextcloudDocumentsRequest('PROPFIND', $relativePath, array(
@@ -1812,20 +1965,20 @@
 
 			$xml = @simplexml_load_string((string)($result['body'] ?? ''));
 			if (!($xml instanceof \SimpleXMLElement)) {
-				return array('status' => false, 'text' => 'La reponse WebDAV du dossier NextCloud est invalide.');
+				return array('status' => false, 'text' => self::uiMessage('la_reponse_webdav_du_dossier_nextcloud_est_invalide'));
 			}
 			$xml->registerXPathNamespace('d', 'DAV:');
 			$xml->registerXPathNamespace('oc', 'http://owncloud.org/ns');
 			$responses = $xml->xpath('//d:response');
 			$response = is_array($responses) && isset($responses[0]) ? $responses[0] : null;
 			if (!($response instanceof \SimpleXMLElement)) {
-				return array('status' => false, 'text' => 'Le dossier NextCloud est introuvable.');
+				return array('status' => false, 'text' => self::uiMessage('le_dossier_nextcloud_est_introuvable'));
 			}
 
 			$propertyNodes = $response->xpath('./d:propstat/d:prop');
 			$property = is_array($propertyNodes) && isset($propertyNodes[0]) ? $propertyNodes[0] : null;
 			if (!($property instanceof \SimpleXMLElement)) {
-				return array('status' => false, 'text' => 'Les informations du dossier NextCloud sont indisponibles.');
+				return array('status' => false, 'text' => self::uiMessage('les_informations_du_dossier_nextcloud_sont_indisponibles'));
 			}
 			$property->registerXPathNamespace('d', 'DAV:');
 			$property->registerXPathNamespace('oc', 'http://owncloud.org/ns');
@@ -1843,13 +1996,13 @@
 		{
 			$fileId = trim($fileId);
 			if ($fileId === '' || !preg_match('/^[0-9]+$/', $fileId)) {
-				return array('status' => false, 'text' => 'Identifiant NextCloud invalide.');
+				return array('status' => false, 'text' => self::uiMessage('identifiant_nextcloud_invalide'));
 			}
 
 			$config = $this->getNextcloudDocumentsConfig();
 			$username = trim((string)($config['username'] ?? ''));
 			if ($username === '') {
-				return array('status' => false, 'text' => 'Configuration NextCloud invalide.');
+				return array('status' => false, 'text' => self::uiMessage('configuration_nextcloud_invalide'));
 			}
 			$escapedUsername = htmlspecialchars($username, ENT_XML1 | ENT_QUOTES, 'UTF-8');
 			$searchBody = '<?xml version="1.0" encoding="UTF-8"?>'
@@ -1866,14 +2019,14 @@
 
 			$xml = @simplexml_load_string((string)($result['body'] ?? ''));
 			if (!($xml instanceof \SimpleXMLElement)) {
-				return array('status' => false, 'text' => 'La reponse de recherche NextCloud est invalide.');
+				return array('status' => false, 'text' => self::uiMessage('la_reponse_de_recherche_nextcloud_est_invalide'));
 			}
 			$xml->registerXPathNamespace('d', 'DAV:');
 			$xml->registerXPathNamespace('oc', 'http://owncloud.org/ns');
 			$responses = $xml->xpath('//d:response');
 			$response = is_array($responses) && isset($responses[0]) ? $responses[0] : null;
 			if (!($response instanceof \SimpleXMLElement)) {
-				return array('status' => false, 'text' => 'Le dossier NextCloud est introuvable.');
+				return array('status' => false, 'text' => self::uiMessage('le_dossier_nextcloud_est_introuvable'));
 			}
 
 			$hrefNodes = $response->xpath('./d:href');
@@ -1887,7 +2040,7 @@
 			}
 			$collectionNodes = $property instanceof \SimpleXMLElement ? $property->xpath('./d:resourcetype/d:collection') : array();
 			return $relativePath === ''
-				? array('status' => false, 'text' => 'Le chemin du dossier NextCloud est introuvable.')
+				? array('status' => false, 'text' => self::uiMessage('le_chemin_du_dossier_nextcloud_est_introuvable'))
 				: array('status' => true, 'path' => $relativePath, 'isFolder' => is_array($collectionNodes) && count($collectionNodes) > 0);
 		}
 
@@ -1895,7 +2048,7 @@
 		{
 			$relativePath = trim(str_replace('\\', '/', $relativePath), '/');
 			if ($relativePath === '') {
-				return array('status' => false, 'text' => 'Chemin de fichier distant invalide.');
+				return array('status' => false, 'text' => self::uiMessage('chemin_de_fichier_distant_invalide'));
 			}
 
 			$mimeType = trim($mimeType) !== '' ? trim($mimeType) : 'application/octet-stream';
@@ -1949,7 +2102,7 @@
 			if (!preg_match('/^[A-Za-z0-9_-]+$/', $value)) {
 				return array(
 					'status' => false,
-					'text' => 'L identifiant URL ne peut contenir que des lettres, chiffres, tirets et underscores.',
+					'text' => self::uiMessage('l_identifiant_url_ne_peut_contenir_que_des_lettres_chiffres_tirets_et_underscores'),
 				);
 			}
 
@@ -1969,7 +2122,7 @@
 			if ($existing !== false) {
 				return array(
 					'status' => false,
-					'text' => 'Cet identifiant URL est deja utilise par une autre organisation. Choisissez-en un autre.',
+					'text' => self::uiMessage('cet_identifiant_url_est_deja_utilise_par_une_autre_organisation_choisissez_en_un_autre'),
 				);
 			}
 
@@ -2001,7 +2154,7 @@
 		public function save()
 		{
 			if (!self::isValidInformationUrl((string)$this->get('url'))) {
-				return array('status' => false, 'text' => 'L URL doit etre une adresse HTTP ou HTTPS valide (2048 caracteres maximum).');
+				return array('status' => false, 'text' => self::uiMessage('l_url_doit_etre_une_adresse_http_ou_https_valide_2048_caracteres_maximum'));
 			}
 			if ((int)$this->getId() <= 0 && !isset($this->getLexiconParameters()['lexicon'])) {
 				$this->setLexicon(self::getInitialLexicon());
@@ -2012,7 +2165,7 @@
 					? $shortnameValidation
 					: array(
 						'status' => false,
-						'text' => "L identifiant URL de l'organisation est invalide.",
+						'text' => self::uiMessage('l_identifiant_url_de_l_organisation_est_invalide'),
 					);
 			}
 
@@ -2162,7 +2315,7 @@
 			if ($organizationId <= 0) {
 				return array(
 					'status' => false,
-					'message' => 'Organisation invalide.',
+					'message' => self::uiMessage('organisation_invalide'),
 				);
 			}
 
@@ -2178,7 +2331,7 @@
 			if (!$result) {
 				return array(
 					'status' => false,
-					'message' => 'Impossible d initialiser les applications de l organisation.',
+					'message' => self::uiMessage('impossible_d_initialiser_les_applications_de_l_organisation'),
 				);
 			}
 
@@ -2193,7 +2346,7 @@
 			if ($organizationId <= 0) {
 				return array(
 					'status' => false,
-					'message' => 'Organisation invalide.',
+					'message' => self::uiMessage('organisation_invalide'),
 				);
 			}
 
@@ -2270,7 +2423,7 @@
 				if (!is_array($saveResult) || empty($saveResult['status'])) {
 					return array(
 						'status' => false,
-						'message' => 'Impossible de configurer les applications de l organisation importee.',
+						'message' => self::uiMessage('impossible_de_configurer_les_applications_de_l_organisation_importee'),
 					);
 				}
 
@@ -2440,21 +2593,21 @@
 			$organizationId = (int)$this->getId();
 			$userId = (int)$userId;
 			if ($organizationId <= 0 || $userId <= 0) {
-				return array('status' => false, 'message' => 'Membre ou organisation invalide.');
+				return array('status' => false, 'message' => self::uiMessage('membre_ou_organisation_invalide'));
 			}
 			$user = new \dbObject\User();
 			if (!$user->load($userId) || $user->isHistoricalPlaceholder()) {
-				return array('status' => false, 'message' => 'Le compte a retirer est introuvable.');
+				return array('status' => false, 'message' => self::uiMessage('le_compte_a_retirer_est_introuvable'));
 			}
 			if ($this->isSystemOrganization()
 				&& $this->getMembership($userId, true)
 				&& $user->isSiteAdmin()
 				&& \dbObject\User::countOtherActiveSiteAdminsInBaseOrganization($userId) === 0) {
-				return array('status' => false, 'message' => "Le dernier superadmin ne peut pas quitter l'organisation de base.");
+				return array('status' => false, 'message' => self::uiMessage('le_dernier_superadmin_ne_peut_pas_quitter_l_organisation_de_base'));
 			}
 			$pdo = \dbObject\DbObject::getPdo();
 			if (!$pdo) {
-				return array('status' => false, 'message' => 'Connexion base de donnees indisponible.');
+				return array('status' => false, 'message' => self::uiMessage('connexion_base_de_donnees_indisponible'));
 			}
 
 			try {
@@ -2644,7 +2797,7 @@
 			if ($organizationId <= 0 || $userId <= 0) {
 				return array(
 					'status' => false,
-					'message' => 'Membre ou organisation invalide.',
+					'message' => self::uiMessage('membre_ou_organisation_invalide'),
 				);
 			}
 
@@ -2652,7 +2805,7 @@
 			if (!$membership || !(bool)$membership->get('active')) {
 				return array(
 					'status' => false,
-					'message' => "Ce membre n'est pas actif dans cette organisation.",
+					'message' => self::uiMessage('ce_membre_n_est_pas_actif_dans_cette_organisation'),
 				);
 			}
 
@@ -2665,7 +2818,7 @@
 				if ($activeMemberCount <= 1) {
 					return array(
 						'status' => false,
-						'message' => "Le dernier membre ne peut pas quitter l'organisation de base.",
+						'message' => self::uiMessage('le_dernier_membre_ne_peut_pas_quitter_l_organisation_de_base'),
 					);
 				}
 			}
@@ -2673,14 +2826,14 @@
 			if (!$isSelfRemoval && !$actorIsAdmin) {
 				return array(
 					'status' => false,
-					'message' => "Vous n'avez pas le droit de modifier cette organisation.",
+					'message' => self::uiMessage('vous_n_avez_pas_le_droit_de_modifier_cette_organisation'),
 				);
 			}
 
 			if ($membership->isOrganizationAdmin() && $this->countActiveAdminMemberships($userId) === 0) {
 				return array(
 					'status' => false,
-					'message' => "Le dernier admin ne peut pas quitter l'organisation. Nommez un autre admin ou supprimez l'organisation.",
+					'message' => self::uiMessage('le_dernier_admin_ne_peut_pas_quitter_l_organisation_nommez_un_autre_admin_ou_supprimez_l_o'),
 				);
 			}
 
@@ -2688,7 +2841,7 @@
 			if (!$pdo) {
 				return array(
 					'status' => false,
-					'message' => 'Connexion base de donnees indisponible.',
+					'message' => self::uiMessage('connexion_base_de_donnees_indisponible'),
 				);
 			}
 
@@ -2726,14 +2879,14 @@
 			if ($organizationId <= 0) {
 				return array(
 					'status' => false,
-					'message' => "L'organisation cible est invalide.",
+					'message' => self::uiMessage('l_organisation_cible_est_invalide'),
 				);
 			}
 
 			if (!$this->canEdit()) {
 				return array(
 					'status' => false,
-					'message' => "Vous n'avez pas le droit de modifier cette organisation.",
+					'message' => self::uiMessage('vous_n_avez_pas_le_droit_de_modifier_cette_organisation'),
 				);
 			}
 
@@ -2741,7 +2894,7 @@
 			if (!$pdo) {
 				return array(
 					'status' => false,
-					'message' => 'Connexion base de donnees indisponible.',
+					'message' => self::uiMessage('connexion_base_de_donnees_indisponible'),
 				);
 			}
 
@@ -2826,14 +2979,14 @@
 			if ($organizationId <= 0 || $userId <= 0) {
 				return array(
 					'status' => false,
-					'message' => "L'organisation demandee est invalide.",
+					'message' => self::uiMessage('l_organisation_demandee_est_invalide'),
 				);
 			}
 
 			if ($this->resolveCurrentUserId() !== $userId) {
 				return array(
 					'status' => false,
-					'message' => 'Vous ne pouvez demander cet acces que pour votre propre compte.',
+					'message' => self::uiMessage('vous_ne_pouvez_demander_cet_acces_que_pour_votre_propre_compte'),
 				);
 			}
 
@@ -2841,14 +2994,14 @@
 			if (!$user->load($userId)) {
 				return array(
 					'status' => false,
-					'message' => 'Votre profil utilisateur est introuvable.',
+					'message' => self::uiMessage('votre_profil_utilisateur_est_introuvable'),
 				);
 			}
 
 			if ($this->hasActiveMembershipForUser($user, $organizationId)) {
 				return array(
 					'status' => false,
-					'message' => 'Votre compte a deja acces a cette organisation.',
+					'message' => self::uiMessage('votre_compte_a_deja_acces_a_cette_organisation'),
 				);
 			}
 
@@ -2860,7 +3013,7 @@
 			if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
 				return array(
 					'status' => false,
-					'message' => "Votre compte doit disposer d'une adresse e-mail valide pour envoyer cette demande.",
+					'message' => self::uiMessage('votre_compte_doit_disposer_d_une_adresse_e_mail_valide_pour_envoyer_cette_demande'),
 				);
 			}
 
@@ -2868,7 +3021,7 @@
 			if (!$pdo) {
 				return array(
 					'status' => false,
-					'message' => 'Connexion base de donnees indisponible.',
+					'message' => self::uiMessage('connexion_base_de_donnees_indisponible'),
 				);
 			}
 
@@ -2898,7 +3051,7 @@
 					return array(
 						'status' => true,
 						'created' => false,
-						'message' => 'Une invitation est deja en attente pour cette organisation.',
+						'message' => self::uiMessage('une_invitation_est_deja_en_attente_pour_cette_organisation'),
 					);
 				}
 
@@ -5193,7 +5346,7 @@
 			if (count($records) === 0) {
 				return array(
 					'status' => false,
-'message' => "Le fichier d’import ne contient pas d’espaces valides.",
+'message' => self::uiMessage('le_fichier_d_import_ne_contient_pas_d_espaces_valides'),
 				);
 			}
 
@@ -5219,7 +5372,7 @@
 			if ($sourceRootId <= 0 || !isset($recordsBySourceId[$sourceRootId])) {
 				return array(
 					'status' => false,
-					'message' => "Impossible d'identifier la racine de l'organisation dans le fichier compact.",
+					'message' => self::uiMessage('impossible_d_identifier_la_racine_de_l_organisation_dans_le_fichier_compact'),
 				);
 			}
 
@@ -5227,7 +5380,7 @@
 			if (!$pdo) {
 				return array(
 					'status' => false,
-					'message' => 'La connexion a la base de donnees est indisponible.',
+					'message' => self::uiMessage('la_connexion_a_la_base_de_donnees_est_indisponible'),
 				);
 			}
 
@@ -5471,7 +5624,7 @@
 
 				return array(
 					'status' => true,
-					'message' => "L'organisation a ete importee depuis le format compact.",
+					'message' => self::uiMessage('l_organisation_a_ete_importee_depuis_le_format_compact'),
 					'rootHolon' => $targetRootHolon,
 					'holonIdMap' => $holonIdMap,
 					'propertyIdMap' => $propertyIdMap,
@@ -8040,14 +8193,14 @@
 			catch (\Throwable $e) { return ['status' => false, 'message' => $e->getMessage()]; }
 			$actorUserId = (int)$actorUserId;
 			if ($actorUserId <= 0) {
-				return array('status' => false, 'message' => 'Connexion requise.');
+				return array('status' => false, 'message' => self::uiMessage('connexion_requise'));
 			}
 			if (!array_key_exists('sendMemberInvitationEmails', $importOptions) || !is_bool($importOptions['sendMemberInvitationEmails'])) {
-				return array('status' => false, 'message' => 'Choisissez explicitement si les e-mails d invitation aux membres doivent etre envoyes.');
+				return array('status' => false, 'message' => self::uiMessage('choisissez_explicitement_si_les_e_mails_d_invitation_aux_membres_doivent_etre_envoyes'));
 			}
 			$sendMemberInvitationEmails = $importOptions['sendMemberInvitationEmails'];
 			if ((string)($payload['format'] ?? '') !== 'openmyorganization-structure-export' || (int)($payload['version'] ?? 0) !== 4) {
-				return array('status' => false, 'message' => 'Le fichier doit etre un export OMO compact version 4.');
+				return array('status' => false, 'message' => self::uiMessage('le_fichier_doit_etre_un_export_omo_compact_version_4'));
 			}
 			$mediaWarnings = array_values(array_filter((array)($payload['source']['mediaWarnings'] ?? []), 'is_string'));
 			$payload = self::sanitizeOmo1ImportedMediaReferences($payload, $mediaWarnings);
@@ -8068,12 +8221,12 @@
 			}
 			if ($selectedModules['pv']) {
 				if (empty($sourceModules['calendar']['selected'])) {
-					return array('status' => false, 'message' => 'Les proces-verbaux OMO 1 necessitent aussi la section calendrier.');
+					return array('status' => false, 'message' => self::uiMessage('les_proces_verbaux_omo_1_necessitent_aussi_la_section_calendrier'));
 				}
 				$selectedModules['calendar'] = true;
 			}
 			if (!$selectedModules['structure']) {
-				return array('status' => false, 'message' => 'La structure doit etre selectionnee pour creer une organisation importee.');
+				return array('status' => false, 'message' => self::uiMessage('la_structure_doit_etre_selectionnee_pour_creer_une_organisation_importee'));
 			}
 
 			$sourceOrganization = isset($payload['organization']) && is_array($payload['organization']) ? $payload['organization'] : array();
@@ -8082,7 +8235,7 @@
 				$name = trim((string)($sourceOrganization['name'] ?? ''));
 			}
 			if ($name === '') {
-				return array('status' => false, 'message' => 'Le nom de la nouvelle organisation est obligatoire.');
+				return array('status' => false, 'message' => self::uiMessage('le_nom_de_la_nouvelle_organisation_est_obligatoire'));
 			}
 			$hasAppliedOrganizationModel = (int)($templateCalibration['templateRootHolonId'] ?? 0) > 0
 				&& isset($templateCalibration['mappings'])
@@ -8117,12 +8270,12 @@
 			if (!is_array($organizationSave) || empty($organizationSave['status']) || (int)$organization->getId() <= 0) {
 				$importJournalReference = self::omo1ImportJournalFinish(false, array(
 					'errorClass' => 'OrganizationSaveFailure',
-					'message' => 'La nouvelle organisation n a pas pu etre creee.',
+					'message' => self::uiMessage('la_nouvelle_organisation_n_a_pas_pu_etre_creee'),
 					'lastDbError' => self::omo1ImportJournalLastDbError(),
 				));
 				return array(
 					'status' => false,
-					'message' => 'La nouvelle organisation n a pas pu etre creee.',
+					'message' => self::uiMessage('la_nouvelle_organisation_n_a_pas_pu_etre_creee'),
 					'importJournalReference' => $importJournalReference,
 				);
 			}
@@ -8362,7 +8515,7 @@
 
 				return array(
 					'status' => true,
-					'message' => 'La nouvelle organisation a ete importee.',
+					'message' => self::uiMessage('la_nouvelle_organisation_a_ete_importee'),
 					'organization' => $organization,
 					'rootHolon' => $structureResult['rootHolon'],
 					'holonIdMap' => $holonIdMap,
@@ -8415,17 +8568,17 @@
 				'banner',
 			)));
 			if (!self::isValidInformationUrl(trim((string)($definitionOverrides['url'] ?? '')))) {
-				return array('status' => false, 'message' => 'L URL doit etre une adresse HTTP ou HTTPS valide (2048 caracteres maximum).');
+				return array('status' => false, 'message' => self::uiMessage('l_url_doit_etre_une_adresse_http_ou_https_valide_2048_caracteres_maximum'));
 			}
 			$model = new self();
 			if ($modelOrganizationId <= 0 || !$model->load($modelOrganizationId) || !$model->isSharedAsTemplate()) {
-				return array('status' => false, 'message' => 'Le modèle public sélectionné est introuvable.');
+				return array('status' => false, 'message' => self::uiMessage('le_modele_public_selectionne_est_introuvable'));
 			}
 			if ($actorUserId <= 0) {
-				return array('status' => false, 'message' => 'Connexion requise.');
+				return array('status' => false, 'message' => self::uiMessage('connexion_requise'));
 			}
 			if ($organizationName === '') {
-				return array('status' => false, 'message' => 'Le nom de l’organisation est obligatoire.');
+				return array('status' => false, 'message' => self::uiMessage('le_nom_de_l_organisation_est_obligatoire'));
 			}
 
 			$selectedModules = array(
@@ -8472,7 +8625,7 @@
 				$target->loadFromArray($definitionOverrides);
 				$target->set('isModel', false);
 				if (trim((string)$target->get('name')) === '') {
-					return array('status' => false, 'message' => 'Le nom de l’organisation est obligatoire.', 'organization' => $target);
+					return array('status' => false, 'message' => self::uiMessage('le_nom_de_l_organisation_est_obligatoire'), 'organization' => $target);
 				}
 				$definitionSave = $target->save();
 				if (!is_array($definitionSave) || empty($definitionSave['status'])) {
@@ -8493,11 +8646,11 @@
 			$sourceId = (int)$source->getId();
 			$targetId = (int)$target->getId();
 			if ($sourceId <= 0 || $targetId <= 0) {
-				return array('status' => false, 'message' => 'Configuration de modele invalide.');
+				return array('status' => false, 'message' => self::uiMessage('configuration_de_modele_invalide'));
 			}
 			$pdo = \dbObject\DbObject::getPdo();
 			if (!$pdo) {
-				return array('status' => false, 'message' => 'La connexion a la base de donnees est indisponible.');
+				return array('status' => false, 'message' => self::uiMessage('la_connexion_a_la_base_de_donnees_est_indisponible'));
 			}
 
 			try {
@@ -8556,14 +8709,14 @@
 			if ((int)$this->getId() <= 0) {
 				return array(
 					'status' => false,
-					'message' => "L'organisation demandee est introuvable.",
+					'message' => self::uiMessage('l_organisation_demandee_est_introuvable'),
 				);
 			}
 
 			if ($this->getStructuralRootHolon()) {
 				return array(
 					'status' => false,
-					'message' => 'Cette organisation a deja une structure.',
+					'message' => self::uiMessage('cette_organisation_a_deja_une_structure'),
 				);
 			}
 
@@ -8572,7 +8725,7 @@
 			if ($format !== 'openmyorganization-structure-export' || $version !== 4) {
 				return array(
 					'status' => false,
-					'message' => "Le fichier d'import doit etre un export OMO au format compact version 4.",
+					'message' => self::uiMessage('le_fichier_d_import_doit_etre_un_export_omo_au_format_compact_version_4'),
 				);
 			}
 
@@ -8580,7 +8733,7 @@
 			if (count($importedHolonRecords) === 0) {
 				return array(
 					'status' => false,
-'message' => "Le fichier d’import ne contient pas d’espaces dans le format compact attendu.",
+'message' => self::uiMessage('le_fichier_d_import_ne_contient_pas_d_espaces_dans_le_format_compact_attendu'),
 				);
 			}
 
@@ -8641,13 +8794,13 @@
 			$source = new self();
 			if ($source->load((int)$sourceRootHolon->get('IDorganization'))) {
 				$this->setPropertyTypeSettings($source->getPropertyTypeSettings());
-				if (empty($this->save()['status'])) return ['status' => false, 'message' => 'Impossible de copier les types de proprietes du modele.'];
+				if (empty($this->save()['status'])) return ['status' => false, 'message' => self::uiMessage('impossible_de_copier_les_types_de_proprietes_du_modele')];
 			}
 			$targetRootHolon = $this->createStructuralRootHolon($userId, $sourceRootHolon);
 			if (!$targetRootHolon) {
 				return array(
 					'status' => false,
-'message' => "L’espace racine n’a pas pu être créé.",
+'message' => self::uiMessage('l_espace_racine_n_a_pas_pu_etre_cree'),
 				);
 			}
 
@@ -8713,7 +8866,7 @@
 				if (!$this->cloneStructuralHolonPermissions($sourceHolon, $targetHolon)) {
 					return array(
 						'status' => false,
-						'message' => "Les droits du modele n'ont pas pu etre dupliques.",
+						'message' => self::uiMessage('les_droits_du_modele_n_ont_pas_pu_etre_dupliques'),
 					);
 				}
 			}
@@ -8727,7 +8880,7 @@
 
 			return array(
 				'status' => true,
-				'message' => 'Organisation initialisee depuis le modele selectionne.',
+				'message' => self::uiMessage('organisation_initialisee_depuis_le_modele_selectionne'),
 				'rootHolon' => $targetRootHolon,
 			);
 		}
@@ -8737,14 +8890,14 @@
 			if ((int)$this->getId() <= 0) {
 				return array(
 					'status' => false,
-					'message' => "L'organisation demandee est introuvable.",
+					'message' => self::uiMessage('l_organisation_demandee_est_introuvable'),
 				);
 			}
 
 			if ($this->getStructuralRootHolon()) {
 				return array(
 					'status' => false,
-					'message' => 'Cette organisation a deja une structure.',
+					'message' => self::uiMessage('cette_organisation_a_deja_une_structure'),
 				);
 			}
 
@@ -8756,7 +8909,7 @@
 			) {
 				return array(
 					'status' => false,
-					'message' => 'Choisissez un modele predefini pour initialiser cette organisation.',
+					'message' => self::uiMessage('choisissez_un_modele_predefini_pour_initialiser_cette_organisation'),
 				);
 			}
 
@@ -8764,7 +8917,7 @@
 			if (!$pdo) {
 				return array(
 					'status' => false,
-					'message' => 'La connexion a la base de donnees est indisponible.',
+					'message' => self::uiMessage('la_connexion_a_la_base_de_donnees_est_indisponible'),
 				);
 			}
 
@@ -8779,7 +8932,7 @@
 
 					$result = array(
 						'status' => true,
-						'message' => 'Organisation creee.',
+						'message' => self::uiMessage('organisation_creee'),
 						'rootHolon' => $rootHolon,
 					);
 				} else {
@@ -9952,7 +10105,7 @@
 		{
 			foreach ($operations as $permissionKey) {
 				if (str_starts_with($permissionKey, 'INVALID_')) {
-					return ['status' => false, 'message' => 'Type ou definition de propriete invalide.'];
+					return ['status' => false, 'message' => self::uiMessage('type_ou_definition_de_propriete_invalide')];
 				}
 				if (!$this->canUsePropertyPermission($permissionHolon, $permissionKey, $collectiveHolonId, $creatingHolon)) {
 					return ['status' => false, 'message' => 'Droit requis : ' . $permissionKey . '.'];
@@ -9992,7 +10145,7 @@
 				if (!empty($definition['effectiveLocked'])) {
 					return array(
 						'status' => false,
-						'message' => 'Cette propriete heritee est verrouillee.',
+						'message' => self::uiMessage('cette_propriete_heritee_est_verrouillee'),
 					);
 				}
 
@@ -10003,7 +10156,7 @@
 
 				return array(
 					'status' => false,
-'message' => "Vous n’avez pas les droits pour modifier cet espace.",
+'message' => self::uiMessage('vous_n_avez_pas_les_droits_pour_modifier_cet_espace'),
 				);
 			}
 
@@ -13096,7 +13249,7 @@
 						if (!isset($allowedExistingIds[$existingId])) {
 							return array(
 								'status' => false,
-								'message' => 'Une autorite existante ne peut pas etre ajoutee a cette propriete.',
+								'message' => self::uiMessage('une_autorite_existante_ne_peut_pas_etre_ajoutee_a_cette_propriete'),
 							);
 						}
 
@@ -13113,7 +13266,7 @@
 							}
 							return array(
 								'status' => false,
-'message' => 'Cette autorité ne peut pas être modifiée depuis cet espace.',
+'message' => self::uiMessage('cette_autorite_ne_peut_pas_etre_modifiee_depuis_cet_espace'),
 							);
 						}
 
@@ -13127,7 +13280,7 @@
 							if ($authority->isTemplateInstance()) {
 								return array(
 									'status' => false,
-									'message' => 'Cette autorite est geree par son modele et ne peut pas etre modifiee ici.',
+									'message' => self::uiMessage('cette_autorite_est_geree_par_son_modele_et_ne_peut_pas_etre_modifiee_ici'),
 								);
 							}
 							$deletionPlan = is_array($submittedItem['deletionPlan'] ?? null)
@@ -13191,7 +13344,7 @@
 							if ($authority->isTemplateInstance()) {
 								return array(
 									'status' => false,
-									'message' => 'Cette autorite est geree par son modele et ne peut pas etre modifiee ici.',
+									'message' => self::uiMessage('cette_autorite_est_geree_par_son_modele_et_ne_peut_pas_etre_modifiee_ici'),
 								);
 							}
 							$label = trim((string)($submittedItem['label'] ?? $before['label']));
@@ -13214,7 +13367,7 @@
 							if ($parentId > 0 && !isset($parentAuthorityIds[$parentId])) {
 								return array(
 									'status' => false,
-									'message' => 'L autorite parente doit etre confiee au premier cercle parent.',
+									'message' => self::uiMessage('l_autorite_parente_doit_etre_confiee_au_premier_cercle_parent'),
 								);
 							}
 
@@ -13226,7 +13379,7 @@
 							if (empty($saveResult['status'])) {
 								return array(
 									'status' => false,
-									'message' => 'Cette autorite n a pas pu etre modifiee.',
+									'message' => self::uiMessage('cette_autorite_n_a_pas_pu_etre_modifiee'),
 								);
 							}
 
@@ -13288,14 +13441,14 @@
 					if ($parentId > 0 && !isset($parentAuthorityIds[$parentId])) {
 						return array(
 							'status' => false,
-							'message' => 'L autorite parente doit etre confiee au premier cercle parent.',
+							'message' => self::uiMessage('l_autorite_parente_doit_etre_confiee_au_premier_cercle_parent'),
 						);
 					}
 					$parentAuthority = null;
 					if ($parentId > 0) {
 						$parentAuthority = new \dbObject\Authority();
 						if (!$parentAuthority->load($parentId)) {
-							return array('status' => false, 'message' => 'L autorite parente est introuvable.');
+							return array('status' => false, 'message' => self::uiMessage('l_autorite_parente_est_introuvable'));
 						}
 					}
 
@@ -13331,7 +13484,7 @@
 					}
 
 					if ($parentAuthority instanceof \dbObject\Authority && $parentAuthority->isShell()) {
-						return array('status' => false, 'message' => 'Une coquille de delegation complete ne peut pas etre la source d une delegation partielle.');
+						return array('status' => false, 'message' => self::uiMessage('une_coquille_de_delegation_complete_ne_peut_pas_etre_la_source_d_une_delegation_partielle'));
 					}
 
 					$authority = new \dbObject\Authority();
@@ -13344,7 +13497,7 @@
 					if (empty($saveResult['status']) || (int)$authority->getId() <= 0) {
 						return array(
 							'status' => false,
-							'message' => 'La nouvelle autorite n a pas pu etre creee.',
+							'message' => self::uiMessage('la_nouvelle_autorite_n_a_pas_pu_etre_creee'),
 						);
 					}
 
@@ -13432,7 +13585,7 @@
 				) {
 					return array(
 						'status' => false,
-'message' => 'L’espace à modifier est introuvable.',
+'message' => self::uiMessage('l_espace_a_modifier_est_introuvable'),
 					);
 				}
 
@@ -13440,7 +13593,7 @@
 				if ($isTemplateEditing && $this->isDiscoveryMode()) {
 					return array(
 						'status' => false,
-'message' => 'Les modèles d’espaces ne sont pas disponibles en mode découverte.',
+'message' => self::uiMessage('les_modeles_d_espaces_ne_sont_pas_disponibles_en_mode_decouverte'),
 					);
 				}
 
@@ -13448,7 +13601,7 @@
 				if ($propertiesOnly && !Property::canActOnAnyType($holon)) {
 					return array(
 						'status' => false,
-'message' => "Vous n’avez pas les droits pour modifier cet espace.",
+'message' => self::uiMessage('vous_n_avez_pas_les_droits_pour_modifier_cet_espace'),
 					);
 				}
 
@@ -13472,7 +13625,7 @@
 			if (!$rootHolon) {
 				return array(
 					'status' => false,
-'message' => "Aucun espace racine n’a été trouvé pour cette organisation.",
+'message' => self::uiMessage('aucun_espace_racine_n_a_ete_trouve_pour_cette_organisation'),
 				);
 			}
 
@@ -13569,14 +13722,14 @@
 					) {
 						return array(
 							'status' => false,
-							'message' => "Le modele parent selectionne n'est pas disponible ici.",
+							'message' => self::uiMessage('le_modele_parent_selectionne_n_est_pas_disponible_ici'),
 						);
 					}
 
 					if ((int)$template->get('IDtypeholon') !== $typeId) {
 						return array(
 							'status' => false,
-'message' => "Le modèle parent doit être du même type que cet espace modèle.",
+'message' => self::uiMessage('le_modele_parent_doit_etre_du_meme_type_que_cet_espace_modele'),
 						);
 					}
 
@@ -13586,7 +13739,7 @@
 						if ((int)$currentInheritance->getId() === (int)$holon->getId()) {
 							return array(
 								'status' => false,
-								'message' => "Le modele parent choisi creerait une boucle.",
+								'message' => self::uiMessage('le_modele_parent_choisi_creerait_une_boucle'),
 							);
 						}
 
@@ -13612,7 +13765,7 @@
 				if ($templateId <= 0) {
 					return array(
 						'status' => false,
-						'message' => 'Le modele de reference est obligatoire.',
+						'message' => self::uiMessage('le_modele_de_reference_est_obligatoire'),
 					);
 				}
 
@@ -13623,7 +13776,7 @@
 				) {
 					return array(
 						'status' => false,
-						'message' => "Le modele selectionne n'est pas disponible ici.",
+						'message' => self::uiMessage('le_modele_selectionne_n_est_pas_disponible_ici'),
 					);
 				}
 
@@ -13631,7 +13784,7 @@
 				if ($typeId <= 0 || $typeId === 4) {
 					return array(
 						'status' => false,
-						'message' => "Le modele choisi ne peut pas etre instancie ici.",
+						'message' => self::uiMessage('le_modele_choisi_ne_peut_pas_etre_instancie_ici'),
 					);
 				}
 
@@ -13640,7 +13793,7 @@
 				) {
 					return array(
 						'status' => false,
-						'message' => "Le modele selectionne n'est pas disponible ici.",
+						'message' => self::uiMessage('le_modele_selectionne_n_est_pas_disponible_ici'),
 					);
 				}
 
@@ -13719,7 +13872,7 @@
 			if ($effectiveAdminMax !== null && $effectiveAdminMax < $effectiveAdminMin) {
 				return array(
 					'status' => false,
-					'message' => 'Le nombre maximum d admins doit etre superieur ou egal au minimum.',
+					'message' => self::uiMessage('le_nombre_maximum_d_admins_doit_etre_superieur_ou_egal_au_minimum'),
 				);
 			}
 
@@ -13752,7 +13905,7 @@
 			if ($name === '') {
 				return array(
 					'status' => false,
-'message' => 'Le nom de l’espace est obligatoire.',
+'message' => self::uiMessage('le_nom_de_l_espace_est_obligatoire'),
 				);
 			}
 
@@ -13817,7 +13970,7 @@
 			if ((int)$holon->getId() <= 0) {
 				return array(
 					'status' => false,
-'message' => "L’espace n’a pas pu être enregistré.",
+'message' => self::uiMessage('l_espace_n_a_pas_pu_etre_enregistre'),
 				);
 			}
 
@@ -13864,7 +14017,7 @@
 				)) {
 					return array(
 						'status' => false,
-'message' => "Les droits de l’espace n’ont pas pu être enregistrés.",
+'message' => self::uiMessage('les_droits_de_l_espace_n_ont_pas_pu_etre_enregistres'),
 					);
 				}
 
@@ -13911,7 +14064,7 @@
 			if (!$rootHolon || $holonId <= 0) {
 				return array(
 					'status' => false,
-'message' => 'L’espace à supprimer est invalide.',
+'message' => self::uiMessage('l_espace_a_supprimer_est_invalide'),
 				);
 			}
 
@@ -13924,7 +14077,7 @@
 			) {
 				return array(
 					'status' => false,
-'message' => 'L’espace à supprimer est introuvable.',
+'message' => self::uiMessage('l_espace_a_supprimer_est_introuvable'),
 				);
 			}
 
@@ -13932,7 +14085,7 @@
 				|| (!$collectiveGovernance && (!$holon->isAllowed('CAN_DELETE_HOLON') || !$holon->canDelete()))) {
 				return array(
 					'status' => false,
-'message' => "Vous n’avez pas les droits pour supprimer cet espace.",
+'message' => self::uiMessage('vous_n_avez_pas_les_droits_pour_supprimer_cet_espace'),
 				);
 			}
 
@@ -13940,12 +14093,12 @@
 			if (!$parentHolon) {
 				return array(
 					'status' => false,
-'message' => 'Le parent de cet espace est introuvable.',
+'message' => self::uiMessage('le_parent_de_cet_espace_est_introuvable'),
 				);
 			}
 
 			if (!Authority::validateHolonRemovalChoice($authorityChoice)) {
-				return ['status' => false, 'message' => 'Choisissez le traitement des autorites.'];
+				return ['status' => false, 'message' => self::uiMessage('choisissez_le_traitement_des_autorites')];
 			}
 			$descendantCount = $holon->countVisibleDescendants();
 			$holonName = $holon->getDisplayName();
@@ -13970,12 +14123,12 @@
 				if ($ownsTransaction) $pdo->rollBack();
 				else { $pdo->exec('ROLLBACK TO SAVEPOINT ' . $savepoint); $pdo->exec('RELEASE SAVEPOINT ' . $savepoint); }
 				self::registerDbError('holon_delete_authorities', ['holon_id' => $holonId], $exception);
-				return ['status' => false, 'message' => 'L espace et ses autorites n ont pas pu etre supprimes.'];
+				return ['status' => false, 'message' => self::uiMessage('l_espace_et_ses_autorites_n_ont_pas_pu_etre_supprimes')];
 			}
 
 			return array(
 				'status' => true,
-'message' => 'Espace supprimé.',
+'message' => self::uiMessage('espace_supprime'),
 				'holon' => array(
 					'id' => $holonId,
 					'name' => $holonName,
@@ -13998,7 +14151,7 @@
 			if (!$rootHolon || $holonId <= 0 || $targetParentId <= 0) {
 				return array(
 					'status' => false,
-					'message' => 'Le deplacement demande est invalide.',
+					'message' => self::uiMessage('le_deplacement_demande_est_invalide'),
 				);
 			}
 
@@ -14011,7 +14164,7 @@
 			) {
 				return array(
 					'status' => false,
-'message' => 'L’espace à déplacer est introuvable.',
+'message' => self::uiMessage('l_espace_a_deplacer_est_introuvable'),
 				);
 			}
 
@@ -14019,7 +14172,7 @@
 			if (!$currentParent) {
 				return array(
 					'status' => false,
-'message' => 'Le parent actuel de cet espace est introuvable.',
+'message' => self::uiMessage('le_parent_actuel_de_cet_espace_est_introuvable'),
 				);
 			}
 
@@ -14030,28 +14183,28 @@
 			) {
 				return array(
 					'status' => false,
-					'message' => 'Le parent cible est introuvable.',
+					'message' => self::uiMessage('le_parent_cible_est_introuvable'),
 				);
 			}
 
 			if ((int)$currentParent->getId() === $targetParentId) {
 				return array(
 					'status' => false,
-'message' => 'Cet espace est déjà rattaché à cet emplacement.',
+'message' => self::uiMessage('cet_espace_est_deja_rattache_a_cet_emplacement'),
 				);
 			}
 
 			if (!$this->hasHolonMovePermission($holon, $collectiveHolonId, (int)$userId) || !$this->hasHolonMovePermission($targetParent, $collectiveHolonId, (int)$userId)) {
 				return array(
 					'status' => false,
-'message' => "Vous n’avez pas les droits pour déplacer cet espace.",
+'message' => self::uiMessage('vous_n_avez_pas_les_droits_pour_deplacer_cet_espace'),
 				);
 			}
 
 			if (!$this->canMoveHolonToParent($holon, $targetParent, $rootHolon, $collectiveHolonId, (int)$userId)) {
 				return array(
 					'status' => false,
-					'message' => "Le parent cible n'est pas compatible avec ce deplacement.",
+					'message' => self::uiMessage('le_parent_cible_n_est_pas_compatible_avec_ce_deplacement'),
 				);
 			}
 
@@ -14062,7 +14215,7 @@
 			if (!is_array($saveResult) || empty($saveResult['status'])) {
 				return array(
 					'status' => false,
-'message' => "L’espace n’a pas pu être déplacé.",
+'message' => self::uiMessage('l_espace_n_a_pas_pu_etre_deplace'),
 				);
 			}
 
@@ -14080,7 +14233,7 @@
 
 			return array(
 				'status' => true,
-'message' => 'Espace déplacé.',
+'message' => self::uiMessage('espace_deplace'),
 				'holon' => array(
 					'id' => (int)$holon->getId(),
 					'name' => $holon->getDisplayName(),
@@ -14130,7 +14283,7 @@
 			if (!$contextHolon) {
 				return array(
 					'status' => false,
-					'message' => 'Le contexte de definition du modele est invalide.',
+					'message' => self::uiMessage('le_contexte_de_definition_du_modele_est_invalide'),
 				);
 			}
 
@@ -14140,14 +14293,14 @@
 			if ($templateName === '') {
 				return array(
 					'status' => false,
-					'message' => 'Le nom du modele est obligatoire.',
+					'message' => self::uiMessage('le_nom_du_modele_est_obligatoire'),
 				);
 			}
 
 			if ($typeId <= 0) {
 				return array(
 					'status' => false,
-					'message' => 'Le type de base est obligatoire.',
+					'message' => self::uiMessage('le_type_de_base_est_obligatoire'),
 				);
 			}
 
@@ -14155,7 +14308,7 @@
 			if (!$type->load($typeId)) {
 				return array(
 					'status' => false,
-'message' => 'Le type d’espace demandé est introuvable.',
+'message' => self::uiMessage('le_type_d_espace_demande_est_introuvable'),
 				);
 			}
 
@@ -14164,21 +14317,21 @@
 			if ($templateId > 0 && !$template->load($templateId)) {
 				return array(
 					'status' => false,
-					'message' => 'Le modele a modifier est introuvable.',
+					'message' => self::uiMessage('le_modele_a_modifier_est_introuvable'),
 				);
 			}
 
 			if ($templateId > 0 && !$template->canEdit()) {
 				return array(
 					'status' => false,
-					'message' => "Vous n'avez pas les droits pour modifier ce modele.",
+					'message' => self::uiMessage('vous_n_avez_pas_les_droits_pour_modifier_ce_modele'),
 				);
 			}
 
 			if ($template->getId() > 0 && !$template->isTemplateNode((int)$rootHolon->getId())) {
 				return array(
 					'status' => false,
-					'message' => "Ce modele n'appartient pas a cette organisation.",
+					'message' => self::uiMessage('ce_modele_n_appartient_pas_a_cette_organisation'),
 				);
 			}
 
@@ -14187,7 +14340,7 @@
 				if (!$templateContextHolon || !$this->containsHolon($templateContextHolon)) {
 					return array(
 						'status' => false,
-						'message' => "Le contexte de definition du modele est invalide.",
+						'message' => self::uiMessage('le_contexte_de_definition_du_modele_est_invalide'),
 					);
 				}
 
@@ -14198,7 +14351,7 @@
 				if ($definitionHolonId <= 0 || !isset($availableDestinationIds[$definitionHolonId])) {
 					return array(
 						'status' => false,
-'message' => "L’espace choisi ne peut pas accueillir ce modèle sans dépasser une instance existante.",
+'message' => self::uiMessage('l_espace_choisi_ne_peut_pas_accueillir_ce_modele_sans_depasser_une_instance_existante'),
 					);
 				}
 
@@ -14206,7 +14359,7 @@
 				if (!$definitionHolon->load($definitionHolonId) || !$this->containsHolon($definitionHolon) || !$definitionHolon->canEdit()) {
 					return array(
 						'status' => false,
-'message' => "Vous n’avez pas les droits pour modifier les modèles de cet espace.",
+'message' => self::uiMessage('vous_n_avez_pas_les_droits_pour_modifier_les_modeles_de_cet_espace'),
 					);
 				}
 
@@ -14219,7 +14372,7 @@
 				if ($definitionHolonId <= 0 || !isset($availableDestinationIds[$definitionHolonId])) {
 					return array(
 						'status' => false,
-						'message' => 'Le contexte de definition du modele est invalide.',
+						'message' => self::uiMessage('le_contexte_de_definition_du_modele_est_invalide'),
 					);
 				}
 
@@ -14266,7 +14419,7 @@
 				) {
 					return array(
 						'status' => false,
-						'message' => "Le modele d'heritage choisi est invalide.",
+						'message' => self::uiMessage('le_modele_d_heritage_choisi_est_invalide'),
 					);
 				}
 
@@ -14277,7 +14430,7 @@
 						if ((int)$currentInheritance->getId() === (int)$template->getId()) {
 							return array(
 								'status' => false,
-								'message' => "Le modele d'heritage choisi creerait une boucle.",
+								'message' => self::uiMessage('le_modele_d_heritage_choisi_creerait_une_boucle'),
 							);
 						}
 
@@ -14321,7 +14474,7 @@
 				if ($inheritsFromId > 0 && $inheritsFromId === (int)$template->getId()) {
 					return array(
 						'status' => false,
-						'message' => "Un modele ne peut pas heriter de lui-meme.",
+						'message' => self::uiMessage('un_modele_ne_peut_pas_heriter_de_lui_meme'),
 					);
 				}
 			}
@@ -14356,7 +14509,7 @@
 			if ($effectiveAdminMax !== null && $effectiveAdminMax < $effectiveAdminMin) {
 				return array(
 					'status' => false,
-					'message' => 'Le nombre maximum d admins doit etre superieur ou egal au minimum.',
+					'message' => self::uiMessage('le_nombre_maximum_d_admins_doit_etre_superieur_ou_egal_au_minimum'),
 				);
 			}
 
@@ -14394,7 +14547,7 @@
 			if ((int)$template->getId() <= 0) {
 				return array(
 					'status' => false,
-					'message' => "Le modele n'a pas pu etre enregistre.",
+					'message' => self::uiMessage('le_modele_n_a_pas_pu_etre_enregistre'),
 				);
 			}
 
@@ -14456,7 +14609,7 @@
 			)) {
 				return array(
 					'status' => false,
-					'message' => "Les droits du modele n'ont pas pu etre enregistres.",
+					'message' => self::uiMessage('les_droits_du_modele_n_ont_pas_pu_etre_enregistres'),
 				);
 			}
 
@@ -14473,7 +14626,7 @@
 
 			return array(
 				'status' => true,
-				'message' => 'Modele enregistre.',
+				'message' => self::uiMessage('modele_enregistre'),
 				'template' => $template->toTemplateEditorArray((int)$rootHolon->getId()),
 				'data' => $this->getHolonTemplateEditorData(
 					$scope === 'descendants' ? (int)$rootHolon->getId() : (int)$contextHolon->getId(),
@@ -14499,7 +14652,7 @@
 			if (!$rootHolon || !$contextHolon || $templateId <= 0) {
 				return array(
 					'status' => false,
-					'message' => 'Le modele a supprimer est invalide.',
+					'message' => self::uiMessage('le_modele_a_supprimer_est_invalide'),
 				);
 			}
 
@@ -14510,7 +14663,7 @@
 			) {
 				return array(
 					'status' => false,
-					'message' => 'Le modele a supprimer est introuvable.',
+					'message' => self::uiMessage('le_modele_a_supprimer_est_introuvable'),
 				);
 			}
 
@@ -14518,7 +14671,7 @@
 			if (!$templateContextHolon || !$this->containsHolon($templateContextHolon)) {
 				return array(
 					'status' => false,
-					'message' => 'Le modele a supprimer est introuvable.',
+					'message' => self::uiMessage('le_modele_a_supprimer_est_introuvable'),
 				);
 			}
 			$contextHolon = $templateContextHolon;
@@ -14533,7 +14686,7 @@
 			if (!$template->canDelete()) {
 				return array(
 					'status' => false,
-					'message' => "Vous n'avez pas les droits pour supprimer ce modele.",
+					'message' => self::uiMessage('vous_n_avez_pas_les_droits_pour_supprimer_ce_modele'),
 				);
 			}
 
@@ -14541,13 +14694,13 @@
 			if (!$template->delete()) {
 				return array(
 					'status' => false,
-					'message' => "Le modele n'a pas pu etre supprime.",
+					'message' => self::uiMessage('le_modele_n_a_pas_pu_etre_supprime'),
 				);
 			}
 
 			return array(
 				'status' => true,
-				'message' => 'Modele supprime.',
+				'message' => self::uiMessage('modele_supprime'),
 				'template' => array(
 					'id' => $templateId,
 					'name' => $templateName,
@@ -14572,7 +14725,7 @@
 			if (!$rootHolon || $holonId <= 0) {
 				return array(
 					'status' => false,
-'message' => "L’espace d’organisation à modifier est invalide.",
+'message' => self::uiMessage('l_espace_d_organisation_a_modifier_est_invalide'),
 				);
 			}
 
@@ -14585,7 +14738,7 @@
 			) {
 				return array(
 					'status' => false,
-'message' => "L’espace d’organisation à modifier est introuvable.",
+'message' => self::uiMessage('l_espace_d_organisation_a_modifier_est_introuvable'),
 				);
 			}
 
@@ -14593,7 +14746,7 @@
 			if ((!$propertiesOnly && !$holon->canEdit()) || ($propertiesOnly && !Property::canActOnAnyType($holon))) {
 				return array(
 					'status' => false,
-					'message' => "Vous n'avez pas les droits pour modifier cette organisation.",
+					'message' => self::uiMessage('vous_n_avez_pas_les_droits_pour_modifier_cette_organisation'),
 				);
 			}
 
@@ -14610,7 +14763,7 @@
 			if ($name === '') {
 				return array(
 					'status' => false,
-					'message' => "Le nom de l'organisation est obligatoire.",
+					'message' => self::uiMessage('le_nom_de_l_organisation_est_obligatoire_2'),
 				);
 			}
 
@@ -14657,7 +14810,7 @@
 				if ((int)$holon->getId() <= 0) {
 					return array(
 						'status' => false,
-						'message' => "L'organisation n'a pas pu etre enregistree.",
+						'message' => self::uiMessage('l_organisation_n_a_pas_pu_etre_enregistree'),
 					);
 				}
 
@@ -14747,7 +14900,7 @@
 				)) {
 					return array(
 						'status' => false,
-						'message' => "Les droits de l'organisation n'ont pas pu etre enregistres.",
+						'message' => self::uiMessage('les_droits_de_l_organisation_n_ont_pas_pu_etre_enregistres'),
 					);
 				}
 			}
@@ -14761,7 +14914,7 @@
 
 			return array(
 				'status' => true,
-				'message' => 'Organisation enregistree.',
+				'message' => self::uiMessage('organisation_enregistree'),
 				'template' => $this->buildHolonDefinitionEditorNode($holon, (int)$rootHolon->getId()),
 				'data' => $this->getHolonDefinitionEditorData((int)$holon->getId()),
 			);

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
 require_once __DIR__ . '/bootstrap.php';
 require_once dirname(__DIR__, 2) . '/common/omo_fake_cron.php';
 
@@ -8,7 +9,7 @@ if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
     http_response_code(405);
     echo json_encode([
         'status' => false,
-        'message' => 'Method not allowed.',
+        'message' => omoInterfaceUiT('methode_non_autorisee'),
     ], JSON_UNESCAPED_SLASHES);
     exit;
 }

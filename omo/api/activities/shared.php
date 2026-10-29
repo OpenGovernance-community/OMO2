@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__, 3) . '/common/pv_meeting_permissions.php';
 require_once dirname(__DIR__) . '/resource_archives.php';
 
@@ -20,7 +21,7 @@ function omoActivitySourceLang()
         'activity.edit' => ['text' => 'Modifier', 'context' => 'Edit activity action.'],
         'activity.delete' => ['text' => 'Supprimer', 'context' => 'Delete activity action.'],
         'activity.archive' => ['text' => 'Archiver', 'context' => 'Archive recurring task action.'],
-        'activity.more' => ['text' => 'Plus d actions', 'context' => 'Open recurring task actions menu.'],
+        'activity.more' => ['text' => 'Plus d’actions', 'context' => 'Open recurring task actions menu.'],
         'activity.check' => ['text' => 'Valider', 'context' => 'Validate activity action.'],
         'activity.done' => ['text' => 'Fait', 'context' => 'Direct completion action in the activity list.'],
         'activity.save' => ['text' => 'Enregistrer', 'context' => 'Save activity action.'],
@@ -67,7 +68,7 @@ function omoActivitySourceLang()
         'activity.responsibility.unassigned' => ['text' => 'Non attribué', 'context' => 'Activity without a directly assigned person.'],
         'activity.editor.responsible' => ['text' => 'Personne en charge', 'context' => 'Activity responsible person field.'],
         'activity.editor.responsible_none' => ['text' => 'Aucune personne', 'context' => 'Activity responsible person empty option.'],
-        'activity.editor.responsible_help' => ['text' => 'Cette personne est responsable en complément de l espace porteur de la tâche récurrente.', 'context' => 'Recurring task responsible person field help.'],
+        'activity.editor.responsible_help' => ['text' => 'Cette personne est responsable en complément de l’espace porteur de la tâche récurrente.', 'context' => 'Recurring task responsible person field help.'],
         'activity.display_lead' => ['text' => 'Afficher en avance', 'context' => 'Advance field.'],
         'activity.display_lead_help' => ['text' => 'La tâche apparaît ce nombre d’unités avant sa date prévue.', 'context' => 'Help for the activity advance display field.'],
         'activity.overdue_after' => ['text' => 'En retard après', 'context' => 'Delay field.'],
@@ -112,7 +113,7 @@ function omoActivitySourceLang()
         'activity.error.forbidden' => ['text' => 'Cette action n’est pas autorisée.', 'context' => 'Forbidden error.'],
         'activity.error.title' => ['text' => 'Le titre est obligatoire.', 'context' => 'Title error.'],
         'activity.error.schedule' => ['text' => 'La récurrence ou sa référence est invalide.', 'context' => 'Schedule error.'],
-        'activity.error.save' => ['text' => 'Impossible d enregistrer cette tâche récurrente.', 'context' => 'Save error.'],
+        'activity.error.save' => ['text' => 'Impossible d’enregistrer cette tâche récurrente.', 'context' => 'Save error.'],
         'activity.error.load' => ['text' => 'Impossible de charger cette tâche récurrente.', 'context' => 'Recurring task load error.'],
         'activity.error.action' => ['text' => 'Action impossible.', 'context' => 'Generic activity action error.'],
         'activity.loading' => ['text' => 'Chargement de la tâche récurrente...', 'context' => 'Recurring task loading message.'],
@@ -325,8 +326,8 @@ function omoActivityScheduleOptions()
     for ($hour = 0; $hour < 24; $hour++) { $options['daily'][] = ['value' => sprintf('%02d:00', $hour), 'label' => sprintf('%02dh00', $hour)]; }
     foreach ($weekdays as $i => $label) { $options['weekly'][] = ['value' => (string)($i + 1), 'label' => $label]; }
     for ($i = 1; $i <= 31; $i++) { $options['monthly'][] = ['value' => (string)$i, 'label' => $i . 'e jour']; }
-    for ($i = 1; $i <= 3; $i++) { $options['quarterly'][] = ['value' => (string)$i, 'label' => 'Mois ' . $i . ' du trimestre']; }
-    for ($i = 1; $i <= 6; $i++) { $options['semiannual'][] = ['value' => (string)$i, 'label' => 'Mois ' . $i . ' du semestre']; }
+    for ($i = 1; $i <= 3; $i++) { $options['quarterly'][] = ['value' => (string)$i, 'label' => omoActivitiesUiT('mois') . $i . ' du trimestre']; }
+    for ($i = 1; $i <= 6; $i++) { $options['semiannual'][] = ['value' => (string)$i, 'label' => omoActivitiesUiT('mois') . $i . ' du semestre']; }
     foreach ($months as $i => $label) { $options['yearly'][] = ['value' => (string)($i + 1), 'label' => $label]; }
     return $options;
 }

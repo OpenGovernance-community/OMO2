@@ -27,25 +27,25 @@ class DecisionGroup extends DbObject
     {
         return [
             'id' => 'ID',
-            'IDdecision_process' => 'Prise de decision',
+            'IDdecision_process' => 'Prise de décision',
             'decision_type' => 'Type',
-            'evaluation_method' => 'Methode',
+            'evaluation_method' => 'Méthode',
             'title' => 'Titre',
             'description' => 'Description',
-            'parameters' => 'Parametres',
+            'parameters' => 'Paramètres',
             'position' => 'Ordre',
             'active' => 'Actif',
-            'created_at' => 'Creation',
-            'updated_at' => 'Mise a jour',
+            'created_at' => 'Création',
+            'updated_at' => 'Mise à jour',
         ];
     }
 
     public static function attributeDescriptions()
     {
         return [
-            'decision_type' => 'Nature du groupe: decision engageante ou consultation.',
-            'evaluation_method' => 'Methode de participation utilisee par ce groupe.',
-            'parameters' => 'Configuration propre a ce groupe et a sa methode.',
+            'decision_type' => 'Nature du groupe: décision engageante ou consultation.',
+            'evaluation_method' => 'Méthode de participation utilisée par ce groupe.',
+            'parameters' => 'Configuration propre à ce groupe et a sa méthode.',
         ];
     }
 

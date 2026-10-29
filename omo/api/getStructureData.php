@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
 require_once __DIR__ . '/bootstrap.php';
 
 header('Content-Type: application/json; charset=UTF-8');
@@ -201,7 +202,7 @@ if ($organizationId <= 0) {
     echo json_encode(
         array(
             'error' => true,
-            'message' => "Organisation invalide.",
+            'message' => omoInterfaceUiT('organisation_invalide'),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -224,7 +225,7 @@ if ($organization === null) {
     echo json_encode(
         array(
             'error' => true,
-            'message' => "Organisation introuvable.",
+            'message' => omoInterfaceUiT('organisation_introuvable'),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -237,7 +238,7 @@ if (!$canViewOrganization) {
     echo json_encode(
         array(
             'error' => true,
-            'message' => "Acces refuse a cette organisation.",
+            'message' => omoInterfaceUiT('acces_refuse_a_cette_organisation'),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -328,7 +329,7 @@ if (count($representation) === 0) {
     echo json_encode(
         array(
             'error' => true,
-            'message' => "Structure indisponible.",
+            'message' => omoInterfaceUiT('structure_indisponible'),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );

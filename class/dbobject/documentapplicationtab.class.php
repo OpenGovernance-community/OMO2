@@ -3,6 +3,15 @@ namespace dbObject;
 
 class DocumentApplicationTab extends DbObject
 {
+        protected static function uiMessageSourceLang(): array
+        {
+            return [
+                'application_indisponible_pour_ce_pv' => ['text' => 'Application indisponible pour ce PV.', 'context' => 'Validation or action feedback for documentapplicationtab.'],
+                'impossible_d_ajouter_l_application_au_pv' => ['text' => 'Impossible d’ajouter l’application au PV.', 'context' => 'Validation or action feedback for documentapplicationtab.'],
+                'impossible_d_enregistrer_la_vue_du_pv' => ['text' => 'Impossible d’enregistrer la vue du PV.', 'context' => 'Validation or action feedback for documentapplicationtab.'],
+            ];
+        }
+
     public static function tableName()
     {
         return 'document_application_tab';
@@ -28,18 +37,18 @@ class DocumentApplicationTab extends DbObject
             'IDapplication' => 'Application',
             'position' => 'Position',
             'view_parameters' => 'Configuration de la vue',
-            'datecreation' => 'Creation',
-            'datemodification' => 'Mise a jour',
+            'datecreation' => 'Création',
+            'datemodification' => 'Mise à jour',
         ];
     }
 
     public static function attributeDescriptions()
     {
         return [
-            'IDdocument' => 'PV dans lequel l onglet est affiche.',
-            'IDapplication' => 'Application ouverte dans l espace de reunion.',
-            'position' => 'Ordre de l onglet dans l editeur du PV.',
-            'view_parameters' => 'Portee, tri, mode d affichage et filtres propres a ce PV.',
+            'IDdocument' => 'PV dans lequel l’onglet est affiche.',
+            'IDapplication' => 'Application ouverte dans l’espace de réunion.',
+            'position' => 'Ordre de l’onglet dans l’éditeur du PV.',
+            'view_parameters' => 'Portée, tri, mode d’affichage et filtres propres à ce PV.',
         ];
     }
 
@@ -124,7 +133,7 @@ class DocumentApplicationTab extends DbObject
             || !self::hasTable()
             || !Application::isEnabledForOrganization($applicationId, $organizationId)
         ) {
-            return ['status' => false, 'text' => 'Application indisponible pour ce PV.'];
+            return ['status' => false, 'text' => self::uiMessage('application_indisponible_pour_ce_pv')];
         }
 
         $existing = self::findForDocumentAndApplication($documentId, $applicationId);
@@ -143,7 +152,7 @@ class DocumentApplicationTab extends DbObject
         if (!is_array($result) || empty($result['status'])) {
             return is_array($result)
                 ? $result
-                : ['status' => false, 'text' => 'Impossible d ajouter l application au PV.'];
+                : ['status' => false, 'text' => self::uiMessage('impossible_d_ajouter_l_application_au_pv')];
         }
 
         return ['status' => true, 'item' => $item, 'created' => true];
@@ -156,7 +165,7 @@ class DocumentApplicationTab extends DbObject
         $result = $this->save();
         return is_array($result)
             ? $result
-            : ['status' => false, 'text' => 'Impossible d enregistrer la vue du PV.'];
+            : ['status' => false, 'text' => self::uiMessage('impossible_d_enregistrer_la_vue_du_pv')];
     }
 
     protected static function nextPositionForDocument(int $documentId): int

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 use dbObject\History;
@@ -52,7 +53,7 @@ function omoRenderHolonHistoryItems(array $historyItems)
 					<span data-history-local-date="1" data-history-timestamp="<?= (int)$timestamp ?>"><?= omoApiEscape($dateLabel) ?></span>
 				<?php endif; ?>
 				<?php if ($authorLabel !== ''): ?>
-					<span>par <?= omoApiEscape($authorLabel) ?></span>
+					<span><?= htmlspecialchars(omoHolonsUiT('par'), ENT_QUOTES, 'UTF-8') ?> <?= omoApiEscape($authorLabel) ?></span>
 				<?php endif; ?>
 				<?php if ($actionLabel !== ''): ?>
 					<span class="omo-holon-history-popup__action"><?= omoApiEscape($actionLabel) ?></span>
@@ -61,7 +62,7 @@ function omoRenderHolonHistoryItems(array $historyItems)
 			<p class="omo-holon-history-popup__content"><?= $contentHtml !== '' ? nl2br($contentHtml) : nl2br(omoApiEscape((string)($item['contentDisplay'] ?? ''))) ?></p>
 			<?php if ($hasDiffData && $payloadBase64 !== ''): ?>
 				<details class="omo-holon-history-popup__details omo-change-details" data-history-diff="1" data-history-payload="<?= omoApiEscape($payloadBase64) ?>">
-					<summary>Détail</summary>
+					<summary><?= htmlspecialchars(omoHolonsUiT('detail'), ENT_QUOTES, 'UTF-8') ?></summary>
 					<div class="omo-holon-history-popup__diff" data-history-diff-container="1"></div>
 				</details>
 			<?php endif; ?>
@@ -81,7 +82,7 @@ $requestFragment = trim((string)($_GET['fragment'] ?? $_POST['fragment'] ?? ''))
 if ($organizationId <= 0 || $holonId <= 0) {
 	http_response_code(403);
 	?>
-	<div class="omo-holon-history-popup__empty">Vous devez etre connecte a une organisation pour consulter cet historique.</div>
+	<div class="omo-holon-history-popup__empty"><?= htmlspecialchars(omoHolonsUiT('vous_devez_etre_connecte_a_une_organisation_pour_consulter_cet_historique'), ENT_QUOTES, 'UTF-8') ?></div>
 	<?php
 	exit;
 }
@@ -92,7 +93,7 @@ $holon = new Holon();
 if (!$organization->load($organizationId) || !$holon->load($holonId) || !$organization->containsHolon($holon)) {
 	http_response_code(404);
 	?>
-    <div class="omo-holon-history-popup__empty">L’espace demandé est introuvable.</div>
+    <div class="omo-holon-history-popup__empty"><?= htmlspecialchars(omoHolonsUiT('l_espace_demande_est_introuvable'), ENT_QUOTES, 'UTF-8') ?></div>
 	<?php
 	exit;
 }
@@ -100,7 +101,7 @@ if (!$organization->load($organizationId) || !$holon->load($holonId) || !$organi
 if (!$holon->canViewDetail()) {
 	http_response_code(403);
 	?>
-    <div class="omo-holon-history-popup__empty">Vous n'avez pas le droit de consulter l'historique de cet espace.</div>
+    <div class="omo-holon-history-popup__empty"><?= htmlspecialchars(omoHolonsUiT('vous_n_avez_pas_le_droit_de_consulter_l_historique_de_cet_espace'), ENT_QUOTES, 'UTF-8') ?></div>
 	<?php
 	exit;
 }
@@ -136,7 +137,7 @@ if ($requestFragment === 'items') {
 	<div class="omo-holon-history-popup__header generic-drawer-header generic-drawer-header--sticky">
 		<div class="generic-drawer-header__copy omo-holon-history-popup__header-copy">
 			<div class="generic-card-title generic-card-title--eyebrow"><?= $isOrganizationHolon ? 'Organisation' : omoApiEscape((string)$holon->getTemplateLabel(true)) ?></div>
-			<h3 class="generic-card-title generic-card-title--medium">Historique</h3>
+			<h3 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(omoHolonsUiT('historique'), ENT_QUOTES, 'UTF-8') ?></h3>
 		</div>
 	</div>
 	<div class="omo-holon-history-popup__shell generic-drawer-content">
@@ -160,7 +161,7 @@ if ($requestFragment === 'items') {
 	</div>
 </div>
 
-<script src="/omo/assets/js/simple-html-field.js?v=20261009-html-editor-placeholder"></script>
+<script src="/omo/assets/js/simple-html-field.js?v=20261029-translations"></script>
 <script src="/common/choice/word-diff.js?v=20260816"></script>
 <script src="<?= commonAssetUrl('/common/choice/change-details.js') ?>"></script>
 <script src="<?= commonAssetUrl('/omo/api/holons/history_popup.js') ?>"></script>

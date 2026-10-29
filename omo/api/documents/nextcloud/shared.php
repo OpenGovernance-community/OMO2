@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
 
 function omoDocumentsNextcloudLoadFolder(int $folderId, int $organizationId = 0): array
@@ -29,7 +30,7 @@ function omoDocumentsNextcloudLoadFolder(int $folderId, int $organizationId = 0)
 	if (empty($location['status'])) {
 		$fallbackRemotePath = $folder->buildRemoteFolderStoragePath($organization);
 		if ($fallbackRemotePath === '') {
-			return array('status' => false, 'httpCode' => 404, 'text' => trim((string)($location['text'] ?? 'Dossier NextCloud introuvable.')));
+			return array('status' => false, 'httpCode' => 404, 'text' => trim((string)($location['text'] ?? omoDocumentsUiT('dossier_nextcloud_introuvable'))));
 		}
 
 		return array(

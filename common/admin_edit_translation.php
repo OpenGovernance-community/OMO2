@@ -28,11 +28,11 @@ function adminEditBuildSourceLang($object): array
 {
     $sourceLang = [
         'admin_edit.toolbar.edit' => [
-            'text' => 'Edition',
+            'text' => 'Édition',
             'context' => 'Toolbar title shown when editing an existing dbObject record.',
         ],
         'admin_edit.toolbar.create' => [
-            'text' => 'Creation',
+            'text' => 'Création',
             'context' => 'Toolbar title shown when creating a new dbObject record.',
         ],
         'admin_edit.toolbar.text' => [
@@ -68,15 +68,15 @@ function adminEditBuildSourceLang($object): array
             'context' => 'Help text shown when leaflet is unavailable in adminEdit latlong fields.',
         ],
         'admin_edit.latlong.help.map' => [
-            'text' => 'Cliquez sur la carte pour choisir l emplacement.',
+            'text' => 'Cliquez sur la carte pour choisir l’emplacement.',
             'context' => 'Help text shown below the leaflet map in adminEdit latlong fields.',
         ],
         'admin_edit.length.max' => [
-            'text' => 'max {count} caracteres',
+            'text' => '{count} caractères maximum',
             'context' => 'Character limit helper shown below adminEdit text fields.',
         ],
         'admin_edit.length.progress' => [
-            'text' => '{current} sur {limit} caracteres',
+            'text' => '{current} sur {limit} caractères',
             'context' => 'Live character count helper shown below adminEdit text fields.',
         ],
         'admin_edit.image.choose_disk' => [
@@ -93,6 +93,9 @@ function adminEditBuildSourceLang($object): array
         : [];
     $placeholders = is_object($object) && method_exists($object, 'attributePlaceholder')
         ? (array)$object::attributePlaceholder()
+        : [];
+    $values = is_object($object) && method_exists($object, 'attributeValues')
+        ? (array)$object::attributeValues()
         : [];
     $objectKey = preg_replace('/[^a-z0-9_]+/i', '_', strtolower(is_object($object) && method_exists($object, 'tableName') ? (string)$object::tableName() : 'object'));
     $objectKey = trim((string)$objectKey, '_');
@@ -123,6 +126,13 @@ function adminEditBuildSourceLang($object): array
             $sourceLang['dbobject.' . $objectKey . '.' . $normalizedField . '.placeholder'] = [
                 'text' => (string)$placeholders[$field],
                 'context' => 'Input placeholder for the `' . $field . '` attribute in the `' . $objectKey . '` dbObject adminEdit form.',
+            ];
+        }
+        foreach ($values[$field] ?? [] as $option) {
+            if (!is_array($option) || !array_key_exists(0, $option) || !array_key_exists(1, $option)) continue;
+            $sourceLang[adminEditFieldOptionTranslationKey($object, (string)$field, $option[0])] = [
+                'text' => (string)$option[1],
+                'context' => 'Choice label for the `' . $field . '` field in the `' . $objectKey . '` adminEdit form. The stored choice value must stay unchanged.',
             ];
         }
     }
@@ -158,6 +168,16 @@ function adminEditFieldTranslationKey($object, string $field, string $suffix): s
     $fieldKey = preg_replace('/[^a-z0-9_]+/i', '_', strtolower($field));
 
     return 'dbobject.' . trim((string)$objectKey, '_') . '.' . trim((string)$fieldKey, '_') . '.' . $suffix;
+}
+
+function adminEditFieldOptionTranslationKey($object, string $field, $value): string
+{
+    return adminEditFieldTranslationKey($object, $field, 'option.' . substr(hash('sha256', (string)$value), 0, 16));
+}
+
+function adminEditGetFieldOptionLabel($object, string $field, array $option, array $bundle, array $sourceLang): string
+{
+    return adminEditTranslate(adminEditFieldOptionTranslationKey($object, $field, $option[0]), [], $object, $bundle, $sourceLang);
 }
 
 function adminEditGetFieldLabel($object, string $field, array $bundle, array $sourceLang): string

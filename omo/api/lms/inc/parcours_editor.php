@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
 
 if (!function_exists('lmsRenderParcoursMissionManager')) {
     function lmsParcoursEditorSourceLang(): array
@@ -49,11 +50,11 @@ if (!function_exists('lmsRenderParcoursMissionManager')) {
             'lms.parcours_editor.pack.empty' => ['text' => 'Aucun parcours n’est encore rattaché à ce pack.', 'context' => 'Empty state shown when the pack has no child parcours.'],
             'lms.parcours_editor.pack.edit' => ['text' => 'Modifier le parcours', 'context' => 'Menu action used to edit a child parcours of a pack.'],
             'lms.parcours_editor.pack.remove' => ['text' => 'Retirer du pack', 'context' => 'Menu action used to remove a child parcours from a pack.'],
-            'lms.parcours_editor.pack.application_linked' => ['text' => 'Application liee', 'context' => 'Metadata badge shown when a pack child parcours is linked to an application.'],
+            'lms.parcours_editor.pack.application_linked' => ['text' => 'Application liée', 'context' => 'Metadata badge shown when a pack child parcours is linked to an application.'],
             'lms.parcours_editor.pack.always_visible' => ['text' => 'Toujours visible', 'context' => 'Metadata badge shown when a pack child parcours remains visible regardless of apps.'],
             'lms.parcours_editor.pack.picker_title' => ['text' => 'Ajouter un parcours au pack', 'context' => 'Title of the pack child picker.'],
             'lms.parcours_editor.pack.picker_intro' => ['text' => 'Choisissez un parcours simple appartenant à votre organisation.', 'context' => 'Intro text of the pack child picker.'],
-            'lms.parcours_editor.pack.empty_picker' => ['text' => 'Tous les parcours simples disponibles sont deja dans ce pack.', 'context' => 'Empty state shown when no parcours can be added to the pack.'],
+            'lms.parcours_editor.pack.empty_picker' => ['text' => 'Tous les parcours simples disponibles sont déjà dans ce pack.', 'context' => 'Empty state shown when no parcours can be added to the pack.'],
             'lms.parcours_editor.pack.empty_search' => ['text' => 'Aucun parcours ne correspond à cette recherche.', 'context' => 'Empty state shown when no pack child search result matches.'],
         ];
     }
@@ -334,8 +335,8 @@ if (!function_exists('lmsRenderParcoursMissionManager')) {
                                     <p><?php echo htmlspecialchars((string)$mission['resume']); ?></p>
                                 <?php endif; ?>
                                 <div class="lms-parcours-mission-item__meta">
-                                    <span><?php echo (int)($mission['quiz_count'] ?? 0); ?> quiz</span>
-                                    <span><?php echo (int)($mission['homework_count'] ?? 0); ?> devoirs</span>
+                                    <span><?php echo (int)($mission['quiz_count'] ?? 0); ?> <?= htmlspecialchars(omoLmsUiT('quiz'), ENT_QUOTES, 'UTF-8') ?></span>
+                                    <span><?php echo (int)($mission['homework_count'] ?? 0); ?> <?= htmlspecialchars(omoLmsUiT('devoirs'), ENT_QUOTES, 'UTF-8') ?></span>
                                     <?php if (trim((string)($mission['branch'] ?? '')) !== ''): ?>
                                         <span><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.missions.branch', ['branch' => (string)$mission['branch']])); ?></span>
                                     <?php endif; ?>

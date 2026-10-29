@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 (function (window, document) {
     'use strict';
 
@@ -251,7 +253,7 @@
             applyPendingView(root, application);
         }
         save(root, scope, view, operation).catch(function (error) {
-            window.omoNotify(error && error.message ? error.message : 'Impossible d enregistrer cette vue par defaut.', 'error');
+            window.omoNotify(error && error.message ? error.message : omoUiText("impossible_d_enregistrer_cette_vue_par_defaut", "Impossible d’enregistrer cette vue par défaut."), 'error');
         }).finally(function () {
             saveButton.disabled = false;
             closeMenus();

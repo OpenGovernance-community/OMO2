@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 (function () {
     var root = document.querySelector('[data-omo-search-popup-root="1"]');
     if (!root || root.dataset.omoSearchPopupUiBound === '1') {
@@ -68,7 +70,7 @@
             credentials: 'same-origin', signal: controller.signal,
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         }).then(function (response) {
-            if (!response.ok) { throw new Error('Preview unavailable'); }
+            if (!response.ok) { throw new Error(omoUiText("preview_unavailable", "Aperçu indisponible.")); }
             return response.json();
         }).then(function (preview) {
             if (controller.signal.aborted || previewRequest !== controller) { return; }
@@ -204,7 +206,7 @@
         }
 
         window.commonTopbarOpenModal(
-            'Recherche',
+            omoUiText("recherche", "Recherche"),
             buildPopupUrl(query, scopes),
             'fetch'
         );

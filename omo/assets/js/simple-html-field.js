@@ -1,7 +1,9 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 (function (window, document) {
     'use strict';
 
-    const OMO_SIMPLE_HTML_FIELD_VERSION = '20261009-html-editor-placeholder';
+    const OMO_SIMPLE_HTML_FIELD_VERSION = '20261029-translations';
 
     if (
         window.omoSimpleHtmlField
@@ -13,7 +15,10 @@
     const SUMMERNOTE_VERSION = '0.8.18';
     const SUMMERNOTE_CSS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/summernote/' + SUMMERNOTE_VERSION + '/summernote-lite.min.css';
     const SUMMERNOTE_JS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/summernote/' + SUMMERNOTE_VERSION + '/summernote-lite.min.js';
-    const SUMMERNOTE_LANG_URL = 'https://cdnjs.cloudflare.com/ajax/libs/summernote/' + SUMMERNOTE_VERSION + '/lang/summernote-fr-FR.min.js';
+    const requestedLocale = String((window.omoConfig && window.omoConfig.translationLocale) || (document.documentElement && document.documentElement.lang) || 'fr').split(/[-_]/)[0];
+    const SUMMERNOTE_LOCALE = {fr: 'fr-FR', en: 'en-US', de: 'de-DE', es: 'es-ES', it: 'it-IT', pt: 'pt-PT', nl: 'nl-NL', pl: 'pl-PL'}[requestedLocale] || 'en-US';
+    const SUMMERNOTE_LANG_URL = SUMMERNOTE_LOCALE === 'en-US' ? null
+        : 'https://cdnjs.cloudflare.com/ajax/libs/summernote/' + SUMMERNOTE_VERSION + '/lang/summernote-' + SUMMERNOTE_LOCALE + '.min.js';
 
     let stylesInjected = false;
     let dependencyPromise = null;
@@ -166,7 +171,7 @@
             link.href = url;
             link.setAttribute('data-omo-summernote-href', url);
             link.onload = function () { resolve(); };
-            link.onerror = function () { reject(new Error('Impossible de charger la feuille de style Summernote.')); };
+            link.onerror = function () { reject(new Error(omoUiText("impossible_de_charger_la_feuille_de_style_summernote", "Impossible de charger la feuille de style Summernote."))); };
             document.head.appendChild(link);
         });
     }
@@ -181,7 +186,7 @@
                 }
 
                 existing.addEventListener('load', function () { resolve(); }, { once: true });
-                existing.addEventListener('error', function () { reject(new Error('Impossible de charger Summernote.')); }, { once: true });
+                existing.addEventListener('error', function () { reject(new Error(omoUiText("impossible_de_charger_summernote", "Impossible de charger Summernote."))); }, { once: true });
                 return;
             }
 
@@ -193,7 +198,7 @@
                 script.setAttribute('data-loaded', '1');
                 resolve();
             };
-            script.onerror = function () { reject(new Error('Impossible de charger Summernote.')); };
+            script.onerror = function () { reject(new Error(omoUiText("impossible_de_charger_summernote", "Impossible de charger Summernote."))); };
             document.head.appendChild(script);
         });
     }
@@ -216,11 +221,11 @@
                 return ensureScript(SUMMERNOTE_JS_URL);
             })
             .then(function () {
-                return ensureScript(SUMMERNOTE_LANG_URL);
+                return SUMMERNOTE_LANG_URL ? ensureScript(SUMMERNOTE_LANG_URL) : undefined;
             })
             .then(function () {
                 if (!window.jQuery || !window.jQuery.fn || typeof window.jQuery.fn.summernote !== 'function') {
-                    throw new Error('Summernote n est pas disponible apres chargement.');
+                    throw new Error(omoUiText("summernote_n_est_pas_disponible_apres_chargement", "Summernote n’est pas disponible après chargement."));
                 }
             });
 
@@ -831,7 +836,7 @@
                 embedNode.setAttribute('data-omo-indicator-overdue', '1');
             }
 
-            const title = getElementAttributeValue(sourceNode, 'data-omo-indicator-title').trim() || ('Indicateur #' + String(getIndicatorEmbedElementId(sourceNode)));
+            const title = getElementAttributeValue(sourceNode, 'data-omo-indicator-title').trim() || (omoUiText("indicateur", "Indicateur #") + String(getIndicatorEmbedElementId(sourceNode)));
             const description = getElementAttributeValue(sourceNode, 'data-omo-indicator-description').trim();
             const chartMinLabel = getElementAttributeValue(sourceNode, 'data-omo-indicator-chart-min').trim();
             const chartMaxLabel = getElementAttributeValue(sourceNode, 'data-omo-indicator-chart-max').trim();
@@ -1046,7 +1051,7 @@
 
         const state = Object.assign({
             value: '',
-            placeholder: 'Saisissez du contenu HTML simple.',
+            placeholder: omoUiText("saisissez_du_contenu_html_simple", "Saisissez du contenu HTML simple."),
             disabled: false,
             lazy: true,
             editorProfile: '',
@@ -2431,7 +2436,7 @@
 
                 $editor = window.jQuery(textarea);
                 $editor.summernote({
-                    lang: 'fr-FR',
+                    lang: SUMMERNOTE_LOCALE,
                     placeholder: state.placeholder,
                     minHeight: null,
                     height: null,
@@ -2441,10 +2446,10 @@
                     disableDragAndDrop: true,
                     styleTags: [
                         'p',
-                        { title: 'Titre 1', tag: 'h1', className: '', value: 'h1' },
-                        { title: 'Titre 2', tag: 'h2', className: '', value: 'h2' },
-                        { title: 'Titre 3', tag: 'h3', className: '', value: 'h3' },
-                        { title: 'Citation', tag: 'blockquote', className: '', value: 'blockquote' }
+                        { title: omoUiText("titre_1", "Titre 1"), tag: 'h1', className: '', value: 'h1' },
+                        { title: omoUiText("titre_2", "Titre 2"), tag: 'h2', className: '', value: 'h2' },
+                        { title: omoUiText("titre_3", "Titre 3"), tag: 'h3', className: '', value: 'h3' },
+                        { title: omoUiText("citation", "Citation"), tag: 'blockquote', className: '', value: 'blockquote' }
                     ],
                     toolbar: toolbar,
                     buttons: buttonsConfig,
@@ -2598,7 +2603,7 @@
 
                 initializing = false;
                 if (!preview) {
-                    container.innerHTML = '<div class="omo-simple-html-field__meta">Impossible de charger l editeur HTML.</div>';
+                    container.innerHTML = ("<div class=\"omo-simple-html-field__meta\">" + omoUiHtml("impossible_de_charger_l_editeur_html", "Impossible de charger l’éditeur HTML.") + "</div>");
                 }
                 if (window.console && typeof window.console.error === 'function') {
                     window.console.error(error);

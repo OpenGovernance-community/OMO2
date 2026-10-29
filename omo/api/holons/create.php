@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 commonReleaseReadOnlySession();
@@ -7,7 +8,7 @@ use dbObject\Organization;
 
 $holonCreateSourceLang = [
     'holon.edit_denied' => ['text' => "Vous n'avez pas les droits de modification du holon.", 'context' => 'Tooltip on locked holon name and full name fields'],
-    'property.type' => ['text' => 'Type de propriete', 'context' => 'Property permission type selector in the holon editor'],
+    'property.type' => ['text' => 'Type de propriété', 'context' => 'Property permission type selector in the holon editor'],
     'property.edit_denied' => ['text' => "Vous n'avez pas les droits de modification.", 'context' => 'Tooltip and accessible description of the lock beside a read-only holon property name'],
     'property.define_denied' => ['text' => "Vous n'avez pas les droits pour définir cette propriété", 'context' => 'Message below Local value when a read-only holon property has no local value to display'],
     'project_picker.add' => ['text' => 'Ajouter', 'context' => 'Button opening the project selector for a holon property'],
@@ -42,12 +43,12 @@ $canAddHolonProperties = false;
 $hasCustomHolonAppearance = false;
 $hasCustomHolonAdminBounds = false;
 $hasDirectHolonPermissions = false;
-$directPermissionLabel = 'Droits associés à l’élément';
+$directPermissionLabel = omoHolonsUiT('droits_associes_a_l_element');
 
 if ($organizationId <= 0) {
-    $errorMessage = "Aucune organisation n'est actuellement sélectionnée.";
+    $errorMessage = omoHolonsUiT('aucune_organisation_n_est_actuellement_selectionnee');
 } elseif (!$organization->load($organizationId)) {
-    $errorMessage = "L'organisation demandée est introuvable.";
+    $errorMessage = omoHolonsUiT('l_organisation_demandee_est_introuvable');
 } else {
 	$organizationLexicon = $organization->getLexicon();
 	$adminLabel = trim((string)($organizationLexicon['admin']['label'] ?? '')) ?: 'Admin';
@@ -73,14 +74,14 @@ if ($organizationId <= 0) {
 		|| !empty($editedHolonData['adminMaxOverride']);
 	$hasDirectHolonPermissions = !empty($editedHolonData['permissionAssignments']);
 	if (($editorData['editorType'] ?? 'holon') === 'template') {
-		$directPermissionLabel = 'Droits associés au modèle';
+		$directPermissionLabel = omoHolonsUiT('droits_associes_au_modele');
 	}
     if ($holonId > 0 && (($editorData['mode'] ?? 'create') !== 'edit')) {
-        $errorMessage = "L’élément demandé est introuvable.";
+        $errorMessage = omoHolonsUiT('l_element_demande_est_introuvable');
     } elseif (($editorData['mode'] ?? 'create') === 'edit' && !($editorData['canEdit'] ?? false)) {
-        $errorMessage = "Cet élément ne peut pas être édité avec ce formulaire.";
+        $errorMessage = omoHolonsUiT('cet_element_ne_peut_pas_etre_edite_avec_ce_formulaire');
     } elseif (($editorData['mode'] ?? 'create') !== 'edit' && !($editorData['canCreate'] ?? false)) {
-        $errorMessage = "Cet élément n'autorise pas l'ajout d'enfant.";
+        $errorMessage = omoHolonsUiT('cet_element_n_autorise_pas_l_ajout_d_enfant');
     } elseif (count($editorData['templateCatalog'] ?? array()) === 0) {
         $errorMessage = ($editorData['mode'] ?? 'create') === 'edit'
             ? \dbObject\Organization::formatLexiconText("Aucun modèle n'est disponible dans le contexte de ce holon.")
@@ -112,20 +113,20 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier l’é
                         <section class="omo-holon-create__section generic-section generic-section--stack generic-form-section generic-form-section--divided">
                             <div class="omo-holon-create__grid generic-form-grid">
                                 <label class="omo-holon-create__field generic-form-field">
-                                    <span class="generic-form-label">Nom<?php if (!$canEditHolonFields): ?> <img src="/img/cadenas.png" class="omo-holon-create__property-lock black-icon" width="14" height="14" alt="<?= omoApiEscape($holonCreateT('holon.edit_denied')) ?>" title="<?= omoApiEscape($holonCreateT('holon.edit_denied')) ?>"><?php endif; ?></span>
+                                    <span class="generic-form-label"><?= htmlspecialchars(omoHolonsUiT('nom'), ENT_QUOTES, 'UTF-8') ?><?php if (!$canEditHolonFields): ?> <img src="/img/cadenas.png" class="omo-holon-create__property-lock black-icon" width="14" height="14" alt="<?= omoApiEscape($holonCreateT('holon.edit_denied')) ?>" title="<?= omoApiEscape($holonCreateT('holon.edit_denied')) ?>"><?php endif; ?></span>
                                     <input type="text" id="omo-holon-create-name" class="generic-form-control" maxlength="255" required>
                                     <small class="generic-help-text" id="omo-holon-create-name-help"<?= !$canEditHolonFields ? ' hidden' : '' ?>></small>
                                 </label>
 
                                 <label class="omo-holon-create__field generic-form-field"<?= !$canEditHolonFields ? ' hidden' : '' ?>>
-                                    <span class="generic-form-label">Modèle</span>
+                                    <span class="generic-form-label"><?= htmlspecialchars(omoHolonsUiT('modele'), ENT_QUOTES, 'UTF-8') ?></span>
                                     <select id="omo-holon-create-template" class="generic-form-control" required></select>
                                 </label>
 
                                 <label class="omo-holon-create__field omo-holon-create__field--full generic-form-field generic-form-field--full">
-                                    <span class="generic-form-label">Nom complet<?php if (!$canEditHolonFields): ?> <img src="/img/cadenas.png" class="omo-holon-create__property-lock black-icon" width="14" height="14" alt="<?= omoApiEscape($holonCreateT('holon.edit_denied')) ?>" title="<?= omoApiEscape($holonCreateT('holon.edit_denied')) ?>"><?php endif; ?></span>
+                                    <span class="generic-form-label"><?= htmlspecialchars(omoHolonsUiT('nom_complet'), ENT_QUOTES, 'UTF-8') ?><?php if (!$canEditHolonFields): ?> <img src="/img/cadenas.png" class="omo-holon-create__property-lock black-icon" width="14" height="14" alt="<?= omoApiEscape($holonCreateT('holon.edit_denied')) ?>" title="<?= omoApiEscape($holonCreateT('holon.edit_denied')) ?>"><?php endif; ?></span>
                                     <input type="text" id="omo-holon-create-full-name" class="generic-form-control" maxlength="255">
-                                    <small class="generic-help-text"<?= !$canEditHolonFields ? ' hidden' : '' ?>>Optionnel. Utilise dans la vue liste et dans la fiche contexte.</small>
+                                    <small class="generic-help-text"<?= !$canEditHolonFields ? ' hidden' : '' ?>><?= htmlspecialchars(omoHolonsUiT('facultatif_utilise_dans_la_vue_liste_et_dans_la_fiche_contexte'), ENT_QUOTES, 'UTF-8') ?></small>
                                 </label>
 
                             </div>
@@ -134,9 +135,9 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier l’é
                         <section class="omo-holon-create__section omo-holon-create__section--separated generic-section generic-section--stack generic-form-section generic-form-section--divided">
                             <div class="omo-holon-create__section-head generic-form-section__heading">
                                 <div class="generic-form-section__copy">
-                                    <div class="omo-holon-create__section-title generic-title generic-title--medium">Propriétés</div>
+                                    <div class="omo-holon-create__section-title generic-title generic-title--medium"><?= htmlspecialchars(omoHolonsUiT('proprietes'), ENT_QUOTES, 'UTF-8') ?></div>
                                     <p class="omo-holon-create__section-description generic-description">
-                                        Les propriétés héritées du modèle sont affichées ci-dessous.
+                                        <?= htmlspecialchars(omoHolonsUiT('les_proprietes_heritees_du_modele_sont_affichees_ci_dessous'), ENT_QUOTES, 'UTF-8') ?>
                                     </p>
                                 </div>
                             </div>
@@ -144,7 +145,7 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier l’é
                             <div class="omo-holon-create__properties" id="omo-holon-create-properties"></div>
                             <?php if ($canAddHolonProperties): ?>
                             <div class="generic-action-row generic-action-row--start">
-                            <button type="button" class="generic-action-button generic-action-button--main" id="omo-holon-create-add-property">Ajouter une propriété</button>
+                            <button type="button" class="generic-action-button generic-action-button--main" id="omo-holon-create-add-property"><?= htmlspecialchars(omoHolonsUiT('ajouter_une_propriete'), ENT_QUOTES, 'UTF-8') ?></button>
                             </div>
                             <?php endif; ?>
                         </section>
@@ -163,7 +164,7 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier l’é
                                 aria-controls="omo-holon-create-permissions-content"
                             >
                                 <span class="generic-form-section__copy">
-                                    <span class="omo-holon-create__section-title generic-title generic-title--medium">Droits</span>
+                                    <span class="omo-holon-create__section-title generic-title generic-title--medium"><?= htmlspecialchars(omoHolonsUiT('droits'), ENT_QUOTES, 'UTF-8') ?></span>
                                 </span>
                                 <span class="generic-accordion__toggle" aria-hidden="true">&#9662;</span>
                             </button>
@@ -171,8 +172,8 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier l’é
                             <div class="generic-accordion__content" id="omo-holon-create-permissions-content">
                                 <div class="omo-holon-create__permission-summary" id="omo-holon-create-permissions-summary">
                                     <div class="omo-holon-create__permission-summary-line">
-                                        <div class="omo-holon-create__permission-summary-label">Droits hérités</div>
-                                        <div class="omo-holon-create__permission-summary-empty">aucun</div>
+                                        <div class="omo-holon-create__permission-summary-label"><?= htmlspecialchars(omoHolonsUiT('droits_herites'), ENT_QUOTES, 'UTF-8') ?></div>
+                                        <div class="omo-holon-create__permission-summary-empty"><?= htmlspecialchars(omoHolonsUiT('aucun'), ENT_QUOTES, 'UTF-8') ?></div>
                                     </div>
                                     <div class="omo-holon-create__permission-summary-line">
                                         <div class="omo-holon-create__permission-summary-heading">
@@ -183,9 +184,9 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier l’é
                                                 id="omo-holon-create-permissions-toggle"
                                                 aria-expanded="false"
                                                 aria-controls="omo-holon-create-permissions-editor"
-                                            >Éditer</button>
+                                            ><?= htmlspecialchars(omoHolonsUiT('editer'), ENT_QUOTES, 'UTF-8') ?></button>
                                         </div>
-                                        <div class="omo-holon-create__permission-summary-empty">aucun</div>
+                                        <div class="omo-holon-create__permission-summary-empty"><?= htmlspecialchars(omoHolonsUiT('aucun'), ENT_QUOTES, 'UTF-8') ?></div>
                                     </div>
                                 </div>
                                 <div class="omo-holon-create__permissions" id="omo-holon-create-permissions-editor" hidden></div>
@@ -206,7 +207,7 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier l’é
                                 aria-controls="omo-holon-create-admin-bounds-content"
                             >
                                 <span class="generic-form-section__copy">
-                                    <span class="omo-holon-create__section-title generic-title generic-title--medium">Équipe</span>
+                                    <span class="omo-holon-create__section-title generic-title generic-title--medium"><?= htmlspecialchars(omoHolonsUiT('equipe'), ENT_QUOTES, 'UTF-8') ?></span>
                                 </span>
                                 <span class="generic-accordion__toggle" aria-hidden="true">&#9662;</span>
                             </button>
@@ -214,23 +215,23 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier l’é
                                 <div class="omo-holon-create__admin-bounds generic-form-grid">
                                     <label class="omo-holon-create__field generic-form-field">
                                         <span class="omo-holon-create__admin-bound-head">
-                                            <span>Minimum de <?= omoApiEscape($adminLabelLower) ?></span>
+                                            <span><?= htmlspecialchars(omoHolonsUiT('minimum_de'), ENT_QUOTES, 'UTF-8') ?> <?= omoApiEscape($adminLabelLower) ?></span>
                                             <span class="omo-holon-create__color-toggle">
                                                 <input type="checkbox" id="omo-holon-create-admin-min-override">
-                                                <span>Redéfinir</span>
+                                                <span><?= htmlspecialchars(omoHolonsUiT('redefinir'), ENT_QUOTES, 'UTF-8') ?></span>
                                             </span>
                                         </span>
                                         <input type="number" id="omo-holon-create-admin-min" class="generic-form-control" min="0" step="1">
                                     </label>
                                     <label class="omo-holon-create__field generic-form-field">
                                         <span class="omo-holon-create__admin-bound-head">
-                                            <span>Maximum de <?= omoApiEscape($adminLabelLower) ?></span>
+                                            <span><?= htmlspecialchars(omoHolonsUiT('maximum_de'), ENT_QUOTES, 'UTF-8') ?> <?= omoApiEscape($adminLabelLower) ?></span>
                                             <span class="omo-holon-create__color-toggle">
                                                 <input type="checkbox" id="omo-holon-create-admin-max-override">
-                                                <span>Redéfinir</span>
+                                                <span><?= htmlspecialchars(omoHolonsUiT('redefinir'), ENT_QUOTES, 'UTF-8') ?></span>
                                             </span>
                                         </span>
-                                        <input type="number" id="omo-holon-create-admin-max" class="generic-form-control" min="0" step="1" placeholder="Sans limite">
+                                        <input type="number" id="omo-holon-create-admin-max" class="generic-form-control" min="0" step="1" placeholder="<?= htmlspecialchars(omoHolonsUiT('sans_limite'), ENT_QUOTES, 'UTF-8') ?>">
                                     </label>
                                 </div>
                                 <small class="generic-help-text" id="omo-holon-create-admin-bounds-help"></small>
@@ -252,7 +253,7 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier l’é
                                 aria-controls="omo-holon-create-appearance-content"
                             >
                                 <span class="generic-form-section__copy">
-                                    <span class="omo-holon-create__section-title generic-title generic-title--medium">Apparence</span>
+                                    <span class="omo-holon-create__section-title generic-title generic-title--medium"><?= htmlspecialchars(omoHolonsUiT('apparence'), ENT_QUOTES, 'UTF-8') ?></span>
                                 </span>
                                 <span class="generic-accordion__toggle" aria-hidden="true">&#9662;</span>
                             </button>
@@ -260,23 +261,23 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier l’é
                             <div class="generic-accordion__content" id="omo-holon-create-appearance-content">
                             <div class="omo-holon-create__grid generic-form-grid">
                                 <label class="omo-holon-create__field generic-form-field" id="omo-holon-create-color-field">
-                                    <span class="generic-form-label">Couleur</span>
+                                    <span class="generic-form-label"><?= htmlspecialchars(omoHolonsUiT('couleur'), ENT_QUOTES, 'UTF-8') ?></span>
                                     <div class="omo-holon-create__color-head">
                                         <span class="omo-holon-create__color-toggle">
-                                            <input type="checkbox" id="omo-holon-create-color-enabled" aria-label="Redéfinir la couleur">
-                                            <span id="omo-holon-create-color-enabled-label">Redéfinir</span>
+                                            <input type="checkbox" id="omo-holon-create-color-enabled" aria-label="<?= htmlspecialchars(omoHolonsUiT('redefinir_la_couleur'), ENT_QUOTES, 'UTF-8') ?>">
+                                            <span id="omo-holon-create-color-enabled-label"><?= htmlspecialchars(omoHolonsUiT('redefinir'), ENT_QUOTES, 'UTF-8') ?></span>
                                             <span class="omo-holon-create__color-body" id="omo-holon-create-color-body">
-                                                <input type="color" id="omo-holon-create-color" value="#f59e0b" aria-label="Couleur redéfinie">
+                                                <input type="color" id="omo-holon-create-color" value="#f59e0b" aria-label="<?= htmlspecialchars(omoHolonsUiT('couleur_redefinie'), ENT_QUOTES, 'UTF-8') ?>">
                                             </span>
                                         </span>
                                     </div>
                                 </label>
 
                                 <div class="omo-holon-create__field omo-holon-create__field--full generic-form-field generic-form-field--full">
-                                    <span class="generic-form-label">Illustrations</span>
+                                    <span class="generic-form-label"><?= htmlspecialchars(omoHolonsUiT('illustrations'), ENT_QUOTES, 'UTF-8') ?></span>
                                     <div class="omo-holon-create__media-grid">
                                         <div class="omo-holon-create__media-card generic-form-field">
-                                            <div class="generic-form-label">Icone</div>
+                                            <div class="generic-form-label"><?= htmlspecialchars(omoHolonsUiT('icone'), ENT_QUOTES, 'UTF-8') ?></div>
                                             <div id="omo-holon-create-icon-field"></div>
                                         </div>
                                     </div>
@@ -289,7 +290,7 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier l’é
                         <div class="omo-holon-create__footer generic-section">
                             <div class="omo-holon-create__hint generic-help-text" id="omo-holon-create-hint"></div>
                             <div class="omo-holon-create__actions generic-form-actions generic-form-actions--stack-mobile">
-                                <button type="button" class="generic-action-button generic-action-button--secondary" id="omo-holon-create-cancel" data-common-drawer-dismiss>Fermer</button>
+                                <button type="button" class="generic-action-button generic-action-button--secondary" id="omo-holon-create-cancel" data-common-drawer-dismiss><?= htmlspecialchars(omoHolonsUiT('fermer'), ENT_QUOTES, 'UTF-8') ?></button>
                                 <button type="submit" class="generic-action-button generic-action-button--main"><?= omoApiEscape((($editorData['mode'] ?? 'create') === 'edit') ? 'Enregistrer' : 'Créer un élément') ?></button>
                             </div>
                         </div>
@@ -302,7 +303,7 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier l’é
 
 <?php if ($editorData !== null && $errorMessage === ''): ?>
 <script src="/omo/assets/js/sized-image-field.js"></script>
-<script src="/omo/assets/js/simple-html-field.js?v=20261009-html-editor-placeholder"></script>
+<script src="/omo/assets/js/simple-html-field.js?v=20261029-translations"></script>
 <script src="/common/assets/multiline-list-paste.js"></script>
 <script src="/common/assets/property-list-conversion.js"></script>
 <script src="/common/assets/property-types.js"></script>

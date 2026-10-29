@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 
 use dbObject\DecisionProcess;
 use dbObject\DecisionGroup;
@@ -701,8 +702,8 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
             <section class="generic-soft-panel generic-soft-panel--stack omo-decision-edit__group-switch">
                 <div class="omo-decision-edit__section-head">
                     <div>
-                        <h3 class="generic-card-title generic-card-title--section">Groupes</h3>
-                        <p class="omo-decision-edit__lead">Ajoutez plusieurs blocs de decision dans le meme processus, puis passez de l un a l autre.</p>
+                        <h3 class="generic-card-title generic-card-title--section"><?= htmlspecialchars(omoDecisionUiT('groupes'), ENT_QUOTES, 'UTF-8') ?></h3>
+                        <p class="omo-decision-edit__lead"><?= htmlspecialchars(omoDecisionUiT('ajoutez_plusieurs_blocs_de_decision_dans_le_meme_processus_puis_passez_de_l_un_a_l_autre'), ENT_QUOTES, 'UTF-8') ?></p>
                     </div>
                     <a
                         class="generic-action-button generic-action-button--secondary"
@@ -710,7 +711,7 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                         data-omo-decision-editor-link
                         data-omo-decision-editor-title="<?= $escape(t('decisions.edit.edit_title', [], $lang, $baseSourceLang)) ?>"
                     >
-                        Ajouter un groupe
+                        <?= htmlspecialchars(omoDecisionUiT('ajouter_un_groupe'), ENT_QUOTES, 'UTF-8') ?>
                     </a>
                 </div>
                 <div class="omo-decision-edit__group-tabs">

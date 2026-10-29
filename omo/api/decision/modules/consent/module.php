@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../ui_translations.php';
 
 use dbObject\DecisionProcess;
 use dbObject\DecisionGroup;
@@ -793,7 +794,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                             <?php if ($oneProposalAtATime && $evaluationStarted): ?>
                             <div class="omo-decision-one-at-a-time__navigation">
                                 <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decision-one-at-a-time-previous><?= $escape(t('decisions.consent.action.previous_proposal', [], $lang, $sourceLang)) ?></button>
-                                <div class="omo-decision-one-at-a-time__dots" data-omo-decision-one-at-a-time-dots aria-label="Propositions"></div>
+                                <div class="omo-decision-one-at-a-time__dots" data-omo-decision-one-at-a-time-dots aria-label="<?= htmlspecialchars(omoDecisionUiT('propositions'), ENT_QUOTES, 'UTF-8') ?>"></div>
                                 <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decision-one-at-a-time-next><?= $escape(t('decisions.consent.action.next_proposal', [], $lang, $sourceLang)) ?></button>
                             </div>
                             <?php endif; ?>

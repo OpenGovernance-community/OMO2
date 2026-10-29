@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__, 3) . '/shared_functions.php';
 require_once dirname(__DIR__, 3) . '/common/auth.php';
 
@@ -16,7 +17,7 @@ if (!$shareLink) {
     http_response_code(404);
     echo json_encode(array(
         'status' => false,
-        'message' => 'Lien invalide.',
+        'message' => omoDocumentsUiT('lien_invalide'),
     ));
     exit;
 }
@@ -25,7 +26,7 @@ if ($shareLink->requiresPassword() && !commonIsSharePasswordVerified($token)) {
     http_response_code(403);
     echo json_encode(array(
         'status' => false,
-        'message' => 'Mot de passe requis.',
+        'message' => omoDocumentsUiT('mot_de_passe_requis'),
     ));
     exit;
 }
@@ -35,7 +36,7 @@ if (!($document instanceof \dbObject\Document) || $document->isFolder()) {
     http_response_code(404);
     echo json_encode(array(
         'status' => false,
-        'message' => 'Document introuvable.',
+        'message' => omoDocumentsUiT('document_introuvable'),
     ));
     exit;
 }

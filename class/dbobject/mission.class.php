@@ -26,12 +26,12 @@
 			return [
 				'id' => 'ID',
 				'title' => 'Titre',
-				'resume' => 'Resume',
-				'video' => 'Video',
+				'resume' => 'Résumé',
+				'video' => 'Vidéo',
 				'html' => 'Contenu HTML',
 				'position' => 'Position',
-				'datecreation' => 'Date de creation',
-				'dateupdate' => 'Date de mise a jour',
+				'datecreation' => 'Date de création',
+				'dateupdate' => 'Date de mise à jour',
 			];
 		}
 

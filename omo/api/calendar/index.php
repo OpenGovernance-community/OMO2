@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once dirname(__DIR__, 3) . '/common/calendar/upcoming_sections.php';
 require_once dirname(__DIR__, 3) . '/common/external_calendar.php';
@@ -18,12 +19,12 @@ use dbObject\Organization;
 
 $sourceLang = [
     'calendar.action.close' => ['text' => 'Fermer', 'context' => 'Accessible label and tooltip for closing the calendar editor drawer.'],
-    'calendar.buffers.before' => ['text' => 'Preparation / deplacement', 'context' => 'Attached time before a calendar event.'],
-    'calendar.buffers.after' => ['text' => 'Cloture / deplacement', 'context' => 'Attached time after a calendar event.'],
-    'calendar.external.free_hint' => ['text' => 'Libre : ne bloque pas les disponibilites.', 'context' => 'Tooltip explaining the diagonal stripes on imported calendar events that do not block availability.'],
+    'calendar.buffers.before' => ['text' => 'Préparation / déplacement', 'context' => 'Attached time before a calendar event.'],
+    'calendar.buffers.after' => ['text' => 'Clôture / déplacement', 'context' => 'Attached time after a calendar event.'],
+    'calendar.external.free_hint' => ['text' => 'Libre : ne bloque pas les disponibilités.', 'context' => 'Tooltip explaining the diagonal stripes on imported calendar events that do not block availability.'],
     'calendar.external.availability' => ['text' => 'Disponibilités', 'context' => 'Calendar source suffix identifying external opening windows.'],
-    'calendar.action.meeting_hint' => ['text' => 'Choisir vos horaires et votre agenda de reservation.', 'context' => 'Help below the calendar meeting menu action.'],
-    'calendar.action.share_hint' => ['text' => 'Creer et gerer vos liens d abonnement.', 'context' => 'Help below the calendar share menu action.'],
+    'calendar.action.meeting_hint' => ['text' => 'Choisir vos horaires et votre agenda de réservation.', 'context' => 'Help below the calendar meeting menu action.'],
+    'calendar.action.share_hint' => ['text' => 'Créer et gérer vos liens d’abonnement.', 'context' => 'Help below the calendar share menu action.'],
     'calendar.action.connect_hint' => ['text' => 'Synchroniser OMO ou ajouter un agenda externe.', 'context' => 'Help below the calendar connect menu action.'],
     'calendar.page.title' => [
         'text' => 'Calendrier',
@@ -74,7 +75,7 @@ $sourceLang = [
         'context' => 'Accessible label for the compact event action menu.',
     ],
     'calendar.action.open_document' => [
-        'text' => 'Ouvrir le document associe',
+        'text' => 'Ouvrir le document associé',
         'context' => 'Accessible label for the document icon shown next to a calendar event.',
     ],
     'calendar.action.connect' => [
@@ -133,7 +134,7 @@ $sourceLang = [
         'text' => 'Filtres du calendrier',
         'context' => 'Accessible label for the compact calendar filters control.',
     ],
-    'calendar.sources.aria' => ['text' => 'Calendriers affiches', 'context' => 'Accessible label for calendar source visibility checkboxes.'],
+    'calendar.sources.aria' => ['text' => 'Calendriers affichés', 'context' => 'Accessible label for calendar source visibility checkboxes.'],
     'calendar.sources.other_organizations' => ['text' => 'Autres organisations', 'context' => 'Visibility checkbox for personal busy blocks from other organizations in all calendar views.'],
     'calendar.filters.scope' => [
         'text' => 'Contexte',
@@ -200,7 +201,7 @@ $sourceLang = [
         'context' => 'Title of the read-only drawer for an event from a connected calendar.',
     ],
     'calendar.external_drawer.description' => [
-        'text' => 'Evenement synchronise depuis un calendrier externe.',
+        'text' => 'Événement synchronisé depuis un calendrier externe.',
         'context' => 'Description of an imported event with editable local time buffers.',
     ],
     'calendar.external_drawer.calendar' => [
@@ -699,7 +700,7 @@ $monthStart = ($requestedDate ?: ($requestedMonth ?: $anchorDate))->modify('firs
 if ($organizationId <= 0) {
     http_response_code(400);
     ?>
-    <div class="omo-calendar omo-empty-state">Organisation invalide.</div>
+    <div class="omo-calendar omo-empty-state"><?= htmlspecialchars(omoCalendarUiT('organisation_invalide'), ENT_QUOTES, 'UTF-8') ?></div>
     <?php
     exit;
 }
@@ -708,7 +709,7 @@ $organization = new Organization();
 if (!$organization->load($organizationId)) {
     http_response_code(404);
     ?>
-    <div class="omo-calendar omo-empty-state">Organisation introuvable.</div>
+    <div class="omo-calendar omo-empty-state"><?= htmlspecialchars(omoCalendarUiT('organisation_introuvable'), ENT_QUOTES, 'UTF-8') ?></div>
     <?php
     exit;
 }
@@ -716,7 +717,7 @@ if (!$organization->load($organizationId)) {
 if (!$organization->canViewDetail()) {
     http_response_code(403);
     ?>
-    <div class="omo-calendar omo-empty-state">Accès refusé à cette organisation.</div>
+    <div class="omo-calendar omo-empty-state"><?= htmlspecialchars(omoCalendarUiT('acces_refuse_a_cette_organisation'), ENT_QUOTES, 'UTF-8') ?></div>
     <?php
     exit;
 }

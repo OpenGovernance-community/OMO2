@@ -47,7 +47,7 @@ $sourceLang = [
         'context' => 'Overdue duration displayed beside an overdue dashboard item.',
     ],
     'personal_space.overdue.to_complete' => [
-        'text' => 'A completer',
+        'text' => 'À compléter',
         'context' => 'Status shown for an indicator that is overdue but still within its grace period.',
     ],
     'personal_space.heading' => [
@@ -99,7 +99,7 @@ $sourceLang = [
         'context' => 'Short fallback context label used for organization-wide events in the personal space panel.',
     ],
     'personal_space.calendar.document.open' => [
-        'text' => 'Ouvrir le document associe',
+        'text' => 'Ouvrir le document associé',
         'context' => 'Accessible label for the document icon shown next to a dashboard event.',
     ],
     'personal_space.calendar.month.01' => ['text' => 'Jan', 'context' => 'Short January label shown in the dashboard event date badge.'],
@@ -109,7 +109,7 @@ $sourceLang = [
     'personal_space.calendar.month.05' => ['text' => 'Mai', 'context' => 'Short May label shown in the dashboard event date badge.'],
     'personal_space.calendar.month.06' => ['text' => 'Juin', 'context' => 'Short June label shown in the dashboard event date badge.'],
     'personal_space.calendar.month.07' => ['text' => 'Juil', 'context' => 'Short July label shown in the dashboard event date badge.'],
-    'personal_space.calendar.month.08' => ['text' => 'Aout', 'context' => 'Short August label shown in the dashboard event date badge.'],
+    'personal_space.calendar.month.08' => ['text' => 'Août', 'context' => 'Short August label shown in the dashboard event date badge.'],
     'personal_space.calendar.month.09' => ['text' => 'Sept', 'context' => 'Short September label shown in the dashboard event date badge.'],
     'personal_space.calendar.month.10' => ['text' => 'Oct', 'context' => 'Short October label shown in the dashboard event date badge.'],
     'personal_space.calendar.month.11' => ['text' => 'Nov', 'context' => 'Short November label shown in the dashboard event date badge.'],
@@ -198,13 +198,13 @@ $sourceLang = [
 	'personal_space.editor.reset_options' => ['text' => 'Autres vues par défaut à effacer', 'context' => 'Accessible label for the dashboard default layout removal menu.'],
 	'personal_space.editor.reset_default' => ['text' => 'Effacer une vue par défaut', 'context' => 'Fallback action label when no personal dashboard preference can be removed.'],
 	'personal_space.editor.reset_holon_default' => ['text' => 'Effacer la vue par défaut de ce holon', 'context' => 'Remove the default dashboard layout stored on the current holon.'],
-	'personal_space.editor.reset_organization_template_default' => ['text' => 'Effacer la vue par défaut du modèle {templateName}', 'context' => 'Remove the organization dashboard layout stored for the directly inherited template.'],
+	'personal_space.editor.reset_organization_template_default' => ['text' => 'Effacer la vue par défaut du modèle {modèleName}', 'context' => 'Remove the organization dashboard layout stored for the directly inherited template.'],
 	'personal_space.editor.reset_organization_model_default' => ['text' => 'Effacer la vue par défaut du modèle Organisation', 'context' => 'Remove the organization dashboard layout stored for the organization holon.'],
 	'personal_space.editor.reset_application_type_default' => ['text' => 'Effacer la vue par défaut de tous les {typeName}', 'context' => 'Remove the application dashboard layout stored for the current base holon type.'],
 	'personal_space.editor.reset_global_default' => ['text' => 'Effacer la vue par défaut globale', 'context' => 'Remove the global dashboard layout stored for all organizations.'],
 	'personal_space.editor.save_options' => ['text' => 'Autres options d’enregistrement', 'context' => 'Accessible label for dashboard default save options.'],
     'personal_space.editor.save_holon_default' => ['text' => 'Enregistrer par défaut pour ce holon', 'context' => 'Save the current dashboard layout as the default for this holon.'],
-    'personal_space.editor.save_organization_template_default' => ['text' => 'Enregistrer par défaut pour le modèle {templateName}', 'context' => 'Save the current dashboard layout as the organization default for the template inherited by the current holon.'],
+    'personal_space.editor.save_organization_template_default' => ['text' => 'Enregistrer par défaut pour le modèle {modèleName}', 'context' => 'Save the current dashboard layout as the organization default for the template inherited by the current holon.'],
     'personal_space.editor.save_organization_model_default' => ['text' => 'Enregistrer par défaut pour le modèle Organisation', 'context' => 'Save the current dashboard layout as the default for the organization holon.'],
     'personal_space.editor.save_application_type_default' => ['text' => 'Enregistrer par défaut pour tous les {typeName}', 'context' => 'Save the current dashboard layout as the application default for the current base holon type.'],
     'personal_space.editor.save_global_default' => ['text' => 'Enregistrer par défaut global', 'context' => 'Save the global dashboard layout for every organization without a more specific view.'],
@@ -225,9 +225,9 @@ $sourceLang = [
     'personal_space.editor.save_error' => ['text' => 'Impossible d’enregistrer le tableau de pilotage.', 'context' => 'Dashboard layout save error.'],
     'personal_space.module.rules' => ['text' => 'Règles', 'context' => 'Dashboard rules module title.'],
     'personal_space.module.projects' => ['text' => 'Projets', 'context' => 'Dashboard projects module title.'],
-    'personal_space.module.decisions' => ['text' => 'Decisions', 'context' => 'Dashboard decisions module title.'],
+    'personal_space.module.decisions' => ['text' => 'Décisions', 'context' => 'Dashboard decisions module title.'],
     'personal_space.metric.decisions_active' => ['text' => 'Actives', 'context' => 'Visible decisions still in preparation, scheduled, in consultation or in evaluation.'],
-    'personal_space.metric.decisions_elaboration' => ['text' => 'En elaboration', 'context' => 'Decisions currently in the elaboration (consultation) phase.'],
+    'personal_space.metric.decisions_elaboration' => ['text' => 'En élaboration', 'context' => 'Decisions currently in the elaboration (consultation) phase.'],
     'personal_space.metric.decisions_pending' => ['text' => 'A me prononcer', 'context' => 'Decisions in evaluation with at least one response still required from the current user.'],
     'personal_space.module.team' => ['text' => 'Team', 'context' => 'Dashboard team module title.'],
     'personal_space.module.documents' => ['text' => 'Documents', 'context' => 'Dashboard documents module title.'],
@@ -297,7 +297,7 @@ $organizationRootHolon = $organization->getEnabledStructuralRootHolon();
 $enabledAppHashes = array_fill_keys($organization->getEnabledApplicationHashes($currentUserId), true);
 
 $documentShortDateFormatter = class_exists('IntlDateFormatter')
-    ? new IntlDateFormatter('fr_FR', IntlDateFormatter::MEDIUM, IntlDateFormatter::NONE)
+    ? new IntlDateFormatter(omoGetTranslationLocale(), IntlDateFormatter::MEDIUM, IntlDateFormatter::NONE)
     : null;
 
 if ($documentShortDateFormatter instanceof IntlDateFormatter) {

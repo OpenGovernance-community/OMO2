@@ -4,17 +4,17 @@ require_once dirname(__DIR__) . '/patreon.php';
 if (!isset($organizationId, $currentUserId) || !patreonUserCanManageOrganization((int)$currentUserId, (int)$organizationId)) return;
 $patreonSourceLang = [
     'title' => ['text' => 'Patreon et IA', 'context' => 'Organization subscription section.'],
-    'help' => ['text' => 'Une contribution active de {amount} minimum ouvre les fonctions IA aux membres dans cette organisation. Le seuil utilise le montant Patreon sans conversion de devise. Le compte createur configure est dispense du montant minimum. Un compte Patreon peut financer une personne et une organisation.', 'context' => 'Organization Patreon help capsule.'],
+    'help' => ['text' => 'Une contribution active de {amount} minimum ouvre les fonctions IA aux membres dans cette organisation. Le seuil utilise le montant Patreon sans conversion de devise. Le compte créateur configuré est dispense du montant minimum. Un compte Patreon peut financer une personne et une organisation.', 'context' => 'Organization Patreon help capsule.'],
     'account' => ['text' => 'Compte Patreon', 'context' => 'Linked Patreon identity label.'],
     'connect' => ['text' => 'Connecter Patreon', 'context' => 'Connect organization Patreon account.'],
     'sync' => ['text' => 'Synchroniser', 'context' => 'Refresh Patreon subscription.'],
-    'disconnect' => ['text' => 'Deconnecter', 'context' => 'Disconnect organization subscription.'],
-    'confirm' => ['text' => 'Deconnecter Patreon de cette organisation ?', 'context' => 'Confirm organization Patreon disconnection.'],
+    'disconnect' => ['text' => 'Déconnecter', 'context' => 'Disconnect organization subscription.'],
+    'confirm' => ['text' => 'Déconnecter Patreon de cette organisation ?', 'context' => 'Confirm organization Patreon disconnection.'],
     'active' => ['text' => 'IA disponible pour les membres', 'context' => 'Organization AI entitlement granted.'],
     'inactive' => ['text' => 'Abonnement organisation inactif ou insuffisant', 'context' => 'Organization entitlement unavailable.'],
     'unlinked' => ['text' => 'Aucun compte Patreon connecte', 'context' => 'Organization Patreon absent.'],
-    'error' => ['text' => 'Impossible de mettre a jour Patreon.', 'context' => 'Organization Patreon request failure.'],
-    'saved' => ['text' => 'Connexion Patreon mise a jour.', 'context' => 'Patreon action success notification.'],
+    'error' => ['text' => 'Impossible de mettre à jour Patreon.', 'context' => 'Organization Patreon request failure.'],
+    'saved' => ['text' => 'Connexion Patreon mise à jour.', 'context' => 'Patreon action success notification.'],
 ];
 $patreonLang = translationBundleInit('patreon_organization', omoGetTranslationLocale(), $patreonSourceLang);
 $pt = static fn ($key, $args = []) => htmlspecialchars(t($key, $args, $patreonLang, $patreonSourceLang), ENT_QUOTES, 'UTF-8');

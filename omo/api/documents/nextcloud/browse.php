@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
 require_once __DIR__ . '/shared.php';
 
 header('Content-Type: application/json; charset=UTF-8');
@@ -13,7 +14,7 @@ if ($folderId > 0) {
     $context = omoDocumentsNextcloudLoadFolder($folderId, $organizationId);
     if (empty($context['status'])) {
         http_response_code((int)($context['httpCode'] ?? 404));
-        echo json_encode(array('status' => false, 'message' => (string)($context['text'] ?? 'Acces refuse.')));
+        echo json_encode(array('status' => false, 'message' => (string)($context['text'] ?? omoDocumentsUiT('acces_refuse'))));
         exit;
     }
 
@@ -22,7 +23,7 @@ if ($folderId > 0) {
     $remotePath = omoDocumentsNextcloudGetRemotePath($folder, $organization, $rawPath, true);
     if ($remotePath === '') {
         http_response_code(400);
-        echo json_encode(array('status' => false, 'message' => 'Chemin NextCloud invalide.'));
+        echo json_encode(array('status' => false, 'message' => omoDocumentsUiT('chemin_nextcloud_invalide')));
         exit;
     }
 } else {
@@ -37,7 +38,7 @@ if ($folderId > 0) {
         || !$organization->hasDocumentStorage()
     ) {
         http_response_code(403);
-        echo json_encode(array('status' => false, 'message' => 'Acces refuse.'));
+        echo json_encode(array('status' => false, 'message' => omoDocumentsUiT('acces_refuse')));
         exit;
     }
 
@@ -51,7 +52,7 @@ if ($folderId > 0) {
 $result = $organization->listDocumentStorageDirectory($remotePath);
 if (empty($result['status'])) {
     http_response_code(502);
-    echo json_encode(array('status' => false, 'message' => (string)($result['text'] ?? 'Impossible de lire le dossier NextCloud.')));
+    echo json_encode(array('status' => false, 'message' => (string)($result['text'] ?? omoDocumentsUiT('impossible_de_lire_le_dossier_nextcloud'))));
     exit;
 }
 

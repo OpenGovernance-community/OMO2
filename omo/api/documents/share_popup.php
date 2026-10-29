@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 use dbObject\Document;
@@ -124,9 +125,9 @@ $popupUrl = '/omo/api/documents/share_popup.php?id=' . rawurlencode((string)$doc
 
     <div class="omo-share-popup__header generic-drawer-header generic-drawer-header--sticky">
         <div class="generic-drawer-header__copy omo-share-popup__header-copy">
-            <div class="generic-card-title generic-card-title--eyebrow">Partage</div>
+            <div class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoDocumentsUiT('partage'), ENT_QUOTES, 'UTF-8') ?></div>
             <h2 class="generic-card-title generic-card-title--large"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.hero.title'), ENT_QUOTES, 'UTF-8') ?></h2>
-            <p>Le lien ouvrira directement le contenu de <strong><?= htmlspecialchars($defaultLabel, ENT_QUOTES, 'UTF-8') ?></strong>.</p>
+            <p><?= htmlspecialchars(omoDocumentsUiT('le_lien_ouvrira_directement_le_contenu_de'), ENT_QUOTES, 'UTF-8') ?> <strong><?= htmlspecialchars($defaultLabel, ENT_QUOTES, 'UTF-8') ?></strong>.</p>
         </div>
     </div>
     <div class="omo-share-popup__shell generic-drawer-content">

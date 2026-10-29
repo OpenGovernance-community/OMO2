@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 window.commonPageScripts = window.commonPageScripts || {};
 window.commonPageScripts["/omo/api/getStructure.js"] = function (pageConfig, pageScript) {
 (function () {
@@ -79,10 +81,10 @@ function buildStructureExportModalHtml() {
       html += '<p>' + escapeHtml(description) + '</p>';
     }
     html += '<button type="button" class="generic-action-button generic-action-button--main"'
-      + ' data-omo-structure-export-format-button="1"'
-      + ' data-omo-structure-export-format="' + escapeHtml(key) + '"'
+      + " data-omo-structure-export-format-button=\"1\""
+      + " data-omo-structure-export-format=\"" + escapeHtml(key) + '"'
       + '>'
-      + escapeHtml(structureTranslations.exportDownloadLabel || "Telecharger")
+      + escapeHtml(structureTranslations.exportDownloadLabel || "Télécharger")
       + '</button>';
     html += '</section>';
   });
@@ -2034,7 +2036,7 @@ $(document)
     }
 
     function getStructureMemberTooltip(member) {
-      const lines = [String(member.displayName || member.initials || "Profil").trim() || "Profil"];
+      const lines = [String(member.displayName || member.initials || omoUiText("profil", "Profil")).trim() || omoUiText("profil", "Profil")];
       const focus = String(member.focus || "").trim();
       if (focus) {
         lines.push(String(structureTranslations.memberFocusLine || "Focus : {focus}").replace("{focus}", focus));

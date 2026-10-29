@@ -26,7 +26,7 @@ class StatIndicatorGroupItem extends DbObject
             'IDstatindicatorgroup' => 'Groupe',
             'IDstatindicator' => 'Indicateur',
             'position' => 'Position',
-            'created_at' => 'Creation',
+            'created_at' => 'Création',
         ];
     }
 

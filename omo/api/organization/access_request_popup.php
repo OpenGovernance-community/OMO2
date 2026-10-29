@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 use dbObject\Invitation;
@@ -10,7 +11,7 @@ $currentUserId = (int)commonGetCurrentUserId();
 if ($organizationId <= 0 || $currentUserId <= 0) {
     http_response_code(403);
     ?>
-    <div class="omo-access-request-popup__empty generic-description generic-drawer-content">Vous devez etre connecte pour envoyer une demande d acces.</div>
+    <div class="omo-access-request-popup__empty generic-description generic-drawer-content"><?= htmlspecialchars(omoOrganizationUiT('vous_devez_etre_connecte_pour_envoyer_une_demande_d_acces'), ENT_QUOTES, 'UTF-8') ?></div>
     <?php
     exit;
 }
@@ -19,7 +20,7 @@ $organization = new Organization();
 if (!$organization->load($organizationId)) {
     http_response_code(404);
     ?>
-    <div class="omo-access-request-popup__empty generic-description generic-drawer-content">L organisation demandee est introuvable.</div>
+    <div class="omo-access-request-popup__empty generic-description generic-drawer-content"><?= htmlspecialchars(omoOrganizationUiT('l_organisation_demandee_est_introuvable'), ENT_QUOTES, 'UTF-8') ?></div>
     <?php
     exit;
 }
@@ -27,7 +28,7 @@ if (!$organization->load($organizationId)) {
 if (commonUserHasOrganizationAccess($currentUserId, $organizationId)) {
     http_response_code(409);
     ?>
-    <div class="omo-access-request-popup__empty generic-description generic-drawer-content">Votre compte a deja acces a cette organisation.</div>
+    <div class="omo-access-request-popup__empty generic-description generic-drawer-content"><?= htmlspecialchars(omoOrganizationUiT('votre_compte_a_deja_acces_a_cette_organisation'), ENT_QUOTES, 'UTF-8') ?></div>
     <?php
     exit;
 }
@@ -45,14 +46,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         http_response_code(422);
         echo json_encode(array(
             'status' => false,
-            'message' => (string)($result['message'] ?? "Impossible d'envoyer cette demande."),
+            'message' => (string)($result['message'] ?? omoOrganizationUiT('impossible_d_envoyer_cette_demande')),
         ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
     }
 
     echo json_encode(array(
         'status' => true,
-        'message' => (string)($result['message'] ?? 'Demande envoyee.'),
+        'message' => (string)($result['message'] ?? omoOrganizationUiT('demande_envoyee')),
         'created' => !empty($result['created']),
         'organizationId' => $organizationId,
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -75,35 +76,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 >
     <div class="omo-access-request-popup__header generic-drawer-header generic-drawer-header--sticky">
         <div class="generic-drawer-header__copy omo-access-request-popup__header-copy">
-            <div class="generic-card-title generic-card-title--eyebrow">Organisation</div>
-            <h3 class="generic-card-title generic-card-title--medium">Demande d acces</h3>
+            <div class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoOrganizationUiT('organisation'), ENT_QUOTES, 'UTF-8') ?></div>
+            <h3 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(omoOrganizationUiT('demande_d_acces'), ENT_QUOTES, 'UTF-8') ?></h3>
         </div>
     </div>
 
     <div class="omo-access-request-popup__shell generic-drawer-content">
         <p class="omo-access-request-popup__intro generic-description">
-            Envoyez un court message aux administrateurs de
+            <?= htmlspecialchars(omoOrganizationUiT('envoyez_un_court_message_aux_administrateurs_de'), ENT_QUOTES, 'UTF-8') ?>
             <strong><?= omoApiEscape(trim((string)$organization->get('name')) !== '' ? trim((string)$organization->get('name')) : 'cette organisation') ?></strong>
-            pour expliquer pourquoi vous souhaitez rejoindre cet espace.
+            <?= htmlspecialchars(omoOrganizationUiT('pour_expliquer_pourquoi_vous_souhaitez_rejoindre_cet_espace'), ENT_QUOTES, 'UTF-8') ?>
         </p>
 
         <?php if ($hasPendingMemberRequest): ?>
             <p class="omo-access-request-popup__status generic-description">
-                Une demande est deja en attente pour cette organisation. Vous pouvez toutefois mettre a jour votre message ci-dessous et renvoyer la demande.
+                <?= htmlspecialchars(omoOrganizationUiT('une_demande_est_deja_en_attente_pour_cette_organisation_vous_pouvez_toutefois_mettre_a_jou'), ENT_QUOTES, 'UTF-8') ?>
             </p>
         <?php endif; ?>
 
         <div class="omo-access-request-popup__group generic-stack generic-stack--compact">
-            <label class="omo-access-request-popup__label generic-form-label" for="omoAccessRequestMessage">Votre message</label>
+            <label class="omo-access-request-popup__label generic-form-label" for="omoAccessRequestMessage"><?= htmlspecialchars(omoOrganizationUiT('votre_message'), ENT_QUOTES, 'UTF-8') ?></label>
             <textarea
                 id="omoAccessRequestMessage"
                 name="message"
                 class="omo-access-request-popup__textarea generic-form-control"
                 maxlength="2000"
-                placeholder="Bonjour, je souhaite rejoindre cette organisation pour..."
+                placeholder="<?= htmlspecialchars(omoOrganizationUiT('bonjour_je_souhaite_rejoindre_cette_organisation_pour'), ENT_QUOTES, 'UTF-8') ?>"
             ><?= $hasPendingMemberRequest ? omoApiEscape($pendingInvitation->getRequestMessage()) : '' ?></textarea>
             <div class="omo-access-request-popup__hint generic-help-text generic-help-text--regular">
-                Le message est optionnel, mais il aide les administrateurs a comprendre votre demande.
+                <?= htmlspecialchars(omoOrganizationUiT('le_message_est_optionnel_mais_il_aide_les_administrateurs_a_comprendre_votre_demande'), ENT_QUOTES, 'UTF-8') ?>
             </div>
         </div>
 
@@ -111,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <div class="omo-access-request-popup__actions generic-action-row">
             <button type="submit" id="omoAccessRequestPopupSubmit" class="generic-action-button generic-action-button--main">
-                Envoyer la demande
+                <?= htmlspecialchars(omoOrganizationUiT('envoyer_la_demande'), ENT_QUOTES, 'UTF-8') ?>
             </button>
         </div>
     </div>

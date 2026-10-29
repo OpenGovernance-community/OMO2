@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../common/faq_popup_helper.php';
 require_once("../config.php");
 require_once("../shared_functions.php");
 require_once("../common/auth.php");
@@ -29,13 +30,13 @@ function faqQuestionRequestSameOrigin()
 }
 
 if ((string)($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
-	faqQuestionRequestRespond(array('success' => false, 'message' => 'Methode non autorisee.'), 405);
+	faqQuestionRequestRespond(array('success' => false, 'message' => faqPopupT('methode_non_autorisee')), 405);
 }
 if (!faqQuestionRequestSameOrigin()) {
-	faqQuestionRequestRespond(array('success' => false, 'message' => 'Requete refusee.'), 403);
+	faqQuestionRequestRespond(array('success' => false, 'message' => faqPopupT('requete_refusee')), 403);
 }
 if (!checkLogin()) {
-	faqQuestionRequestRespond(array('success' => false, 'message' => 'Connectez-vous pour poser une question.'), 401);
+	faqQuestionRequestRespond(array('success' => false, 'message' => faqPopupT('connectez_vous_pour_poser_une_question')), 401);
 }
 
 $currentUserId = function_exists('commonGetCurrentUserId')
@@ -43,12 +44,12 @@ $currentUserId = function_exists('commonGetCurrentUserId')
 	: (int)($_SESSION['currentUser'] ?? 0);
 $context = \dbObject\FAQ::resolvePopupRequestContext($_GET);
 if ($context === false || $currentUserId <= 0 || !\dbObject\FAQ::hasFaqTable()) {
-	faqQuestionRequestRespond(array('success' => false, 'message' => 'Contexte FAQ indisponible.'), 400);
+	faqQuestionRequestRespond(array('success' => false, 'message' => faqPopupT('contexte_faq_indisponible')), 400);
 }
 $question = trim((string)($_POST['question'] ?? ''));
 $description = trim((string)($_POST['request_description'] ?? ''));
 if ($question === '' || mb_strlen($question, 'UTF-8') > 255 || $description === '' || mb_strlen($description, 'UTF-8') > 10000) {
-	faqQuestionRequestRespond(array('success' => false, 'message' => 'Saisissez une question et une description (255 et 10 000 caractères maximum).'), 422);
+	faqQuestionRequestRespond(array('success' => false, 'message' => faqPopupT('saisissez_une_question_et_une_description_255_et_10_000_caracteres_maximum')), 422);
 }
 $action = (string)($_POST['action'] ?? 'search');
 if (!in_array($action, ['search', 'send_admin'], true)) {
@@ -72,17 +73,17 @@ if ($action === 'search') {
 	}
 }
 if (!\dbObject\FAQ::hasRequestColumns()) {
-	faqQuestionRequestRespond(array('success' => false, 'message' => 'La migration des demandes FAQ n’est pas entièrement appliquée. Contactez l’administrateur.'), 503);
+	faqQuestionRequestRespond(array('success' => false, 'message' => faqPopupT('la_migration_des_demandes_faq_n_est_pas_entierement_appliquee_contactez_l_administrateur')), 503);
 }
 
 $user = new \dbObject\User();
 if (!$user->load($currentUserId)) {
-	faqQuestionRequestRespond(array('success' => false, 'message' => 'Votre compte est introuvable.'), 400);
+	faqQuestionRequestRespond(array('success' => false, 'message' => faqPopupT('votre_compte_est_introuvable')), 400);
 }
 $authorEmail = trim((string)$user->getScopedEmail($organizationId));
 $authorName = trim((string)$user->getScopedDisplayName($organizationId));
 if (!filter_var($authorEmail, FILTER_VALIDATE_EMAIL)) {
-	faqQuestionRequestRespond(array('success' => false, 'message' => 'Ajoutez une adresse e-mail valide à votre profil pour recevoir la réponse.'), 422);
+	faqQuestionRequestRespond(array('success' => false, 'message' => faqPopupT('ajoutez_une_adresse_e_mail_valide_a_votre_profil_pour_recevoir_la_reponse')), 422);
 }
 
 $faq = new \dbObject\FAQ();
@@ -104,7 +105,7 @@ if (!is_array($saveResult) || empty($saveResult['status'])) {
 	if (is_array($dbError)) {
 		error_log('FAQ question request save failed (SQLSTATE ' . (int)($dbError['code'] ?? 0) . '): ' . trim((string)($dbError['message'] ?? 'database write error')));
 	}
-	faqQuestionRequestRespond(array('success' => false, 'message' => 'Impossible d’enregistrer votre question.'), 500);
+	faqQuestionRequestRespond(array('success' => false, 'message' => faqPopupT('impossible_d_enregistrer_votre_question')), 500);
 }
 
 $adminEmails = \dbObject\FAQ::getSystemAdminEmails();

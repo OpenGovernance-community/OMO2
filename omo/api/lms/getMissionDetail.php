@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once __DIR__ . '/bootstrap.php';
 
 commonRestoreRememberedUser();
@@ -310,7 +311,7 @@ if ($m) {
 			<span id="time">0:00</span>
 			<div class="volume-controls">
 				<button id="volumeBtn" type="button"><?= htmlspecialchars(lmsMissionDetailT('lms.mission_detail.video.sound')); ?></button>
-				<input id="volumeSlider" type="range" min="0" max="100" step="1" value="100" aria-label="Volume">
+				<input id="volumeSlider" type="range" min="0" max="100" step="1" value="100" aria-label="<?= htmlspecialchars(omoLmsUiT('volume'), ENT_QUOTES, 'UTF-8') ?>">
 			</div>
 		</div>
 	</div>

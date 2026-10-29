@@ -46,12 +46,12 @@ class Permission extends DbObject
     {
         return [
             'id' => 'ID',
-            'permission_key' => 'Cle',
+            'permission_key' => 'Clé',
             'title' => 'Titre',
             'description' => 'Description',
             'iscontextual' => 'Contextuel',
-            'created_at' => 'Creation',
-            'updated_at' => 'Mise a jour',
+            'created_at' => 'Création',
+            'updated_at' => 'Mise à jour',
         ];
     }
 
@@ -59,9 +59,9 @@ class Permission extends DbObject
     {
         return [
             'permission_key' => 'Code unique et explicite du droit dans le logiciel.',
-            'title' => 'Libelle court utilise dans les listes et formulaires.',
+            'title' => 'Libellé court utilise dans les listes et formulaires.',
             'description' => 'Description detaillee du droit accorde.',
-            'iscontextual' => 'Definit si le droit depend du holon de contexte ou s il s applique globalement a l organisation.',
+            'iscontextual' => 'Definit si le droit dépend du holon de contexte ou s’il s’applique globalement à l’organisation.',
         ];
     }
 

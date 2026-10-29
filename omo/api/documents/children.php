@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/list_entries.php';
 
@@ -32,7 +33,7 @@ if (
     || !$organization->load($organizationId)
 ) {
     http_response_code(403);
-    echo json_encode(array('status' => false, 'message' => 'Acces refuse.'));
+    echo json_encode(array('status' => false, 'message' => omoDocumentsUiT('acces_refuse')));
     exit;
 }
 
@@ -90,7 +91,7 @@ foreach ($documents as $document) {
 
 if (!($folder instanceof Document)) {
     http_response_code(404);
-    echo json_encode(array('status' => false, 'message' => 'Dossier introuvable.'));
+    echo json_encode(array('status' => false, 'message' => omoDocumentsUiT('dossier_introuvable')));
     exit;
 }
 
@@ -134,13 +135,13 @@ $groups = sharedGetRelativeDateGroups($today, array(
     'too_far' => $translate('documents.group.too_far'),
 ));
 $formatter = class_exists('IntlDateFormatter')
-    ? new IntlDateFormatter('fr_FR', IntlDateFormatter::MEDIUM, IntlDateFormatter::NONE)
+    ? new IntlDateFormatter(omoGetTranslationLocale(), IntlDateFormatter::MEDIUM, IntlDateFormatter::NONE)
     : null;
 if ($formatter instanceof IntlDateFormatter) {
     $formatter->setPattern('d MMM');
 }
 $formatterWithYear = class_exists('IntlDateFormatter')
-    ? new IntlDateFormatter('fr_FR', IntlDateFormatter::MEDIUM, IntlDateFormatter::NONE)
+    ? new IntlDateFormatter(omoGetTranslationLocale(), IntlDateFormatter::MEDIUM, IntlDateFormatter::NONE)
     : null;
 if ($formatterWithYear instanceof IntlDateFormatter) {
     $formatterWithYear->setPattern('d MMM y');

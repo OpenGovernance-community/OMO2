@@ -13,7 +13,7 @@ if (!checklogin()) {
 	echo json_encode(array(
 		'status' => false,
 		'success' => false,
-		'message' => 'Login requis',
+		'message' => faqPopupT('login_requis'),
 	), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	exit;
 }
@@ -27,7 +27,7 @@ if ($faqId <= 0 || $faqContext === false) {
 	echo json_encode(array(
 		'status' => false,
 		'success' => false,
-		'message' => 'Contexte FAQ invalide.',
+		'message' => faqPopupT('contexte_faq_invalide'),
 	), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	exit;
 }
@@ -37,7 +37,7 @@ if (!$faq->load($faqId) || !(int)$faq->getId()) {
 	echo json_encode(array(
 		'status' => false,
 		'success' => false,
-		'message' => 'FAQ introuvable.',
+		'message' => faqPopupT('faq_introuvable'),
 	), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	exit;
 }
@@ -47,7 +47,7 @@ if (!$faq->canBeDeletedInContext($faqContext ?: array())) {
 	echo json_encode(array(
 		'status' => false,
 		'success' => false,
-		'message' => 'Vous n avez pas le droit de supprimer cette FAQ.',
+		'message' => faqPopupT('vous_n_avez_pas_le_droit_de_supprimer_cette_faq'),
 	), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	exit;
 }
@@ -56,7 +56,7 @@ if (!$faq->delete()) {
 	echo json_encode(array(
 		'status' => false,
 		'success' => false,
-		'message' => 'Impossible de supprimer cette FAQ.',
+		'message' => faqPopupT('impossible_de_supprimer_cette_faq'),
 	), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	exit;
 }
@@ -79,7 +79,7 @@ if (count($popupReloadQuery) > 0) {
 echo json_encode(array(
 	'status' => true,
 	'success' => true,
-	'message' => 'FAQ supprimee.',
+	'message' => faqPopupT('faq_supprimee'),
 	'reloadUrl' => $popupReloadUrl,
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 

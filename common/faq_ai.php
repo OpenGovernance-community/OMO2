@@ -8,23 +8,23 @@ function faqAiT(string $key): string
     static $lang = null;
     $sourceLang = [
         'faq.ai.notice' => [
-            'text' => 'Reponse proposee par IA a partir des informations disponibles.',
+            'text' => 'Réponse proposée par IA à partir des informations disponibles.',
             'context' => 'Notice shown with an AI answer before any administrator request is sent.',
         ],
         'faq.ai.review' => [
             'text' => 'Ébauche IA : vérifiez et complétez la réponse courte avant de l’envoyer.',
             'context' => 'Notice for the administrator reviewing an AI draft, which is still awaiting a human answer.',
         ],
-        'faq.ai.unresolved' => ['text' => 'Ca ne repond pas a votre question ?', 'context' => 'Offer to escalate an insufficient AI answer.'],
-        'faq.ai.send_admin' => ['text' => 'Envoyer a un administrateur', 'context' => 'Send the original question to an administrator.'],
-        'faq.ai.sent' => ['text' => 'Votre question a ete envoyee a un administrateur, qui vous repondra dans les prochains jours.', 'context' => 'Confirmation after a FAQ question is sent to an administrator.'],
+        'faq.ai.unresolved' => ['text' => 'Ca ne repond pas à votre question ?', 'context' => 'Offer to escalate an insufficient AI answer.'],
+        'faq.ai.send_admin' => ['text' => 'Envoyer à un administrateur', 'context' => 'Send the original question to an administrator.'],
+        'faq.ai.sent' => ['text' => 'Votre question a été envoyée à un administrateur, qui vous répondra dans les prochains jours.', 'context' => 'Confirmation after a FAQ question is sent to an administrator.'],
         'faq.ai.submitted_title' => ['text' => 'Votre question', 'context' => 'Read-only summary heading after a FAQ question has been submitted.'],
-        'faq.ai.sources' => ['text' => 'Sources utilisees :', 'context' => 'Small source references below an AI answer.'],
-        'faq.ai.searching' => ['text' => 'Recherche d une reponse en cours...', 'context' => 'Progress during AI FAQ and changelog search.'],
+        'faq.ai.sources' => ['text' => 'Sources utilisées :', 'context' => 'Small source references below an AI answer.'],
+        'faq.ai.searching' => ['text' => 'Recherche d’une réponse en cours...', 'context' => 'Progress during AI FAQ and changelog search.'],
         'faq.ai.sending' => ['text' => 'Envoi en cours...', 'context' => 'Progress during administrator escalation.'],
         'faq.ai.error' => ['text' => 'Impossible de traiter votre question.', 'context' => 'Error submitting a FAQ question.'],
-        'faq.ai.search' => ['text' => 'Chercher une reponse', 'context' => 'Submit a question to search for an answer before escalation.'],
-        'faq.ai.ask_help' => ['text' => 'Pas trouve de reponse ? Posez votre question pour chercher une reponse dans les informations disponibles. Si necessaire, elle sera envoyee a un administrateur.', 'context' => 'FAQ question submission explanation.'],
+        'faq.ai.search' => ['text' => 'Chercher une réponse', 'context' => 'Submit a question to search for an answer before escalation.'],
+        'faq.ai.ask_help' => ['text' => 'Pas trouvé de réponse ? Posez votre question pour chercher une réponse dans les informations disponibles. Si nécessaire, elle sera envoyée à un administrateur.', 'context' => 'FAQ question submission explanation.'],
     ];
     if ($lang === null) {
         $locale = translationBundleResolveRequestLocale('lang', translationBundleGetSupportedLocales(), 'fr');

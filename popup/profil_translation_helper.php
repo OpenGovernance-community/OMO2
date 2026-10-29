@@ -377,7 +377,7 @@ function profilPopupGetSourceLang(): array
             'context' => 'Read-only numeric identity returned by Patreon for the linked account, shown in its own OMO profile.',
         ],
         'profile.popup.patreon.user_id.help' => [
-            'text' => 'Ce code numerique est fourni par Patreon lors de la connexion du compte. Ce n est ni votre nom public, ni votre adresse e-mail, ni l ID de campagne. Le createur peut copier cet ID dans les parametres serveur, champ ID utilisateur Patreon du createur, pour activer son acces IA sans contribution.',
+            'text' => 'Ce code numérique est fourni par Patreon lors de la connexion du compte. Ce n’est ni votre nom public, ni votre adresse e-mail, ni l’ID de campagne. Le créateur peut copier cet ID dans les paramètres serveur, champ ID utilisateur Patreon du créateur, pour activer son accès IA sans contribution.',
             'context' => 'Help bubble explaining the linked Patreon identity and where the creator can use it.',
         ],
         'profile.popup.patreon.status.label' => [
@@ -453,7 +453,7 @@ function profilPopupGetSourceLang(): array
             'context' => 'Section title shown above the password block inside the general profile editor.',
         ],
         'profile.popup.password.section.help' => [
-            'text' => "Ajoutez un mot de passe pour utiliser CalDAV et CardDAV. L autorisation de connexion web se choisit separement. Lors d'une modification, l'ancien mot de passe est requis.",
+            'text' => "Ajoutez un mot de passe pour utiliser CalDAV et CardDAV. L’autorisation de connexion web se choisit séparément. Lors d'une modification, l'ancien mot de passe est requis.",
             'context' => 'Help text shown above the password fields in the general profile editor.',
         ],
         'profile.popup.password.login_permission.label' => [
@@ -485,7 +485,7 @@ function profilPopupGetSourceLang(): array
             'context' => 'Title displayed during TOTP enrollment.',
         ],
         'profile.popup.totp.setup.instructions' => [
-            'text' => 'Installez une application de validation, ajoutez un compte puis scannez ce QR code. Saisissez ensuite le code affiche pour terminer.',
+            'text' => 'Installez une application de validation, ajoutez un compte puis scannez ce QR code. Saisissez ensuite le code affiché pour terminer.',
             'context' => 'TOTP enrollment instructions.',
         ],
         'profile.popup.totp.setup.manual_label' => [
@@ -497,7 +497,7 @@ function profilPopupGetSourceLang(): array
             'context' => 'TOTP enrollment verification input placeholder.',
         ],
         'profile.popup.totp.setup.confirm' => [
-            'text' => 'Verifier et activer',
+            'text' => 'Vérifier et activer',
             'context' => 'Button used to confirm TOTP enrollment.',
         ],
         'profile.popup.totp.disable.confirm' => [
@@ -509,7 +509,7 @@ function profilPopupGetSourceLang(): array
             'context' => 'Checkbox label used to reveal the password update form in the profile popup.',
         ],
         'profile.popup.password.toggle.help' => [
-            'text' => 'Cochez cette case uniquement si vous souhaitez definir ou changer le mot de passe de ce compte.',
+            'text' => 'Cochez cette case uniquement si vous souhaitez définir ou changer le mot de passe de ce compte.',
             'context' => 'Help text shown next to the password reveal checkbox in the profile popup.',
         ],
         'profile.popup.password.status.missing' => [
@@ -565,7 +565,7 @@ function profilPopupGetSourceLang(): array
             'context' => 'Error password policy hint shown in the profile popup.',
         ],
         'profile.popup.password.policy.match.empty' => [
-            'text' => 'Retapez le meme mot de passe pour confirmation.',
+            'text' => 'Retapez le même mot de passe pour confirmation.',
             'context' => 'Initial password confirmation hint shown in the profile popup.',
         ],
         'profile.popup.password.policy.match.valid' => [

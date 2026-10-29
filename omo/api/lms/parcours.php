@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once __DIR__ . '/bootstrap.php';
 
 commonRestoreRememberedUser();
@@ -14,7 +15,7 @@ $canTrackProgress = lmsCanTrackProgress($accessContext);
 
 if (empty($accessContext['exists'])) {
 	http_response_code(404);
-	echo 'Parcours introuvable';
+	echo omoLmsUiT('parcours_introuvable_2');
 	exit;
 }
 
@@ -28,7 +29,7 @@ if (empty($accessContext['canView'])) {
 
 $parcoursRef = new \dbObject\Parcours();
 $parcours = [
-	'title' => 'Parcours introuvable',
+	'title' => omoLmsUiT('parcours_introuvable_2'),
 	'description' => '',
 ];
 
@@ -76,11 +77,11 @@ $organizationColor = commonGetOrganizationExplicitColor($org);
 <p><?php echo htmlspecialchars($parcours['description']); ?></p>
 <?php if ($isAnonymousViewer): ?>
 <div class="lms-anonymous-note">
-	Votre avancement est memorise localement sur cet appareil tant que vous restez deconnecte.
+	<?= htmlspecialchars(omoLmsUiT('votre_avancement_est_memorise_localement_sur_cet_appareil_tant_que_vous_restez_deconnecte'), ENT_QUOTES, 'UTF-8') ?>
 </div>
 <?php elseif (!$canTrackProgress): ?>
 <div class="lms-anonymous-note">
-	La validation de progression n est pas disponible dans ce contexte.
+	<?= htmlspecialchars(omoLmsUiT('la_validation_de_progression_n_est_pas_disponible_dans_ce_contexte'), ENT_QUOTES, 'UTF-8') ?>
 </div>
 <?php endif; ?>
 </div>

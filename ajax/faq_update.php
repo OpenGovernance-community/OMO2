@@ -13,7 +13,7 @@ if (!checklogin()) {
 	echo json_encode([
 		'status' => false,
 		'success' => false,
-		'message' => 'Login requis',
+		'message' => faqPopupT('login_requis'),
 	], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	exit;
 }
@@ -29,7 +29,7 @@ if ($faqId <= 0 || $faqContext === false) {
 	echo json_encode([
 		'status' => false,
 		'success' => false,
-		'message' => 'Contexte FAQ invalide.',
+		'message' => faqPopupT('contexte_faq_invalide'),
 	], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	exit;
 }
@@ -39,7 +39,7 @@ if ((!$responderRequest && !$faq->load($faqId)) || !(int)$faq->getId()) {
 	echo json_encode([
 		'status' => false,
 		'success' => false,
-		'message' => 'FAQ introuvable.',
+		'message' => faqPopupT('faq_introuvable'),
 	], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	exit;
 }
@@ -55,7 +55,7 @@ if (!$faq->canAnswerRequest() && !$faq->canBeEditedInContext($faqContext ?: arra
 	echo json_encode([
 		'status' => false,
 		'success' => false,
-		'message' => "Vous n'avez pas le droit d'editer cette FAQ.",
+		'message' => faqPopupT('vous_n_avez_pas_le_droit_d_editer_cette_faq'),
 	], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	exit;
 }
@@ -91,7 +91,7 @@ if (empty($scope['status'])) {
 	echo json_encode([
 		'status' => false,
 		'success' => false,
-		'message' => $isPendingRequest ? faqPopupT('request.scope_denied') : (string)($scope['message'] ?? "Impossible de resoudre le scope de la FAQ."),
+		'message' => $isPendingRequest ? faqPopupT('request.scope_denied') : (string)($scope['message'] ?? faqPopupT('impossible_de_resoudre_le_scope_de_la_faq')),
 	], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	exit;
 }
@@ -126,7 +126,7 @@ if (\dbObject\FAQ::hasApplicationColumn() && ($canManageFaqCollection || $isPend
 			echo json_encode([
 				'status' => false,
 				'success' => false,
-				'message' => 'Application invalide.',
+				'message' => faqPopupT('application_invalide'),
 			], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 			exit;
 		}
@@ -141,7 +141,7 @@ if (trim((string)$faq->get('question')) === '' || trim((string)$faq->get('answer
 	echo json_encode([
 		'status' => false,
 		'success' => false,
-		'message' => 'La question et la reponse courte sont obligatoires.',
+		'message' => faqPopupT('la_question_et_la_reponse_courte_sont_obligatoires'),
 	], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	exit;
 }

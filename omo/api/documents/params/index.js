@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 window.commonPageScripts = window.commonPageScripts || {};
 window.commonPageScripts["/omo/api/documents/params/index.js"] = function (pageConfig, pageScript) {
 (function () {
@@ -159,7 +161,7 @@ window.commonPageScripts["/omo/api/documents/params/index.js"] = function (pageC
                 return response.json().catch(function () {
                     return {
                         status: false,
-                        message: 'Invalid response.'
+                        message: omoUiText("invalid_response", "Réponse invalide.")
                     };
                 });
             });
@@ -187,7 +189,7 @@ window.commonPageScripts["/omo/api/documents/params/index.js"] = function (pageC
                 return payload;
             }).then(function (payload) {
                 var status = !!(payload && payload.status);
-                renderFeedback(payload && payload.message ? payload.message : (status ? idleLabel : 'Error'), !status);
+                renderFeedback(payload && payload.message ? payload.message : (status ? idleLabel : omoUiText("erreur", "Erreur")), !status);
             }).catch(function () {
                 renderFeedback(pageConfig.documentsParamsErrorSaveFailed, true);
             }).finally(function () {

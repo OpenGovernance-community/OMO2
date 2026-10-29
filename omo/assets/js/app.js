@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 const OMO_THEME_STORAGE_KEY = typeof SHARED_THEME_STORAGE_KEY === 'string'
     ? SHARED_THEME_STORAGE_KEY
     : 'omo-theme-preference';
@@ -168,7 +170,7 @@ function omoInitMobileHeaderMenus(container) {
         const toggle = document.createElement('button');
         toggle.type = 'button';
         toggle.className = 'generic-menu-toggle omo-panel-view__mobile-actions-toggle';
-        toggle.setAttribute('aria-label', 'Actions');
+        toggle.setAttribute('aria-label', omoUiText("actions", "Actions"));
         toggle.setAttribute('aria-controls', menuId);
         toggle.setAttribute('aria-expanded', 'false');
         toggle.textContent = '\u22ee';
@@ -275,7 +277,7 @@ function omoGetUserProfile() {
                     }
                     <div class="omo-profile-card__identity">
                         <strong>${omoEscapeHtml(displayName)}</strong>
-                        <span>${profile.email ? omoEscapeHtml(profile.email) : 'Photo à venir'}</span>
+                        <span>${profile.email ? omoEscapeHtml(profile.email) : omoUiText("photo_a_venir", "Photo à venir")}</span>
                     </div>
                     <div class="omo-theme-menu" data-omo-theme-menu>
                         <div class="omo-theme-menu__label">Apparence</div>
@@ -301,15 +303,15 @@ function omoGetUserProfile() {
                     </div>
                     <div class="omo-profile-details__row">
                         <span class="omo-profile-details__label">E-mail</span>
-                        <span class="omo-profile-details__value">${profile.email ? omoEscapeHtml(profile.email) : 'Non renseigné'}</span>
+                        <span class="omo-profile-details__value">${profile.email ? omoEscapeHtml(profile.email) : omoUiText("non_renseigne", "Non renseigné")}</span>
                     </div>
                     <div class="omo-profile-details__row">
                         <span class="omo-profile-details__label">Téléphone</span>
-                        <span class="omo-profile-details__value omo-profile-details__value--muted">${profile.phone ? omoEscapeHtml(profile.phone) : 'Non renseigné'}</span>
+                        <span class="omo-profile-details__value omo-profile-details__value--muted">${profile.phone ? omoEscapeHtml(profile.phone) : omoUiText("non_renseigne", "Non renseigné")}</span>
                     </div>
                     <div class="omo-profile-details__row">
                         <span class="omo-profile-details__label">Nom d'utilisateur</span>
-                        <span class="omo-profile-details__value">${profile.username ? omoEscapeHtml(profile.username) : 'Non renseigné'}</span>
+                        <span class="omo-profile-details__value">${profile.username ? omoEscapeHtml(profile.username) : omoUiText("non_renseigne", "Non renseigné")}</span>
                     </div>
                 </div>
             </section>
@@ -985,12 +987,12 @@ function omoEscapeHtml(value) {
 }
 
 function omoRenderLoadError($target) {
-    const errorLabel = omoGetLoadText('loadErrorLabel', 'Erreur de chargement');
+    const errorLabel = omoGetLoadText('loadErrorLabel', omoUiText("erreur_de_chargement", "Erreur de chargement"));
     const errorDescription = omoGetLoadText(
         'loadErrorDescription',
-        'Le contenu n’a pas pu être chargé. Vérifiez votre connexion puis réessayez.'
+        omoUiText("le_contenu_n_a_pas_pu_etre_charge_verifiez_votre_connexion_puis_reessayez", "Le contenu n’a pas pu être chargé. Vérifiez votre connexion puis réessayez.")
     );
-    const retryLabel = omoGetLoadText('retryLabel', 'Réessayer');
+    const retryLabel = omoGetLoadText('retryLabel', omoUiText("reessayer", "Réessayer"));
 
     $target.html([
         '<div class="common-topbar-remote-state common-topbar-remote-state--error" role="alert">',
@@ -3225,7 +3227,7 @@ function omoEnsureExternalPanelDrawer() {
             + '<div class="omo-overlay-drawer__panel">'
             + '  <div class="omo-overlay-drawer__header generic-drawer-header">'
             + '    <div class="omo-overlay-drawer__header-copy generic-drawer-header__copy">'
-            + '      <h3 class="omo-overlay-drawer__title" data-omo-external-panel-drawer-title>Edition</h3>'
+            + ("      <h3 class=\"omo-overlay-drawer__title\" data-omo-external-panel-drawer-title>" + omoUiHtml("edition", "Édition") + "</h3>")
             + '      <p class="omo-overlay-drawer__description" data-omo-external-panel-drawer-description hidden></p>'
             + '    </div>'
             + '    <div class="generic-drawer-header__actions">'
@@ -3235,8 +3237,8 @@ function omoEnsureExternalPanelDrawer() {
             + '  <div class="omo-overlay-drawer__body" data-omo-external-panel-drawer-body></div>'
             + '</div>'
             + '<button type="button" class="omo-external-panel-drawer__peek-toggle" data-omo-external-panel-drawer-peek-toggle="1" hidden>'
-            + '  <span class="omo-external-panel-drawer__peek-label" data-omo-external-panel-drawer-peek-label>Edition</span>'
-            + '  <span class="omo-external-panel-drawer__peek-dismiss" data-omo-external-panel-drawer-peek-dismiss="1" role="button" aria-label="Fermer la reunion" title="Fermer la reunion">&times;</span>'
+            + ("  <span class=\"omo-external-panel-drawer__peek-label\" data-omo-external-panel-drawer-peek-label>" + omoUiHtml("edition", "Édition") + "</span>")
+            + ("  <span class=\"omo-external-panel-drawer__peek-dismiss\" data-omo-external-panel-drawer-peek-dismiss=\"1\" role=\"button\" aria-label=\"" + omoUiHtml("fermer_la_reunion", "Fermer la réunion") + "\" title=\"" + omoUiHtml("fermer_la_reunion", "Fermer la réunion") + "\">&times;</span>")
             + '</button>';
 
         drawer.querySelectorAll('[data-omo-external-panel-drawer-close="1"]').forEach(function (button) {
@@ -3450,22 +3452,22 @@ function omoFormatExternalDrawerTitle(routeToken = '') {
     const normalizedRouteToken = omoNormalizeHashToken(routeToken);
 
     if (!normalizedRouteToken) {
-        return 'Edition';
+        return omoUiText("edition", "Édition");
     }
 
     if (/^holon-create-\d+$/i.test(normalizedRouteToken)) {
-        return 'Ajouter';
+        return omoUiText("ajouter", "Ajouter");
     }
 
     if (/^holon-edit-\d+$/i.test(normalizedRouteToken)) {
-        return 'Modifier';
+        return omoUiText("modifier", "Modifier");
     }
 
     if (/^holon-template-edit-\d+-\d+$/i.test(normalizedRouteToken)) {
-        return 'Modifier';
+        return omoUiText("modifier", "Modifier");
     }
 
-    return 'Edition';
+    return omoUiText("edition", "Édition");
 }
 
 function omoSetExternalPanelDrawerPeekState(drawer = null, shouldPeek = false) {
@@ -3539,7 +3541,7 @@ function omoOpenExternalPanelDrawer(options = {}) {
     const hostContext = omoResolveExternalPanelHostContext();
     const url = String(options.url || '').trim();
     const mode = String(options.mode || 'fetch').trim().toLowerCase();
-    const title = String(options.title || 'Edition').trim() || 'Edition';
+    const title = String(options.title || omoUiText("edition", "Édition")).trim() || omoUiText("edition", "Édition");
     const description = String(options.description || '').trim();
     const variant = String(options.variant || '').trim().toLowerCase();
     const hideHeader = options.hideHeader === true;
@@ -3680,7 +3682,7 @@ function omoOpenExternalRouteDrawer(routeToken, options = {}) {
     }
 
     return omoOpenExternalPanelDrawer({
-        title: String(options.title || omoFormatExternalDrawerTitle(normalizedRouteToken)).trim() || 'Edition',
+        title: String(options.title || omoFormatExternalDrawerTitle(normalizedRouteToken)).trim() || "Édition",
         description: String(options.description || '').trim(),
         url: resolvedUrl,
         mode: 'fetch'
@@ -4206,7 +4208,7 @@ function omoGetTopbarHelpItem(helpKey) {
 
 function omoFormatPopupTitle(popupKey) {
     if (!popupKey) {
-        return 'Aide';
+        return omoUiText("aide", "Aide");
     }
 
     if (popupKey === 'faq' || popupKey.indexOf('faq/') === 0) {
@@ -4220,27 +4222,27 @@ function omoFormatPopupTitle(popupKey) {
     }
 
     if (popupKey === 'user') {
-        return 'Profil membre';
+        return omoUiText("profil_membre", "Profil membre");
     }
 
     if (popupKey === 'member-actions') {
-        return 'Actions membre';
+        return omoUiText("actions_membre", "Actions membre");
     }
 
     if (popupKey === 'document-move') {
-        return 'Deplacer le document';
+        return omoUiText("deplacer_le_document", "Déplacer le document");
     }
 
     if (popupKey === 'holon-move') {
-        return 'Deplacer';
+        return omoUiText("deplacer", "Déplacer");
     }
 
     if (popupKey === 'holon-delete') {
-        return 'Supprimer';
+        return omoUiText("supprimer", "Supprimer");
     }
 
     if (popupKey === 'search') {
-        return 'Recherche';
+        return omoUiText("recherche", "Recherche");
     }
 
     return (popupKey.split('/').pop() || popupKey)
@@ -4337,7 +4339,7 @@ function omoResolveSearchPopupRoute(popupId, currentRoute) {
         key: 'search',
         id: Number.isInteger(parsedPopupId) && parsedPopupId > 0 ? parsedPopupId : null,
         token: omoBuildPopupToken('search', parsedPopupId),
-        title: 'Recherche',
+        title: omoUiText("recherche", "Recherche"),
         url: omoResolveAppUrl(`/omo/api/search_popup.php${queryParts.length > 0 ? `?${queryParts.join('&')}` : ''}`),
         mode: 'fetch'
     };
@@ -4663,7 +4665,7 @@ $(document).on('click', '[data-omo-open-app-picker="1"]', function (e) {
     }
 
     window.commonTopbarOpenModal(
-        'Gerer les applications',
+        omoUiText("gerer_les_applications", "Gérer les applications"),
         omoResolveAppUrl('api/organization_applications_popup.php'),
         'fetch'
     );
@@ -4945,7 +4947,7 @@ window.omoFetchStructureData = function (url, options = {}) {
             return null;
         }).then(function (payload) {
             if (!response.ok || !payload || payload.error) {
-                const error = new Error(payload && payload.message ? payload.message : 'Structure indisponible.');
+                const error = new Error(payload && payload.message ? payload.message : omoUiText("structure_indisponible", "Structure indisponible."));
                 error.response = response;
                 error.payload = payload;
                 throw error;
@@ -5112,7 +5114,7 @@ function handleRoute() {
 
     if (!Number.isInteger(Number(oid)) || Number(oid) <= 0) {
 
-        const errorMessage = '<div class="error">Organisation introuvable pour ce sous-domaine.</div>';
+        const errorMessage = ("<div class=\"error\">" + omoUiHtml("organisation_introuvable_pour_ce_sous_domaine", "Organisation introuvable pour ce sous-domaine.") + "</div>");
 
         omoSetLeftPanelHtml(errorMessage);
         $('#panel-right').html(errorMessage);
@@ -5394,7 +5396,7 @@ function omoLoadScript(src, isReady) {
                 resolve();
             }, { once: true });
             existing.addEventListener('error', function () {
-                reject(new Error('Impossible de charger ' + src));
+                reject(new Error(omoUiText("impossible_de_charger", "Impossible de charger ") + src));
             }, { once: true });
             return;
         }
@@ -5410,7 +5412,7 @@ function omoLoadScript(src, isReady) {
         }, { once: true });
 
         script.addEventListener('error', function () {
-            reject(new Error('Impossible de charger ' + src));
+            reject(new Error(omoUiText("impossible_de_charger", "Impossible de charger ") + src));
         }, { once: true });
 
         document.head.appendChild(script);
@@ -5433,7 +5435,7 @@ function omoLoadStyle(href) {
         }, { once: true });
 
         link.addEventListener('error', function () {
-            reject(new Error('Impossible de charger ' + href));
+            reject(new Error(omoUiText("impossible_de_charger", "Impossible de charger ") + href));
         }, { once: true });
 
         document.head.appendChild(link);
@@ -5455,11 +5457,11 @@ function omoEnsureTourAssets() {
         }),
     ]).then(function () {
         if (!window.driver || !window.driver.js || typeof window.driver.js.driver !== 'function') {
-            throw new Error('Driver.js est introuvable après chargement.');
+            throw new Error(omoUiText("driver_js_est_introuvable_apres_chargement", "Driver.js est introuvable après chargement."));
         }
 
         if (typeof window.omoGetTourStepDefinitions !== 'function') {
-            throw new Error('Les étapes de visite OMO sont introuvables.');
+            throw new Error(omoUiText("les_etapes_de_visite_omo_sont_introuvables", "Les étapes de visite OMO sont introuvables."));
         }
     }).catch(function (error) {
         omoTourAssetsPromise = null;
@@ -5534,8 +5536,8 @@ function omoStartGuidedTour() {
 
                 if (!steps.length) {
                     omoShowTourMessage(
-                        'Visite guidée',
-                        'Aucun élément de la visite guidée n’est disponible pour le moment.'
+                        omoUiText("visite_guidee", "Visite guidée"),
+                        omoUiText("aucun_element_de_la_visite_guidee_n_est_disponible_pour_le_moment", "Aucun élément de la visite guidée n’est disponible pour le moment.")
                     );
                     return;
                 }
@@ -5556,8 +5558,8 @@ function omoStartGuidedTour() {
         .catch(function (error) {
             console.error(error);
             omoShowTourMessage(
-                'Visite guidée',
-                'Impossible de charger la visite guidée pour le moment.'
+                omoUiText("visite_guidee", "Visite guidée"),
+                omoUiText("impossible_de_charger_la_visite_guidee_pour_le_moment", "Impossible de charger la visite guidée pour le moment.")
             );
         });
 }
@@ -5571,7 +5573,7 @@ function omoGetTopbarSearchStructureScope() {
     const structureLabelNode = structureItem.find('.label').first();
     const structureLabel = structureLabelNode && structureLabelNode.length
         ? String(structureLabelNode.text() || '').trim()
-        : 'Structure';
+        : omoUiText("structure", "Structure");
     const currentRoute = parseUrl();
     const currentHashState = omoParseHashState(currentRoute.hash || null);
     const currentRouteToken = omoGetMenuHashForRouteToken(currentHashState.routeToken || null);
@@ -5653,7 +5655,7 @@ function omoGetTopbarSearchScopes() {
         && !scopes.some(function (scope) { return scope.id === 'pv'; })) {
         scopes.push({
             id: 'pv',
-            label: 'PV',
+            label: omoUiText("pv", "PV"),
             checked: false
         });
     }
@@ -5690,8 +5692,8 @@ function omoHandleTopbarSearch(query, config, searchState) {
     if (trimmedQuery.length < 2) {
         if (typeof window.commonTopbarOpenModal === 'function') {
             window.commonTopbarOpenModal(
-                'Recherche',
-                '<div class="common-help-list generic-drawer-content"><div class="common-help-card"><p>Saisissez au moins 2 caracteres pour lancer la recherche.</p></div></div>',
+                omoUiText("recherche", "Recherche"),
+                ("<div class=\"common-help-list generic-drawer-content\"><div class=\"common-help-card\"><p>" + omoUiHtml("saisissez_au_moins_2_caracteres_pour_lancer_la_recherche", "Saisissez au moins 2 caractères pour lancer la recherche.") + "</p></div></div>"),
                 'html'
             );
         }
@@ -5701,8 +5703,8 @@ function omoHandleTopbarSearch(query, config, searchState) {
     if (selectedScopeIds.length === 0) {
         if (typeof window.commonTopbarOpenModal === 'function') {
             window.commonTopbarOpenModal(
-                'Recherche',
-                '<div class="common-help-list generic-drawer-content"><div class="common-help-card"><p>Choisissez au moins un module de recherche.</p></div></div>',
+                omoUiText("recherche", "Recherche"),
+                ("<div class=\"common-help-list generic-drawer-content\"><div class=\"common-help-card\"><p>" + omoUiHtml("choisissez_au_moins_un_module_de_recherche", "Choisissez au moins un module de recherche.") + "</p></div></div>"),
                 'html'
             );
         }
@@ -5829,7 +5831,7 @@ function omoOpenSearchDocumentResult(documentUrl, title) {
     omoClosePopupModalFromRoute();
 
     window.commonTopbarOpenModal(
-        String(title || 'Document'),
+        String(title || omoUiText("document", "Document")),
         omoResolveAppUrl(resolvedUrl),
         'fetch'
     );
@@ -5843,14 +5845,14 @@ function omoOpenAssociatedDocumentResult(documentUrl, title, pvEditorUrl, persis
         return false;
     }
 
-    const resolvedTitle = String(title || 'Document').trim() || 'Document';
+    const resolvedTitle = String(title || omoUiText("document", "Document")).trim() || omoUiText("document", "Document");
     const resolvedPvEditorUrl = String(pvEditorUrl || '').trim();
     if (resolvedPvEditorUrl && typeof window.omoOpenExternalPanelDrawer === 'function') {
         window.omoOpenExternalPanelDrawer({
             url: resolvedPvEditorUrl,
             mode: 'fetch',
             title: resolvedTitle,
-            description: 'Edition du PV.',
+            description: omoUiText("edition_du_pv_2", "Édition du PV."),
             variant: 'top-sheet',
             hideHeader: true,
             persistKey: String(persistKeyPrefix || 'omo-pv-preparation-calendar-') + resolvedPvEditorUrl,
@@ -6534,7 +6536,7 @@ if (!window.omoProjectEmbedChildrenBound) {
             cache: 'no-store'
         }).then(function (response) {
             if (!response.ok) {
-                throw new Error('Project children unavailable');
+                throw new Error(omoUiText("project_children_unavailable", "Sous-projets indisponibles."));
             }
             return response.text();
         }).then(function (html) {

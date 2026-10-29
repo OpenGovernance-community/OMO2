@@ -3,6 +3,13 @@ namespace dbObject;
 
 class Authority extends DbObject
 {
+        protected static function uiMessageSourceLang(): array
+        {
+            return [
+                'une_delegation_complete_est_impossible_car_une_partie_de_cette_autorite_est_deja_deleguee' => ['text' => 'Une délégation complete est impossible car une partie de cette autorité est déjà déléguée à un autre espace.', 'context' => 'Validation or action feedback for authority.'],
+            ];
+        }
+
 	public const IMPORT_NEEDS_PARENT_MARKER = '[OMO1_IMPORT_NEEDS_PARENT]';
 
     public const DELETION_DELETE = 'delete';
@@ -170,14 +177,14 @@ class Authority extends DbObject
         return [
             'id' => 'ID',
             'IDholon' => 'Holon responsable',
-            'IDauthority_parent' => 'Autorite parente',
-            'IDauthority_template' => 'Autorite source du template',
-            'label' => 'Autorite',
+            'IDauthority_parent' => 'Autorité parente',
+            'IDauthority_template' => 'Autorité source du template',
+            'label' => 'Autorité',
             'description' => 'Description',
-            'is_shell' => 'Coquille de delegation complete',
-            'is_local' => 'Autorite locale',
+            'is_shell' => 'Coquille de délégation complete',
+            'is_local' => 'Autorité locale',
             'template_origin_lost' => 'Origine template perdue',
-            'created_at' => 'Date de creation',
+            'created_at' => 'Date de création',
             'updated_at' => 'Date de modification',
         ];
     }
@@ -185,14 +192,14 @@ class Authority extends DbObject
     public static function attributeDescriptions()
     {
         return [
-            'IDholon' => 'Holon auquel cette autorite est confiee.',
-            'IDauthority_parent' => 'Domaine plus large dont cette autorite est issue.',
-            'IDauthority_template' => 'Autorite du template ayant cree cette instance.',
-            'label' => 'Domaine precis sur lequel le holon peut exercer son autorite.',
-            'description' => 'Description plus detaillee du domaine couvert par cette autorite.',
-            'is_shell' => 'Marque une autorite conservee uniquement comme jalon apres une delegation complete.',
-            'is_local' => 'Permet a une autorite de demarrer une hierarchie locale au holon.',
-            'template_origin_lost' => 'Indique qu une instance conservee n est plus reliee a son autorite source.',
+            'IDholon' => 'Holon auquel cette autorité est confiee.',
+            'IDauthority_parent' => 'Domaine plus large dont cette autorité est issue.',
+            'IDauthority_template' => 'Autorité du template ayant cree cette instance.',
+            'label' => 'Domaine precis sur lequel le holon peut exercer son autorité.',
+            'description' => 'Description plus detaillee du domaine couvert par cette autorité.',
+            'is_shell' => 'Marqué une autorité conservée uniquement comme jalon après une délégation complete.',
+            'is_local' => 'Permet a une autorité de démarrer une hiérarchie locale au holon.',
+            'template_origin_lost' => 'Indique qu’une instance conservée n’est plus reliee a son autorité source.',
         ];
     }
 
@@ -474,7 +481,7 @@ class Authority extends DbObject
         }
         foreach ($subtreeRows as $row) {
             if ((int)($row['IDholon'] ?? 0) !== $sourceHolonId) {
-                return ['status' => false, 'text' => 'Une delegation complete est impossible car une partie de cette autorite est deja deleguee a un autre espace.'];
+                return ['status' => false, 'text' => self::uiMessage('une_delegation_complete_est_impossible_car_une_partie_de_cette_autorite_est_deja_deleguee')];
             }
         }
         $descendantIds = array_values(array_filter(array_map(static function ($row) {

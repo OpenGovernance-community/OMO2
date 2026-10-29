@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 (function (window, document) {
     'use strict';
 
@@ -757,7 +759,7 @@
             }
             event.preventDefault();
             if (convertButton) {
-                var convertConfirm = convertButton.getAttribute('data-checklist-convert-confirm') || 'Passer les activites temporelles de ce processus en checklists ?';
+                var convertConfirm = convertButton.getAttribute('data-checklist-convert-confirm') || "Passer les activités temporelles de ce processus en checklists ?";
                 if (!window.confirm(convertConfirm)) {
                     return;
                 }
@@ -770,7 +772,7 @@
                 });
                 return;
             }
-            var deleteConfirm = deleteButton.getAttribute('data-checklist-delete-confirm') || 'Supprimer cette checklist et ses elements ?';
+            var deleteConfirm = deleteButton.getAttribute('data-checklist-delete-confirm') || "Supprimer cette checklist et ses éléments ?";
             if (!window.confirm(deleteConfirm)) {
                 return;
             }
@@ -1141,7 +1143,7 @@
         if (deleteChecklistButton) {
             event.preventDefault();
             event.stopPropagation();
-            var deleteChecklistConfirm = deleteChecklistButton.getAttribute('data-checklist-delete-confirm') || 'Supprimer cette checklist et ses elements ?';
+            var deleteChecklistConfirm = deleteChecklistButton.getAttribute('data-checklist-delete-confirm') || "Supprimer cette checklist et ses éléments ?";
             if (!window.confirm(deleteChecklistConfirm)) {
                 return;
             }
@@ -1190,7 +1192,7 @@
             if (convertItemButton) {
                 event.preventDefault();
                 closeChecklistItemMenus();
-                var convertItemConfirm = convertItemButton.getAttribute('data-checklist-convert-confirm') || 'Passer cette activite en checklist ?';
+                var convertItemConfirm = convertItemButton.getAttribute('data-checklist-convert-confirm') || "Passer cette activité en checklist ?";
                 if (!window.confirm(convertItemConfirm)) {
                     return;
                 }
@@ -1229,7 +1231,7 @@
                 } catch (error) {
                     deleteUi = {};
                 }
-                if (!window.confirm(deleteUi.deleteConfirm || 'Supprimer cet element de la checklist ?')) {
+                if (!window.confirm(deleteUi.deleteConfirm || omoUiText("supprimer_cet_element_de_la_checklist", "Supprimer cet élément de la checklist ?"))) {
                     return;
                 }
                 postChecklistItemAction(deleteItemButton, 'delete_item').then(function (payload) {
@@ -1251,7 +1253,7 @@
                 } catch (error) {
                     extractUi = {};
                 }
-                if (!window.confirm(extractUi.extractConfirm || 'Extraire cet element dans une nouvelle checklist recurrente ?')) {
+                if (!window.confirm(extractUi.extractConfirm || omoUiText("extraire_cet_element_dans_une_nouvelle_checklist_recurrente", "Extraire cet élément dans une nouvelle checklist récurrente ?"))) {
                     return;
                 }
                 postChecklistItemAction(extractItemButton, 'extract_item').then(function (payload) {

@@ -47,28 +47,28 @@ class DecisionParticipant extends DbObject
     {
         return [
             'id' => 'ID',
-            'IDdecision_process' => 'Prise de decision',
+            'IDdecision_process' => 'Prise de décision',
             'IDuser' => 'Utilisateur',
             'email' => 'E-mail',
             'display_name' => 'Nom affiche',
-            'role' => 'Role',
+            'role' => 'Rôle',
             'status' => 'Statut',
             'access_token' => 'Jeton public',
-            'invitation_sent_at' => 'Invitation envoyee',
+            'invitation_sent_at' => 'Invitation envoyée',
             'invitation_opened_at' => 'Invitation ouverte',
-            'parameters' => 'Parametres',
+            'parameters' => 'Paramètres',
             'active' => 'Active',
-            'created_at' => 'Creation',
-            'updated_at' => 'Mise a jour',
+            'created_at' => 'Création',
+            'updated_at' => 'Mise à jour',
         ];
     }
 
     public static function attributeDescriptions()
     {
         return [
-            'email' => 'Permet de rattacher une personne invitee qui n a pas encore de compte.',
-            'access_token' => 'Permet un acces public personnalise a la page de participation de cette personne.',
-            'parameters' => 'Metadonnees additionnelles comme la source d invitation ou des droits fins.',
+            'email' => 'Permet de rattacher une personne invitée qui n’a pas encore de compte.',
+            'access_token' => 'Permet un accès public personnalise à la page de participation de cette personne.',
+            'parameters' => 'Métadonnées additionnelles comme la source d’invitation ou des droits fins.',
         ];
     }
 

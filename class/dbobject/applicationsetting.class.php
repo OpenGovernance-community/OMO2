@@ -31,9 +31,9 @@ class ApplicationSetting extends DbObject
     {
         return array(
             'id' => 'ID',
-            'setting_key' => 'Cle',
-            'parameters' => 'Parametres',
-            'datecreation' => 'Creation',
+            'setting_key' => 'Clé',
+            'parameters' => 'Paramètres',
+            'datecreation' => 'Création',
             'datemodification' => 'Modification',
         );
     }

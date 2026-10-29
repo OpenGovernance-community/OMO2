@@ -403,14 +403,14 @@ if (!function_exists('omoCollaboraBuildBlankOpenDocumentFile')) {
         );
         $tmpPath = tempnam(sys_get_temp_dir(), 'omo-collabora-');
         if (!is_string($tmpPath) || $tmpPath === '') {
-            return array('status' => false, 'text' => 'Impossible de preparer le document Collabora.');
+            return array('status' => false, 'text' => 'Impossible de préparer le document Collabora.');
         }
 
         if (class_exists('ZipArchive', false)) {
             $zip = new ZipArchive();
             if ($zip->open($tmpPath, ZipArchive::OVERWRITE) !== true) {
                 @unlink($tmpPath);
-                return array('status' => false, 'text' => 'Impossible de preparer le document Collabora.');
+                return array('status' => false, 'text' => 'Impossible de préparer le document Collabora.');
             }
             foreach ($entries as $entryName => $entryContents) {
                 $zip->addFromString($entryName, $entryContents);
@@ -436,7 +436,7 @@ if (!function_exists('omoCollaboraBuildBlankOpenDocumentFile')) {
             $endOfDirectory = pack('VvvvvVVv', 0x06054b50, 0, 0, count($entries), count($entries), $centralLength, $centralOffset, 0);
             if (file_put_contents($tmpPath, $localDirectory . $centralDirectory . $endOfDirectory) === false) {
                 @unlink($tmpPath);
-                return array('status' => false, 'text' => 'Impossible de preparer le document Collabora.');
+                return array('status' => false, 'text' => 'Impossible de préparer le document Collabora.');
             }
         }
 

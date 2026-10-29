@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
 
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
 require_once dirname(__DIR__, 4) . '/common/collabora.php';
@@ -12,14 +13,14 @@ $userId = (int)commonGetCurrentUserId();
 
 if ($documentId <= 0 || $userId <= 0) {
     http_response_code(400);
-    echo 'Demande invalide.';
+    echo omoDocumentsUiT('demande_invalide');
     exit;
 }
 
 $document = new Document();
 if (!$document->load($documentId) || (!$document->canOpenWithCollabora() && !$document->isNextcloudFolder())) {
     http_response_code(404);
-    echo 'Document introuvable.';
+    echo omoDocumentsUiT('document_introuvable');
     exit;
 }
 
@@ -31,35 +32,35 @@ if (
     || !$document->canViewInOrganizationContext($organizationId, $holonId > 0 ? $holonId : null, $userId)
 ) {
     http_response_code(403);
-    echo 'Accès refusé.';
+    echo omoDocumentsUiT('acces_refuse');
     exit;
 }
 
 $organization = new \dbObject\Organization();
 if (!$organization->load($organizationId)) {
     http_response_code(404);
-    echo 'Organisation introuvable.';
+    echo omoDocumentsUiT('organisation_introuvable');
     exit;
 }
 
 $config = omoCollaboraGetConfig($organization);
 if (!omoCollaboraHasConfig($organization) || !$organization->hasDocumentStorage()) {
     http_response_code(503);
-    echo 'Collabora ou le stockage de documents n’est pas disponible.';
+    echo omoDocumentsUiT('collabora_ou_le_stockage_de_documents_n_est_pas_disponible');
     exit;
 }
 
 $discoveryResult = omoCollaboraFetchDiscovery($config);
 if (!($discoveryResult['status'] ?? false)) {
     http_response_code(503);
-    echo htmlspecialchars((string)($discoveryResult['text'] ?? 'Impossible de joindre Collabora.'), ENT_QUOTES, 'UTF-8');
+    echo htmlspecialchars((string)($discoveryResult['text'] ?? omoDocumentsUiT('impossible_de_joindre_collabora')), ENT_QUOTES, 'UTF-8');
     exit;
 }
 
 $isRemoteFile = $document->isNextcloudFolder();
 if ($isRemoteFile && ($remotePath === '' || !$document->isRemoteFolderStoragePathAllowed($organization, $remotePath))) {
     http_response_code(400);
-    echo 'Chemin NextCloud invalide.';
+    echo omoDocumentsUiT('chemin_nextcloud_invalide');
     exit;
 }
 
@@ -85,7 +86,7 @@ if (@$discoveryDocument->loadXML((string)$discoveryResult['xml'])) {
 
 if ($actionUrl === '') {
     http_response_code(503);
-    echo 'Le format de ce fichier n’est pas disponible dans Collabora.';
+    echo omoDocumentsUiT('le_format_de_ce_fichier_n_est_pas_disponible_dans_collabora');
     exit;
 }
 
@@ -110,7 +111,7 @@ if ($displayName === '') {
 
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 ?><!doctype html>
-<html lang="fr">
+<html lang="<?= htmlspecialchars(omoGetTranslationLocale(), ENT_QUOTES, 'UTF-8') ?>">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -124,7 +125,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
         <input type="hidden" name="permission" value="<?= htmlspecialchars($canEdit ? 'edit' : 'view', ENT_QUOTES, 'UTF-8') ?>">
         <input type="hidden" name="ui_defaults" value="<?= htmlspecialchars($uiDefaults, ENT_QUOTES, 'UTF-8') ?>" data-collabora-ui-defaults>
         <input type="hidden" name="css_variables" value="<?= htmlspecialchars($cssVariables, ENT_QUOTES, 'UTF-8') ?>">
-        <noscript>Activez JavaScript pour ouvrir le document.</noscript>
+        <noscript><?= htmlspecialchars(omoDocumentsUiT('activez_javascript_pour_ouvrir_le_document'), ENT_QUOTES, 'UTF-8') ?></noscript>
     </form>
     <script>
         (function () {

@@ -95,7 +95,7 @@ function commonPasswordResetSourceLang(): array
             'context' => 'Error password policy hint shown on the password reset page.'
         ],
         'password_reset.policy.match.empty' => [
-            'text' => 'Retapez le meme mot de passe pour confirmation.',
+            'text' => 'Retapez le même mot de passe pour confirmation.',
             'context' => 'Initial password confirmation hint shown on the password reset page.'
         ],
         'password_reset.policy.match.valid' => [
@@ -127,7 +127,7 @@ function commonPasswordResetSourceLang(): array
             'context' => 'Password policy rule shown on the password reset page.'
         ],
         'password_reset.policy.rule.email' => [
-            'text' => "Evitez de reprendre votre adresse e-mail",
+            'text' => "Évitez de reprendre votre adresse e-mail",
             'context' => 'Advisory password policy rule shown on the password reset page.'
         ],
         'password_reset.message.password_mismatch' => [

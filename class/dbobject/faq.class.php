@@ -50,24 +50,24 @@ class FAQ extends DbObject
 			'IDparcours' => 'Parcours',
 			'IDapplication' => 'Application',
 			'question' => 'Question',
-			'detail' => 'Reponse complete',
-			'answer' => 'Reponse courte',
+			'detail' => 'Réponse complete',
+			'answer' => 'Réponse courte',
 			'image' => 'Image',
-			'video' => 'Video',
+			'video' => 'Vidéo',
 			'displayorder' => 'Ordre',
 			'isactive' => 'Afficher dans la FAQ publique',
 			'request_description' => 'Description du problème',
 			'request_author_name' => 'Auteur de la demande',
-			'request_author_email' => 'E-mail de l auteur',
-			'request_relayed_at' => 'Relayee aux administrateurs le',
-			'created' => 'Creee le',
-			'updated' => 'Mise a jour le',
+			'request_author_email' => 'E-mail de l’auteur',
+			'request_relayed_at' => 'Relayée aux administrateurs le',
+			'created' => 'Créée le',
+			'updated' => 'Mise à jour le',
 			'viewcount' => 'Nombre de vues',
 			'positive_score' => 'Votes positifs',
 			'negative_score' => 'Votes negatifs',
 			'total_votes' => 'Votes totaux',
 			'reliability' => 'Reliability',
-			'reliability_updated_at' => 'Reliability mise a jour le',
+			'reliability_updated_at' => 'Reliability mise à jour le',
 			'score_decayed_at' => 'Score oublie le',
 		];
 	}
@@ -84,7 +84,7 @@ class FAQ extends DbObject
 	public static function attributeDescriptions()
 	{
 		return [
-			'IDapplication' => 'Application optionnelle. Si elle est desactivee dans l organisation courante, la FAQ est masquee pour les utilisateurs.',
+			'IDapplication' => 'Application optionnelle. Si elle est désactivée dans l’organisation courante, la FAQ est masquée pour les utilisateurs.',
 		];
 	}
 

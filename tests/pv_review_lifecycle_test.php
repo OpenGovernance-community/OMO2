@@ -88,9 +88,10 @@ try {
         pvLifecycleCheck(NotificationPreference::saveChannels($users['muted']->getId(), $oid, $key, []), 'Save muted channels');
         pvLifecycleCheck(NotificationPreference::saveChannels($users['present']->getId(), $oid, $key, ['in_app' => 1, 'email' => 1]), 'Save email channels');
     }
+    $now = new DateTimeImmutable('2026-10-20 12:00:00');
     $event = pvLifecycleFixture(Event::class, ['IDorganization' => $oid, 'IDuser' => $owner, 'title' => $nonce,
         'status' => Event::STATUS_CONFIRMED, 'active' => 1,
-        'start_at' => new DateTimeImmutable('-10 days'), 'end_at' => new DateTimeImmutable('-10 days +1 hour')]);
+        'start_at' => $now->modify('-10 days'), 'end_at' => $now->modify('-10 days +1 hour')]);
     foreach ($users as $name => $user) {
         pvLifecycleFixture(EventInvitation::class, ['IDevent' => $event->getId(), 'IDuser' => $user->getId(),
             'invitation_type' => EventInvitation::TYPE_USER, 'active' => 1,
@@ -141,7 +142,6 @@ try {
     pvLifecycleCheck(pvLifecycleNotification($closed, (int)$users['revoked']->getId()) === null, 'Revoked invitee excluded');
     pvLifecycleCheck(in_array($absentGuestEmail, array_column($closed->getPayload()['guests'], 'email'), true), 'Absent email guest receives closure too');
 
-    $now = new DateTimeImmutable('2026-10-20 12:00:00');
     $due = $makePv(['pvstage' => Document::PV_STAGE_REVIEW, 'pv_review_started_at' => $now->modify('-7 days')]);
     $later = $makePv(['pvstage' => Document::PV_STAGE_REVIEW, 'pv_review_started_at' => $now->modify('-7 days +1 second')]);
     $legacy = $makePv(['pvstage' => Document::PV_STAGE_REVIEW]);

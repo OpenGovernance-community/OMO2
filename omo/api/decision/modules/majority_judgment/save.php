@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../ui_translations.php';
 require_once dirname(__DIR__, 3) . '/bootstrap.php';
 require_once dirname(__DIR__) . '/context.php';
 require_once __DIR__ . '/shared.php';
@@ -15,7 +16,7 @@ header('Content-Type: application/json; charset=UTF-8');
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
     omoDecisionModuleJsonResponse(405, [
         'status' => false,
-        'message' => 'Méthode non autorisée.',
+        'message' => omoDecisionUiT('methode_non_autorisee'),
     ]);
 }
 
@@ -23,7 +24,7 @@ $context = omoDecisionResolveManagementContext($_POST);
 if (empty($context['status'])) {
     omoDecisionModuleJsonResponse((int)($context['code'] ?? 400), [
         'status' => false,
-        'message' => 'Contexte de création invalide.',
+        'message' => omoDecisionUiT('contexte_de_creation_invalide'),
     ]);
 }
 
@@ -41,7 +42,7 @@ $previousStatus = $decisionId > 0 ? DecisionProcess::normalizeStatus($decision->
 $coreLocked = $decision instanceof DecisionProcess ? $decision->hasEvaluationStarted() : false;
 $startDatesLocked = $coreLocked || ($decision instanceof DecisionProcess && $decision->hasSubmittedResponses());
 if ($createGroupRequested && $coreLocked) {
-    omoDecisionModuleJsonResponse(409, ['status' => false, 'message' => 'Il n’est plus possible d’ajouter une question après le début du vote.']);
+    omoDecisionModuleJsonResponse(409, ['status' => false, 'message' => omoDecisionUiT('il_n_est_plus_possible_d_ajouter_une_question_apres_le_debut_du_vote')]);
 }
 
 $processTitle = trim((string)($_POST['process_title'] ?? ''));
@@ -108,14 +109,14 @@ unset($proposalItem);
 if (!$coreLocked && $processTitle === '') {
     omoDecisionModuleJsonResponse(400, [
         'status' => false,
-        'message' => 'Le titre du processus est obligatoire.',
+        'message' => omoDecisionUiT('le_titre_du_processus_est_obligatoire'),
     ]);
 }
 
 if (!$coreLocked && $title === '') {
     omoDecisionModuleJsonResponse(400, [
         'status' => false,
-        'message' => 'Le titre du groupe est obligatoire.',
+        'message' => omoDecisionUiT('le_titre_du_groupe_est_obligatoire'),
     ]);
 }
 
@@ -126,7 +127,7 @@ if ($decision instanceof DecisionProcess) {
     if (!$createGroupRequested && $existingMethod !== DecisionProcess::METHOD_MAJORITY_JUDGMENT) {
         omoDecisionModuleJsonResponse(400, [
             'status' => false,
-            'message' => 'Cette prise de décision n’utilise pas le module de jugement majoritaire.',
+            'message' => omoDecisionUiT('cette_prise_de_decision_n_utilise_pas_le_module_de_jugement_majoritaire'),
         ]);
     }
 } else {
@@ -145,7 +146,7 @@ $consultationStartConflict = !$startDatesLocked
 if ($consultationStartConflict instanceof \DateTimeInterface || ($status === DecisionProcess::STATUS_CONSULTATION && trim($consultationStartAt) === '')) {
     omoDecisionModuleJsonResponse(422, [
         'status' => false,
-        'message' => 'Le statut « En élaboration » doit correspondre à une date de début d’élaboration déjà atteinte.',
+        'message' => omoDecisionUiT('le_statut_en_elaboration_doit_correspondre_a_une_date_de_debut_d_elaboration_deja_atteinte'),
         'requiresLifecycleConfirmation' => true,
     ]);
 }
@@ -156,7 +157,7 @@ $evaluationStartConflict = !$startDatesLocked
 if ($evaluationStartConflict instanceof \DateTimeInterface || ($status === DecisionProcess::STATUS_EVALUATION && trim($evaluationStartAt) === '')) {
     omoDecisionModuleJsonResponse(422, [
         'status' => false,
-        'message' => 'Le statut « En évaluation » doit correspondre à une date de début d’évaluation déjà atteinte.',
+        'message' => omoDecisionUiT('le_statut_en_evaluation_doit_correspondre_a_une_date_de_debut_d_evaluation_deja_atteinte'),
         'requiresLifecycleConfirmation' => true,
     ]);
 }
@@ -165,7 +166,7 @@ $resolvedVisibility = $decision->resolveVisibilityRuleInput($visibilityType);
 if (!$coreLocked && ($resolvedVisibility['status'] ?? false) !== true) {
     omoDecisionModuleJsonResponse(400, [
         'status' => false,
-        'message' => trim((string)($resolvedVisibility['text'] ?? 'Visibilité invalide pour cette prise de décision.')),
+        'message' => trim((string)($resolvedVisibility['text'] ?? omoDecisionUiT('visibilite_invalide_pour_cette_prise_de_decision'))),
     ]);
 }
 
@@ -194,7 +195,7 @@ if ($decision instanceof DecisionProcess
     )) {
     omoDecisionModuleJsonResponse(409, [
         'status' => false,
-        'message' => 'Les conditions d’anonymat ne peuvent plus être modifiées après le début du vote.',
+        'message' => omoDecisionUiT('les_conditions_d_anonymat_ne_peuvent_plus_etre_modifiees_apres_le_debut_du_vote'),
     ]);
 }
 if ($decision instanceof DecisionProcess
@@ -204,7 +205,7 @@ if ($decision instanceof DecisionProcess
     && !$decision->canEnableNamedVote()) {
     omoDecisionModuleJsonResponse(409, [
         'status' => false,
-        'message' => 'Le vote nominatif ne peut plus être activé après une participation.',
+        'message' => omoDecisionUiT('le_vote_nominatif_ne_peut_plus_etre_active_apres_une_participation'),
     ]);
 }
 $canEditSettings = !$coreLocked;
@@ -232,7 +233,7 @@ $countedScaleSize = count((array)($normalizedConfigToSave['counted_scores'] ?? [
 if ($canEditSettings && $countedScaleSize < 2) {
     omoDecisionModuleJsonResponse(400, [
         'status' => false,
-        'message' => 'Le jugement majoritaire a besoin d’au moins deux mentions actives hors centre.',
+        'message' => omoDecisionUiT('le_jugement_majoritaire_a_besoin_d_au_moins_deux_mentions_actives_hors_centre'),
     ]);
 }
 $canEditProposals = !$coreLocked;
@@ -255,7 +256,7 @@ $pdo = DbObject::getPdo();
 if (!$pdo) {
     omoDecisionModuleJsonResponse(500, [
         'status' => false,
-        'message' => 'Connexion à la base impossible.',
+        'message' => omoDecisionUiT('connexion_a_la_base_impossible'),
     ]);
 }
 
@@ -425,7 +426,7 @@ try {
     $inlineInvitationResult = omoDecisionPersistInlineInvitationDraft($decision, $context, $_POST);
     if (!is_array($inlineInvitationResult) || empty($inlineInvitationResult['status'])) {
         throw new InvalidArgumentException(
-            trim((string)($inlineInvitationResult['message'] ?? 'Impossible d’enregistrer les invitations pour le moment.'))
+            trim((string)($inlineInvitationResult['message'] ?? omoDecisionUiT('impossible_d_enregistrer_les_invitations_pour_le_moment')))
         );
     }
 
@@ -455,7 +456,7 @@ try {
 
     omoDecisionModuleJsonResponse(500, [
         'status' => false,
-        'message' => 'Impossible d’enregistrer ce scrutin pour le moment.',
+        'message' => omoDecisionUiT('impossible_d_enregistrer_ce_scrutin_pour_le_moment'),
     ]);
 }
 

@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 (function () {
     if (window.__omoInstallScriptInitialized === true) {
         return;
@@ -140,14 +142,14 @@
         bannerElement.setAttribute('hidden', 'hidden');
         bannerElement.innerHTML = [
             '<div class="omo-install-banner__content">',
-            '    <div class="omo-install-banner__title">Installer OMO comme application</div>',
-            '    <div class="omo-install-banner__text">Ajoutez OMO sur votre appareil pour l ouvrir comme une application dediee.</div>',
+            ("    <div class=\"omo-install-banner__title\">" + omoUiHtml("installer_omo_comme_application", "Installer OMO comme application") + "</div>"),
+            ("    <div class=\"omo-install-banner__text\">" + omoUiHtml("ajoutez_omo_sur_votre_appareil_pour_l_ouvrir_comme_une_application_dediee", "Ajoutez OMO sur votre appareil pour l’ouvrir comme une application dédiée.") + "</div>"),
             '</div>',
             '<div class="omo-install-banner__actions">',
-            '    <button type="button" class="omo-install-banner__button omo-install-banner__button--secondary" data-omo-install-dismiss>Plus tard</button>',
-            '    <button type="button" class="omo-install-banner__button omo-install-banner__button--primary" data-omo-install-confirm>Installer</button>',
+            ("    <button type=\"button\" class=\"omo-install-banner__button omo-install-banner__button--secondary\" data-omo-install-dismiss>" + omoUiHtml("plus_tard", "Plus tard") + "</button>"),
+            ("    <button type=\"button\" class=\"omo-install-banner__button omo-install-banner__button--primary\" data-omo-install-confirm>" + omoUiHtml("installer", "Installer") + "</button>"),
             '</div>',
-            '<button type="button" class="omo-install-banner__never" data-omo-install-never>Ne plus me demander</button>'
+            ("<button type=\"button\" class=\"omo-install-banner__never\" data-omo-install-never>" + omoUiHtml("ne_plus_me_demander", "Ne plus me demander") + "</button>")
         ].join('');
 
         const host = omoFindBannerHost();
@@ -305,7 +307,7 @@
 
             return subscription.unsubscribe().then(function (unsubscribed) {
                 if (!unsubscribed) {
-                    throw new Error('Impossible de renouveler la souscription push OMO.');
+                    throw new Error(omoUiText("impossible_de_renouveler_la_souscription_push_omo", "Impossible de renouveler la souscription push OMO."));
                 }
 
                 return registration.pushManager.subscribe({
@@ -331,7 +333,7 @@
                     return {status: false};
                 }).then(function (payload) {
                     if (!response.ok || !payload || payload.status !== true) {
-                        throw new Error('Impossible de synchroniser la souscription push OMO.');
+                        throw new Error(omoUiText("impossible_de_synchroniser_la_souscription_push_omo", "Impossible de synchroniser la souscription push OMO."));
                     }
                 });
             });

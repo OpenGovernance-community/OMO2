@@ -3,6 +3,16 @@ namespace dbObject;
 
 class Project extends DbObject
 {
+        protected static function uiMessageSourceLang(): array
+        {
+            return [
+                'la_visibilite_choisie_demande_un_holon_ou_un_cercle_compatible' => ['text' => 'La visibilité choisie demande un holon ou un cercle compatible.', 'context' => 'Validation or action feedback for project.'],
+                'la_personne_proposant_le_projet_doit_etre_membre_de_l_organisation' => ['text' => 'La personne proposant le projet doit être membre de l’organisation.', 'context' => 'Validation or action feedback for project.'],
+                'invalid_project_parent' => ['text' => 'Invalid project parent.', 'context' => 'Validation or action feedback for project.'],
+                'impossible_d_enregistrer_le_projet_et_son_suivi' => ['text' => 'Impossible d’enregistrer le projet et son suivi.', 'context' => 'Validation or action feedback for project.'],
+            ];
+        }
+
     public const KIND_STANDARD = 'standard';
     public const KIND_CHECKLIST_TEMPLATE = 'checklist_template';
 
@@ -67,15 +77,15 @@ class Project extends DbObject
             'IDorganization' => 'Organisation',
             'IDholon' => 'Holon',
             'IDuser' => 'Responsable',
-            'IDusercreation' => 'Createur',
-            'creation_context' => 'Contexte de creation',
-            'visibility_type' => 'Visibilite',
+            'IDusercreation' => 'Créateur',
+            'creation_context' => 'Contexte de création',
+            'visibility_type' => 'Visibilité',
             'IDuser_proposed' => 'Proposé par',
             'IDproject_parent' => 'Projet parent',
             'IDdocument_journal' => 'Document journal',
             'project_kind' => 'Type de projet',
             'proposal_status' => 'État de la proposition',
-            'IDproject_template' => 'Projet modele',
+            'IDproject_template' => 'Projet modèle',
             'title' => 'Titre',
             'description' => 'Description',
             'status' => 'Statut',
@@ -83,18 +93,18 @@ class Project extends DbObject
             'blocked_until' => 'Date de relance',
             'blocked_auto_reactivate' => 'Réactiver automatiquement',
             'blocked_reactivate_status' => 'Statut de réactivation',
-            'planned_start_date' => 'Debut planifie',
-            'planned_end_date' => 'Fin planifiee',
-            'priority' => 'Priorite',
-            'importance' => 'Importance strategique',
-            'calculated_importance' => 'Importance strategique calculee',
+            'planned_start_date' => 'Début planifié',
+            'planned_end_date' => 'Fin planifiée',
+            'priority' => 'Priorité',
+            'importance' => 'Importance stratégique',
+            'calculated_importance' => 'Importance stratégique calculée',
             'capture_mode' => 'Mode de capture Telegram',
             'project_size' => 'Taille du projet',
             'active' => 'Actif',
-            'created_at' => 'Date de creation',
+            'created_at' => 'Date de création',
             'updated_at' => 'Date de modification',
-            'closed_at' => 'Date de cloture',
-            'archived_at' => 'Date d archivage',
+            'closed_at' => 'Date de clôture',
+            'archived_at' => 'Date d’archivage',
             'proposed_at' => 'Date de proposition',
             'proposal_decided_at' => 'Date de décision de la proposition',
         ];
@@ -103,25 +113,25 @@ class Project extends DbObject
     public static function attributeDescriptions()
     {
         return [
-            'description' => 'Description HTML simple avec paragraphes, listes et mise en forme, y compris pour les modeles de processus.',
-            'status' => 'Etat du projet pour une future vue kanban.',
-            'visibility_type' => 'La personne en charge conserve la visibilite quelle que soit son appartenance au holon.',
-            'blocked_reason' => 'Ce qui empêche actuellement le projet d avancer.',
+            'description' => 'Description HTML simple avec paragraphes, listes et mise en forme, y compris pour les modèles de processus.',
+            'status' => 'État du projet pour une future vue kanban.',
+            'visibility_type' => 'La personne en charge conserve la visibilité quelle que soit son appartenance au holon.',
+            'blocked_reason' => 'Ce qui empêche actuellement le projet d’avancer.',
             'blocked_until' => 'Date à partir de laquelle le blocage doit être réévalué.',
             'blocked_auto_reactivate' => 'Réactive automatiquement le projet à la date de relance.',
-            'blocked_reactivate_status' => 'Etat appliqué lors de la réactivation automatique.',
+            'blocked_reactivate_status' => 'État appliqué lors de la réactivation automatique.',
             'planned_start_date' => 'Date a laquelle le projet devrait commencer.',
-            'planned_end_date' => 'Date a laquelle le projet devrait etre termine.',
-            'closed_at' => 'Date a laquelle le projet est passe a l etat termine.',
-            'archived_at' => 'Date a laquelle le projet a ete retire de la vue active.',
+            'planned_end_date' => 'Date a laquelle le projet devrait être termine.',
+            'closed_at' => 'Date a laquelle le projet est passe à l’état termine.',
+            'archived_at' => 'Date a laquelle le projet a été retire de la vue active.',
             'priority' => 'Niveau a considerer tant que les dates ne sont pas renseignees.',
-            'importance' => 'Niveau strategique a considerer quand le temps disponible manque.',
-            'calculated_importance' => 'Score calcule automatiquement a partir de l importance strategique declaree, de la chaine de projets et de la position holarchique.',
-            'capture_mode' => 'Indique si les captures Telegram doivent creer plusieurs documents ou alimenter un journal unique.',
-            'project_size' => 'Taille relative du projet, utilisee pour ponderer sa place dans les barres de synthese.',
-            'project_kind' => 'Distingue un projet operationnel d un projet utilise comme modele de processus.',
-            'IDproject_template' => 'Projet modele a l origine de cette instance.',
-            'proposal_status' => 'Conserve le cycle de validation d un projet proposé avant qu il devienne un projet normal.',
+            'importance' => 'Niveau stratégique a considerer quand le temps disponible manque.',
+            'calculated_importance' => 'Score calculé automatiquement à partir de l’importance stratégique déclarée, de la chaîne de projets et de la position holarchique.',
+            'capture_mode' => 'Indique si les captures Telegram doivent créer plusieurs documents ou alimenter un journal unique.',
+            'project_size' => 'Taille relative du projet, utilisée pour ponderer sa place dans les barres de synthèse.',
+            'project_kind' => 'Distingue un projet operationnel d’un projet utilise comme modèle de processus.',
+            'IDproject_template' => 'Projet modèle à l’origine de cette instance.',
+            'proposal_status' => 'Conserve le cycle de validation d’un projet proposé avant qu’il devienne un projet normal.',
         ];
     }
 
@@ -1056,7 +1066,7 @@ class Project extends DbObject
         }
         if (($this->getVisibilityType() === ObjectVisibility::TYPE_ROLE && (int)$this->get('IDholon') <= 0)
             || ($this->getVisibilityType() === ObjectVisibility::TYPE_CIRCLE && $this->getVisibilityCircleId() <= 0)) {
-            return ['status' => false, 'text' => 'La visibilite choisie demande un holon ou un cercle compatible.'];
+            return ['status' => false, 'text' => self::uiMessage('la_visibilite_choisie_demande_un_holon_ou_un_cercle_compatible')];
         }
         if (is_array($storedInputs) && array_key_exists('calculated_importance', $storedInputs)) {
             // This field is server-owned. A value posted by a client must never replace it.
@@ -1077,7 +1087,7 @@ class Project extends DbObject
                 ? $membership->load([['IDuser', $proposerId], ['IDorganization', (int)$this->get('IDorganization')]])
                 : UserOrganization::hasActiveMembership($proposerId, (int)$this->get('IDorganization'));
             if (!$hasMembership) {
-                return ['status' => false, 'text' => 'La personne proposant le projet doit etre membre de l organisation.'];
+                return ['status' => false, 'text' => self::uiMessage('la_personne_proposant_le_projet_doit_etre_membre_de_l_organisation')];
             }
         }
         $this->set('status', self::normalizeStatus($this->get('status')));
@@ -1109,7 +1119,7 @@ class Project extends DbObject
         if ($parentId > 0) {
             $parent = new self();
             if (!$parent->load($parentId) || !$this->canUseAsParent($parent)) {
-                return ['status' => false, 'text' => 'Invalid project parent.'];
+                return ['status' => false, 'text' => self::uiMessage('invalid_project_parent')];
             }
         }
 
@@ -1179,7 +1189,7 @@ class Project extends DbObject
                 $this->setId(0);
             }
             error_log('project_creation_failed: ' . $exception->getMessage());
-            return ['status' => false, 'text' => 'Impossible d enregistrer le projet et son suivi.'];
+            return ['status' => false, 'text' => self::uiMessage('impossible_d_enregistrer_le_projet_et_son_suivi')];
         }
         if (!is_array($result) || empty($result['status']) || (int)$this->getId() <= 0) {
             return $result;

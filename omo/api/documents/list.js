@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 window.commonPageScripts = window.commonPageScripts || {};
 window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, pageScript) {
             
@@ -86,11 +88,11 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
 
                 const omoDocumentsGetIconAlt = function (documentItem) {
                     if (documentItem && documentItem.isFolder) {
-                        return 'Dossier';
+                        return omoUiText("dossier", "Dossier");
                     }
 
                     if (documentItem && documentItem.isExternalLink) {
-                        return 'Lien externe';
+                        return omoUiText("lien_externe", "Lien externe");
                     }
 
                     if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === 'uploaded_file') {
@@ -104,11 +106,11 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                             presentation: pageConfig.presentation,
                             drawing: pageConfig.drawing
                         };
-                        return storedKindLabels[storedFileKind] || 'Fichier a telecharger';
+                        return storedKindLabels[storedFileKind] || "Fichier a télécharger";
                     }
 
                     if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsPvType) {
-                        return 'Proces verbal';
+                        return omoUiText("proces_verbal", "Procès verbal");
                     }
 
                     if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsEtherpadType) {
@@ -123,7 +125,7 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                         return omoDocumentsWhiteboardIconLabel;
                     }
 
-                    return 'Fichier';
+                    return omoUiText("fichier", "Fichier");
                 };
 
                 const omoDocumentsNormalizeSortPreference = function (value) {
@@ -1143,7 +1145,7 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
 
                                     const compactTagsCell = document.createElement('div');
                                     compactTagsCell.className = 'omo-documents__compact-cell omo-documents__compact-cell--tags generic-file-list__cell';
-                                    compactTagsCell.setAttribute('data-label', 'Tags');
+                                    compactTagsCell.setAttribute('data-label', omoUiText("tags", "Tags"));
                                     const compactTags = document.createElement('div');
                                     compactTags.className = 'omo-documents__compact-tags generic-file-list__tag-list';
 
@@ -1241,7 +1243,7 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                 if (Array.isArray(documentItem.contextBreadcrumb) && documentItem.contextBreadcrumb.length > 0) {
                                     const context = document.createElement('div');
                                     context.className = 'omo-documents__context';
-                                    context.setAttribute('aria-label', 'Contexte du document');
+                                    context.setAttribute('aria-label', omoUiText("contexte_du_document", "Contexte du document"));
 
                                     documentItem.contextBreadcrumb.forEach(function (breadcrumbItem, breadcrumbIndex) {
                                         if (breadcrumbIndex > 0) {
@@ -1336,7 +1338,7 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                 toggle.setAttribute('data-omo-document-menu-is-template', documentItem.isTemplate ? '1' : '0');
                                 toggle.setAttribute('aria-haspopup', 'menu');
                                 toggle.setAttribute('aria-expanded', 'false');
-                                toggle.setAttribute('aria-label', 'Actions pour ' + String(documentItem.title || 'ce document'));
+                                toggle.setAttribute('aria-label', omoUiText("actions_pour", "Actions pour ") + String(documentItem.title || 'ce document'));
                                 toggle.textContent = '...';
                                 menu.appendChild(toggle);
 
@@ -1348,8 +1350,8 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                 header.className = 'omo-documents__list-header generic-file-list__header';
 
                                 [
-                                    { label: 'Nom', className: 'omo-documents__list-header-cell--name' },
-                                    { label: 'Tags', className: 'omo-documents__list-header-cell--tags' },
+                                    { label: omoUiText("nom", "Nom"), className: 'omo-documents__list-header-cell--name' },
+                                    { label: omoUiText("tags", "Tags"), className: 'omo-documents__list-header-cell--tags' },
                                     { label: getDateColumnLabel(sortMode), className: 'omo-documents__list-header-cell--date' }
                                 ].forEach(function (column) {
                                     const cell = document.createElement('div');
@@ -1506,7 +1508,7 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
 
 							const createNextcloudRemoteItem = function (folderId, entry) {
 								const path = String(entry && entry.path || '');
-								const name = String(entry && entry.name || path.split('/').pop() || 'Fichier');
+								const name = String(entry && entry.name || path.split('/').pop() || omoUiText("fichier", "Fichier"));
 								const isFolder = !!(entry && entry.isFolder);
 								const query = 'id=' + encodeURIComponent(String(folderId)) + '&path=' + encodeURIComponent(path);
 								return {
@@ -1711,7 +1713,7 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
 
                             const getDirectUploadTitle = function (file) {
                                 const name = String(file && file.name || '').trim();
-                                return (name !== '' ? name : 'Fichier').slice(0, 100);
+                                return (name !== '' ? name : omoUiText("fichier", "Fichier")).slice(0, 100);
                             };
 
                             const formatDirectUploadText = function (template, count) {
@@ -2131,7 +2133,7 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                             ? documentItem.title
                                             : pageConfig.title,
                                         description: documentItem && documentItem.fullDateLabel
-                                            ? 'Document créé le ' + documentItem.fullDateLabel + '.'
+                                            ? omoUiText("document_cree_le", "Document créé le ") + documentItem.fullDateLabel + '.'
                                             : pageConfig.documentsDrawerDetailDescription,
                                         actions: []
                                     });
@@ -2140,9 +2142,9 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
 
                                 detailTitle.textContent = documentItem && documentItem.title
                                     ? documentItem.title
-                                    : 'Détail du document';
+                                    : omoUiText("detail_du_document", "Détail du document");
                                 detailDescription.textContent = documentItem && documentItem.fullDateLabel
-                                    ? 'Document créé le ' + documentItem.fullDateLabel + '.'
+                                    ? omoUiText("document_cree_le", "Document créé le ") + documentItem.fullDateLabel + '.'
                                     : pageConfig.documentsDrawerDetailDescription;
                             };
 
@@ -2248,7 +2250,7 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                     })
                                         .then(function (response) {
                                             if (!response.ok) {
-                                                throw new Error('Unable to renew the Collabora token.');
+                                                throw new Error(omoUiText("impossible_de_renouveler_le_jeton_collabora", "Impossible de renouveler le jeton Collabora."));
                                             }
                                             return response.json();
                                         })
@@ -2257,7 +2259,7 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                                 ? payload.accessToken.trim()
                                                 : '';
                                             if (!payload || payload.status !== true || accessToken === '' || !postToCollabora('Reset_Access_Token', {token: accessToken})) {
-                                                throw new Error('Invalid Collabora token renewal response.');
+                                                throw new Error(omoUiText("la_reponse_de_renouvellement_du_jeton_collabora_est_invalide", "La réponse de renouvellement du jeton Collabora est invalide."));
                                             }
 
                                             const expiresAt = Number(payload.expiresAt || 0) * 1000;
@@ -2449,7 +2451,7 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                     event.preventDefault();
                                     const editUrl = String(editButton.getAttribute('data-omo-document-open-editor-url') || '').trim();
                                     if (editUrl !== '' && typeof window.omoOpenDocumentEditorDrawer === 'function') {
-                                        window.omoOpenDocumentEditorDrawer(editUrl, 'Modifier le document', 'Modification du document dans le contexte courant.');
+                                        window.omoOpenDocumentEditorDrawer(editUrl, omoUiText("modifier_le_document", "Modifier le document"), omoUiText("modification_du_document_dans_le_contexte_courant", "Modification du document dans le contexte courant."));
                                     }
                                 });
                             }

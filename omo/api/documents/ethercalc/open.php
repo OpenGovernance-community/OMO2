@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
 require_once dirname(__DIR__, 4) . '/common/ethercalc.php';
 
@@ -10,14 +11,14 @@ $userId = (int)commonGetCurrentUserId();
 
 if ($documentId <= 0 || $userId <= 0) {
     http_response_code(400);
-    echo 'Demande invalide.';
+    echo omoDocumentsUiT('demande_invalide');
     exit;
 }
 
 $document = new Document();
 if (!$document->load($documentId) || !$document->isEthercalcDocument()) {
     http_response_code(404);
-    echo 'Document introuvable.';
+    echo omoDocumentsUiT('document_introuvable');
     exit;
 }
 
@@ -29,14 +30,14 @@ if (
     || !$document->canViewInOrganizationContext($organizationId, $holonId > 0 ? $holonId : null)
 ) {
     http_response_code(403);
-    echo 'Accès refusé.';
+    echo omoDocumentsUiT('acces_refuse');
     exit;
 }
 
 $roomId = $document->getEthercalcRoomId();
 if ($roomId === '' || !omoEthercalcHasConfig()) {
     http_response_code(503);
-    echo 'EtherCalc n’est pas disponible.';
+    echo omoDocumentsUiT('ethercalc_n_est_pas_disponible');
     exit;
 }
 
@@ -56,7 +57,7 @@ $sheetUrl = omoEthercalcBuildSheetUrl(
 );
 if ($sheetUrl === '') {
     http_response_code(503);
-    echo 'URL EtherCalc invalide.';
+    echo omoDocumentsUiT('url_ethercalc_invalide');
     exit;
 }
 

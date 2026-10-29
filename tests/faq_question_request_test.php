@@ -41,6 +41,7 @@ namespace {
             : ['answer' => 'Found answer', 'sources' => [['type' => 'faq', 'id' => 42, 'title' => 'Published FAQ']]];
     }
     function faqAiT($key): string { return $key === 'sent' ? 'Question envoyee a un administrateur.' : $key; }
+    function faqPopupT($key, array $variables = []): string { return $key; }
     function appBuildAbsoluteUrl($path): string { return 'https://example.invalid' . $path; }
     function faqMailRenderQuestionRequest($faq, $url, $organization): string { return 'Fixture mail'; }
     function myHTMLMail($from, $to, $subject, $body): bool { $GLOBALS['trace']['mails']++; return true; }
@@ -58,7 +59,7 @@ namespace {
         });
         // Replace only the bootstrap imports; the endpoint control flow runs unchanged.
         $source = file_get_contents(dirname(__DIR__) . '/ajax/faq_question_request.php');
-        $source = preg_replace('/^require_once\([^\r\n]+\);\R/m', '', $source);
+        $source = preg_replace('/^require_once(?:\([^\r\n]+\)|\s+[^\r\n]+);\R/m', '', $source);
         eval('?>' . $source);
         exit;
     }

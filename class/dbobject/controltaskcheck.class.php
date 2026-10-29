@@ -23,11 +23,11 @@ class ControlTaskCheck extends DbObject
     {
         return [
             'id' => 'ID',
-            'IDcontroltask' => 'Activite',
+            'IDcontroltask' => 'Activité',
             'IDuser' => 'Personne',
-            'scheduled_for' => 'Occurrence prevue',
-            'checked_at' => 'Validee le',
-            'created_at' => 'Creation',
+            'scheduled_for' => 'Occurrence prévue',
+            'checked_at' => 'Validée le',
+            'created_at' => 'Création',
         ];
     }
 

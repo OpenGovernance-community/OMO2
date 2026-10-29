@@ -4,8 +4,8 @@ if (!isset($document, $content)) { http_response_code(404); exit; }
 $sourceLang = [
     'readonly' => ['text' => 'Lecture seule', 'context' => 'Status of a private PAD shown without editing rights.'],
     'refresh' => ['text' => 'Le contenu est actualise automatiquement.', 'context' => 'Automatic refresh notice for the read-only PAD.'],
-    'error' => ['text' => 'Impossible d actualiser le PAD. Nouvelle tentative dans quelques instants.', 'context' => 'Persistent read-only PAD refresh error.'],
-    'denied' => ['text' => 'Ce PAD n est plus accessible.', 'context' => 'Read-only PAD access revoked while the page was open.'],
+    'error' => ['text' => 'Impossible d’actualiser le PAD. Nouvelle tentative dans quelques instants.', 'context' => 'Persistent read-only PAD refresh error.'],
+    'denied' => ['text' => 'Ce PAD n’est plus accessible.', 'context' => 'Read-only PAD access revoked while the page was open.'],
 ];
 $lang = omoLoadTranslationBundle('omo_documents_etherpad_readonly', $sourceLang);
 $t = static fn(string $key): string => t($key, [], $lang, $sourceLang);

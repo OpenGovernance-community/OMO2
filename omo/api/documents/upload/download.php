@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
 if (isset($_GET['pv_document_id'])) {
     require_once dirname(__DIR__, 4) . '/shared_functions.php';
     require_once dirname(__DIR__, 4) . '/common/auth.php';
@@ -9,7 +10,7 @@ if (isset($_GET['pv_document_id'])) {
     if (!$pvDocument) {
         http_response_code(404);
         header('Content-Type: text/plain; charset=UTF-8');
-        echo 'Document introuvable ou inaccessible avec ce lien de reunion.';
+        echo omoDocumentsUiT('document_introuvable_ou_inaccessible_avec_ce_lien_de_reunion');
         exit;
     }
 } else {
@@ -26,7 +27,7 @@ $holonId = isset($_GET['cid']) ? (int)$_GET['cid'] : 0;
 if ($documentId <= 0) {
     http_response_code(400);
     header('Content-Type: text/plain; charset=UTF-8');
-    echo 'Document invalide.';
+    echo omoDocumentsUiT('document_invalide');
     exit;
 }
 
@@ -34,7 +35,7 @@ $document = new Document();
 if (!$document->load($documentId) || !$document->isUploadedFile() || !$document->hasStoredFile()) {
     http_response_code(404);
     header('Content-Type: text/plain; charset=UTF-8');
-    echo 'Document introuvable ou inaccessible.';
+    echo omoDocumentsUiT('document_introuvable_ou_inaccessible');
     exit;
 }
 
@@ -49,7 +50,7 @@ if ($holonId <= 0) {
 if (!isset($pvDocument) && !$document->canViewInOrganizationContext($organizationId, $holonId > 0 ? $holonId : null)) {
     http_response_code(404);
     header('Content-Type: text/plain; charset=UTF-8');
-    echo 'Document introuvable ou inaccessible.';
+    echo omoDocumentsUiT('document_introuvable_ou_inaccessible');
     exit;
 }
 
@@ -60,7 +61,7 @@ if (
 ) {
     http_response_code(503);
     header('Content-Type: text/plain; charset=UTF-8');
-    echo 'Stockage distant indisponible.';
+    echo omoDocumentsUiT('stockage_distant_indisponible');
     exit;
 }
 
@@ -68,7 +69,7 @@ $downloadResult = $organization->downloadDocumentFileFromStorage((string)$docume
 if (!is_array($downloadResult) || empty($downloadResult['status'])) {
     http_response_code(502);
     header('Content-Type: text/plain; charset=UTF-8');
-    echo trim((string)($downloadResult['text'] ?? 'Impossible de récupérer le fichier distant.'));
+    echo trim((string)($downloadResult['text'] ?? omoDocumentsUiT('impossible_de_recuperer_le_fichier_distant')));
     exit;
 }
 

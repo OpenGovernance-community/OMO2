@@ -3,6 +3,28 @@ namespace dbObject;
 
 class DecisionProposal extends DbObject
 {
+        protected static function uiMessageSourceLang(): array
+        {
+            return [
+                'impossible_de_sauvegarder_la_proposition_et_son_agenda' => ['text' => 'Impossible de sauvegarder la proposition et son agenda.', 'context' => 'Validation or action feedback for decisionproposal.'],
+                'indiquez_un_debut_et_une_fin_valides_avec_une_fin_apres_le_debut' => ['text' => 'Indiquez un début et une fin valides, avec une fin après le début.', 'context' => 'Validation or action feedback for decisionproposal.'],
+                'vous_ne_pouvez_supprimer_que_vos_propres_propositions' => ['text' => 'Vous ne pouvez supprimer que vos propres propositions.', 'context' => 'Validation or action feedback for decisionproposal.'],
+                'cette_proposition_n_est_plus_active' => ['text' => 'Cette proposition n’est plus active.', 'context' => 'Validation or action feedback for decisionproposal.'],
+                'la_proposition_ne_peut_pas_etre_supprimee_pour_le_moment' => ['text' => 'La proposition ne peut pas être supprimée pour le moment.', 'context' => 'Validation or action feedback for decisionproposal.'],
+                'proposition_supprimee' => ['text' => 'Proposition supprimée.', 'context' => 'Validation or action feedback for decisionproposal.'],
+                'cette_proposition_doit_etre_modifiee_depuis_son_editeur_de_gouvernance' => ['text' => 'Cette proposition doit être modifiée depuis son éditeur de gouvernance.', 'context' => 'Validation or action feedback for decisionproposal.'],
+                'vous_ne_pouvez_modifier_que_vos_propres_propositions' => ['text' => 'Vous ne pouvez modifier que vos propres propositions.', 'context' => 'Validation or action feedback for decisionproposal.'],
+                'le_titre_ne_peut_pas_depasser_190_caracteres' => ['text' => 'Le titre ne peut pas dépasser 190 caractères.', 'context' => 'Validation or action feedback for decisionproposal.'],
+                'la_description_est_trop_longue' => ['text' => 'La description est trop longue.', 'context' => 'Validation or action feedback for decisionproposal.'],
+                'le_lien_d_information_n_est_pas_valide' => ['text' => 'Le lien d’information n’est pas valide.', 'context' => 'Validation or action feedback for decisionproposal.'],
+                'la_proposition_doit_contenir_un_titre_une_description_ou_un_lien' => ['text' => 'La proposition doit contenir un titre, une description ou un lien.', 'context' => 'Validation or action feedback for decisionproposal.'],
+                'aucune_modification_a_enregistrer' => ['text' => 'Aucune modification à enregistrer.', 'context' => 'Validation or action feedback for decisionproposal.'],
+                'le_contexte_de_la_proposition_est_invalide' => ['text' => 'Le contexte de la proposition est invalide.', 'context' => 'Validation or action feedback for decisionproposal.'],
+                'la_proposition_ne_peut_pas_etre_enregistree_pour_le_moment' => ['text' => 'La proposition ne peut pas être enregistrée pour le moment.', 'context' => 'Validation or action feedback for decisionproposal.'],
+                'proposition_modifiee' => ['text' => 'Proposition modifiée.', 'context' => 'Validation or action feedback for decisionproposal.'],
+            ];
+        }
+
     protected $decisionMethodParametersCache = null;
 
     public static function tableName()
@@ -37,7 +59,7 @@ class DecisionProposal extends DbObject
             'title' => 'Titre',
             'description' => 'Description',
             'info_url' => 'Lien d’information',
-            'start_at' => 'Debut',
+            'start_at' => 'Début',
             'end_at' => 'Fin',
             'timezone' => 'Fuseau horaire',
             'position' => 'Ordre',
@@ -98,7 +120,7 @@ class DecisionProposal extends DbObject
         } catch (\Throwable $exception) {
             if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
             error_log('decision_proposal_save_failed: ' . $exception->getMessage());
-            return ['status' => false, 'text' => 'Impossible de sauvegarder la proposition et son agenda.'];
+            return ['status' => false, 'text' => self::uiMessage('impossible_de_sauvegarder_la_proposition_et_son_agenda')];
         }
     }
 
@@ -124,7 +146,7 @@ class DecisionProposal extends DbObject
             $storageZone = new \DateTimeZone(date_default_timezone_get());
             return ['status' => true, 'values' => ['start_at' => $start->setTimezone($storageZone), 'end_at' => $end->setTimezone($storageZone), 'timezone' => $zone->getName()]];
         } catch (\Throwable $exception) {
-            return ['status' => false, 'reason' => 'invalid_dates', 'text' => 'Indiquez un debut et une fin valides, avec une fin apres le debut.', 'message' => 'Indiquez un debut et une fin valides, avec une fin apres le debut.'];
+            return ['status' => false, 'reason' => 'invalid_dates', 'text' => self::uiMessage('indiquez_un_debut_et_une_fin_valides_avec_une_fin_apres_le_debut'), 'message' => self::uiMessage('indiquez_un_debut_et_une_fin_valides_avec_une_fin_apres_le_debut')];
         }
     }
 
@@ -377,7 +399,7 @@ class DecisionProposal extends DbObject
             return [
                 'status' => false,
                 'reason' => 'forbidden',
-                'message' => 'Vous ne pouvez supprimer que vos propres propositions.',
+                'message' => self::uiMessage('vous_ne_pouvez_supprimer_que_vos_propres_propositions'),
             ];
         }
 
@@ -385,7 +407,7 @@ class DecisionProposal extends DbObject
             return [
                 'status' => false,
                 'reason' => 'not_found',
-                'message' => 'Cette proposition n est plus active.',
+                'message' => self::uiMessage('cette_proposition_n_est_plus_active'),
             ];
         }
 
@@ -396,7 +418,7 @@ class DecisionProposal extends DbObject
             return [
                 'status' => false,
                 'reason' => 'save_failed',
-                'message' => 'La proposition ne peut pas être supprimée pour le moment.',
+                'message' => self::uiMessage('la_proposition_ne_peut_pas_etre_supprimee_pour_le_moment'),
             ];
         }
 
@@ -418,7 +440,7 @@ class DecisionProposal extends DbObject
 
         return [
             'status' => true,
-            'message' => 'Proposition supprimée.',
+            'message' => self::uiMessage('proposition_supprimee'),
         ];
     }
 
@@ -433,42 +455,42 @@ class DecisionProposal extends DbObject
             return [
                 'status' => false,
                 'reason' => 'governance_editor_required',
-                'message' => 'Cette proposition doit etre modifiee depuis son editeur de gouvernance.',
+                'message' => self::uiMessage('cette_proposition_doit_etre_modifiee_depuis_son_editeur_de_gouvernance'),
             ];
         }
         if (!$this->canBeEditedByActor($userId, $participantId)) {
             return [
                 'status' => false,
                 'reason' => 'forbidden',
-                'message' => 'Vous ne pouvez modifier que vos propres propositions.',
+                'message' => self::uiMessage('vous_ne_pouvez_modifier_que_vos_propres_propositions'),
             ];
         }
         if (mb_strlen($title, 'UTF-8') > 190) {
             return [
                 'status' => false,
                 'reason' => 'invalid_title',
-                'message' => 'Le titre ne peut pas depasser 190 caracteres.',
+                'message' => self::uiMessage('le_titre_ne_peut_pas_depasser_190_caracteres'),
             ];
         }
         if (mb_strlen($description, 'UTF-8') > 10000) {
             return [
                 'status' => false,
                 'reason' => 'invalid_description',
-                'message' => 'La description est trop longue.',
+                'message' => self::uiMessage('la_description_est_trop_longue'),
             ];
         }
         if ($infoUrl !== '' && (mb_strlen($infoUrl, 'UTF-8') > 500 || !filter_var($infoUrl, FILTER_VALIDATE_URL))) {
             return [
                 'status' => false,
                 'reason' => 'invalid_url',
-                'message' => 'Le lien d’information n’est pas valide.',
+                'message' => self::uiMessage('le_lien_d_information_n_est_pas_valide'),
             ];
         }
         if ($title === '' && $description === '' && $infoUrl === '' && empty($calendarRange['start_at'])) {
             return [
                 'status' => false,
                 'reason' => 'invalid_content',
-                'message' => 'La proposition doit contenir un titre, une description ou un lien.',
+                'message' => self::uiMessage('la_proposition_doit_contenir_un_titre_une_description_ou_un_lien'),
             ];
         }
 
@@ -495,7 +517,7 @@ class DecisionProposal extends DbObject
             return [
                 'status' => true,
                 'changed' => false,
-                'message' => 'Aucune modification à enregistrer.',
+                'message' => self::uiMessage('aucune_modification_a_enregistrer'),
             ];
         }
 
@@ -522,7 +544,7 @@ class DecisionProposal extends DbObject
             return [
                 'status' => false,
                 'reason' => 'invalid_context',
-                'message' => 'Le contexte de la proposition est invalide.',
+                'message' => self::uiMessage('le_contexte_de_la_proposition_est_invalide'),
             ];
         }
 
@@ -531,7 +553,7 @@ class DecisionProposal extends DbObject
             return [
                 'status' => false,
                 'reason' => 'database_unavailable',
-                'message' => 'La proposition ne peut pas être enregistrée pour le moment.',
+                'message' => self::uiMessage('la_proposition_ne_peut_pas_etre_enregistree_pour_le_moment'),
             ];
         }
 
@@ -598,14 +620,14 @@ class DecisionProposal extends DbObject
             return [
                 'status' => false,
                 'reason' => 'save_failed',
-                'message' => 'La proposition ne peut pas être enregistrée pour le moment.',
+                'message' => self::uiMessage('la_proposition_ne_peut_pas_etre_enregistree_pour_le_moment'),
             ];
         }
 
         return [
             'status' => true,
             'changed' => true,
-            'message' => 'Proposition modifiée.',
+            'message' => self::uiMessage('proposition_modifiee'),
         ];
     }
 

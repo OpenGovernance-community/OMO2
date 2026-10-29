@@ -142,7 +142,7 @@ if (!function_exists('omoStatsEthercalcReadTable')) {
         $dateColumnIndex = StatIndicator::ethercalcColumnToIndex($dateColumn);
         $valueColumnIndex = StatIndicator::ethercalcColumnToIndex($valueColumn);
         if ($dateColumnIndex < $startColumn || $dateColumnIndex > $endColumn || $valueColumnIndex < $startColumn || $valueColumnIndex > $endColumn) {
-            return ['status' => false, 'text' => 'Les colonnes du tableau doivent etre incluses dans la plage.'];
+            return ['status' => false, 'text' => 'Les colonnes du tableau doivent être incluses dans la plage.'];
         }
 
         $result = omoStatsEthercalcFetchRows($document);
@@ -195,7 +195,7 @@ if (!function_exists('omoStatsSynchronizeEthercalcIndicator')) {
             $value->set('measured_at', \DateTime::createFromInterface($referenceDate));
             $saveResult = $value->save();
             if (!is_array($saveResult) || empty($saveResult['status'])) {
-                return ['status' => false, 'text' => 'Impossible d enregistrer la valeur EtherCalc.'];
+                return ['status' => false, 'text' => 'Impossible d’enregistrer la valeur EtherCalc.'];
             }
         } elseif ($indicator->isEthercalcTableSource()) {
             $result = omoStatsEthercalcReadTable(

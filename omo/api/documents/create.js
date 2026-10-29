@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 window.commonPageScripts = window.commonPageScripts || {};
 window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig, pageScript) {
 (function () {
@@ -333,10 +335,10 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
 
         const title = String(documentItem.title || '').trim();
         const description = String(documentItem.description || '').trim();
-        const resolvedTitle = title !== '' ? title : 'Document #' + String(numericId);
+        const resolvedTitle = title !== '' ? title : omoUiText("document_2", "Document #") + String(numericId);
         let html = ''
             + '<span class="omo-document-embed"'
-            + ' data-omo-embed-type="document"'
+            + " data-omo-embed-type=\"document\""
             + ' data-omo-document-id="' + escapeHtml(String(numericId)) + '"'
             + ' data-omo-document-title="' + escapeHtml(resolvedTitle) + '"';
 
@@ -345,7 +347,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
         }
 
         html += ' contenteditable="false">'
-            + '<strong>Document lié</strong><br>'
+            + ("<strong>" + omoUiHtml("document_lie", "Document lié") + "</strong><br>")
             + '<strong>' + escapeHtml(resolvedTitle) + '</strong>';
 
         if (description !== '') {
@@ -478,7 +480,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
         editLockLost = true;
         clearEditLockHeartbeatTimer();
         clearDraftSyncTimer();
-        setStatus(String(message || 'Ce document n’est plus verrouillé pour votre édition.'));
+        setStatus(String(message || omoUiText("ce_document_n_est_plus_verrouille_pour_votre_edition", "Ce document n’est plus verrouillé pour votre édition.")));
         syncDictationToolbarButtons();
     }
 
@@ -494,7 +496,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
                     if (!result || !result.ok || !result.payload || result.payload.status !== true) {
                         const message = result && result.payload && result.payload.message
                             ? result.payload.message
-                            : 'Ce document est desormais edite ailleurs.';
+                            : omoUiText("ce_document_est_desormais_edite_ailleurs", "Ce document est désormais edite ailleurs.");
                         markEditLockLost(message);
                     }
                 })
@@ -515,7 +517,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
                     if (!result || !result.ok || !result.payload || result.payload.status !== true) {
                         const message = result && result.payload && result.payload.message
                             ? result.payload.message
-                            : 'Ce document est desormais edite ailleurs.';
+                            : omoUiText("ce_document_est_desormais_edite_ailleurs", "Ce document est désormais edite ailleurs.");
                         markEditLockLost(message);
                         return;
                     }
@@ -654,39 +656,39 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
         const submitButton = form.querySelector('[data-omo-document-editor-submit]');
 
         htmlField.setToolbarButtonState('omoDocumentAiToggle', {
-            label: 'IA',
-            title: aiToolsVisible ? 'Masquer les outils IA' : 'Afficher les outils IA',
+            label: omoUiText("ia", "IA"),
+            title: aiToolsVisible ? omoUiText("masquer_les_outils_ia", "Masquer les outils IA") : omoUiText("afficher_les_outils_ia", "Afficher les outils IA"),
             active: aiToolsVisible,
             disabled: false
         });
 
         htmlField.setToolbarButtonState('omoDocumentDictate', {
-            label: isRecording ? 'En cours…' : 'Dicter',
-            title: isRecording ? 'Enregistrement en cours' : 'Démarrer une dictée',
+            label: isRecording ? omoUiText("en_cours", "En cours…") : omoUiText("dicter", "Dicter"),
+            title: isRecording ? omoUiText("enregistrement_en_cours", "Enregistrement en cours") : omoUiText("demarrer_une_dictee", "Démarrer une dictée"),
             disabled: isRecording || isTranscribing || isRewriting || isSummarizing,
             hidden: !aiToolsVisible || !transcriptionEnabled
         });
         htmlField.setToolbarButtonState('omoDocumentTranscript', {
-            label: isTranscribing ? 'Transcription…' : 'Transcrire',
-            title: 'Arrêter l’enregistrement et transcrire',
+            label: isTranscribing ? omoUiText("transcription", "Transcription…") : omoUiText("transcrire", "Transcrire"),
+            title: omoUiText("arreter_l_enregistrement_et_transcrire", "Arrêter l’enregistrement et transcrire"),
             disabled: !isRecording || isTranscribing || isRewriting || isSummarizing,
             hidden: !aiToolsVisible || !transcriptionEnabled
         });
         htmlField.setToolbarButtonState('omoDocumentDictationCancel', {
-            label: 'Annuler',
-            title: 'Annuler la dictée en cours',
+            label: omoUiText("annuler", "Annuler"),
+            title: omoUiText("annuler_la_dictee_en_cours", "Annuler la dictée en cours"),
             disabled: (!isRecording && !isTranscribing),
             hidden: !aiToolsVisible || !transcriptionEnabled || (!isRecording && !isTranscribing)
         });
         htmlField.setToolbarButtonState('omoDocumentRewrite', {
-            label: isRewriting ? 'Réécriture…' : 'Réécrire',
-            title: isRewriting ? 'Réécriture en cours' : 'Réécrire la sélection',
+            label: isRewriting ? omoUiText("reecriture", "Réécriture…") : omoUiText("reecrire", "Réécrire"),
+            title: isRewriting ? omoUiText("reecriture_en_cours", "Réécriture en cours") : omoUiText("reecrire_la_selection", "Réécrire la sélection"),
             disabled: isRecording || isTranscribing || isRewriting || isSummarizing,
             hidden: !aiToolsVisible || !textToolsEnabled
         });
         htmlField.setToolbarButtonState('omoDocumentSummarize', {
-            label: isSummarizing ? 'Résumé…' : 'Résumer',
-            title: isSummarizing ? 'Résumé en cours' : 'Résumer la sélection',
+            label: isSummarizing ? omoUiText("resume", "Résumé…") : omoUiText("resumer", "Résumer"),
+            title: isSummarizing ? omoUiText("resume_en_cours", "Résumé en cours") : omoUiText("resumer_la_selection", "Résumer la sélection"),
             disabled: isRecording || isTranscribing || isRewriting || isSummarizing,
             hidden: !aiToolsVisible || !textToolsEnabled
         });
@@ -718,22 +720,22 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
         const errorName = error && error.name ? String(error.name) : '';
 
         if (errorName === 'NotAllowedError' || errorName === 'SecurityError') {
-            return 'L’accès au micro a été refusé.';
+            return omoUiText("l_acces_au_micro_a_ete_refuse", "L’accès au micro a été refusé.");
         }
 
         if (errorName === 'NotFoundError' || errorName === 'DevicesNotFoundError') {
-            return 'Aucun micro n’est disponible sur cet appareil.';
+            return omoUiText("aucun_micro_n_est_disponible_sur_cet_appareil", "Aucun micro n’est disponible sur cet appareil.");
         }
 
         if (errorName === 'AbortError') {
-            return 'La dictée a été interrompue.';
+            return omoUiText("la_dictee_a_ete_interrompue", "La dictée a été interrompue.");
         }
 
         if (error && error.message) {
             return String(error.message);
         }
 
-        return 'Impossible d’utiliser la dictée pour le moment.';
+        return omoUiText("impossible_d_utiliser_la_dictee_pour_le_moment", "Impossible d’utiliser la dictée pour le moment.");
     }
 
     function abortTranscriptionRequest() {
@@ -790,7 +792,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
 
             const handleError = function () {
                 resetDictationRecorderState();
-                reject(new Error('Impossible de finaliser l’enregistrement audio.'));
+                reject(new Error(omoUiText("impossible_de_finaliser_l_enregistrement_audio", "Impossible de finaliser l’enregistrement audio.")));
             };
 
             recorder.addEventListener('stop', handleStop, { once: true });
@@ -905,8 +907,8 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
         customButtons.push({
             name: 'omoDocumentEmbed',
             group: 'omo-embed',
-            label: 'Document',
-            title: 'Insérer un document',
+            label: omoUiText("document", "Document"),
+            title: omoUiText("inserer_un_document", "Insérer un document"),
             className: 'note-btn-light',
             focusForInsertion: true,
             onClick: function () {
@@ -918,8 +920,8 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
             customButtons.push({
                 name: 'omoDocumentAiToggle',
                 group: 'omo-ai-toggle',
-                label: 'IA',
-                title: 'Afficher les outils IA',
+                label: omoUiText("ia", "IA"),
+                title: omoUiText("afficher_les_outils_ia", "Afficher les outils IA"),
                 className: 'note-btn-light',
                 onClick: function () {
                     toggleAiTools();
@@ -928,8 +930,8 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
             customButtons.push({
                 name: 'omoDocumentDictate',
                 group: 'omo-ai-tools',
-                label: 'Dicter',
-                title: 'Démarrer une dictée',
+                label: omoUiText("dicter", "Dicter"),
+                title: omoUiText("demarrer_une_dictee", "Démarrer une dictée"),
                 className: 'note-btn-light',
                 // These actions disable/hide their button: keep focus in the editor.
                 focusForInsertion: true,
@@ -941,8 +943,8 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
             customButtons.push({
                 name: 'omoDocumentTranscript',
                 group: 'omo-ai-tools',
-                label: 'Transcrire',
-                title: 'Arrêter l’enregistrement et transcrire',
+                label: omoUiText("transcrire", "Transcrire"),
+                title: omoUiText("arreter_l_enregistrement_et_transcrire", "Arrêter l’enregistrement et transcrire"),
                 className: 'note-btn-light',
                 focusForInsertion: true,
                 disabled: true,
@@ -954,22 +956,22 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
             customButtons.push({
                 name: 'omoDocumentDictationCancel',
                 group: 'omo-ai-tools',
-                label: 'Annuler',
-                title: 'Annuler la dictée en cours',
+                label: omoUiText("annuler", "Annuler"),
+                title: omoUiText("annuler_la_dictee_en_cours", "Annuler la dictée en cours"),
                 className: 'note-btn-light',
                 focusForInsertion: true,
                 hidden: true,
                 disabled: true,
                 onClick: function () {
                     cleanupDictation({ discard: true });
-                    setDictationStatus('Dictée annulée.', 'error');
+                    setDictationStatus(omoUiText("dictee_annulee", "Dictée annulée."), 'error');
                 }
             });
             customButtons.push({
                 name: 'omoDocumentRewrite',
                 group: 'omo-ai-tools',
-                label: 'Rewrite',
-                title: 'Réécrire la sélection',
+                label: omoUiText("rewrite", "Réécrire"),
+                title: omoUiText("reecrire_la_selection", "Réécrire la sélection"),
                 className: 'note-btn-light',
                 focusForInsertion: true,
                 hidden: true,
@@ -980,8 +982,8 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
             customButtons.push({
                 name: 'omoDocumentSummarize',
                 group: 'omo-ai-tools',
-                label: 'Résumer',
-                title: 'Résumer la sélection',
+                label: omoUiText("resumer", "Résumer"),
+                title: omoUiText("resumer_la_selection", "Résumer la sélection"),
                 className: 'note-btn-light',
                 focusForInsertion: true,
                 hidden: true,
@@ -993,7 +995,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
 
         htmlField = window.omoSimpleHtmlField.mount(htmlHost, {
             value: htmlValueCache,
-            placeholder: 'Rédigez le contenu du document…',
+            placeholder: omoUiText("redigez_le_contenu_du_document", "Rédigez le contenu du document…"),
             customButtons: customButtons,
             resourceGapHelperLabel: String(uiText.embedAddLine || ''),
             onChange: function (value) {
@@ -1020,21 +1022,21 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
 
         if (aiToolsEnabled && htmlField && typeof htmlField.setToolbarButtonState === 'function') {
             htmlField.setToolbarButtonState('omoDocumentAiToggle', {
-                label: 'IA',
-                title: 'Afficher les outils IA'
+                label: omoUiText("ia", "IA"),
+                title: omoUiText("afficher_les_outils_ia", "Afficher les outils IA")
             });
             htmlField.setToolbarButtonState('omoDocumentDictate', {
-                label: 'Dicter',
-                title: 'Démarrer une dictée'
+                label: omoUiText("dicter", "Dicter"),
+                title: omoUiText("demarrer_une_dictee", "Démarrer une dictée")
             });
             htmlField.setToolbarButtonState('omoDocumentTranscript', {
-                title: 'Arrêter l’enregistrement et transcrire'
+                title: omoUiText("arreter_l_enregistrement_et_transcrire", "Arrêter l’enregistrement et transcrire")
             });
             htmlField.setToolbarButtonState('omoDocumentRewrite', {
-                title: 'Réécrire la sélection'
+                title: omoUiText("reecrire_la_selection", "Réécrire la sélection")
             });
             htmlField.setToolbarButtonState('omoDocumentSummarize', {
-                title: 'Résumer la sélection'
+                title: omoUiText("resumer_la_selection", "Résumer la sélection")
             });
         }
 
@@ -1047,7 +1049,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
             return;
         }
 
-        const htmlFieldVersion = '20261009-html-editor-placeholder';
+        const htmlFieldVersion = '20261029-translations';
         if (
             window.omoSimpleHtmlField
             && typeof window.omoSimpleHtmlField.mount === 'function'
@@ -1086,7 +1088,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
         }
 
         if (typeof window.MediaRecorder === 'undefined' || !navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
-            setDictationStatus('La dictée n’est pas disponible sur ce navigateur.', 'error');
+            setDictationStatus(omoUiText("la_dictee_n_est_pas_disponible_sur_ce_navigateur", "La dictée n’est pas disponible sur ce navigateur."), 'error');
             return;
         }
 
@@ -1114,7 +1116,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
 
             recorder.start();
             setDictationMode('recording');
-            setDictationStatus('Enregistrement en cours. Quand vous avez terminé, cliquez sur Transcrire.', 'live');
+            setDictationStatus(omoUiText("enregistrement_en_cours_quand_vous_avez_termine_cliquez_sur_transcrire", "Enregistrement en cours. Quand vous avez terminé, cliquez sur Transcrire."), 'live');
         } catch (error) {
             cleanupDictation({ discard: true, keepStatus: true });
             setDictationStatus(formatDictationError(error), 'error');
@@ -1127,12 +1129,12 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
         }
 
         setDictationMode('transcribing');
-        setDictationStatus('Transcription en cours…', 'live');
+        setDictationStatus(omoUiText("transcription_en_cours", "Transcription en cours…"), 'live');
 
         try {
             const audioBlob = await stopRecorder(false);
             if (!audioBlob || audioBlob.size <= 0) {
-                throw new Error('Aucun son n’a été enregistré.');
+                throw new Error(omoUiText("aucun_son_n_a_ete_enregistre", "Aucun son n’a été enregistré."));
             }
 
             const formData = new FormData();
@@ -1163,16 +1165,16 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
             // The endpoint sends its useful error message with a non-2xx status.
             const payload = await response.json().catch(function () { return null; });
             if (!response.ok || !payload || payload.status !== true) {
-                throw new Error(payload && payload.message ? payload.message : 'Impossible de transcrire cet enregistrement.');
+                throw new Error(payload && payload.message ? payload.message : omoUiText("impossible_de_transcrire_cet_enregistrement", "Impossible de transcrire cet enregistrement."));
             }
 
             const transcriptText = String(payload.text || '').trim();
             if (transcriptText === '') {
-                throw new Error('La transcription est vide.');
+                throw new Error(omoUiText("la_transcription_est_vide", "La transcription est vide."));
             }
 
             if (!htmlField || typeof htmlField.insertTextAtCursor !== 'function') {
-                throw new Error('Impossible d’insérer la transcription dans l’éditeur.');
+                throw new Error(omoUiText("impossible_d_inserer_la_transcription_dans_l_editeur", "Impossible d’insérer la transcription dans l’éditeur."));
             }
 
             htmlField.insertTextAtCursor(transcriptText);
@@ -1181,7 +1183,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
             }
 
             setDictationMode('idle');
-            setDictationStatus('Transcription insérée dans le document.', 'success');
+            setDictationStatus(omoUiText("transcription_inseree_dans_le_document", "Transcription insérée dans le document."), 'success');
         } catch (error) {
             setDictationMode('idle');
             setDictationStatus(formatDictationError(error), 'error');
@@ -1196,7 +1198,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
         }
 
         if (!htmlField || typeof htmlField.getSelectedText !== 'function' || typeof htmlField.getPlainText !== 'function') {
-            setDictationStatus('Impossible d’accéder à la sélection dans l’éditeur.', 'error');
+            setDictationStatus(omoUiText("impossible_d_acceder_a_la_selection_dans_l_editeur", "Impossible d’accéder à la sélection dans l’éditeur."), 'error');
             return;
         }
 
@@ -1209,17 +1211,17 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
         const rewritesWholeDocument = normalizeRewriteComparisonText(selectedText) === normalizeRewriteComparisonText(fullText);
 
         if (selectedText === '') {
-            setDictationStatus('Sélectionnez un bloc de texte avant de lancer la réécriture.', 'error');
+            setDictationStatus(omoUiText("selectionnez_un_bloc_de_texte_avant_de_lancer_la_reecriture", "Sélectionnez un bloc de texte avant de lancer la réécriture."), 'error');
             return;
         }
 
         if (fullText === '') {
-            setDictationStatus('Le document est vide.', 'error');
+            setDictationStatus(omoUiText("le_document_est_vide", "Le document est vide."), 'error');
             return;
         }
 
         setRewriteMode('pending');
-        setDictationStatus('Réécriture en cours…', 'live');
+        setDictationStatus(omoUiText("reecriture_en_cours_2", "Réécriture en cours…"), 'live');
 
         try {
             const formData = new FormData();
@@ -1246,21 +1248,21 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
             });
 
             if (!response.ok) {
-                throw new Error('Impossible de réécrire cette sélection.');
+                throw new Error(omoUiText("impossible_de_reecrire_cette_selection", "Impossible de réécrire cette sélection."));
             }
 
             const payload = await response.json();
             if (!payload || payload.status !== true) {
-                throw new Error(payload && payload.message ? payload.message : 'Impossible de réécrire cette sélection.');
+                throw new Error(payload && payload.message ? payload.message : omoUiText("impossible_de_reecrire_cette_selection", "Impossible de réécrire cette sélection."));
             }
 
             const rewrittenText = String(payload.text || '').trim();
             if (rewrittenText === '') {
-                throw new Error('La réécriture est vide.');
+                throw new Error(omoUiText("la_reecriture_est_vide", "La réécriture est vide."));
             }
 
             if (typeof htmlField.replaceSelectionWithText !== 'function') {
-                throw new Error('Impossible de remplacer la sélection dans l’éditeur.');
+                throw new Error(omoUiText("impossible_de_remplacer_la_selection_dans_l_editeur", "Impossible de remplacer la sélection dans l’éditeur."));
             }
 
             htmlField.replaceSelectionWithText(rewrittenText);
@@ -1269,11 +1271,11 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
             }
 
             setRewriteMode('idle');
-            setDictationStatus('Sélection réécrite.', 'success');
+            setDictationStatus(omoUiText("selection_reecrite", "Sélection réécrite."), 'success');
         } catch (error) {
             setRewriteMode('idle');
             setDictationStatus(
-                error && error.message ? String(error.message) : 'Impossible de réécrire cette sélection.',
+                error && error.message ? String(error.message) : omoUiText("impossible_de_reecrire_cette_selection", "Impossible de réécrire cette sélection."),
                 'error'
             );
         } finally {
@@ -1287,7 +1289,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
         }
 
         if (!htmlField || typeof htmlField.getSelectedText !== 'function' || typeof htmlField.getPlainText !== 'function') {
-            setDictationStatus('Impossible d’accéder à la sélection dans l’éditeur.', 'error');
+            setDictationStatus(omoUiText("impossible_d_acceder_a_la_selection_dans_l_editeur", "Impossible d’accéder à la sélection dans l’éditeur."), 'error');
             return;
         }
 
@@ -1299,17 +1301,17 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
         const fullText = String(htmlField.getPlainText() || '').trim();
 
         if (selectedText === '') {
-            setDictationStatus('Sélectionnez un bloc de texte avant de lancer le résumé.', 'error');
+            setDictationStatus(omoUiText("selectionnez_un_bloc_de_texte_avant_de_lancer_le_resume", "Sélectionnez un bloc de texte avant de lancer le résumé."), 'error');
             return;
         }
 
         if (fullText === '') {
-            setDictationStatus('Le document est vide.', 'error');
+            setDictationStatus(omoUiText("le_document_est_vide", "Le document est vide."), 'error');
             return;
         }
 
         setSummarizeMode('pending');
-        setDictationStatus('Résumé en cours…', 'live');
+        setDictationStatus(omoUiText("resume_en_cours_2", "Résumé en cours…"), 'live');
 
         try {
             const formData = new FormData();
@@ -1335,21 +1337,21 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
             });
 
             if (!response.ok) {
-                throw new Error('Impossible de résumer cette sélection.');
+                throw new Error(omoUiText("impossible_de_resumer_cette_selection", "Impossible de résumer cette sélection."));
             }
 
             const payload = await response.json();
             if (!payload || payload.status !== true) {
-                throw new Error(payload && payload.message ? payload.message : 'Impossible de résumer cette sélection.');
+                throw new Error(payload && payload.message ? payload.message : omoUiText("impossible_de_resumer_cette_selection", "Impossible de résumer cette sélection."));
             }
 
             const summarizedText = String(payload.text || '').trim();
             if (summarizedText === '') {
-                throw new Error('Le résumé est vide.');
+                throw new Error(omoUiText("le_resume_est_vide", "Le résumé est vide."));
             }
 
             if (typeof htmlField.replaceSelectionWithText !== 'function') {
-                throw new Error('Impossible de remplacer la sélection dans l’éditeur.');
+                throw new Error(omoUiText("impossible_de_remplacer_la_selection_dans_l_editeur", "Impossible de remplacer la sélection dans l’éditeur."));
             }
 
             htmlField.replaceSelectionWithText(summarizedText);
@@ -1358,11 +1360,11 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
             }
 
             setSummarizeMode('idle');
-            setDictationStatus('Sélection résumée.', 'success');
+            setDictationStatus(omoUiText("selection_resumee", "Sélection résumée."), 'success');
         } catch (error) {
             setSummarizeMode('idle');
             setDictationStatus(
-                error && error.message ? String(error.message) : 'Impossible de résumer cette sélection.',
+                error && error.message ? String(error.message) : omoUiText("impossible_de_resumer_cette_selection", "Impossible de résumer cette sélection."),
                 'error'
             );
         } finally {
@@ -1502,13 +1504,13 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
             endpoint.searchParams.set('path', path);
             nextcloudBrowseButton.disabled = true;
             nextcloudBrowser.hidden = false;
-            nextcloudBrowser.textContent = 'Chargement...';
+            nextcloudBrowser.textContent = omoUiText("chargement", "Chargement...");
 
             fetch(endpoint.toString(), {credentials: 'same-origin', cache: 'no-store'})
                 .then(function (response) {
                     return response.json().then(function (payload) {
                         if (!response.ok || !payload || payload.status !== true) {
-                            throw new Error(String(payload && payload.message || 'Impossible de lire NextCloud.'));
+                            throw new Error(String(payload && payload.message || omoUiText("impossible_de_lire_nextcloud", "Impossible de lire NextCloud.")));
                         }
                         return payload;
                     });
@@ -1544,7 +1546,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
                         const button = document.createElement('button');
                         button.type = 'button';
                         button.className = 'generic-action-button generic-action-button--secondary';
-                        button.textContent = String(entry.name || entry.path || 'Dossier');
+                        button.textContent = String(entry.name || entry.path || omoUiText("dossier", "Dossier"));
                         button.addEventListener('click', function () {
                             nextcloudFolderPathField.value = String(entry.path || '');
                             browseNextcloudFolder(entry.path || '');
@@ -1553,7 +1555,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
                     });
                 })
                 .catch(function (error) {
-                    nextcloudBrowser.textContent = String(error && error.message || 'Impossible de lire NextCloud.');
+                    nextcloudBrowser.textContent = String(error && error.message || omoUiText("impossible_de_lire_nextcloud", "Impossible de lire NextCloud."));
                 })
                 .finally(function () {
                     nextcloudBrowseButton.disabled = false;
@@ -1570,7 +1572,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
         setStatus('');
 
         if (editLockLost) {
-            setStatus('Ce document n’est plus verrouillé pour votre édition. Rechargez le formulaire.');
+            setStatus(omoUiText("ce_document_n_est_plus_verrouille_pour_votre_edition_rechargez_le_formulaire", "Ce document n’est plus verrouillé pour votre édition. Rechargez le formulaire."));
             return;
         }
 
@@ -1670,7 +1672,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
             .catch(function (error) {
                 setStatus(error && error.message && error.message !== 'save_failed'
                     ? error.message
-                    : 'Impossible d’enregistrer ce document pour le moment.');
+                    : omoUiText("impossible_d_enregistrer_ce_document_pour_le_moment", "Impossible d’enregistrer ce document pour le moment."));
             })
             .finally(function () {
                 setSavingState(false);

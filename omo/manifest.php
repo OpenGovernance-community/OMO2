@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/shared_functions.php';
 require_once dirname(__DIR__) . '/common/auth.php';
 
@@ -136,8 +137,8 @@ $manifest = [
     'id' => $startUrl,
     'name' => $appName,
     'short_name' => $shortName,
-    'description' => 'Application de gouvernance OMO pour consulter la structure, les espaces et les outils.',
-    'lang' => 'fr-CH',
+    'description' => omoInterfaceUiT('application_de_gouvernance_omo_pour_consulter_la_structure_les_espaces_et_les_outils'),
+    'lang' => omoGetTranslationLocale(),
     'dir' => 'ltr',
     'start_url' => $startUrl,
     'scope' => $scope,

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/invitations_shared.php';
 require_once __DIR__ . '/permissions_shared.php';
@@ -296,7 +297,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <input type="hidden" name="csrf" value="<?= omoApiEscape($invitationCsrf) ?>">
     <div class="omo-calendar-invitations-popup__header generic-drawer-header generic-drawer-header--sticky">
         <div class="generic-drawer-header__copy omo-calendar-invitations-popup__header-copy">
-            <div class="generic-card-title generic-card-title--eyebrow">Calendrier</div>
+            <div class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoCalendarUiT('calendrier'), ENT_QUOTES, 'UTF-8') ?></div>
             <h3 class="generic-card-title generic-card-title--medium"><?= omoApiEscape(omoCalendarInvitationsPopupT('calendar.invitations.title')) ?></h3>
         </div>
     </div>

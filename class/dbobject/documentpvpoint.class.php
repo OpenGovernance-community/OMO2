@@ -3,6 +3,53 @@ namespace dbObject;
 
 class DocumentPvPoint extends DbObject
 {
+        protected static function uiMessageSourceLang(): array
+        {
+            return [
+                'selectionnez_au_maximum_200_points_par_importation' => ['text' => 'Sélectionnez au maximum 200 points par importation.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'importation_refusee' => ['text' => 'Importation refusée.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'fin_du_suivi_refusee' => ['text' => 'Fin du suivi refusée.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'requete_de_verrou_invalide' => ['text' => 'Requête de verrou invalide.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'acces_refuse' => ['text' => 'Accès refusé.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'impossible_de_verrouiller_ce_point' => ['text' => 'Impossible de verrouiller ce point.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'verrou_d_edition_actif' => ['text' => 'Verrou d’édition actif.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'requete_de_reprise_de_verrou_invalide' => ['text' => 'Requête de reprise de verrou invalide.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'connexion_a_la_base_impossible' => ['text' => 'Connexion à la base impossible.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'demande_d_enregistrement_envoyee_a_la_session_actuelle' => ['text' => 'Demande d’enregistrement envoyée à la session actuelle.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'attente_de_la_sauvegarde_de_la_session_actuelle' => ['text' => 'Attente de la sauvegarde de la session actuelle.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'verrou_d_edition_repris' => ['text' => 'Verrou d’édition repris.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'impossible_de_reprendre_le_verrou_d_edition' => ['text' => 'Impossible de reprendre le verrou d’édition.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'verrou_d_edition_invalide' => ['text' => 'Verrou d’édition invalide.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'le_verrou_d_edition_a_ete_repris_par_une_autre_session' => ['text' => 'Le verrou d’édition a été repris par une autre session.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'impossible_de_sauvegarder_le_point' => ['text' => 'Impossible de sauvegarder le point.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'verrou_introuvable' => ['text' => 'Verrou introuvable.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'aucun_verrou_a_liberer' => ['text' => 'Aucun verrou a libérer.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'verrou_conserve_par_une_autre_session' => ['text' => 'Verrou conserve par une autre session.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'impossible_de_liberer_le_verrou_d_edition' => ['text' => 'Impossible de libérer le verrou d’édition.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'verrou_d_edition_libere' => ['text' => 'Verrou d’édition libéré.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'base_de_donnees_indisponible' => ['text' => 'Base de données indisponible.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'ce_point_est_indisponible_deplace_ou_sans_suivi_supplementaire' => ['text' => 'Ce point est indisponible, déplacé ou sans suivi supplémentaire.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'le_titre_du_point_est_obligatoire' => ['text' => 'Le titre du point est obligatoire.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'le_point_doit_etre_rattache_a_un_document_pv' => ['text' => 'Le point doit être rattaché a un document PV.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'le_document_cible_n_est_pas_un_pv_valide' => ['text' => 'Le document cible n’est pas un PV valide.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'l_adresse_e_mail_de_l_auteur_est_invalide' => ['text' => 'L’adresse e-mail de l’auteur est invalide.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'document_pv_invalide' => ['text' => 'Document PV invalide.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'impossible_de_charger_les_points_du_pv' => ['text' => 'Impossible de charger les points du PV.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'la_liste_des_points_a_reordonner_est_incomplete' => ['text' => 'La liste des points a réordonner est incomplète.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'impossible_de_reordonner_les_points_du_pv' => ['text' => 'Impossible de réordonner les points du PV.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'impossible_de_charger_l_ordre_du_jour' => ['text' => 'Impossible de charger l’ordre du jour.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'la_structure_de_l_ordre_du_jour_est_incomplete' => ['text' => 'La structure de l’ordre du jour est incomplète.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'le_groupe_cible_est_invalide' => ['text' => 'Le groupe cible est invalide.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'les_groupes_ne_peuvent_pas_former_une_boucle' => ['text' => 'Les groupes ne peuvent pas former une boucle.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'le_deplacement_des_points_personnels_est_limite_a_la_preparation' => ['text' => 'Le déplacement des points personnels est limité à la préparation.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'aucun_element_ne_peut_etre_deplace' => ['text' => 'Aucun élément ne peut être deplace.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'vous_ne_pouvez_deplacer_que_vos_propres_points' => ['text' => 'Vous ne pouvez déplacer que vos propres points.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'impossible_de_sauver_la_structure_de_l_ordre_du_jour' => ['text' => 'Impossible de sauver la structure de l’ordre du jour.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'vous_ne_pouvez_pas_classer_cet_ordre_du_jour' => ['text' => 'Vous ne pouvez pas classer cet ordre du jour.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'impossible_de_classer_l_ordre_du_jour' => ['text' => 'Impossible de classer l’ordre du jour.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+            ];
+        }
+
     public const TYPE_INFORMATION = 'information';
     public const TYPE_CONSULTATION = 'consultation';
     public const TYPE_DECISION = 'decision';
@@ -36,7 +83,7 @@ class DocumentPvPoint extends DbObject
         return [
             'id' => 'ID',
             'IDdocument' => 'Document PV',
-            'item_type' => 'Type d element',
+            'item_type' => 'Type d’élément',
             'IDparent' => 'Groupe parent',
             'title' => 'Titre',
             'IDuser_author' => 'Auteur',
@@ -44,58 +91,58 @@ class DocumentPvPoint extends DbObject
             'IDholon_concerned' => 'Holon concerne',
             'content' => 'Texte HTML',
             'position' => 'Ordre',
-            'priority' => 'Priorite',
-            'desired_duration_minutes' => 'Duree souhaitee',
-            'actual_duration_minutes' => 'Duree reelle',
+            'priority' => 'Priorité',
+            'desired_duration_minutes' => 'Durée souhaitée',
+            'actual_duration_minutes' => 'Durée réelle',
             'pointtype' => 'Type',
-            'IDuser_modification' => 'Derniere modification',
-            'IDuser_editing' => 'Edition en cours',
+            'IDuser_modification' => 'Dernière modification',
+            'IDuser_editing' => 'Édition en cours',
             'edit_lock_token' => 'Jeton de verrou',
             'IDuser_edit_takeover_request' => 'Demandeur de reprise du verrou',
             'edit_takeover_request_token' => 'Jeton de reprise du verrou',
-            'edit_takeover_target_token' => 'Jeton du verrou a reprendre',
+            'edit_takeover_target_token' => 'Jeton du verrou à reprendre',
             'date_edit_takeover_request' => 'Date de demande de reprise',
             'is_handled' => 'Traite',
             'handled_at' => 'Date de traitement',
             'IDpoint_moved_to' => 'Point de destination',
-            'date_moved' => 'Date de deplacement',
+            'date_moved' => 'Date de déplacement',
             'date_abandoned' => 'Fin du suivi',
             'is_confidential' => 'Confidentiel',
             'active' => 'Actif',
-            'dateedition' => 'Date edition',
-            'datecreation' => 'Creation',
-            'datemodification' => 'Mise a jour',
+            'dateedition' => 'Date édition',
+            'datecreation' => 'Création',
+            'datemodification' => 'Mise à jour',
         ];
     }
 
     public static function attributeDescriptions()
     {
         return [
-            'title' => 'Titre du point a l ordre du jour.',
-            'item_type' => 'Distingue un point de contenu d un groupe de classement.',
-            'IDparent' => 'Groupe parent direct dans l ordre du jour.',
-            'IDuser_author' => 'Membre qui porte ou presente ce point.',
+            'title' => 'Titre du point à l’ordre du jour.',
+            'item_type' => 'Distingue un point de contenu d’un groupe de classement.',
+            'IDparent' => 'Groupe parent direct dans l’ordre du jour.',
+            'IDuser_author' => 'Membre qui porte ou présente ce point.',
             'author_email' => 'Adresse e-mail de la personne externe qui porte ce point.',
             'IDholon_concerned' => 'Holon principal directement concerne par ce point.',
             'content' => 'Contenu HTML formate du point.',
-            'position' => 'Ordre d affichage dans le PV.',
-            'priority' => 'Priorite du point, de P1 (la plus haute) a P5.',
-            'desired_duration_minutes' => 'Duree visee en minutes.',
-            'actual_duration_minutes' => 'Duree observee en minutes.',
-            'pointtype' => 'Nature du point: information, normal, consultation ou decision.',
-            'IDuser_modification' => 'Derniere personne ayant change ce point, son ordre ou son statut.',
-            'IDuser_editing' => 'Personne qui detient actuellement le verrou d edition.',
-            'edit_lock_token' => 'Jeton technique de verrouillage d une session d edition.',
-            'IDuser_edit_takeover_request' => 'Editeur du PV qui demande le transfert du verrou.',
-            'edit_takeover_request_token' => 'Session a laquelle le verrou doit etre transfere.',
-            'edit_takeover_target_token' => 'Session invitee a enregistrer avant le transfert.',
-            'date_edit_takeover_request' => 'Debut du delai laisse a la session actuelle pour enregistrer.',
-            'is_handled' => 'Indique si le point a deja ete traite en reunion.',
+            'position' => 'Ordre d’affichage dans le PV.',
+            'priority' => 'Priorité du point, de P1 (la plus haute) a P5.',
+            'desired_duration_minutes' => 'Durée visee en minutes.',
+            'actual_duration_minutes' => 'Durée observee en minutes.',
+            'pointtype' => 'Nature du point: information, normal, consultation ou décision.',
+            'IDuser_modification' => 'Dernière personne ayant change ce point, son ordre ou son statut.',
+            'IDuser_editing' => 'Personne qui detient actuellement le verrou d’édition.',
+            'edit_lock_token' => 'Jeton technique de verrouillage d’une session d’édition.',
+            'IDuser_edit_takeover_request' => 'Éditeur du PV qui demande le transfert du verrou.',
+            'edit_takeover_request_token' => 'Session a laquelle le verrou doit être transfere.',
+            'edit_takeover_target_token' => 'Session invitée a enregistrer avant le transfert.',
+            'date_edit_takeover_request' => 'Début du délai laisse à la session actuelle pour enregistrer.',
+            'is_handled' => 'Indique si le point a déjà été traité en réunion.',
             'handled_at' => 'Date et heure du dernier passage du point au statut traite.',
-            'IDpoint_moved_to' => 'Point copie dans une reunion suivante ; le point source reste non traite et ne peut plus etre importe.',
-            'date_moved' => 'Conserve le deplacement meme si le point de destination est supprime.',
+            'IDpoint_moved_to' => 'Point copie dans une réunion suivante ; le point source reste non traité et ne peut plus être importe.',
+            'date_moved' => 'Conserve le déplacement même si le point de destination est supprime.',
             'date_abandoned' => 'Point conservé dans son PV, sans traitement supplémentaire attendu.',
-            'is_confidential' => 'Reserve ce point aux personnes presentes a la reunion, a l editeur du PV et a la personne qui le porte.',
+            'is_confidential' => 'Reserve ce point aux personnes presentes à la réunion, à l’éditeur du PV et à la personne qui le porte.',
         ];
     }
 
@@ -838,11 +885,11 @@ class DocumentPvPoint extends DbObject
     public static function importIntoDocument(Document $destination, array $pointIds, int $userId, string $scope, string $notice, string $members = 'mine', string $period = 'before'): array
     {
         $pointIds = array_values(array_unique(array_filter(array_map('intval', $pointIds), static fn(int $id): bool => $id > 0)));
-        if (count($pointIds) > 200) return ['status' => false, 'text' => 'Selectionnez au maximum 200 points par importation.'];
+        if (count($pointIds) > 200) return ['status' => false, 'text' => self::uiMessage('selectionnez_au_maximum_200_points_par_importation')];
         $pdo = self::getPdo();
         if (!$pdo || !$pointIds || !self::canImportIntoDocument($destination, $userId)
             || ($members === 'all' && !$destination->isPvEditor($userId))) {
-            return ['status' => false, 'text' => 'Importation refusee.'];
+            return ['status' => false, 'text' => self::uiMessage('importation_refusee')];
         }
         $ownsTransaction = !$pdo->inTransaction();
         try {
@@ -944,7 +991,7 @@ class DocumentPvPoint extends DbObject
         $pdo = self::getPdo();
         if (!$pdo || $pointId <= 0 || !self::canImportIntoDocument($destination, $userId)
             || ($members === 'all' && !$destination->isPvEditor($userId))) {
-            return ['status' => false, 'text' => 'Fin du suivi refusée.'];
+            return ['status' => false, 'text' => self::uiMessage('fin_du_suivi_refusee')];
         }
         $ownsTransaction = !$pdo->inTransaction();
         try {
@@ -1317,7 +1364,7 @@ class DocumentPvPoint extends DbObject
         if ((int)$this->getId() <= 0 || $organizationId <= 0 || $userId <= 0 || $lockToken === '') {
             return [
                 'status' => false,
-                'text' => 'Requete de verrou invalide.',
+                'text' => self::uiMessage('requete_de_verrou_invalide'),
             ];
         }
 
@@ -1329,7 +1376,7 @@ class DocumentPvPoint extends DbObject
         ) {
             return [
                 'status' => false,
-                'text' => 'Acces refuse.',
+                'text' => self::uiMessage('acces_refuse'),
             ];
         }
 
@@ -1374,7 +1421,7 @@ class DocumentPvPoint extends DbObject
         if (!$result) {
             return [
                 'status' => false,
-                'text' => 'Impossible de verrouiller ce point.',
+                'text' => self::uiMessage('impossible_de_verrouiller_ce_point'),
             ];
         }
         // The conditional UPDATE bypasses the object cache; verify its database result.
@@ -1388,7 +1435,7 @@ class DocumentPvPoint extends DbObject
 
         return [
             'status' => true,
-            'text' => 'Verrou d edition actif.',
+            'text' => self::uiMessage('verrou_d_edition_actif'),
             'lock' => [
                 'userId' => $userId,
                 'userName' => $this->getEditingUserDisplayName($organizationId),
@@ -1405,7 +1452,7 @@ class DocumentPvPoint extends DbObject
         $organizationId = (int)$organizationId;
         $lockToken = trim($lockToken);
         if ((int)$this->getId() <= 0 || $organizationId <= 0 || $lockToken === '') {
-            return ['status' => false, 'text' => 'Requete de verrou invalide.'];
+            return ['status' => false, 'text' => self::uiMessage('requete_de_verrou_invalide')];
         }
         $now = new \DateTimeImmutable();
         if ($this->isEditLockActive($now) && $this->getEditingLockToken() !== $lockToken) {
@@ -1441,7 +1488,7 @@ class DocumentPvPoint extends DbObject
             ]
         );
         if (!$result) {
-            return ['status' => false, 'text' => 'Impossible de verrouiller ce point.'];
+            return ['status' => false, 'text' => self::uiMessage('impossible_de_verrouiller_ce_point')];
         }
         // The conditional UPDATE bypasses the object cache; verify its database result.
         $this->load((int)$this->getId(), true);
@@ -1457,7 +1504,7 @@ class DocumentPvPoint extends DbObject
         $this->set('dateedition', $now);
         return [
             'status' => true,
-            'text' => 'Verrou d edition actif.',
+            'text' => self::uiMessage('verrou_d_edition_actif'),
             'lock' => [
                 'userId' => 0,
                 'userName' => '',
@@ -1478,7 +1525,7 @@ class DocumentPvPoint extends DbObject
         if ((int)$this->getId() <= 0 || $organizationId <= 0 || $userId <= 0 || $lockToken === '') {
             return [
                 'status' => false,
-                'text' => 'Requete de reprise de verrou invalide.',
+                'text' => self::uiMessage('requete_de_reprise_de_verrou_invalide'),
             ];
         }
 
@@ -1492,13 +1539,13 @@ class DocumentPvPoint extends DbObject
         ) {
             return [
                 'status' => false,
-                'text' => 'Acces refuse.',
+                'text' => self::uiMessage('acces_refuse'),
             ];
         }
 
         $pdo = self::getPdo();
         if (!$pdo) {
-            return ['status' => false, 'text' => 'Connexion a la base impossible.'];
+            return ['status' => false, 'text' => self::uiMessage('connexion_a_la_base_impossible')];
         }
 
         $startedTransaction = false;
@@ -1567,7 +1614,7 @@ class DocumentPvPoint extends DbObject
                     'status' => true,
                     'pending' => true,
                     'retryAfterMs' => 600,
-                    'text' => 'Demande d enregistrement envoyee a la session actuelle.',
+                    'text' => self::uiMessage('demande_d_enregistrement_envoyee_a_la_session_actuelle'),
                 ];
             }
 
@@ -1581,7 +1628,7 @@ class DocumentPvPoint extends DbObject
                         'status' => true,
                         'pending' => true,
                         'retryAfterMs' => min(1000, max(250, (self::EDIT_TAKEOVER_GRACE_SECONDS - $elapsedSeconds) * 1000)),
-                        'text' => 'Attente de la sauvegarde de la session actuelle.',
+                        'text' => self::uiMessage('attente_de_la_sauvegarde_de_la_session_actuelle'),
                     ];
                 }
             }
@@ -1621,7 +1668,7 @@ class DocumentPvPoint extends DbObject
             return [
                 'status' => true,
                 'pending' => false,
-                'text' => 'Verrou d edition repris.',
+                'text' => self::uiMessage('verrou_d_edition_repris'),
                 'lock' => [
                     'userId' => $userId,
                     'userName' => $this->getEditingUserDisplayName($organizationId),
@@ -1635,7 +1682,7 @@ class DocumentPvPoint extends DbObject
             if ($startedTransaction && $pdo->inTransaction()) {
                 $pdo->rollBack();
             }
-            return ['status' => false, 'text' => 'Impossible de reprendre le verrou d edition.'];
+            return ['status' => false, 'text' => self::uiMessage('impossible_de_reprendre_le_verrou_d_edition')];
         }
     }
 
@@ -1644,12 +1691,12 @@ class DocumentPvPoint extends DbObject
         $userId = (int)$userId;
         $lockToken = trim($lockToken);
         if ((int)$this->getId() <= 0 || $lockToken === '' || (!$isPublicParticipation && $userId <= 0)) {
-            return ['status' => false, 'lockLost' => true, 'text' => 'Verrou d edition invalide.'];
+            return ['status' => false, 'lockLost' => true, 'text' => self::uiMessage('verrou_d_edition_invalide')];
         }
 
         $pdo = self::getPdo();
         if (!$pdo) {
-            return ['status' => false, 'text' => 'Connexion a la base impossible.'];
+            return ['status' => false, 'text' => self::uiMessage('connexion_a_la_base_impossible')];
         }
 
         $startedTransaction = false;
@@ -1699,7 +1746,7 @@ class DocumentPvPoint extends DbObject
                 return [
                     'status' => false,
                     'lockLost' => true,
-                    'text' => 'Le verrou d edition a ete repris par une autre session.',
+                    'text' => self::uiMessage('le_verrou_d_edition_a_ete_repris_par_une_autre_session'),
                 ];
             }
 
@@ -1722,7 +1769,7 @@ class DocumentPvPoint extends DbObject
                 }
                 return is_array($saveResult)
                     ? $saveResult
-                    : ['status' => false, 'text' => 'Impossible de sauvegarder le point.'];
+                    : ['status' => false, 'text' => self::uiMessage('impossible_de_sauvegarder_le_point')];
             }
 
             if ($startedTransaction && $pdo->inTransaction()) {
@@ -1733,7 +1780,7 @@ class DocumentPvPoint extends DbObject
             if ($startedTransaction && $pdo->inTransaction()) {
                 $pdo->rollBack();
             }
-            return ['status' => false, 'text' => 'Impossible de sauvegarder le point.'];
+            return ['status' => false, 'text' => self::uiMessage('impossible_de_sauvegarder_le_point')];
         }
     }
 
@@ -1744,28 +1791,28 @@ class DocumentPvPoint extends DbObject
         if ((int)$this->getId() <= 0 || $userId <= 0) {
             return [
                 'status' => false,
-                'text' => 'Verrou introuvable.',
+                'text' => self::uiMessage('verrou_introuvable'),
             ];
         }
 
         if (!$this->isEditLockActive()) {
             return [
                 'status' => true,
-                'text' => 'Aucun verrou a liberer.',
+                'text' => self::uiMessage('aucun_verrou_a_liberer'),
             ];
         }
 
         if ($this->getEditingUserId() !== $userId) {
             return [
                 'status' => true,
-                'text' => 'Aucun verrou a liberer.',
+                'text' => self::uiMessage('aucun_verrou_a_liberer'),
             ];
         }
 
         if ($lockToken !== '' && $this->getEditingLockToken() !== '' && $this->getEditingLockToken() !== $lockToken) {
             return [
                 'status' => true,
-                'text' => 'Verrou conserve par une autre session.',
+                'text' => self::uiMessage('verrou_conserve_par_une_autre_session'),
             ];
         }
 
@@ -1786,7 +1833,7 @@ class DocumentPvPoint extends DbObject
         if (!$result) {
             return [
                 'status' => false,
-                'text' => 'Impossible de liberer le verrou d edition.',
+                'text' => self::uiMessage('impossible_de_liberer_le_verrou_d_edition'),
             ];
         }
         $this->set('IDuser_editing', null);
@@ -1795,7 +1842,7 @@ class DocumentPvPoint extends DbObject
 
         return [
             'status' => true,
-            'text' => 'Verrou d edition libere.',
+            'text' => self::uiMessage('verrou_d_edition_libere'),
         ];
     }
 
@@ -1803,7 +1850,7 @@ class DocumentPvPoint extends DbObject
     {
         $lockToken = trim($lockToken);
         if ((int)$this->getId() <= 0 || $lockToken === '' || !$this->isEditLockActive() || $this->getEditingUserId() > 0 || $this->getEditingLockToken() !== $lockToken) {
-            return ['status' => true, 'text' => 'Aucun verrou a liberer.'];
+            return ['status' => true, 'text' => self::uiMessage('aucun_verrou_a_liberer')];
         }
         $result = self::execute(
             "UPDATE document_pv_point
@@ -1819,12 +1866,12 @@ class DocumentPvPoint extends DbObject
             ]
         );
         if (!$result) {
-            return ['status' => false, 'text' => 'Impossible de liberer le verrou d edition.'];
+            return ['status' => false, 'text' => self::uiMessage('impossible_de_liberer_le_verrou_d_edition')];
         }
         $this->set('IDuser_editing', null);
         $this->set('edit_lock_token', null);
         $this->set('dateedition', null);
-        return ['status' => true, 'text' => 'Verrou d edition libere.'];
+        return ['status' => true, 'text' => self::uiMessage('verrou_d_edition_libere')];
     }
 
     public function getRenderedContentForViewer(int $organizationId = 0): string
@@ -1963,7 +2010,7 @@ class DocumentPvPoint extends DbObject
     {
         if ((int)$this->getId() <= 0) return $this->savePointValues();
         $pdo = self::getPdo();
-        if (!$pdo) return ['status' => false, 'text' => 'Base de donnees indisponible.'];
+        if (!$pdo) return ['status' => false, 'text' => self::uiMessage('base_de_donnees_indisponible')];
         $ownsTransaction = !$pdo->inTransaction();
         try {
             if ($ownsTransaction) $pdo->beginTransaction();
@@ -1971,7 +2018,7 @@ class DocumentPvPoint extends DbObject
             $row = self::fetchRow('SELECT IDdocument, IDpoint_moved_to, date_moved, date_abandoned, is_handled, handled_at FROM document_pv_point WHERE id = :id FOR UPDATE', ['id' => (int)$this->getId()]);
             if (!$row || (int)$row['IDdocument'] !== (int)$this->get('IDdocument') || !empty($row['IDpoint_moved_to']) || !empty($row['date_moved']) || !empty($row['date_abandoned'])) {
                 if ($ownsTransaction) $pdo->rollBack();
-                return ['status' => false, 'text' => 'Ce point est indisponible, déplacé ou sans suivi supplémentaire.'];
+                return ['status' => false, 'text' => self::uiMessage('ce_point_est_indisponible_deplace_ou_sans_suivi_supplementaire')];
             }
             $result = $this->savePointValues($row);
             if ($ownsTransaction) {
@@ -2015,14 +2062,14 @@ class DocumentPvPoint extends DbObject
         if ($title === '') {
             return [
                 'status' => false,
-                'text' => 'Le titre du point est obligatoire.',
+                'text' => self::uiMessage('le_titre_du_point_est_obligatoire'),
             ];
         }
 
         if ($documentId <= 0) {
             return [
                 'status' => false,
-                'text' => 'Le point doit etre rattache a un document PV.',
+                'text' => self::uiMessage('le_point_doit_etre_rattache_a_un_document_pv'),
             ];
         }
 
@@ -2030,7 +2077,7 @@ class DocumentPvPoint extends DbObject
         if (!$document->load($documentId) || !$document->isPvDocument()) {
             return [
                 'status' => false,
-                'text' => 'Le document cible n est pas un PV valide.',
+                'text' => self::uiMessage('le_document_cible_n_est_pas_un_pv_valide'),
             ];
         }
 
@@ -2076,7 +2123,7 @@ class DocumentPvPoint extends DbObject
         if ($authorEmail !== '' && !filter_var($authorEmail, FILTER_VALIDATE_EMAIL)) {
             return [
                 'status' => false,
-                'text' => 'L adresse e-mail de l auteur est invalide.',
+                'text' => self::uiMessage('l_adresse_e_mail_de_l_auteur_est_invalide'),
             ];
         }
         $this->set('author_email', $authorEmail !== '' ? $authorEmail : null);
@@ -2191,7 +2238,7 @@ class DocumentPvPoint extends DbObject
         if ($documentId <= 0) {
             return [
                 'status' => false,
-                'message' => 'Document PV invalide.',
+                'message' => self::uiMessage('document_pv_invalide'),
             ];
         }
 
@@ -2214,7 +2261,7 @@ class DocumentPvPoint extends DbObject
         if (!is_array($currentRows)) {
             return [
                 'status' => false,
-                'message' => 'Impossible de charger les points du PV.',
+                'message' => self::uiMessage('impossible_de_charger_les_points_du_pv'),
             ];
         }
 
@@ -2233,7 +2280,7 @@ class DocumentPvPoint extends DbObject
         if ($comparisonPointIds !== $currentPointIds) {
             return [
                 'status' => false,
-                'message' => 'La liste des points a reordonner est incomplete.',
+                'message' => self::uiMessage('la_liste_des_points_a_reordonner_est_incomplete'),
             ];
         }
 
@@ -2254,7 +2301,7 @@ class DocumentPvPoint extends DbObject
             if (!$result) {
                 return [
                     'status' => false,
-                    'message' => 'Impossible de reordonner les points du PV.',
+                    'message' => self::uiMessage('impossible_de_reordonner_les_points_du_pv'),
                 ];
             }
         }
@@ -2271,7 +2318,7 @@ class DocumentPvPoint extends DbObject
         if ($documentId <= 0) {
             return [
                 'status' => false,
-                'message' => 'Document PV invalide.',
+                'message' => self::uiMessage('document_pv_invalide'),
             ];
         }
 
@@ -2294,7 +2341,7 @@ class DocumentPvPoint extends DbObject
         if (!is_array($currentRows)) {
             return [
                 'status' => false,
-                'message' => 'Impossible de charger les points du PV.',
+                'message' => self::uiMessage('impossible_de_charger_les_points_du_pv'),
             ];
         }
 
@@ -2313,7 +2360,7 @@ class DocumentPvPoint extends DbObject
         if ($comparisonPointIds !== $currentPointIds) {
             return [
                 'status' => false,
-                'message' => 'La liste des points a reordonner est incomplete.',
+                'message' => self::uiMessage('la_liste_des_points_a_reordonner_est_incomplete'),
             ];
         }
 
@@ -2341,7 +2388,7 @@ class DocumentPvPoint extends DbObject
             if (!$result) {
                 return [
                     'status' => false,
-                    'message' => 'Impossible de reordonner les points du PV.',
+                    'message' => self::uiMessage('impossible_de_reordonner_les_points_du_pv'),
                 ];
             }
         }
@@ -2357,7 +2404,7 @@ class DocumentPvPoint extends DbObject
         $userId = (int)$userId;
         $document = new \dbObject\Document();
         if ($documentId <= 0 || $userId <= 0 || !$document->load($documentId) || !$document->isPvDocument() || $document->isPvValidated()) {
-            return ['status' => false, 'message' => 'Document PV invalide.'];
+            return ['status' => false, 'message' => self::uiMessage('document_pv_invalide')];
         }
 
         $rows = self::fetchAll(
@@ -2369,7 +2416,7 @@ class DocumentPvPoint extends DbObject
             ['document_id' => $documentId]
         );
         if (!is_array($rows)) {
-            return ['status' => false, 'message' => 'Impossible de charger l ordre du jour.'];
+            return ['status' => false, 'message' => self::uiMessage('impossible_de_charger_l_ordre_du_jour')];
         }
 
         $currentById = [];
@@ -2410,20 +2457,20 @@ class DocumentPvPoint extends DbObject
         sort($currentIds);
         sort($submittedIds);
         if ($currentIds !== $submittedIds) {
-            return ['status' => false, 'message' => 'La structure de l ordre du jour est incomplete.'];
+            return ['status' => false, 'message' => self::uiMessage('la_structure_de_l_ordre_du_jour_est_incomplete')];
         }
 
         foreach ($submittedById as $id => $entry) {
             $parentId = (int)$entry['parentId'];
             if ($parentId === $id || ($parentId > 0 && (!isset($currentById[$parentId]) || $currentById[$parentId]['itemType'] !== self::ITEM_TYPE_GROUP))) {
-                return ['status' => false, 'message' => 'Le groupe cible est invalide.'];
+                return ['status' => false, 'message' => self::uiMessage('le_groupe_cible_est_invalide')];
             }
 
             $visited = [$id => true];
             $ancestorId = $parentId;
             while ($ancestorId > 0) {
                 if (isset($visited[$ancestorId]) || !isset($submittedById[$ancestorId])) {
-                    return ['status' => false, 'message' => 'Les groupes ne peuvent pas former une boucle.'];
+                    return ['status' => false, 'message' => self::uiMessage('les_groupes_ne_peuvent_pas_former_une_boucle')];
                 }
                 $visited[$ancestorId] = true;
                 $ancestorId = (int)$submittedById[$ancestorId]['parentId'];
@@ -2431,11 +2478,11 @@ class DocumentPvPoint extends DbObject
         }
 
         if (!$document->canUserReorderPvPoints($userId)) {
-            return ['status' => false, 'message' => 'Acces refuse.'];
+            return ['status' => false, 'message' => self::uiMessage('acces_refuse')];
         }
         $canManage = $document->canUserManagePvStructure((int)$document->get('IDorganization'), $userId);
         if (!$canManage && $document->getPvStage() !== \dbObject\Document::PV_STAGE_PREPARATION) {
-            return ['status' => false, 'message' => 'Le deplacement des points personnels est limite a la preparation.'];
+            return ['status' => false, 'message' => self::uiMessage('le_deplacement_des_points_personnels_est_limite_a_la_preparation')];
         }
 
         $movableIds = [];
@@ -2445,7 +2492,7 @@ class DocumentPvPoint extends DbObject
             }
         }
         if (count($movableIds) === 0) {
-            return ['status' => false, 'message' => 'Aucun element ne peut etre deplace.'];
+            return ['status' => false, 'message' => self::uiMessage('aucun_element_ne_peut_etre_deplace')];
         }
 
         if (!$canManage) {
@@ -2458,14 +2505,14 @@ class DocumentPvPoint extends DbObject
                     return !isset($movableIds[$id]);
                 }));
                 if ($before !== $after) {
-                    return ['status' => false, 'message' => 'Vous ne pouvez deplacer que vos propres points.'];
+                    return ['status' => false, 'message' => self::uiMessage('vous_ne_pouvez_deplacer_que_vos_propres_points')];
                 }
             }
         }
 
         $pdo = self::getPdo();
         if (!$pdo) {
-            return ['status' => false, 'message' => 'Connexion a la base impossible.'];
+            return ['status' => false, 'message' => self::uiMessage('connexion_a_la_base_impossible')];
         }
 
         $startedTransaction = false;
@@ -2517,7 +2564,7 @@ class DocumentPvPoint extends DbObject
             if ($startedTransaction && $pdo->inTransaction()) {
                 $pdo->rollBack();
             }
-            return ['status' => false, 'message' => 'Impossible de sauver la structure de l ordre du jour.'];
+            return ['status' => false, 'message' => self::uiMessage('impossible_de_sauver_la_structure_de_l_ordre_du_jour')];
         }
 
         return ['status' => true];
@@ -2543,12 +2590,12 @@ class DocumentPvPoint extends DbObject
         $userId = (int)$userId;
         $document = new \dbObject\Document();
         if ($documentId <= 0 || $userId <= 0 || !$document->load($documentId) || !$document->isPvDocument() || $document->isPvValidated()) {
-            return ['status' => false, 'message' => 'Document PV invalide.'];
+            return ['status' => false, 'message' => self::uiMessage('document_pv_invalide')];
         }
         if (!$document->isPvEditor($userId)
             || !$document->canUserManagePvStructure((int)$document->get('IDorganization'), $userId)
             || $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW) {
-            return ['status' => false, 'message' => 'Vous ne pouvez pas classer cet ordre du jour.'];
+            return ['status' => false, 'message' => self::uiMessage('vous_ne_pouvez_pas_classer_cet_ordre_du_jour')];
         }
 
         $rows = self::fetchAll(
@@ -2562,7 +2609,7 @@ class DocumentPvPoint extends DbObject
             ['document_id' => $documentId]
         );
         if (!is_array($rows)) {
-            return ['status' => false, 'message' => 'Impossible de charger l ordre du jour.'];
+            return ['status' => false, 'message' => self::uiMessage('impossible_de_charger_l_ordre_du_jour')];
         }
 
         $sortMode = self::normalizeAgendaSortMode($sortMode);
@@ -2600,7 +2647,7 @@ class DocumentPvPoint extends DbObject
 
         $pdo = self::getPdo();
         if (!$pdo) {
-            return ['status' => false, 'message' => 'Connexion a la base impossible.'];
+            return ['status' => false, 'message' => self::uiMessage('connexion_a_la_base_impossible')];
         }
 
         $sortRun = static function (array $items) use ($sortMode, $handledLast, $groupByType, $randomizeTies): array {
@@ -2741,7 +2788,7 @@ class DocumentPvPoint extends DbObject
             if ($startedTransaction && $pdo->inTransaction()) {
                 $pdo->rollBack();
             }
-            return ['status' => false, 'message' => 'Impossible de classer l ordre du jour.'];
+            return ['status' => false, 'message' => self::uiMessage('impossible_de_classer_l_ordre_du_jour')];
         }
 
         return ['status' => true];

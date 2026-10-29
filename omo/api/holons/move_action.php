@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 use dbObject\Organization;
@@ -11,7 +12,7 @@ if ($organizationId <= 0) {
     echo json_encode(
         array(
             'status' => 'error',
-            'message' => "Aucune organisation n'est selectionnee.",
+            'message' => omoHolonsUiT('aucune_organisation_n_est_selectionnee'),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -24,7 +25,7 @@ if (!$organization->load($organizationId)) {
     echo json_encode(
         array(
             'status' => 'error',
-            'message' => "L'organisation demandee est introuvable.",
+            'message' => omoHolonsUiT('l_organisation_demandee_est_introuvable'),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -44,7 +45,7 @@ if ($holonId <= 0 || $targetParentId <= 0) {
     echo json_encode(
         array(
             'status' => 'error',
-            'message' => 'Le deplacement demande est invalide.',
+            'message' => omoHolonsUiT('le_deplacement_demande_est_invalide'),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -57,7 +58,7 @@ if (!($result['status'] ?? false)) {
     echo json_encode(
         array(
             'status' => 'error',
-        'message' => (string)($result['message'] ?? "L’espace n’a pas pu être déplacé."),
+        'message' => (string)($result['message'] ?? omoHolonsUiT('l_espace_n_a_pas_pu_etre_deplace')),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -67,7 +68,7 @@ if (!($result['status'] ?? false)) {
 echo json_encode(
     array(
         'status' => 'ok',
-        'message' => (string)($result['message'] ?? 'Espace déplacé.'),
+        'message' => (string)($result['message'] ?? omoHolonsUiT('espace_deplace')),
         'holon' => $result['holon'] ?? null,
         'parent' => $result['parent'] ?? null,
         'previousParent' => $result['previousParent'] ?? null,

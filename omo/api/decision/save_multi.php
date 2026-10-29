@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/modules/context.php';
 require_once __DIR__ . '/modules/registry.php';
@@ -32,7 +33,7 @@ function omoDecisionMultiSaveExecute(string $saveFile, array $postData): OmoDeci
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
     omoDecisionMultiSaveRespond(405, [
         'status' => false,
-        'message' => 'Méthode non autorisée.',
+        'message' => omoDecisionUiT('methode_non_autorisee'),
     ]);
 }
 
@@ -40,7 +41,7 @@ $serializedGroups = $_POST['groups'] ?? [];
 if (!is_array($serializedGroups) || count($serializedGroups) < 1 || count($serializedGroups) > 100) {
     omoDecisionMultiSaveRespond(400, [
         'status' => false,
-        'message' => 'La liste des questions est invalide.',
+        'message' => omoDecisionUiT('la_liste_des_questions_est_invalide'),
     ]);
 }
 
@@ -55,7 +56,7 @@ foreach ($serializedGroups as $groupIndex => $serializedGroup) {
     if (!is_string($serializedGroup) || strlen($serializedGroup) > 2000000) {
         omoDecisionMultiSaveRespond(400, [
             'status' => false,
-            'message' => 'Le contenu d’une question est invalide.',
+            'message' => omoDecisionUiT('le_contenu_d_une_question_est_invalide'),
         ]);
     }
     $groupData = [];
@@ -64,7 +65,7 @@ foreach ($serializedGroups as $groupIndex => $serializedGroup) {
     if (!isset($saveFiles[$method])) {
         omoDecisionMultiSaveRespond(400, [
             'status' => false,
-            'message' => 'Le mode d’une question est invalide.',
+            'message' => omoDecisionUiT('le_mode_d_une_question_est_invalide'),
         ]);
     }
     $groupPayloads[] = [
@@ -81,7 +82,7 @@ $batchDecision = new DecisionProcess();
 if (!$isCreatingDecision && !$batchDecision->load($decisionId)) {
     omoDecisionMultiSaveRespond(404, [
         'status' => false,
-        'message' => 'Prise de décision introuvable.',
+        'message' => omoDecisionUiT('prise_de_decision_introuvable'),
     ]);
 }
 foreach ($groupPayloads as $groupPayload) {
@@ -89,7 +90,7 @@ foreach ($groupPayloads as $groupPayload) {
         || ($isCreatingDecision && (int)($groupPayload['postData']['id'] ?? 0) !== 0)) {
         omoDecisionMultiSaveRespond(400, [
             'status' => false,
-            'message' => 'Les questions n’appartiennent pas au même scrutin.',
+            'message' => omoDecisionUiT('les_questions_n_appartiennent_pas_au_meme_scrutin'),
         ]);
     }
 }
@@ -113,7 +114,7 @@ $pdo = DbObject::getPdo();
 if (!$pdo) {
     omoDecisionMultiSaveRespond(500, [
         'status' => false,
-        'message' => 'Connexion à la base impossible.',
+        'message' => omoDecisionUiT('connexion_a_la_base_impossible'),
     ]);
 }
 
@@ -137,7 +138,7 @@ try {
         $response = omoDecisionMultiSaveExecute($groupPayload['saveFile'], $groupPayload['postData']);
         if ($response->statusCode >= 400 || empty($response->payload['status'])) {
             $failureCode = $response->statusCode;
-            throw new RuntimeException((string)($response->payload['message'] ?? 'Impossible d’enregistrer cette question.'));
+            throw new RuntimeException((string)($response->payload['message'] ?? omoDecisionUiT('impossible_d_enregistrer_cette_question')));
         }
         if ($isCreatingDecision && $decisionId <= 0) {
             $decisionId = (int)($response->payload['decisionId'] ?? 0);
@@ -179,6 +180,6 @@ if ($batchDecision->load($decisionId, true)) {
 
 omoDecisionMultiSaveRespond(200, [
     'status' => true,
-    'message' => 'Scrutin enregistré.',
+    'message' => omoDecisionUiT('scrutin_enregistre'),
     'results' => $results,
 ]);

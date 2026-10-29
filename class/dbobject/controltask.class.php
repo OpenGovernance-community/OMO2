@@ -36,24 +36,24 @@ class ControlTask extends DbObject
             'IDuser_responsible' => 'Personne en charge',
             'title' => 'Titre',
             'description' => 'Description',
-            'frequency' => 'Frequence',
-            'schedule' => 'Reference',
+            'frequency' => 'Fréquence',
+            'schedule' => 'Référence',
             'display_lead_value' => 'Affichage en avance',
-            'display_lead_unit' => 'Unite d anticipation',
-            'execution_duration_value' => 'Delai avant retard',
-            'execution_duration_unit' => 'Unite du delai avant retard',
+            'display_lead_unit' => 'Unité d’anticipation',
+            'execution_duration_value' => 'Délai avant retard',
+            'execution_duration_unit' => 'Unité du délai avant retard',
             'position' => 'Position',
-            'project_visible_in_holon' => 'Afficher dans l espace si liee a un projet',
+            'project_visible_in_holon' => 'Afficher dans l’espace si liée a un projet',
             'active' => 'Active',
-            'archived_at' => 'Date d archivage',
-            'created_at' => 'Creation',
-            'updated_at' => 'Mise a jour',
+            'archived_at' => 'Date d’archivage',
+            'created_at' => 'Création',
+            'updated_at' => 'Mise à jour',
         ];
     }
 
     public static function attributeDescriptions()
     {
-        return ['project_visible_in_holon' => 'Conserve cette tache dans les listes de l espace lorsqu elle est liee a un projet.'];
+        return ['project_visible_in_holon' => 'Conserve cette tâche dans les listes de l’espace lorsqu elle est liée a un projet.'];
     }
 
     public function hasProjectAssociation(): bool

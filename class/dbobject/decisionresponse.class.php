@@ -3,6 +3,13 @@ namespace dbObject;
 
 class DecisionResponse extends DbObject
 {
+        protected static function uiMessageSourceLang(): array
+        {
+            return [
+                'impossible_de_sauvegarder_le_bulletin_et_son_agenda' => ['text' => 'Impossible de sauvegarder le bulletin et son agenda.', 'context' => 'Validation or action feedback for decisionresponse.'],
+            ];
+        }
+
     const STATUS_DRAFT = 'draft';
     const STATUS_SUBMITTED = 'submitted';
     const STATUS_INVALIDATED = 'invalidated';
@@ -29,21 +36,21 @@ class DecisionResponse extends DbObject
     {
         return [
             'id' => 'ID',
-            'IDdecision_process' => 'Prise de decision',
-            'IDdecision_group' => 'Groupe de decision',
+            'IDdecision_process' => 'Prise de décision',
+            'IDdecision_group' => 'Groupe de décision',
             'IDdecision_participant' => 'Participant',
             'status' => 'Statut',
-            'parameters' => 'Parametres',
+            'parameters' => 'Paramètres',
             'submitted_at' => 'Soumis le',
-            'created_at' => 'Creation',
-            'updated_at' => 'Mise a jour',
+            'created_at' => 'Création',
+            'updated_at' => 'Mise à jour',
         ];
     }
 
     public static function attributeDescriptions()
     {
         return [
-            'parameters' => 'Charge utile libre dependant de la methode d evaluation.',
+            'parameters' => 'Charge utile libre dependant de la méthode d’évaluation.',
         ];
     }
 
@@ -205,7 +212,7 @@ class DecisionResponse extends DbObject
         } catch (\Throwable $exception) {
             if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
             error_log('decision_response_calendar_failed: ' . $exception->getMessage());
-            return ['status' => false, 'text' => 'Impossible de sauvegarder le bulletin et son agenda.'];
+            return ['status' => false, 'text' => self::uiMessage('impossible_de_sauvegarder_le_bulletin_et_son_agenda')];
         }
     }
 

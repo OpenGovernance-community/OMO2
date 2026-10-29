@@ -1,9 +1,10 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 $sourceLang = [
-    'organization_import.roleplay' => ['text' => 'Importer comme jeu de role', 'context' => 'Date shift option on import.'],
-    'organization_import.roleplay_help' => ['text' => 'Decale les dates du nombre de jours entre l export et aujourd hui. Sans cette option, les dates sont conservees.', 'context' => 'Explanation of roleplay import.'],
+    'organization_import.roleplay' => ['text' => 'Importer comme jeu de rôle', 'context' => 'Date shift option on import.'],
+    'organization_import.roleplay_help' => ['text' => 'Décale les dates du nombre de jours entre l’export et aujourd’hui. Sans cette option, les dates sont conservées.', 'context' => 'Explanation of roleplay import.'],
 ];
 $lang = omoLoadTranslationBundle('omo_organization_structure_import', $sourceLang);
 
@@ -18,15 +19,15 @@ if (
 ) {
     http_response_code(403);
     ?>
-    <div class="omo-import-popup__feedback omo-import-popup__feedback--error generic-drawer-content">Acces refuse.</div>
+    <div class="omo-import-popup__feedback omo-import-popup__feedback--error generic-drawer-content"><?= htmlspecialchars(omoOrganizationsUiT('acces_refuse'), ENT_QUOTES, 'UTF-8') ?></div>
     <?php
     exit;
 }
 ?>
 <div class="omo-import-popup generic-drawer-content" data-omo-org-import-popup="1" data-organization-id="<?= (int)$organizationId ?>">
     <div class="omo-import-popup__hero generic-hero-panel accent">
-        <div class="omo-import-popup__kicker generic-card-title generic-card-title--eyebrow">Import ZIP / JSON</div>
-        <h3 class="omo-import-popup__title generic-card-title generic-card-title--large">Importer une organisation</h3>
+        <div class="omo-import-popup__kicker generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoOrganizationsUiT('import_zip_json'), ENT_QUOTES, 'UTF-8') ?></div>
+        <h3 class="omo-import-popup__title generic-card-title generic-card-title--large"><?= htmlspecialchars(omoOrganizationsUiT('importer_une_organisation'), ENT_QUOTES, 'UTF-8') ?></h3>
         <p class="omo-import-popup__text generic-description"><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Selectionnez un fichier ZIP ou JSON exporte depuis le menu structure. L\'import reconstruit les holons, roles, proprietes et les references internes du sous-arbre.', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></p>
     </div>
 
@@ -34,7 +35,7 @@ if (
         <input type="hidden" name="oid" value="<?= (int)$organizationId ?>">
 
         <label class="omo-import-popup__field">
-            <span class="omo-import-popup__label generic-form-label">Fichier ZIP ou JSON</span>
+            <span class="omo-import-popup__label generic-form-label"><?= htmlspecialchars(omoOrganizationsUiT('fichier_zip_ou_json'), ENT_QUOTES, 'UTF-8') ?></span>
             <input
                 type="file"
                 name="structure_file"
@@ -49,12 +50,12 @@ if (
             <small class="generic-help-text"><?= htmlspecialchars(t('organization_import.roleplay_help', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></small>
         </label>
         <div class="omo-import-popup__hint generic-help-text">
-            Conseil: creez d'abord une organisation vide, puis importez un fichier genere par `Export` depuis la vue structure.
+            <?= htmlspecialchars(omoOrganizationsUiT('conseil_creez_d_abord_une_organisation_vide_puis_importez_un_fichier_genere_par_export_dep'), ENT_QUOTES, 'UTF-8') ?>
         </div>
 
         <div class="omo-import-popup__actions">
-            <button type="button" class="omo-import-popup__button generic-action-button generic-action-button--secondary" data-omo-org-import-cancel="1">Annuler</button>
-            <button type="submit" class="omo-import-popup__button generic-action-button generic-action-button--main">Importer</button>
+            <button type="button" class="omo-import-popup__button generic-action-button generic-action-button--secondary" data-omo-org-import-cancel="1"><?= htmlspecialchars(omoOrganizationsUiT('annuler'), ENT_QUOTES, 'UTF-8') ?></button>
+            <button type="submit" class="omo-import-popup__button generic-action-button generic-action-button--main"><?= htmlspecialchars(omoOrganizationsUiT('importer'), ENT_QUOTES, 'UTF-8') ?></button>
         </div>
     </form>
 

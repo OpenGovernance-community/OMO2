@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once __DIR__ . '/bootstrap.php';
 
 commonRestoreRememberedUser();
@@ -20,7 +21,7 @@ if ($currentUserId <= 0 || !$hasOrganizationAccess || $organizationId <= 0) {
     echo json_encode(array(
         'status' => false,
         'success' => false,
-        'message' => 'Acces refuse.',
+        'message' => omoLmsUiT('acces_refuse'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -34,7 +35,7 @@ if (($managementContext['link'] ?? null) === null || !$parcoursMission->load([
     echo json_encode(array(
         'status' => false,
         'success' => false,
-        'message' => 'Mission introuvable.',
+        'message' => omoLmsUiT('mission_introuvable'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -44,7 +45,7 @@ if (empty($managementContext['canEditContent'])) {
     echo json_encode(array(
         'status' => false,
         'success' => false,
-        'message' => 'Vous n avez pas le droit de modifier ce parcours.',
+        'message' => omoLmsUiT('vous_n_avez_pas_le_droit_de_modifier_ce_parcours'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -74,7 +75,7 @@ if (count($choices) < 2) {
     echo json_encode(array(
         'status' => false,
         'success' => false,
-        'message' => 'Ajoutez au moins deux choix de reponse.',
+        'message' => omoLmsUiT('ajoutez_au_moins_deux_choix_de_reponse'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -83,7 +84,7 @@ if ($correctChoiceCount <= 0) {
     echo json_encode(array(
         'status' => false,
         'success' => false,
-        'message' => 'Indiquez au moins une bonne reponse.',
+        'message' => omoLmsUiT('indiquez_au_moins_une_bonne_reponse'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -101,7 +102,7 @@ if ($questionId > 0) {
         echo json_encode(array(
             'status' => false,
             'success' => false,
-            'message' => 'Question introuvable.',
+            'message' => omoLmsUiT('question_introuvable'),
         ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
     }
@@ -119,7 +120,7 @@ if (trim((string)$question->get('question')) === '') {
     echo json_encode(array(
         'status' => false,
         'success' => false,
-        'message' => 'La question est obligatoire.',
+        'message' => omoLmsUiT('la_question_est_obligatoire'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -128,7 +129,7 @@ if (trim((string)$question->get('answer')) === '') {
     echo json_encode(array(
         'status' => false,
         'success' => false,
-        'message' => 'La reponse est obligatoire.',
+        'message' => omoLmsUiT('la_reponse_est_obligatoire'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }

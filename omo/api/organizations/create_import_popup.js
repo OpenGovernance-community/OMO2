@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 window.commonPageScripts = window.commonPageScripts || {};
 window.commonPageScripts["/omo/api/organizations/create_import_popup.js"] = function (pageConfig, pageScript) {
 (function () {
@@ -88,7 +90,7 @@ window.commonPageScripts["/omo/api/organizations/create_import_popup.js"] = func
             }
             var available = module === 'structure' || !!details.selected;
             var total = Number(details.count || 0);
-            count.textContent = module === 'structure' ? String((payload.scope && payload.scope.holonCount) || 0) + ' ' + String(ui.spacePlural || 'elements') : (available ? String(total) + ' elements' : 'Absent du fichier');
+            count.textContent = module === 'structure' ? String((payload.scope && payload.scope.holonCount) || 0) + ' ' + String(ui.spacePlural || 'elements') : (available ? String(total) + ' elements' : omoUiText("absent_du_fichier", "Absent du fichier"));
             row.classList.toggle('is-unavailable', !available);
             if (module !== 'structure') {
                 input.disabled = !available;
@@ -347,7 +349,7 @@ window.commonPageScripts["/omo/api/organizations/create_import_popup.js"] = func
             var source = document.createElement('span');
             source.className = 'omo-create-import__mapping-source';
             var sourceFormat = propertyFormatLabel(sourceProperty);
-            source.textContent = String(sourceProperty.name || sourceProperty.shortname || 'Propriete') + (sourceFormat ? ' (' + sourceFormat + ')' : '');
+            source.textContent = String(sourceProperty.name || sourceProperty.shortname || omoUiText("propriete_2", "Propriété")) + (sourceFormat ? ' (' + sourceFormat + ')' : '');
             var select = document.createElement('select');
             select.className = 'generic-form-control';
             select.setAttribute('data-omo-create-import-property-mapping-template', String(sourceTemplateId));
@@ -359,7 +361,7 @@ window.commonPageScripts["/omo/api/organizations/create_import_popup.js"] = func
                 appendOption(
                     select,
                     Number(targetProperty.id || 0),
-                    String(targetProperty.name || targetProperty.shortname || 'Propriete') + (targetFormat ? ' (' + targetFormat + ')' : '')
+                    String(targetProperty.name || targetProperty.shortname || omoUiText("propriete_2", "Propriété")) + (targetFormat ? ' (' + targetFormat + ')' : '')
                 );
             });
             if (selectedId === -1) {
@@ -418,7 +420,7 @@ window.commonPageScripts["/omo/api/organizations/create_import_popup.js"] = func
         sourceNodes.forEach(function (sourceNode) {
             var sourceId = Number(sourceNode.id || 0);
             availableSourceIds[sourceId] = true;
-            var sourceLabel = String(sourceNode.templateName || sourceNode.name || 'Template');
+            var sourceLabel = String(sourceNode.templateName || sourceNode.name || omoUiText("template", "Modèle"));
             var candidates = (Array.isArray(model.nodes) ? model.nodes : []).filter(function (candidate) {
                 return Number(candidate.typeId || 0) === Number(sourceNode.typeId || 0);
             });
@@ -435,7 +437,7 @@ window.commonPageScripts["/omo/api/organizations/create_import_popup.js"] = func
             appendOption(select, 0, ui.mappingEmpty);
             appendOption(select, -1, ui.mappingExclude);
             candidates.forEach(function (candidate) {
-                appendOption(select, Number(candidate.id || 0), String(candidate.path || candidate.name || 'Template'));
+                appendOption(select, Number(candidate.id || 0), String(candidate.path || candidate.name || omoUiText("template", "Modèle")));
             });
             var selectedId = Number(templateMappings[sourceId] || 0);
             if (selectedId === 0 && !touchedTemplateMappings[sourceId]) {

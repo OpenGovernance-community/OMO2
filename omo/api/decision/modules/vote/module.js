@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 window.commonPageScripts = window.commonPageScripts || {};
 window.commonPageScripts["/omo/api/decision/modules/vote/module.js"] = function (pageConfig, pageScript) {
         (function () {
@@ -249,9 +251,9 @@ window.commonPageScripts["/omo/api/decision/modules/vote/module.js"] = function 
                                     const maxChoicesLabel = String(hiddenMaxChoicesInput && hiddenMaxChoicesInput.value ? hiddenMaxChoicesInput.value : '0') === '0'
                                         ? unlimitedLabel
                                         : String(hiddenMaxChoicesInput && hiddenMaxChoicesInput.value ? hiddenMaxChoicesInput.value : '1');
-                                    choiceSummary.textContent = 'Plusieurs réponses (max. ' + maxChoicesLabel + ')';
+                                    choiceSummary.textContent = omoUiText("vote_multiple_summary", "Plusieurs réponses (max. " + maxChoicesLabel + ")", {count: maxChoicesLabel});
                                 } else {
-                                    choiceSummary.textContent = 'Une seule reponse';
+                                    choiceSummary.textContent = omoUiText("une_seule_reponse", "Une seule réponse");
                                 }
                             }
                         };
@@ -332,7 +334,7 @@ window.commonPageScripts["/omo/api/decision/modules/vote/module.js"] = function 
 
                             const modalTitle = settingsOpenButton
                                 ? String(settingsOpenButton.getAttribute('data-omo-decision-vote-settings-title') || settingsOpenButton.textContent || 'Paramètres du vote')
-                                : 'Paramètres du vote';
+                                : omoUiText("parametres_du_vote", "Paramètres du vote");
                             window.commonTopbarOpenModal(modalTitle, settingsTemplate.innerHTML, 'html');
                             const modalBody = document.getElementById('commonTopbarModalBody');
                             if (!modalBody) {
@@ -598,7 +600,7 @@ window.commonPageScripts["/omo/api/decision/modules/vote/module.js"] = function 
                                     const proposalLabelNode = card.querySelector('[data-omo-decision-vote-proposal-label]');
                                     const modalTitle = proposalLabelNode
                                         ? String(proposalLabelNode.textContent || '').trim()
-                                        : String(payload.texts && payload.texts.proposalDetails ? payload.texts.proposalDetails : 'Details');
+                                        : String(payload.texts && payload.texts.proposalDetails ? payload.texts.proposalDetails : "Détails");
                                     const proposalContent = payload.proposalContent || {title: true, description: true};
                                     const descriptionDetailsField = proposalContent.title && proposalContent.description
                                         ? '  <label style="display:grid;gap:6px;">'
@@ -614,12 +616,12 @@ window.commonPageScripts["/omo/api/decision/modules/vote/module.js"] = function 
                                         + '    <input type="url" class="generic-form-control generic-form-control--compact" data-omo-decision-vote-proposal-modal-info-url placeholder="' + String(payload.texts && payload.texts.proposalInfoUrlPlaceholder ? payload.texts.proposalInfoUrlPlaceholder : 'https://...') + '">'
                                         + '  </label>'
                                         + '  <div style="display:flex;justify-content:flex-end;gap:8px;">'
-                                        + '    <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decision-vote-proposal-modal-cancel>Fermer</button>'
+                                        + ("    <button type=\"button\" class=\"generic-action-button generic-action-button--secondary\" data-omo-decision-vote-proposal-modal-cancel>" + omoUiHtml("fermer", "Fermer") + "</button>")
                                         + '    <button type="button" class="generic-action-button generic-action-button--main" data-omo-decision-vote-proposal-modal-apply>' + String(payload.texts && payload.texts.proposalApply ? payload.texts.proposalApply : 'Enregistrer') + '</button>'
                                         + '  </div>'
                                         + '</div>';
 
-                                    window.commonTopbarOpenModal(modalTitle || 'Details', modalHtml, 'html');
+                                    window.commonTopbarOpenModal(modalTitle || omoUiText("details", "Détails"), modalHtml, 'html');
                                     const modalBody = document.getElementById('commonTopbarModalBody');
                                     if (!modalBody) {
                                         return;
@@ -692,7 +694,7 @@ window.commonPageScripts["/omo/api/decision/modules/vote/module.js"] = function 
                                 ? '<div data-omo-proposal-html-field><div class="omo-proposal-html-editor" data-omo-proposal-html-editor data-omo-decision-vote-proposal-description-editor' + (payload.proposalEditable === true ? '' : ' data-omo-proposal-html-disabled="1"') + '></div><textarea hidden aria-hidden="true" name="proposal_descriptions[]" data-omo-proposal-html-value data-omo-decision-vote-proposal-description></textarea></div>'
                                 : '<textarea hidden aria-hidden="true" name="proposal_descriptions[]" data-omo-decision-vote-proposal-description></textarea>';
                             const proposalDetailsButton = proposalContent.url
-                                ? '        <button type="button" class="generic-action-button generic-action-button--secondary omo-decision-vote__proposal-menu-item" data-omo-decision-vote-proposal-settings role="menuitem">' + String(payload.texts && payload.texts.proposalDetails ? payload.texts.proposalDetails : 'Details') + '</button>'
+                                ? '        <button type="button" class="generic-action-button generic-action-button--secondary omo-decision-vote__proposal-menu-item" data-omo-decision-vote-proposal-settings role="menuitem">' + String(payload.texts && payload.texts.proposalDetails ? payload.texts.proposalDetails : "Détails") + '</button>'
                                 : '';
                             card.innerHTML = ''
                                 + '<button type="button" class="omo-decision-vote__proposal-drag generic-drag-handle generic-drag-handle--stretch" data-omo-decision-vote-proposal-drag title="' + String(payload.texts && payload.texts.proposalReorder ? payload.texts.proposalReorder : 'Réordonner') + '" aria-label="' + String(payload.texts && payload.texts.proposalReorder ? payload.texts.proposalReorder : 'Réordonner') + '">&#8942;&#8942;</button>'

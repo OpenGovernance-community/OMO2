@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 
 use dbObject\ArrayUserOrganization;
 use dbObject\Event;
@@ -12,8 +13,8 @@ if (!function_exists('omoCalendarInvitationSourceLang')) {
     function omoCalendarInvitationSourceLang()
     {
         return [
-            'calendar.invitations.loading' => ['text' => 'Chargement des invites...', 'context' => 'Invitation section loading state.'],
-            'calendar.invitations.load_error' => ['text' => 'Chargement impossible. Reessayer', 'context' => 'Retry loading event invitations.'],
+            'calendar.invitations.loading' => ['text' => 'Chargement des invités...', 'context' => 'Invitation section loading state.'],
+            'calendar.invitations.load_error' => ['text' => 'Chargement impossible. Réessayer', 'context' => 'Retry loading event invitations.'],
             'calendar.invitations.title' => [
                 'text' => 'Invités',
                 'context' => 'Shared title used for event invitation settings.',
@@ -95,7 +96,7 @@ if (!function_exists('omoCalendarInvitationSourceLang')) {
                 'context' => 'Placeholder shown in the guest email textarea for event invitations.',
             ],
             'calendar.invitations.guests_hint' => [
-                'text' => 'Adresses seules ou Prenom Nom <adresse@exemple.ch>, une par ligne ou avec des virgules ou points-virgules. Les noms renseignes apparaissent dans la liste de presence.',
+                'text' => 'Adresses seules ou Prénom Nom <adresse@exemple.ch>, une par ligne ou avec des virgules ou points-virgules. Les noms renseignés apparaissent dans la liste de présence.',
                 'context' => 'Hint shown below the guest email textarea in the event invitation editor.',
             ],
             'calendar.invitations.public_enable' => [
@@ -541,7 +542,7 @@ if (!function_exists('omoCalendarPrepareInvitationSelections')) {
         if ($organizationId <= 0 || (int)$organization->getId() !== $organizationId) {
             return [
                 'status' => false,
-                'message' => "Contexte d'invitations invalide.",
+                'message' => omoCalendarUiT('contexte_d_invitations_invalide'),
             ];
         }
 
@@ -563,7 +564,7 @@ if (!function_exists('omoCalendarPrepareInvitationSelections')) {
             if (!$holon->load($holonId) || !$organization->containsHolon($holon) || !$holon->canViewDetail()) {
                 return [
                     'status' => false,
-        'message' => 'Un espace sélectionné est invalide.',
+        'message' => omoCalendarUiT('un_espace_selectionne_est_invalide'),
                 ];
             }
 
@@ -582,7 +583,7 @@ if (!function_exists('omoCalendarPrepareInvitationSelections')) {
             ) {
                 return [
                     'status' => false,
-                    'message' => 'Un membre sélectionné est invalide.',
+                    'message' => omoCalendarUiT('un_membre_selectionne_est_invalide'),
                 ];
             }
 
@@ -621,7 +622,7 @@ if (!function_exists('omoCalendarApplyInvitationSelections')) {
     function omoCalendarApplyInvitationSelections($event, Organization $organization, int $organizationId, array $selectedHolonIds, array $selectedUserIds, $selectedEmails, string $invitationClass = EventInvitation::class, string $resourceField = 'IDevent')
     {
         if ((int)$event->getId() <= 0) {
-            return ['status' => false, 'message' => 'Contexte d invitations invalide.'];
+            return ['status' => false, 'message' => omoCalendarUiT('contexte_d_invitations_invalide_2')];
         }
         $selection = omoCalendarPrepareInvitationSelections($organization, $organizationId, $selectedHolonIds, $selectedUserIds, $selectedEmails);
         if (!$selection['status']) { return $selection; }
@@ -654,7 +655,7 @@ if (!function_exists('omoCalendarApplyInvitationSelections')) {
             if (!is_array($saveResult) || empty($saveResult['status'])) {
                 return [
                     'status' => false,
-                    'message' => "Impossible d'enregistrer une invitation d'événement.",
+                    'message' => omoCalendarUiT('impossible_d_enregistrer_une_invitation_d_evenement'),
                 ];
             }
         }
@@ -670,7 +671,7 @@ if (!function_exists('omoCalendarApplyInvitationSelections')) {
             if (!is_array($saveResult) || empty($saveResult['status'])) {
                 return [
                     'status' => false,
-                    'message' => "Impossible de retirer une ancienne invitation d'événement.",
+                    'message' => omoCalendarUiT('impossible_de_retirer_une_ancienne_invitation_d_evenement'),
                 ];
             }
         }

@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 window.commonPageScripts = window.commonPageScripts || {};
 window.commonPageScripts["/omo/api/documents/share_popup.js"] = function (pageConfig, pageScript) {
 (function () {
@@ -158,9 +160,9 @@ window.commonPageScripts["/omo/api/documents/share_popup.js"] = function (pageCo
 
                 try {
                     await navigator.clipboard.writeText(url);
-                    setFeedback('Lien copié.', true);
+                    setFeedback(omoUiText("lien_copie", "Lien copié."), true);
                 } catch (error) {
-                    setFeedback('Impossible de copier automatiquement.', false);
+                    setFeedback(omoUiText("impossible_de_copier_automatiquement", "Impossible de copier automatiquement."), false);
                 }
                 return;
             }
@@ -184,7 +186,7 @@ window.commonPageScripts["/omo/api/documents/share_popup.js"] = function (pageCo
                 return;
             }
 
-            if (!window.confirm('Supprimer le lien "' + label + '" ?')) {
+            if (!window.confirm(omoUiText("share_delete_confirm", 'Supprimer le lien « ' + label + ' » ?', {label: label}))) {
                 return;
             }
 
@@ -206,11 +208,11 @@ window.commonPageScripts["/omo/api/documents/share_popup.js"] = function (pageCo
             });
 
             if (!response.ok || !payload || payload.status !== true) {
-                setFeedback(payload && payload.message ? payload.message : 'Suppression impossible.', false);
+                setFeedback(payload && payload.message ? payload.message : omoUiText("suppression_impossible", "Suppression impossible."), false);
                 return;
             }
 
-            refreshPopup('Lien supprimé.', true);
+            refreshPopup(omoUiText("lien_supprime", "Lien supprimé."), true);
         });
 
         form.addEventListener('submit', async function (event) {
@@ -245,13 +247,13 @@ window.commonPageScripts["/omo/api/documents/share_popup.js"] = function (pageCo
                 });
 
                 if (!response.ok || !payload || payload.status !== true) {
-                    setFeedback(payload && payload.message ? payload.message : 'Enregistrement impossible.', false);
+                    setFeedback(payload && payload.message ? payload.message : omoUiText("enregistrement_impossible", "Enregistrement impossible."), false);
                     return;
                 }
 
-                refreshPopup(payload.message || 'Lien enregistré.', true);
+                refreshPopup(payload.message || omoUiText("lien_enregistre", "Lien enregistré."), true);
             } catch (error) {
-                setFeedback('Enregistrement impossible.', false);
+                setFeedback(omoUiText("enregistrement_impossible", "Enregistrement impossible."), false);
             } finally {
                 if (typeof window.omoEndPendingAction === 'function') {
                     window.omoEndPendingAction(form);

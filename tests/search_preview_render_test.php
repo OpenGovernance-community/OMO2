@@ -68,6 +68,6 @@ $skills[] = ['title' => 'Validation des factures', 'text' => 'Competence decisiv
 $html = omoSearchPreviewRender(['collections' => [['title' => 'Competences', 'items' => $skills]], 'metrics' => ['documents' => 0]], $query);
 previewAssert(str_contains($html, 'Competence decisive'), 'A matching skill must rise above the collection limit.');
 previewAssert(substr_count($html, '<article') === 5 && str_contains($html, omoSearchPreviewT('more')), 'Limit collections while indicating omitted items.');
-previewAssert(str_contains($html, '0 Documents associes'), 'Keep zero associated counts visible.');
+previewAssert(str_contains($html, '0 ' . omoSearchPreviewT('documents')), 'Keep zero associated counts visible.');
 
 echo "search_preview_render_test: OK\n";

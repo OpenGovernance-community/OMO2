@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/shared_functions.php';
 require_once dirname(__DIR__) . '/common/auth.php';
 require_once dirname(__DIR__) . '/common/omo_public_pages.php';
@@ -12,18 +13,18 @@ if (!$shareLink) {
     http_response_code(404);
     ?>
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="<?= htmlspecialchars(omoGetTranslationLocale(), ENT_QUOTES, 'UTF-8') ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lien de partage invalide</title>
+    <title><?= htmlspecialchars(omoInterfaceUiT('lien_de_partage_invalide'), ENT_QUOTES, 'UTF-8') ?></title>
     <link rel="stylesheet" href="/common/assets/auth.css">
 </head>
 <body class="auth-state-page">
     <main class="auth-state-layout">
         <div class="auth-state-card">
-            <h1>Lien invalide</h1>
-            <p>Ce lien de partage est invalide, inactif ou expire.</p>
+            <h1><?= htmlspecialchars(omoInterfaceUiT('lien_invalide'), ENT_QUOTES, 'UTF-8') ?></h1>
+            <p><?= htmlspecialchars(omoInterfaceUiT('ce_lien_de_partage_est_invalide_inactif_ou_expire'), ENT_QUOTES, 'UTF-8') ?></p>
         </div>
     </main>
 </body>
@@ -37,18 +38,18 @@ if (!$organization->load((int)$shareLink->get('IDorganization'))) {
     http_response_code(404);
     ?>
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="<?= htmlspecialchars(omoGetTranslationLocale(), ENT_QUOTES, 'UTF-8') ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Organisation introuvable</title>
+    <title><?= htmlspecialchars(omoInterfaceUiT('organisation_introuvable_2'), ENT_QUOTES, 'UTF-8') ?></title>
     <link rel="stylesheet" href="/common/assets/auth.css">
 </head>
 <body class="auth-state-page">
     <main class="auth-state-layout">
         <div class="auth-state-card">
-            <h1>Organisation introuvable</h1>
-            <p>Le contexte de partage ne peut pas etre resolu.</p>
+            <h1><?= htmlspecialchars(omoInterfaceUiT('organisation_introuvable_2'), ENT_QUOTES, 'UTF-8') ?></h1>
+            <p><?= htmlspecialchars(omoInterfaceUiT('le_contexte_de_partage_ne_peut_pas_etre_resolu'), ENT_QUOTES, 'UTF-8') ?></p>
         </div>
     </main>
 </body>
@@ -66,7 +67,7 @@ if (!$scopeHolon) {
     http_response_code(404);
     ?>
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="<?= htmlspecialchars(omoGetTranslationLocale(), ENT_QUOTES, 'UTF-8') ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -77,7 +78,7 @@ if (!$scopeHolon) {
     <main class="auth-state-layout">
         <div class="auth-state-card">
             <h1><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Holon introuvable', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></h1>
-            <p>Le contexte partage n est plus disponible.</p>
+            <p><?= htmlspecialchars(omoInterfaceUiT('le_contexte_partage_n_est_plus_disponible'), ENT_QUOTES, 'UTF-8') ?></p>
         </div>
     </main>
 </body>
@@ -96,32 +97,32 @@ if ($shareLink->requiresPassword() && !commonIsSharePasswordVerified($token)) {
             exit;
         }
 
-        $passwordError = 'Mot de passe invalide.';
+        $passwordError = omoInterfaceUiT('mot_de_passe_invalide');
     }
 
     ?>
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="<?= htmlspecialchars(omoGetTranslationLocale(), ENT_QUOTES, 'UTF-8') ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mot de passe requis</title>
+    <title><?= htmlspecialchars(omoInterfaceUiT('mot_de_passe_requis'), ENT_QUOTES, 'UTF-8') ?></title>
     <link rel="stylesheet" href="/common/assets/auth.css">
 </head>
 <body class="auth-state-page">
     <main class="auth-state-layout">
         <div class="auth-state-card">
-            <h1>Acces protege</h1>
-            <p>Un mot de passe est requis pour ouvrir ce lien de partage.</p>
+            <h1><?= htmlspecialchars(omoInterfaceUiT('acces_protege'), ENT_QUOTES, 'UTF-8') ?></h1>
+            <p><?= htmlspecialchars(omoInterfaceUiT('un_mot_de_passe_est_requis_pour_ouvrir_ce_lien_de_partage'), ENT_QUOTES, 'UTF-8') ?></p>
             <form method="post" class="auth-state-form">
                 <input type="hidden" name="token" value="<?= htmlspecialchars($token, ENT_QUOTES, 'UTF-8') ?>">
-                <label class="auth-state-label" for="omoSharePasswordInput">Mot de passe</label>
+                <label class="auth-state-label" for="omoSharePasswordInput"><?= htmlspecialchars(omoInterfaceUiT('mot_de_passe'), ENT_QUOTES, 'UTF-8') ?></label>
                 <input class="auth-state-input" type="password" id="omoSharePasswordInput" name="share_password" autofocus>
                 <?php if ($passwordError !== ''): ?>
                     <p class="auth-state-error"><?= htmlspecialchars($passwordError, ENT_QUOTES, 'UTF-8') ?></p>
                 <?php endif; ?>
                 <div class="auth-state-actions">
-                    <button class="auth-state-btn auth-state-btn--primary" type="submit">Ouvrir le lien</button>
+                    <button class="auth-state-btn auth-state-btn--primary" type="submit"><?= htmlspecialchars(omoInterfaceUiT('ouvrir_le_lien'), ENT_QUOTES, 'UTF-8') ?></button>
                 </div>
             </form>
         </div>
@@ -149,10 +150,10 @@ $helpItems = commonBuildOmoPublicHelpItems('share', (string)$organization->get('
 $brandHref = $shareLink->buildShareUrl($initialCid);
 ?>
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="<?= htmlspecialchars(omoGetTranslationLocale(), ENT_QUOTES, 'UTF-8') ?>">
 <head>
     <meta charset="UTF-8">
-    <title><?= htmlspecialchars((string)$organization->get('name'), ENT_QUOTES, 'UTF-8') ?> - Partage OMO</title>
+    <title><?= htmlspecialchars((string)$organization->get('name'), ENT_QUOTES, 'UTF-8') ?> <?= htmlspecialchars(omoInterfaceUiT('partage_omo'), ENT_QUOTES, 'UTF-8') ?></title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="/shared_functions.js"></script>
     <script>sharedApplyDocumentTheme();</script>
@@ -235,11 +236,11 @@ $brandHref = $shareLink->buildShareUrl($initialCid);
                 'enabled' => false,
             ),
             'helpItems' => $helpItems,
-            'helpLabel' => 'Aide',
+            'helpLabel' => omoInterfaceUiT('aide'),
         ));
         ?>
         <div class="omo-public-banner omo-share-banner">
-            Lien partage public pour <?= htmlspecialchars($scopeHolon->getDisplayName(), ENT_QUOTES, 'UTF-8') ?>
+            <?= htmlspecialchars(omoInterfaceUiT('lien_partage_public_pour'), ENT_QUOTES, 'UTF-8') ?> <?= htmlspecialchars($scopeHolon->getDisplayName(), ENT_QUOTES, 'UTF-8') ?>
         </div>
         <div class="content">
             <div class="panel panel-left" id="panel-left">
@@ -250,9 +251,9 @@ $brandHref = $shareLink->buildShareUrl($initialCid);
             <div class="resizer" id="resizer"></div>
             <div class="panel panel-right" id="panel-right"></div>
         </div>
-        <nav class="mobile-nav" id="omo-mobile-nav" aria-label="Navigation du partage">
-            <button type="button" data-view="left">Infos</button>
-            <button type="button" data-view="right">Structure</button>
+        <nav class="mobile-nav" id="omo-mobile-nav" aria-label="<?= htmlspecialchars(omoInterfaceUiT('navigation_du_partage'), ENT_QUOTES, 'UTF-8') ?>">
+            <button type="button" data-view="left"><?= htmlspecialchars(omoInterfaceUiT('infos'), ENT_QUOTES, 'UTF-8') ?></button>
+            <button type="button" data-view="right"><?= htmlspecialchars(omoInterfaceUiT('structure'), ENT_QUOTES, 'UTF-8') ?></button>
         </nav>
     </div>
 </div>
@@ -267,6 +268,7 @@ window.omoConfig = <?= json_encode(array(
     'host' => commonGetRequestHost(),
     'routeMode' => 'share',
     'translationLocale' => omoGetTranslationLocale(),
+    'uiTexts' => omoUiJsPayload(),
     'rootHolonId' => $organizationRootHolonId,
     'structureEnabled' => $isStructureApplicationEnabled,
     'orgLookupError' => null,
@@ -283,8 +285,9 @@ window.omoConfig = <?= json_encode(array(
     'shareAllowsStructure' => $shareLink->allowsStructure(),
     'shareAllowsPeople' => $shareLink->allowsPeople(),
     'shareAllowsPeopleDetail' => $shareLink->allowsPeopleDetail(),
-), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 </script>
+<script src="<?= commonAssetUrl('/omo/assets/js/ui-translations.js') ?>"></script>
 <script src="<?= commonAssetUrl('/omo/assets/js/app.js') ?>"></script>
 <script>
 $(document).ready(function () {
@@ -292,8 +295,8 @@ $(document).ready(function () {
         const message = [
             '<div class="omo-share-placeholder">',
             '<div class="omo-share-placeholder__card">',
-            '<h2>Structure non partagee</h2>',
-            '<p>Ce lien n autorise pas l affichage de la structure.</p>',
+            '<h2>' + <?= json_encode(htmlspecialchars(omoInterfaceUiT('structure_not_shared'), ENT_QUOTES, 'UTF-8'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?> + '</h2>',
+            '<p>' + <?= json_encode(htmlspecialchars(omoInterfaceUiT('structure_share_denied'), ENT_QUOTES, 'UTF-8'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?> + '</p>',
             '</div>',
             '</div>'
         ].join('');

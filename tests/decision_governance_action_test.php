@@ -2,6 +2,7 @@
 require_once dirname(__DIR__) . '/class/dbobject/dbobject.class.php';
 require_once dirname(__DIR__) . '/class/dbobject/propertyformat.class.php';
 require_once dirname(__DIR__) . '/class/dbobject/rule.class.php';
+require_once dirname(__DIR__) . '/class/dbobject/valeur.class.php';
 require_once dirname(__DIR__) . '/class/dbobject/decisionresponse.class.php';
 require_once dirname(__DIR__) . '/class/dbobject/decisionproposal.class.php';
 require_once dirname(__DIR__) . '/class/dbobject/decisionprocess.class.php';

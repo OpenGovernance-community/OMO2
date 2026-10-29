@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/shared.php';
 require_once dirname(__DIR__) . '/projects/shared.php';
@@ -182,20 +183,20 @@ usort($referencePoints, static function (StatIndicatorReferencePoint $left, Stat
 
 $sourceLang = [
     'editor.identity' => ['text' => 'Votre indicateur', 'context' => 'Heading for indicator identity fields.'],
-    'editor.identity_help' => ['text' => 'Donnez un nom clair a la mesure et indiquez qui en assure le suivi.', 'context' => 'Indicator identity help.'],
-    'editor.name' => ['text' => 'Nom de l indicateur', 'context' => 'Required indicator name field.'],
-    'editor.name_placeholder' => ['text' => 'Ex. Chiffre d affaires mensuel', 'context' => 'Example indicator name.'],
+    'editor.identity_help' => ['text' => 'Donnez un nom clair à la mesure et indiquez qui en assure le suivi.', 'context' => 'Indicator identity help.'],
+    'editor.name' => ['text' => 'Nom de l’indicateur', 'context' => 'Required indicator name field.'],
+    'editor.name_placeholder' => ['text' => 'Ex. Chiffre d’affaires mensuel', 'context' => 'Example indicator name.'],
     'editor.description' => ['text' => 'Description', 'context' => 'Indicator description field.'],
-    'editor.description_placeholder' => ['text' => 'Que mesure cet indicateur ? Dans quelle unite ?', 'context' => 'Description prompt.'],
+    'editor.description_placeholder' => ['text' => 'Que mesure cet indicateur ? Dans quelle unité ?', 'context' => 'Description prompt.'],
     'editor.source_url' => ['text' => 'Lien vers la source', 'context' => 'Optional measurement source URL field.'],
-    'editor.recurrence' => ['text' => 'Recurrence', 'context' => 'Heading for indicator measurement schedule, matching the recurring task editor.'],
-    'editor.chart' => ['text' => 'Graphique et reference', 'context' => 'Heading for indicator chart settings.'],
-    'editor.chart_help' => ['text' => 'Choisissez comment lire vos mesures et les comparer a votre objectif.', 'context' => 'Chart settings help.'],
+    'editor.recurrence' => ['text' => 'Récurrence', 'context' => 'Heading for indicator measurement schedule, matching the recurring task editor.'],
+    'editor.chart' => ['text' => 'Graphique et référence', 'context' => 'Heading for indicator chart settings.'],
+    'editor.chart_help' => ['text' => 'Choisissez comment lire vos mesures et les comparer à votre objectif.', 'context' => 'Chart settings help.'],
     'editor.cumulative' => ['text' => 'Afficher le cumul', 'context' => 'Cumulative display checkbox.'],
-    'editor.cumulative_help' => ['text' => 'Les valeurs en barres, leur cumul sur une seconde echelle.', 'context' => 'Explanation of cumulative display.'],
+    'editor.cumulative_help' => ['text' => 'Les valeurs en barres, leur cumul sur une seconde échelle.', 'context' => 'Explanation of cumulative display.'],
     'editor.minimum' => ['text' => 'Valeur basse du graphique', 'context' => 'Optional chart lower scale value.'],
-    'editor.minimum_help' => ['text' => 'Laissez vide pour une echelle automatique.', 'context' => 'Help for chart lower scale value.'],
-    'editor.reference_type' => ['text' => 'Type de reference', 'context' => 'Indicator reference type field.'],
+    'editor.minimum_help' => ['text' => 'Laissez vide pour une échelle automatique.', 'context' => 'Help for chart lower scale value.'],
+    'editor.reference_type' => ['text' => 'Type de référence', 'context' => 'Indicator reference type field.'],
     'editor.scale_value_help' => ['text' => 'Ex. 10 000 de chiffre d’affaires par mois.', 'context' => 'Example of a reference on the independent values axis.'],
     'editor.scale_cumulative_help' => ['text' => 'Ex. 120 000 de chiffre d’affaires sur l’année.', 'context' => 'Example of a reference on the cumulative axis.'],
     'editor.saving' => ['text' => 'Enregistrement...', 'context' => 'Save action while an indicator request is pending.'],
@@ -339,7 +340,7 @@ $showCumulative = (int)$indicator->get('show_cumulative') > 0;
             </label>
             <label class="omo-stats-field generic-form-field">
                 <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.spreadsheet.sheet')) ?></span>
-                <input type="text" class="generic-form-control generic-form-control--compact" name="spreadsheet_sheet" value="<?= omoApiEscape((string)$indicator->get('spreadsheet_sheet')) ?>" placeholder="Feuille1">
+                <input type="text" class="generic-form-control generic-form-control--compact" name="spreadsheet_sheet" value="<?= omoApiEscape((string)$indicator->get('spreadsheet_sheet')) ?>" placeholder="<?= htmlspecialchars(omoStatsUiT('feuille1'), ENT_QUOTES, 'UTF-8') ?>">
             </label>
                 <label class="omo-stats-field generic-form-field" data-omo-stats-source-mode-field="spreadsheet_cell"<?= $isSpreadsheetCellSource ? '' : ' hidden' ?>>
                     <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.spreadsheet.cell')) ?></span>

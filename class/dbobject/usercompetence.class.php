@@ -25,11 +25,11 @@
 			return [
 				'id' => 'ID',
 				'IDuser' => 'Utilisateur',
-				'IDcompetence' => 'Competence',
+				'IDcompetence' => 'Compétence',
 				'IDorganization' => 'Organisation',
 				'level' => 'Niveau',
 				'description' => 'Description',
-				'datecreation' => 'Creation',
+				'datecreation' => 'Création',
 				'datemodification' => 'Modification',
 			];
 		}

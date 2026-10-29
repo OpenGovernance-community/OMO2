@@ -31,15 +31,15 @@ class StatIndicatorGroup extends DbObject
             'id' => 'ID',
             'IDorganization' => 'Organisation',
             'IDholon' => 'Contexte',
-            'IDuser' => 'Createur',
+            'IDuser' => 'Créateur',
             'name' => 'Nom',
             'display_mode' => 'Affichage',
-            'reference_type' => 'Type de reference',
+            'reference_type' => 'Type de référence',
             'chart_min_value' => 'Valeur basse du graphique',
-            'hide_same_holon_sources' => 'Masquer les indicateurs du meme holon',
+            'hide_same_holon_sources' => 'Masquer les indicateurs du même holon',
             'active' => 'Actif',
-            'created_at' => 'Creation',
-            'updated_at' => 'Mise a jour',
+            'created_at' => 'Création',
+            'updated_at' => 'Mise à jour',
         ];
     }
 

@@ -177,11 +177,11 @@
 				'username' => 'Nom d\'utilisateur',
 				'email' => 'E-mail',
 				'phone' => 'Téléphone',
-				'presentation' => 'Presentation',
+				'presentation' => 'Présentation',
 				'image' => 'Photo',
-				'parameters' => 'Parametres',
-				'datecreation' => 'Creation',
-				'dateconnexion' => 'Derniere connexion',
+				'parameters' => 'Paramètres',
+				'datecreation' => 'Création',
+				'dateconnexion' => 'Dernière connexion',
 				'active' => 'Actif',
 			];
 		}
@@ -189,16 +189,16 @@
 		public static function attributeDescriptions()
 		{
 			return [
-				'IDuser' => 'Utilisateur associe a cette organisation.',
-				'IDorganization' => 'Organisation concernee par ce lien.',
-				'username' => 'Nom d\'utilisateur affiche specifiquement dans cette organisation. Laissez vide pour utiliser la valeur generale.',
-				'email' => 'Adresse e-mail affichee specifiquement dans cette organisation. Laissez vide pour utiliser la valeur generale.',
+				'IDuser' => 'Utilisateur associe à cette organisation.',
+				'IDorganization' => 'Organisation concernée par ce lien.',
+				'username' => 'Nom d\'utilisateur affiche specifiquement dans cette organisation. Laissez vide pour utiliser la valeur générale.',
+				'email' => 'Adresse e-mail affichée specifiquement dans cette organisation. Laissez vide pour utiliser la valeur générale.',
 				'phone' => 'Numéro de téléphone affiché spécifiquement dans cette organisation. Laissez vide pour utiliser la valeur générale.',
-				'presentation' => 'Presentation visible uniquement dans cette organisation. Laissez vide pour reutiliser la presentation generale.',
-				'image' => 'Photo de profil specifique a cette organisation. Si elle est vide, la photo generale est utilisee.',
-				'parameters' => 'Parametres specifiques au role de cette personne dans l organisation.',
-				'datecreation' => 'Date de creation du lien avec l organisation.',
-				'dateconnexion' => 'Derniere activite connue dans cette organisation.',
+				'presentation' => 'Présentation visible uniquement dans cette organisation. Laissez vide pour reutiliser la présentation générale.',
+				'image' => 'Photo de profil spécifique à cette organisation. Si elle est vide, la photo générale est utilisée.',
+				'parameters' => 'Paramètres spécifiques au rôle de cette personne dans l’organisation.',
+				'datecreation' => 'Date de création du lien avec l’organisation.',
+				'dateconnexion' => 'Dernière activité connue dans cette organisation.',
 			];
 		}
 

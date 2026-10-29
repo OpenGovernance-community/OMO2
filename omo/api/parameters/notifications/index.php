@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
 require_once dirname(__DIR__, 4) . '/common/notification_center.php';
 
@@ -25,8 +26,8 @@ $sourceLang = [
     'notifications.preferences.group.calendar' => ['text' => 'Calendrier', 'context' => 'Title of the calendar notification preference group.'],
     'notifications.preferences.group.projects' => ['text' => 'Projets', 'context' => 'Title of the project notification preference group.'],
     'notifications.preferences.group.documents' => ['text' => 'Documents / PV', 'context' => 'Title of the PV notification preference group.'],
-    'notifications.preferences.event.document_pv_review_started' => ['text' => 'Passage en relecture des PV auxquels j ai assiste', 'context' => 'Review notification for meeting attendees.'],
-    'notifications.preferences.event.document_pv_closed' => ['text' => 'Cloture des PV auxquels je suis invite (manuelle ou automatique)', 'context' => 'Closure notification for all meeting invitees.'],
+    'notifications.preferences.event.document_pv_review_started' => ['text' => 'Passage en relecture des PV auxquels j’ai assisté', 'context' => 'Review notification for meeting attendees.'],
+    'notifications.preferences.event.document_pv_closed' => ['text' => 'Clôture des PV auxquels je suis invité (manuelle ou automatique)', 'context' => 'Closure notification for all meeting invitees.'],
     'notifications.preferences.header.event' => ['text' => 'Événement', 'context' => 'Header for the event column in notification preferences.'],
     'notifications.preferences.event.decision_proposal_owner' => ['text' => 'Ajout d’une proposition à mes scrutins', 'context' => 'Preference label for proposals added to decisions owned by the user.'],
     'notifications.preferences.event.decision_proposal_participant' => ['text' => 'Ajout d’une proposition aux scrutins auxquels je participe', 'context' => 'Preference label for proposals added to decisions where the user participates.'],
@@ -64,7 +65,7 @@ $sourceLang = [
     'notifications.preferences.channel.push' => ['text' => 'Notification', 'context' => 'Preference channel label for browser push.'],
     'notifications.preferences.channel.telegram' => ['text' => 'Telegram', 'context' => 'Preference channel label for Telegram.'],
     'notifications.preferences.channel.email' => ['text' => 'E-mail', 'context' => 'Preference channel label for email.'],
-    'notifications.preferences.save' => ['text' => 'Enregistrer les reglages', 'context' => 'Submit label for notification preferences.'],
+    'notifications.preferences.save' => ['text' => 'Enregistrer les réglages', 'context' => 'Submit label for notification preferences.'],
     'notifications.preferences.saved' => ['text' => 'Réglages de notifications enregistrés.', 'context' => 'Success feedback after saving notification preferences.'],
     'notifications.preferences.save_error' => ['text' => 'Impossible d’enregistrer les réglages de notifications.', 'context' => 'Failure feedback after saving notification preferences.'],
     'notifications.preferences.telegram_unavailable' => ['text' => 'Telegram n’est pas connecté à ce compte.', 'context' => 'Help shown when Telegram is unavailable.'],
@@ -80,7 +81,7 @@ $translate = static function ($key) use (&$lang, &$sourceLang) {
 $userId = commonGetCurrentUserId();
 if ($userId <= 0) {
     http_response_code(401);
-    echo '<div class="omo-empty-state">Connexion requise.</div>';
+    echo ('<div class="omo-empty-state">' . htmlspecialchars(omoParametersUiT('connexion_requise'), ENT_QUOTES, 'UTF-8') . '</div>');
     exit;
 }
 

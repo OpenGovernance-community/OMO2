@@ -408,7 +408,7 @@ function displayField($object, $key, $default = null, $filter = null, ?array $tr
             if (isset($object::attributeValues()[$key])) {
                 $str = "<select class='" . $class . "' name='" . $key . "' id='" . $key . "'>";
                 foreach ($object::attributeValues()[$key] as $option) {
-                    $str .= "<option value='" . $option[0] . "' " . ($option[0] == $object->get($key) ? "selected" : "") . ">" . $option[1] . "</option>";
+                    $str .= "<option value='" . htmlspecialchars((string)$option[0], ENT_QUOTES, 'UTF-8') . "' " . ($option[0] == $object->get($key) ? "selected" : "") . ">" . htmlspecialchars(adminEditGetFieldOptionLabel($object, $key, $option, $translationBundle, $translationSourceLang), ENT_QUOTES, 'UTF-8') . "</option>";
                 }
                 $str .= '</select>';
 

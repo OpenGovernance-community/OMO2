@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
 require_once dirname(__DIR__) . '/modules/context.php';
 require_once dirname(__DIR__) . '/params/shared.php';
@@ -17,11 +18,11 @@ $respond = static function (int $code, array $payload): void {
 };
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
-    $respond(405, ['status' => false, 'message' => 'Méthode non autorisée.']);
+    $respond(405, ['status' => false, 'message' => omoDecisionUiT('methode_non_autorisee')]);
 }
 $context = omoDecisionResolveManagementContext($_POST);
 if (empty($context['status'])) {
-    $respond((int)($context['code'] ?? 403), ['status' => false, 'message' => 'Accès refusé.']);
+    $respond((int)($context['code'] ?? 403), ['status' => false, 'message' => omoDecisionUiT('acces_refuse')]);
 }
 $decision = ($context['decision'] ?? null) instanceof DecisionProcess ? $context['decision'] : null;
 $currentUserId = (int)($context['currentUserId'] ?? 0);
@@ -32,7 +33,7 @@ if ((int)($context['targetHolonId'] ?? 0) <= 0
             || empty($context['canManage'])
             || $decision->hasConsultationEnded())
         : (empty($context['canCreate']) || empty($settings['governance']['enabled'])))) {
-    $respond(403, ['status' => false, 'message' => 'Accès refusé.']);
+    $respond(403, ['status' => false, 'message' => omoDecisionUiT('acces_refuse')]);
 }
 if (!commonAiUserCanUse($currentUserId, commonOpenAiGetRewriteModel(), null, (int)$context['organization']->getId())) {
     $respond(403, ['status' => false, 'message' => omoDecisionGovernanceT('governance.proposal.summary.unavailable')]);

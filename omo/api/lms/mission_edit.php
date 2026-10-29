@@ -12,7 +12,7 @@ $sourceLang = [
         'context' => 'Error shown when the user cannot access the mission editor.',
     ],
     'lms.mission_edit.error.cannot_edit_parcours' => [
-        'text' => 'Vous n avez pas le droit de modifier ce parcours.',
+        'text' => 'Vous n’avez pas le droit de modifier ce parcours.',
         'context' => 'Error shown when the user cannot edit the parcours of the mission.',
     ],
     'lms.mission_edit.error.not_found' => [
@@ -32,7 +32,7 @@ $sourceLang = [
         'context' => 'Accessible label for the branch suggestions toggle.',
     ],
     'lms.mission_edit.branch.empty' => [
-        'text' => 'Aucun autre groupe n existe encore dans ce parcours.',
+        'text' => 'Aucun autre groupe n’existe encore dans ce parcours.',
         'context' => 'Empty state shown when no other branch exists in the parcours.',
     ],
     'lms.mission_edit.hero.intro' => [

@@ -38,7 +38,7 @@ function omoGetOrgPanelSourceLang(): array
             'context' => 'Action menu label to open the current holon history in the left panel.',
         ],
         'leftbar.actions.move' => [
-            'text' => 'Deplacer',
+            'text' => 'Déplacer',
             'context' => 'Action menu label to move the current holon in the left panel.',
         ],
         'leftbar.actions.share_as_model' => [
@@ -62,7 +62,7 @@ function omoGetOrgPanelSourceLang(): array
             'context' => 'Temporary button label shown after copying a direct holon link from the left panel.',
         ],
         'leftbar.detail.item_fallback' => [
-            'text' => 'Element',
+            'text' => 'Élément',
             'context' => 'Fallback title for a detail card item in the left panel when no title is available.',
         ],
         'leftbar.detail.show' => [
@@ -70,32 +70,32 @@ function omoGetOrgPanelSourceLang(): array
             'context' => 'Label shown beside the control that expands the HTML detail of a text property.',
         ],
         'leftbar.detail.property_fallback' => [
-            'text' => 'Propriete {propertyId}',
+            'text' => 'Propriété {propertyId}',
             'context' => 'Fallback section title for a holon property in the left panel when no label is available.',
         ],
         'leftbar.detail.updated_at' => [
-            'text' => 'Mis a jour le {date}',
+            'text' => 'Mis à jour le {date}',
             'context' => 'Update metadata shown below a left panel section when the updater is unknown.',
         ],
         'leftbar.detail.fullscreen' => [
-            'text' => 'Plein ecran',
+            'text' => 'Plein écran',
             'context' => 'Accessible label for the icon that expands a property to fullscreen.',
         ],
         'leftbar.detail.exit_fullscreen' => [
-            'text' => 'Quitter le plein ecran',
+            'text' => 'Quitter le plein écran',
             'context' => 'Accessible label for the close button of a fullscreen property, including on phones.',
         ],
         'leftbar.detail.updated_by' => [
-            'text' => 'Mis a jour le {date} par {userName}',
+            'text' => 'Mis à jour le {date} par {userName}',
             'context' => 'Update metadata shown below a left panel section when the updater is known.',
         ],
         'leftbar.authority.delegated_count' => [
-            'one' => '{count} autorite deleguee',
-            'other' => '{count} autorites deleguees',
+            'one' => '{count} autorité déléguée',
+            'other' => '{count} autorités déléguées',
             'context' => 'Count shown beside an authority that has direct delegated child authorities.',
         ],
         'leftbar.authority.delegated' => [
-            'text' => 'deleguee',
+            'text' => 'déléguée',
             'context' => 'Status shown for an inactive authority shell after complete delegation.',
         ],
         'leftbar.authority.description' => [
@@ -103,7 +103,7 @@ function omoGetOrgPanelSourceLang(): array
             'context' => 'Section title for the description of an authority.',
         ],
         'leftbar.authority.delegated_to' => [
-            'text' => 'Deleguee a',
+            'text' => 'Déléguée a',
             'context' => 'Section title for direct child authority delegations.',
         ],
         'leftbar.authority.internal_children' => [
@@ -111,11 +111,11 @@ function omoGetOrgPanelSourceLang(): array
             'context' => 'Section title for authority descendants held by the same holon.',
         ],
         'leftbar.authority.inherited_from' => [
-            'text' => 'Heritee de',
+            'text' => 'Héritée de',
             'context' => 'Section title for the parent authority of an authority.',
         ],
         'leftbar.authority.root' => [
-            'text' => 'Autorite racine',
+            'text' => 'Autorité racine',
             'context' => 'Fallback shown when an authority has no parent authority.',
         ],
         'leftbar.empty.message' => [

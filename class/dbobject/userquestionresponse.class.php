@@ -25,7 +25,7 @@
 				'IDquestion' => 'Question',
 				'IDchoice' => 'Choix',
 				'IDmission' => 'Mission',
-				'created_at' => 'Cree le',
+				'created_at' => 'Créé le',
 			];
 		}
 

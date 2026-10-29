@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 window.commonPageScripts = window.commonPageScripts || {};
 window.commonPageScripts["/omo/api/stats/stats.js"] = function (pageConfig, pageScript) {
 (function () {
@@ -1246,7 +1248,7 @@ window.commonPageScripts["/omo/api/stats/stats.js"] = function (pageConfig, page
                     + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.spreadsheetDocument) + '</span><select class="generic-form-control" data-omo-stats-spreadsheet-document></select></label>'
                     + '<div class="generic-soft-panel" data-omo-stats-spreadsheet-empty hidden>' + escapeHtml(texts.spreadsheetNoDocuments) + '</div>'
                     + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.spreadsheetName) + '</span><input type="text" class="generic-form-control" data-omo-stats-spreadsheet-name></label>'
-                    + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.spreadsheetSheet) + '</span><input type="text" class="generic-form-control" data-omo-stats-spreadsheet-sheet placeholder="Feuille1"></label>'
+                    + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.spreadsheetSheet) + ("</span><input type=\"text\" class=\"generic-form-control\" data-omo-stats-spreadsheet-sheet placeholder=\"" + omoUiHtml("feuille1", "Feuille1") + "\"></label>")
                     + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.spreadsheetMode) + '</span><select class="generic-form-control" data-omo-stats-spreadsheet-mode><option value="cell">' + escapeHtml(texts.spreadsheetModeCell) + '</option><option value="table">' + escapeHtml(texts.spreadsheetModeTable) + '</option></select></label>'
                     + '<section class="generic-soft-panel generic-soft-panel--stack" data-omo-stats-spreadsheet-cell-fields>'
                     + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.spreadsheetCell) + '</span><input type="text" class="generic-form-control" data-omo-stats-spreadsheet-cell value="A1" placeholder="A1"></label>'

@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 (function () {
   const D3_V3_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js';
   const STRUCTURE_DATA_PATH = 'api/getStructureData.php';
@@ -695,7 +697,7 @@
       state.host.innerHTML = [
         '<div class="omo-left-structure-map">',
         '  <canvas class="omo-left-structure-map__canvas"></canvas>',
-        '  <div class="omo-left-structure-map__tooltip is-muted">Structure</div>',
+        ("  <div class=\"omo-left-structure-map__tooltip is-muted\">" + omoUiHtml("structure", "Structure") + "</div>"),
         '</div>'
       ].join('');
 
@@ -733,7 +735,7 @@
         return;
       }
 
-      state.tooltip.textContent = 'Structure';
+      state.tooltip.textContent = omoUiText("structure", "Structure");
       state.tooltip.classList.add('is-muted');
     }
 
@@ -1112,7 +1114,7 @@
       }, options || {});
 
       if (!Number.isInteger(Number(oid)) || Number(oid) <= 0) {
-        renderStaticState('Organisation introuvable.', true);
+        renderStaticState(omoUiText("organisation_introuvable", "Organisation introuvable."), true);
         return Promise.resolve(null);
       }
 
@@ -1120,7 +1122,7 @@
       state.requestId += 1;
       const requestId = state.requestId;
 
-      renderStaticState('Chargement de la structure...', true);
+      renderStaticState(omoUiText("chargement_de_la_structure", "Chargement de la structure..."), true);
 
       const url = buildStructureDataUrl(oid);
       const structureRequest = typeof window.omoFetchStructureData === 'function'
@@ -1135,7 +1137,7 @@
             }
           }).then(function (response) {
             if (!response.ok) {
-              throw new Error('Structure indisponible.');
+              throw new Error(omoUiText("structure_indisponible", "Structure indisponible."));
             }
             return response.json();
           });
@@ -1148,12 +1150,12 @@
           }
 
           if (!response || response.error) {
-            throw new Error(response && response.message ? response.message : 'Structure indisponible.');
+            throw new Error(response && response.message ? response.message : omoUiText("structure_indisponible", "Structure indisponible."));
           }
 
           const normalizedRoot = normalizeStructureNode(response, 0);
           if (!normalizedRoot) {
-            throw new Error('Structure indisponible.');
+            throw new Error(omoUiText("structure_indisponible", "Structure indisponible."));
           }
 
           state.rootData = normalizedRoot;
@@ -1176,7 +1178,7 @@
           }
 
           state.rootData = null;
-          renderStaticState('Structure indisponible.', true);
+          renderStaticState(omoUiText("structure_indisponible", "Structure indisponible."), true);
           return null;
         });
     }
@@ -1278,7 +1280,7 @@
         : resolveRoute().cid;
 
       if (!Number.isInteger(nextOid) || nextOid <= 0) {
-        renderStaticState('Organisation introuvable.', true);
+        renderStaticState(omoUiText("organisation_introuvable", "Organisation introuvable."), true);
         return;
       }
 

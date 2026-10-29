@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 use dbObject\DecisionGovernanceAction;
@@ -29,7 +30,7 @@ if ($organizationId <= 0
     || !$document->canUserProposePvPointChange($point, $userId)
     || $point->isHandled()
     || $document->getPvStage() === Document::PV_STAGE_REVIEW) {
-    $respond(403, ['status' => false, 'message' => 'Accès refusé.']);
+    $respond(403, ['status' => false, 'message' => omoDeferredProposalsUiT('acces_refuse')]);
 }
 
 $collectiveHolonId = (int)$document->getPvContextHolonId();
@@ -40,7 +41,7 @@ $holon = DeferredProposal::loadAllowedRuleTargetHolon(
     $collectiveHolonId
 );
 if (!$holon) {
-    $respond(403, ['status' => false, 'message' => 'Vous ne pouvez pas effectuer cette action dans cet espace.']);
+    $respond(403, ['status' => false, 'message' => omoDeferredProposalsUiT('vous_ne_pouvez_pas_effectuer_cette_action_dans_cet_espace')]);
 }
 
 $rulesPayload = [];

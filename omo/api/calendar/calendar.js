@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 // Build each view/scope only on first use; authorized event data stays in the payload.
 function omoCreateCalendarViews(root, config) {
     const host = root.querySelector('[data-omo-calendar-views]');
@@ -324,7 +326,7 @@ window.omoInitCalendar = function (root) {
                 }
             }).then(function (response) {
                 if (!response.ok) {
-                    throw new Error('Unable to load calendar connection details');
+                    throw new Error(omoUiText("unable_to_load_calendar_connection_details", "Unable to load calendar connection détails"));
                 }
                 return response.text();
             }).then(function (html) {
@@ -2841,7 +2843,7 @@ window.omoInitCalendar = function (root) {
                 }).catch(function (error) {
                     var message = error && typeof error.message === 'string' && error.message !== ''
                         ? error.message
-                        : "Impossible d'enregistrer cet événement.";
+                        : omoUiText("impossible_d_enregistrer_cet_evenement", "Impossible d'enregistrer cet événement.");
                     if (typeof window.commonNotify === 'function') {
                         window.commonNotify(message, 'error');
                         return;

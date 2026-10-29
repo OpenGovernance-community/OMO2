@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 window.commonPageScripts = window.commonPageScripts || {};
 window.commonPageScripts["/omo/api/organization/member_popup.js"] = function (pageConfig, pageScript) {
     (function () {
@@ -52,7 +54,7 @@ window.commonPageScripts["/omo/api/organization/member_popup.js"] = function (pa
             feedback.classList.remove('is-success');
 
             if (!emailInput.value.trim()) {
-                showFeedback('Saisissez une adresse e-mail.', true);
+                showFeedback(omoUiText("saisissez_une_adresse_e_mail", "Saisissez une adresse e-mail."), true);
                 return;
             }
 
@@ -78,12 +80,12 @@ window.commonPageScripts["/omo/api/organization/member_popup.js"] = function (pa
             })
             .then(function (result) {
                 if (!result.ok || !result.data || !result.data.status) {
-                    showFeedback(result.data && result.data.message ? result.data.message : 'Une erreur est survenue.', true);
+                    showFeedback(result.data && result.data.message ? result.data.message : omoUiText("une_erreur_est_survenue", "Une erreur est survenue."), true);
                     submitButton.disabled = false;
                     return;
                 }
 
-                showFeedback(result.data.message || 'Invitation envoyee.', false);
+                showFeedback(result.data.message || omoUiText("invitation_envoyee", "Invitation envoyée."), false);
                 refreshParentPanel();
 
                 window.setTimeout(function () {
@@ -91,7 +93,7 @@ window.commonPageScripts["/omo/api/organization/member_popup.js"] = function (pa
                 }, 250);
             })
             .catch(function () {
-                showFeedback('Une erreur est survenue.', true);
+                showFeedback(omoUiText("une_erreur_est_survenue", "Une erreur est survenue."), true);
                 submitButton.disabled = false;
             });
         });

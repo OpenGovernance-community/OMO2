@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__, 3) . '/shared_functions.php';
 require_once dirname(__DIR__, 3) . '/common/auth.php';
 
@@ -17,7 +18,7 @@ if ($currentUserId <= 0) {
 	http_response_code(401);
 	echo json_encode(array(
 		'status' => false,
-		'message' => 'Connexion requise.',
+		'message' => omoOrganizationsUiT('connexion_requise'),
 	), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	exit;
 }
@@ -26,7 +27,7 @@ if ($organizationId <= 0 || $action === '') {
 	http_response_code(400);
 	echo json_encode(array(
 		'status' => false,
-		'message' => 'Action organisation invalide.',
+		'message' => omoOrganizationsUiT('action_organisation_invalide'),
 	), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	exit;
 }
@@ -36,7 +37,7 @@ if (!$organization->load($organizationId)) {
 	http_response_code(404);
 	echo json_encode(array(
 		'status' => false,
-		'message' => 'Organisation introuvable.',
+		'message' => omoOrganizationsUiT('organisation_introuvable'),
 	), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	exit;
 }
@@ -45,14 +46,14 @@ if (!$organization->getMembership($currentUserId, true)) {
 	http_response_code(403);
 	echo json_encode(array(
 		'status' => false,
-		'message' => "Vous n'avez pas acces a cette organisation.",
+		'message' => omoOrganizationsUiT('vous_n_avez_pas_acces_a_cette_organisation'),
 	), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	exit;
 }
 
 $response = array(
 	'status' => false,
-	'message' => 'Action inconnue.',
+	'message' => omoOrganizationsUiT('action_inconnue'),
 );
 
 switch ($action) {
@@ -67,7 +68,7 @@ switch ($action) {
 			http_response_code(403);
 			$response = array(
 				'status' => false,
-				'message' => 'Le partage comme modele requiert une organisation structuree et le mode administrateur actif.',
+				'message' => omoOrganizationsUiT('le_partage_comme_modele_requiert_une_organisation_structuree_et_le_mode_administrateur_act'),
 			);
 			break;
 		}
@@ -94,7 +95,7 @@ switch ($action) {
 			http_response_code(403);
 			$response = array(
 				'status' => false,
-				'message' => 'L organisation de base est utilisee par le systeme et ne peut pas etre supprimee.',
+				'message' => omoOrganizationsUiT('l_organisation_de_base_est_utilisee_par_le_systeme_et_ne_peut_pas_etre_supprimee'),
 			);
 			break;
 		}
@@ -103,7 +104,7 @@ switch ($action) {
 			http_response_code(403);
 			$response = array(
 				'status' => false,
-				'message' => "Vous n'avez pas le droit de supprimer cette organisation.",
+				'message' => omoOrganizationsUiT('vous_n_avez_pas_le_droit_de_supprimer_cette_organisation'),
 			);
 			break;
 		}

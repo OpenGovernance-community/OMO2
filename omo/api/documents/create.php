@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once dirname(__DIR__) . '/projects/shared.php';
 require_once dirname(__DIR__, 3) . '/common/etherpad.php';
@@ -24,7 +25,7 @@ $sourceLang = [
     'documents.create.context.organization' => ['text' => 'Organisation', 'context' => 'Fallback context label used for embeddable documents without a holon.'],
     'documents.create.field.type' => ['text' => 'Type', 'context' => 'Label of the document type field.'],
     'documents.create.field.type_help' => ['text' => 'Choisissez le format du document. Les champs nécessaires apparaissent ensuite.', 'context' => 'Help for the document type field.'],
-    'documents.create.type.memo' => ['text' => 'Memo', 'context' => 'Option label for Memos, documents containing rich text.'],
+    'documents.create.type.memo' => ['text' => 'Mémo', 'context' => 'Option label for Memos, documents containing rich text.'],
     'documents.create.type.external' => ['text' => 'Lien externe', 'context' => 'Option label for external links.'],
     'documents.create.type.uploaded' => ['text' => 'Fichier téléversé', 'context' => 'Option label for uploaded files.'],
     'documents.create.type.pv' => ['text' => 'PV', 'context' => 'Option label for PV documents.'],
@@ -39,10 +40,10 @@ $sourceLang = [
     'documents.create.type.nextcloud_folder' => ['text' => 'Dossier NextCloud', 'context' => 'Option label for a remotely listed NextCloud folder.'],
 	'documents.create.type.kdrive_folder' => ['text' => 'Dossier kDrive', 'context' => 'Option label for a remotely listed kDrive folder.'],
 	'documents.create.field.kdrive_folder_path' => ['text' => 'Chemin du dossier kDrive', 'context' => 'Label for the selected remote kDrive folder path.'],
-	'documents.create.field.kdrive_folder_hint' => ['text' => 'Le chemin est relatif au dossier kDrive configure pour les documents. Le contenu sera relu a chaque ouverture.', 'context' => 'Hint for the remote kDrive folder path.'],
+	'documents.create.field.kdrive_folder_hint' => ['text' => 'Le chemin est relatif au dossier kDrive configuré pour les documents. Le contenu sera relu à chaque ouverture.', 'context' => 'Hint for the remote kDrive folder path.'],
 	'documents.create.action.kdrive_browse' => ['text' => 'Parcourir kDrive', 'context' => 'Button opening the remote kDrive folder browser.'],
     'documents.create.field.nextcloud_folder_path' => ['text' => 'Chemin du dossier NextCloud', 'context' => 'Label for the selected remote folder path.'],
-    'documents.create.field.nextcloud_folder_hint' => ['text' => 'Le chemin est relatif au dossier NextCloud configure pour les documents. Le contenu sera relu a chaque ouverture.', 'context' => 'Hint for the remote NextCloud folder path.'],
+    'documents.create.field.nextcloud_folder_hint' => ['text' => 'Le chemin est relatif au dossier NextCloud configuré pour les documents. Le contenu sera relu à chaque ouverture.', 'context' => 'Hint for the remote NextCloud folder path.'],
     'documents.create.action.nextcloud_browse' => ['text' => 'Parcourir NextCloud', 'context' => 'Button opening the remote NextCloud folder browser.'],
     'documents.create.nextcloud.empty' => ['text' => 'Aucun sous-dossier disponible.', 'context' => 'Empty state for the NextCloud folder picker.'],
     'documents.create.field.title' => ['text' => 'Titre', 'context' => 'Label of the document title field.'],
@@ -100,9 +101,9 @@ $sourceLang = [
     'documents.create.embed.insert' => ['text' => 'Insérer le document', 'context' => 'Button used to insert a new embedded document reference.'],
     'documents.create.embed.add_line' => ['text' => 'Ajouter une ligne', 'context' => 'Accessible label for adding an editable line before, after or between embedded documents in a Memo.'],
     'documents.create.embed.search' => ['text' => 'Recherche', 'context' => 'Accessible label for searching Memos to embed.'],
-    'documents.create.embed.visible' => ['text' => 'Memos visibles', 'context' => 'Accessible label for the Memo selection list.'],
+    'documents.create.embed.visible' => ['text' => 'Mémos visibles', 'context' => 'Accessible label for the Memo selection list.'],
     'documents.create.embed.remove' => ['text' => 'Supprimer', 'context' => 'Remove a document reference from a Memo.'],
-    'documents.create.embed.fallback' => ['text' => 'Memo #{id}', 'context' => 'Fallback title for an untitled Memo in the document picker.'],
+    'documents.create.embed.fallback' => ['text' => 'Mémo #{id}', 'context' => 'Fallback title for an untitled Memo in the document picker.'],
     'documents.create.embed.scope_local' => ['text' => 'Local', 'context' => 'Filter Memos attached to the selected holon.'],
     'documents.create.embed.scope_children' => ['text' => 'Enfants directs', 'context' => 'Filter Memos in the selected holon and its direct children.'],
     'documents.create.embed.scope_descendants' => ['text' => 'Descendants', 'context' => 'Filter Memos in the selected holon and its descendants.'],
@@ -165,7 +166,7 @@ if ($documentId > 0) {
         $lockResult = $document->touchEditLock($organizationId, $currentUserId);
         if (!is_array($lockResult) || ($lockResult['status'] ?? false) !== true) {
             $canUseForm = false;
-            $formErrorMessage = trim((string)($lockResult['text'] ?? 'Ce document est déjà en cours d’édition.'));
+            $formErrorMessage = trim((string)($lockResult['text'] ?? omoDocumentsUiT('ce_document_est_deja_en_cours_d_edition')));
         }
     }
 }

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 use dbObject\ArrayUserOrganization;
@@ -12,7 +13,7 @@ $holonId = (int)($_GET['hid'] ?? $_POST['hid'] ?? 0);
 if ($organizationId <= 0 || $currentUserId <= 0 || $holonId <= 0) {
     http_response_code(403);
     ?>
-    <div class="omo-holon-member-popup__empty generic-description">Vous devez être connecté à une organisation pour ajouter un membre.</div>
+    <div class="omo-holon-member-popup__empty generic-description"><?= htmlspecialchars(omoHolonsUiT('vous_devez_etre_connecte_a_une_organisation_pour_ajouter_un_membre'), ENT_QUOTES, 'UTF-8') ?></div>
     <?php
     exit;
 }
@@ -23,7 +24,7 @@ $holon = new Holon();
 if (!$organization->load($organizationId) || !$holon->load($holonId) || !$organization->containsHolon($holon)) {
     http_response_code(404);
     ?>
-    <div class="omo-holon-member-popup__empty generic-description">L’espace demandé est introuvable.</div>
+    <div class="omo-holon-member-popup__empty generic-description"><?= htmlspecialchars(omoHolonsUiT('l_espace_demande_est_introuvable'), ENT_QUOTES, 'UTF-8') ?></div>
     <?php
     exit;
 }
@@ -65,7 +66,7 @@ if ($adminMinimum > $adminCount) {
 if (!$canAddMember) {
     http_response_code(403);
     ?>
-    <div class="omo-holon-member-popup__empty generic-description">Vous n'avez pas le droit d'ajouter un membre dans ce contexte.</div>
+    <div class="omo-holon-member-popup__empty generic-description"><?= htmlspecialchars(omoHolonsUiT('vous_n_avez_pas_le_droit_d_ajouter_un_membre_dans_ce_contexte'), ENT_QUOTES, 'UTF-8') ?></div>
     <?php
     exit;
 }
@@ -89,7 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		http_response_code(422);
 		echo json_encode(array(
 			'status' => false,
-			'message' => 'Le focus ne peut pas depasser ' . $focusMaximumLength . ' caracteres.',
+			'message' => omoHolonsUiT('focus_maximum', ['count' => $focusMaximumLength]),
 		), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 		exit;
 	}
@@ -98,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		http_response_code(403);
 		echo json_encode(array(
 			'status' => false,
-			'message' => "Vous n'avez pas le droit de gerer le statut " . $adminLabelLower . ' dans ce contexte.',
+			'message' => omoHolonsUiT('manage_admin_denied', ['admin' => $adminLabelLower]),
 		), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 		exit;
 	}
@@ -111,14 +112,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         http_response_code(422);
         echo json_encode(array(
             'status' => false,
-            'message' => (string)($result['message'] ?? "Impossible d'ajouter ce membre."),
+            'message' => (string)($result['message'] ?? omoHolonsUiT('impossible_d_ajouter_ce_membre')),
         ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
     }
 
     echo json_encode(array(
         'status' => true,
-        'message' => (string)($result['message'] ?? 'Membre ajouté.'),
+        'message' => (string)($result['message'] ?? omoHolonsUiT('membre_ajoute')),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -183,20 +184,19 @@ foreach ($directMembers as $member) {
     <div class="omo-holon-member-popup__header generic-drawer-header generic-drawer-header--sticky">
         <div class="generic-drawer-header__copy omo-holon-member-popup__header-copy">
             <div class="generic-card-title generic-card-title--eyebrow"><?= omoApiEscape((string)$holon->getTemplateLabel(true)) ?></div>
-            <h3 class="generic-card-title generic-card-title--medium">Ajouter un membre</h3>
+            <h3 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(omoHolonsUiT('ajouter_un_membre'), ENT_QUOTES, 'UTF-8') ?></h3>
         </div>
     </div>
     <div class="omo-holon-member-popup__shell generic-drawer-content">
     <p class="omo-holon-member-popup__intro generic-description">
-        Ajoutez une personne au holon <strong><?= omoApiEscape($holon->getDisplayName()) ?></strong>,
-        soit en choisissant un membre déjà présent dans l'organisation, soit en saisissant une nouvelle adresse e-mail.
+        <?= htmlspecialchars(omoHolonsUiT('ajoutez_une_personne_au_holon'), ENT_QUOTES, 'UTF-8') ?> <strong><?= omoApiEscape($holon->getDisplayName()) ?></strong><?= htmlspecialchars(omoHolonsUiT('soit_en_choisissant_un_membre_deja_present_dans_l_organisation_soit_en_saisissant_une_nouv'), ENT_QUOTES, 'UTF-8') ?>
     </p>
 
     <div class="omo-holon-member-popup__member-sources">
     <div class="omo-holon-member-popup__group generic-stack generic-stack--compact">
-        <label class="omo-holon-member-popup__label generic-form-label" for="omoHolonMemberExistingUser">Membre existant</label>
+        <label class="omo-holon-member-popup__label generic-form-label" for="omoHolonMemberExistingUser"><?= htmlspecialchars(omoHolonsUiT('membre_existant'), ENT_QUOTES, 'UTF-8') ?></label>
         <select id="omoHolonMemberExistingUser" name="user_id" class="omo-holon-member-popup__select generic-form-control">
-            <option value="">Choisir dans l'organisation</option>
+            <option value=""><?= htmlspecialchars(omoHolonsUiT('choisir_dans_l_organisation'), ENT_QUOTES, 'UTF-8') ?></option>
             <?php foreach ($memberships as $membership): ?>
                 <?php
                 $userId = (int)$membership->get('IDuser');
@@ -213,12 +213,12 @@ foreach ($directMembers as $member) {
             <?php endforeach; ?>
         </select>
         <div class="omo-holon-member-popup__hint generic-help-text generic-help-text--regular">
-            Les personnes déjà liées directement à ce holon sont désactivées dans la liste.
+            <?= htmlspecialchars(omoHolonsUiT('les_personnes_deja_liees_directement_a_ce_holon_sont_desactivees_dans_la_liste'), ENT_QUOTES, 'UTF-8') ?>
         </div>
     </div>
 
     <div class="omo-holon-member-popup__group generic-stack generic-stack--compact">
-        <label class="omo-holon-member-popup__label generic-form-label" for="omoHolonMemberEmail">Nouvelle adresse e-mail</label>
+        <label class="omo-holon-member-popup__label generic-form-label" for="omoHolonMemberEmail"><?= htmlspecialchars(omoHolonsUiT('nouvelle_adresse_e_mail'), ENT_QUOTES, 'UTF-8') ?></label>
         <input
             type="email"
             id="omoHolonMemberEmail"
@@ -229,7 +229,7 @@ foreach ($directMembers as $member) {
             autocomplete="email"
         >
         <div class="omo-holon-member-popup__hint generic-help-text generic-help-text--regular">
-            Si l'adresse existe déjà, le profil existant sera réutilisé. Sinon, un nouveau profil minimal sera créé puis rattaché.
+            <?= htmlspecialchars(omoHolonsUiT('si_l_adresse_existe_deja_le_profil_existant_sera_reutilise_sinon_un_nouveau_profil_minimal'), ENT_QUOTES, 'UTF-8') ?>
         </div>
     </div>
     </div>
@@ -244,7 +244,7 @@ foreach ($directMembers as $member) {
                 <?= omoApiEscape($adminLabel) ?>
             </label>
             <div class="omo-holon-member-popup__focus-field">
-                <label class="omo-holon-member-popup__label generic-form-label" for="omoHolonMemberFocus">Focus</label>
+                <label class="omo-holon-member-popup__label generic-form-label" for="omoHolonMemberFocus"><?= htmlspecialchars(omoHolonsUiT('focus'), ENT_QUOTES, 'UTF-8') ?></label>
                 <input
                     type="text"
                     id="omoHolonMemberFocus"
@@ -270,7 +270,7 @@ foreach ($directMembers as $member) {
 
     <div class="omo-holon-member-popup__actions generic-action-row">
         <button type="submit" id="omoHolonMemberPopupSubmit" class="omo-holon-member-popup__button generic-action-button generic-action-button--main">
-            Ajouter au holon
+            <?= htmlspecialchars(omoHolonsUiT('ajouter_au_holon'), ENT_QUOTES, 'UTF-8') ?>
         </button>
     </div>
     </div>

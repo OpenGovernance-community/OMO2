@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once __DIR__ . '/bootstrap.php';
 
 commonRestoreRememberedUser();
@@ -19,7 +20,7 @@ if ($currentUserId <= 0 || !$hasOrganizationAccess || !$canCreateParcours || $or
     echo json_encode(array(
         'status' => false,
         'success' => false,
-        'message' => 'Vous n avez pas le droit d importer un parcours dans ce contexte.',
+        'message' => omoLmsUiT('vous_n_avez_pas_le_droit_d_importer_un_parcours_dans_ce_contexte'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -28,7 +29,7 @@ if ($parcoursId <= 0) {
     echo json_encode(array(
         'status' => false,
         'success' => false,
-        'message' => 'Parcours invalide.',
+        'message' => omoLmsUiT('parcours_invalide'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -38,7 +39,7 @@ if ($existingLink !== null) {
     echo json_encode(array(
         'status' => true,
         'success' => true,
-        'message' => 'Parcours deja present dans cette organisation.',
+        'message' => omoLmsUiT('parcours_deja_present_dans_cette_organisation'),
         'id' => $parcoursId,
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
@@ -50,7 +51,7 @@ if (!is_array($importableParcours) || empty($importableParcours['id'])) {
     echo json_encode(array(
         'status' => false,
         'success' => false,
-        'message' => 'Ce parcours n est pas disponible a l import.',
+        'message' => omoLmsUiT('ce_parcours_n_est_pas_disponible_a_l_import'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -78,7 +79,7 @@ if (!is_array($attachResult) || empty($attachResult['status'])) {
 echo json_encode(array(
     'status' => true,
     'success' => true,
-    'message' => 'Parcours importe.',
+    'message' => omoLmsUiT('parcours_importe'),
     'id' => $parcoursId,
     'created' => !empty($attachResult['created']),
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

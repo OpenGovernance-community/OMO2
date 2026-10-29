@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 use dbObject\Organization;
@@ -10,18 +11,18 @@ $moveData = null;
 $errorMessage = '';
 
 if ($organizationId <= 0) {
-    $errorMessage = "Aucune organisation n'est actuellement selectionnee.";
+    $errorMessage = omoHolonsUiT('aucune_organisation_n_est_actuellement_selectionnee');
 } elseif ($holonId <= 0) {
-$errorMessage = 'L’espace à déplacer est invalide.';
+$errorMessage = omoHolonsUiT('l_espace_a_deplacer_est_invalide');
 } elseif (!$organization->load($organizationId)) {
-    $errorMessage = "L'organisation demandee est introuvable.";
+    $errorMessage = omoHolonsUiT('l_organisation_demandee_est_introuvable');
 } else {
     $moveData = $organization->getHolonMoveEditorData($holonId);
 
     if (($moveData['holonId'] ?? 0) !== $holonId || !is_array($moveData['holon'] ?? null)) {
-$errorMessage = 'L’espace demandé est introuvable.';
+$errorMessage = omoHolonsUiT('l_espace_demande_est_introuvable');
     } elseif (empty($moveData['canMove'])) {
-$errorMessage = "Vous n’avez pas les droits pour déplacer cet espace.";
+$errorMessage = omoHolonsUiT('vous_n_avez_pas_les_droits_pour_deplacer_cet_espace');
     } else {
         $alternativeCount = 0;
         foreach (($moveData['destinations'] ?? array()) as $destination) {
@@ -31,7 +32,7 @@ $errorMessage = "Vous n’avez pas les droits pour déplacer cet espace.";
         }
 
         if ($alternativeCount <= 0) {
-$errorMessage = 'Aucune destination compatible n’a été trouvée pour cet espace.';
+$errorMessage = omoHolonsUiT('aucune_destination_compatible_n_a_ete_trouvee_pour_cet_espace');
         }
     }
 }
@@ -42,8 +43,8 @@ $errorMessage = 'Aucune destination compatible n’a été trouvée pour cet esp
     <form id="omo-holon-move-form" class="omo-holon-move generic-stack generic-stack--flush">
         <div class="omo-holon-move__header generic-drawer-header generic-drawer-header--sticky">
             <div class="generic-drawer-header__copy omo-holon-move__header-copy">
-        <div class="generic-card-title generic-card-title--eyebrow">Espace</div>
-        <h3 class="generic-card-title generic-card-title--medium">Déplacer un espace</h3>
+        <div class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoHolonsUiT('espace'), ENT_QUOTES, 'UTF-8') ?></div>
+        <h3 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(omoHolonsUiT('deplacer_un_espace'), ENT_QUOTES, 'UTF-8') ?></h3>
             </div>
         </div>
         <div class="omo-holon-move__shell generic-drawer-content">
@@ -53,8 +54,8 @@ $errorMessage = 'Aucune destination compatible n’a été trouvée pour cet esp
         </div>
 
         <label class="omo-holon-move__field generic-stack generic-stack--compact">
-            <span>Ou ca va</span>
-            <input type="search" id="omo-holon-move-search" class="generic-form-control" placeholder="Rechercher une destination">
+            <span><?= htmlspecialchars(omoHolonsUiT('destination'), ENT_QUOTES, 'UTF-8') ?></span>
+            <input type="search" id="omo-holon-move-search" class="generic-form-control" placeholder="<?= htmlspecialchars(omoHolonsUiT('rechercher_une_destination'), ENT_QUOTES, 'UTF-8') ?>">
         </label>
 
         <label class="omo-holon-move__field generic-stack generic-stack--compact">
@@ -65,8 +66,8 @@ $errorMessage = 'Aucune destination compatible n’a été trouvée pour cet esp
         <div id="omo-holon-move-status" class="omo-holon-move__status generic-feedback" hidden></div>
 
         <div class="omo-holon-move__actions generic-action-row">
-            <button type="button" class="omo-holon-move__button generic-action-button generic-action-button--secondary" id="omo-holon-move-cancel">Annuler</button>
-            <button type="submit" class="omo-holon-move__button generic-action-button generic-action-button--main" id="omo-holon-move-submit">Deplacer</button>
+            <button type="button" class="omo-holon-move__button generic-action-button generic-action-button--secondary" id="omo-holon-move-cancel"><?= htmlspecialchars(omoHolonsUiT('annuler'), ENT_QUOTES, 'UTF-8') ?></button>
+            <button type="submit" class="omo-holon-move__button generic-action-button generic-action-button--main" id="omo-holon-move-submit"><?= htmlspecialchars(omoHolonsUiT('deplacer'), ENT_QUOTES, 'UTF-8') ?></button>
         </div>
         </div>
     </form>

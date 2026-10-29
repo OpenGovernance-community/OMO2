@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once __DIR__ . '/bootstrap.php';
 
 commonRestoreRememberedUser();
@@ -20,7 +21,7 @@ if ($currentUserId <= 0 || !$hasOrganizationAccess || (!$canCreateParcours && !$
 	echo json_encode(array(
 		'status' => false,
 		'success' => false,
-		'message' => 'Vous n avez pas le droit de supprimer ou detacher ce parcours.',
+		'message' => omoLmsUiT('vous_n_avez_pas_le_droit_de_supprimer_ou_detacher_ce_parcours'),
 	), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	exit;
 }
@@ -30,7 +31,7 @@ if ($parcoursId <= 0) {
 	echo json_encode(array(
 		'status' => false,
 		'success' => false,
-		'message' => 'Parcours invalide.',
+		'message' => omoLmsUiT('parcours_invalide'),
 	), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	exit;
 }
@@ -42,14 +43,14 @@ if ($link === null || !$parcours->load($parcoursId)) {
 	echo json_encode(array(
 		'status' => false,
 		'success' => false,
-		'message' => 'Parcours introuvable.',
+		'message' => omoLmsUiT('parcours_introuvable'),
 	), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	exit;
 }
 
 if ($parcours->isOwnedByOrganization($organizationId) ? !$canDeleteParcours : !$canCreateParcours) {
 	http_response_code(403);
-	echo json_encode(['status' => false, 'success' => false, 'message' => 'Vous n avez pas le droit de supprimer ou detacher ce parcours.']);
+	echo json_encode(['status' => false, 'success' => false, 'message' => omoLmsUiT('vous_n_avez_pas_le_droit_de_supprimer_ou_detacher_ce_parcours')]);
 	exit;
 }
 
@@ -70,7 +71,7 @@ echo json_encode(array(
 	'status' => true,
 	'success' => true,
 	'action' => (string)($deleteResult['action'] ?? 'delete'),
-	'message' => (string)($deleteResult['message'] ?? 'Parcours supprime.'),
+	'message' => (string)($deleteResult['message'] ?? omoLmsUiT('parcours_supprime')),
 	'remainingOrganizationCount' => (int)($deleteResult['remainingOrganizationCount'] ?? 0),
 	'deletedMissionCount' => (int)($deleteResult['deletedMissionCount'] ?? 0),
 	'deletedQuestionCount' => (int)($deleteResult['deletedQuestionCount'] ?? 0),

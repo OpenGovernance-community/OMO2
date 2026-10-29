@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
 
 use dbObject\DecisionInvitation;
 use dbObject\DecisionGroup;
@@ -21,7 +22,7 @@ if (!class_exists('OmoDecisionModuleCapturedResponse', false)) {
 
         public function __construct(int $statusCode, array $payload)
         {
-            parent::__construct((string)($payload['message'] ?? 'Decision module response.'));
+            parent::__construct((string)($payload['message'] ?? omoDecisionUiT('decision_module_response')));
             $this->statusCode = $statusCode;
             $this->payload = $payload;
         }
@@ -75,7 +76,7 @@ if (!function_exists('omoDecisionBlockSettingsGetDefaultVoteWeightOptions')) {
     function omoDecisionBlockSettingsGetDefaultVoteWeightOptions()
     {
         return [
-            ['weight' => '0.75', 'label' => 'Pas important'],
+            ['weight' => '0.75', 'label' => omoDecisionUiT('pas_important')],
             ['weight' => '1', 'label' => 'Souhaitable'],
             ['weight' => '1.5', 'label' => 'Important'],
             ['weight' => '2', 'label' => 'Vital'],
@@ -1028,7 +1029,7 @@ if (!function_exists('omoDecisionRenderGovernanceChanges')) {
                 . ((string)$action->get('status') === 'applied' && !$isDelete && (int)$action->get('target_id') > 0
                     ? \dbObject\History::renderReferenceHtml(\dbObject\History::buildReferenceToken((string)$action->get('target_type'), (int)$action->get('target_id'), t('impact', [], $lang, $sourceLang)), (int)($proposal->getDecisionProcess()?->get('IDorganization') ?? 0)) : '')
                 . '<details class="omo-change-details" data-omo-change-details-payload="' . $escape($payload) . '">'
-                . '<summary>Détail</summary><div data-omo-change-details-container></div></details>'
+                . ('<summary>' . htmlspecialchars(omoDecisionUiT('detail'), ENT_QUOTES, 'UTF-8') . '</summary><div data-omo-change-details-container></div></details>')
                 . '</section>';
         }
         foreach ($proposal->getDeferredProposals() as $deferredProposal) {
@@ -1062,11 +1063,11 @@ if (!function_exists('omoDecisionRenderGovernanceChanges')) {
                 . ($status === 'applied' && (string)$deferredProposal->get('operation') !== 'delete' && (int)$deferredProposal->get('target_id') > 0
                     ? \dbObject\History::renderReferenceHtml(\dbObject\History::buildReferenceToken((string)$deferredProposal->get('target_type'), (int)$deferredProposal->get('target_id'), t('impact', [], $lang, $sourceLang)), (int)$deferredProposal->get('IDorganization')) : '')
                 . '<details class="omo-change-details" data-omo-change-details-payload="' . $escape($payload) . '">'
-                . '<summary>Détail</summary><div data-omo-change-details-container></div></details>'
+                . ('<summary>' . htmlspecialchars(omoDecisionUiT('detail'), ENT_QUOTES, 'UTF-8') . '</summary><div data-omo-change-details-container></div></details>')
                 . '</section>';
         }
         return count($items) > 0
-            ? '<div class="omo-governance-proposal-changes generic-soft-panel generic-soft-panel--stack"><strong>Modifications proposées</strong>' . implode('', $items) . '</div>'
+            ? ('<div class="omo-governance-proposal-changes generic-soft-panel generic-soft-panel--stack"><strong>' . htmlspecialchars(omoDecisionUiT('modifications_proposees'), ENT_QUOTES, 'UTF-8') . '</strong>') . implode('', $items) . '</div>'
             : '';
     }
 }
@@ -2057,7 +2058,7 @@ if (!function_exists('omoDecisionRenderConsultationProposalPublicPanel')) {
         if ($proposalContent['url']) {
             $proposalFields .= '<label style="display:grid;gap:6px;">'
                 . '<span class="generic-card-title generic-card-title--small">' . $escape(omoDecisionProposalT('decisions.proposals.info_url_label')) . '</span>'
-                . '<input type="url" class="generic-form-control generic-form-control--compact" name="consultation_proposal_info_url" value="" placeholder="https://...">'
+                . ('<input type="url" class="generic-form-control generic-form-control--compact" name="consultation_proposal_info_url" value="" placeholder="' . htmlspecialchars(omoDecisionUiT('https'), ENT_QUOTES, 'UTF-8') . '">')
                 . '</label>';
         } else {
             $proposalFields .= '<input type="hidden" name="consultation_proposal_info_url" value="">';
@@ -2738,7 +2739,7 @@ if (!function_exists('omoDecisionApplyInvitationSelections')) {
         if ((int)$decision->getId() <= 0 || $organizationId <= 0) {
             return [
                 'status' => false,
-                'message' => 'Contexte d’invitations invalide.',
+                'message' => omoDecisionUiT('contexte_d_invitations_invalide'),
             ];
         }
 
@@ -2775,7 +2776,7 @@ if (!function_exists('omoDecisionApplyInvitationSelections')) {
             ) {
                 return [
                     'status' => false,
-                    'message' => 'Un membre selectionne est invalide.',
+                    'message' => omoDecisionUiT('un_membre_selectionne_est_invalide'),
                 ];
             }
 
@@ -2830,7 +2831,7 @@ if (!function_exists('omoDecisionApplyInvitationSelections')) {
             if (!is_array($saveResult) || empty($saveResult['status'])) {
                 return [
                     'status' => false,
-                    'message' => 'Impossible d’enregistrer les invitations pour le moment.',
+                    'message' => omoDecisionUiT('impossible_d_enregistrer_les_invitations_pour_le_moment'),
                 ];
             }
         }
@@ -2846,7 +2847,7 @@ if (!function_exists('omoDecisionApplyInvitationSelections')) {
             if (!is_array($saveResult) || empty($saveResult['status'])) {
                 return [
                     'status' => false,
-                    'message' => 'Impossible de retirer une invitation pour le moment.',
+                    'message' => omoDecisionUiT('impossible_de_retirer_une_invitation_pour_le_moment'),
                 ];
             }
         }
@@ -2857,7 +2858,7 @@ if (!function_exists('omoDecisionApplyInvitationSelections')) {
         ) {
             return [
                 'status' => false,
-                'message' => 'Impossible d’enregistrer le mode de participation publique.',
+                'message' => omoDecisionUiT('impossible_d_enregistrer_le_mode_de_participation_publique'),
             ];
         }
 
@@ -2882,7 +2883,7 @@ if (!function_exists('omoDecisionPersistInlineInvitationDraft')) {
         if (!$organization instanceof \dbObject\Organization) {
             return [
                 'status' => false,
-                'message' => 'Organisation introuvable pour les invitations.',
+                'message' => omoDecisionUiT('organisation_introuvable_pour_les_invitations'),
             ];
         }
 

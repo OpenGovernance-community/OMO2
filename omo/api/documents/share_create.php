@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 use dbObject\Document;
@@ -30,7 +31,7 @@ if (
     http_response_code(403);
     echo json_encode(array(
         'status' => false,
-        'message' => 'Accès refusé.',
+        'message' => omoDocumentsUiT('acces_refuse'),
     ));
     exit;
 }
@@ -43,7 +44,7 @@ if ($dateExpirationRaw !== '') {
         http_response_code(422);
         echo json_encode(array(
             'status' => false,
-            'message' => 'Date d expiration invalide.',
+            'message' => omoDocumentsUiT('date_d_expiration_invalide'),
         ));
         exit;
     }
@@ -57,7 +58,7 @@ if ($shareId > 0) {
         http_response_code(404);
         echo json_encode(array(
             'status' => false,
-            'message' => 'Lien introuvable.',
+            'message' => omoDocumentsUiT('lien_introuvable'),
         ));
         exit;
     }
@@ -90,7 +91,7 @@ if (!$isSuccess) {
     http_response_code(422);
     echo json_encode(array(
         'status' => false,
-        'message' => 'Impossible d’enregistrer ce lien.',
+        'message' => omoDocumentsUiT('impossible_d_enregistrer_ce_lien'),
     ));
     exit;
 }

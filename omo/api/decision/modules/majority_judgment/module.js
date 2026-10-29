@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
         (function () {
             window.omoDecisionMajorityJudgmentInit = function (root) {
                 const scope = root instanceof Element ? root : document;
@@ -227,7 +229,7 @@
 
                         const buildScaleSummary = function () {
                             if (hiddenMentionCustomizationInput && !hiddenMentionCustomizationInput.value) {
-                                return String(payload.texts && payload.texts.scaleSummaryDefault ? payload.texts.scaleSummaryDefault : 'Valeurs par defaut');
+                                return String(payload.texts && payload.texts.scaleSummaryDefault ? payload.texts.scaleSummaryDefault : "Valeurs par défaut");
                             }
                             const labels = [];
                             mentionScores.forEach(function (score) {
@@ -352,7 +354,7 @@
 
                             const modalTitle = settingsOpenButton
                                 ? String(settingsOpenButton.getAttribute('data-omo-decision-mj-settings-title') || settingsOpenButton.textContent || 'Paramètres du scrutin')
-                                : 'Paramètres du scrutin';
+                                : omoUiText("parametres_du_scrutin", "Paramètres du scrutin");
                             window.commonTopbarOpenModal(modalTitle, settingsTemplate.innerHTML, 'html');
                             const modalBody = document.getElementById('commonTopbarModalBody');
                             if (!modalBody) {
@@ -651,7 +653,7 @@
                                     const proposalLabelNode = card.querySelector('[data-omo-decision-mj-proposal-label]');
                                     const modalTitle = proposalLabelNode
                                         ? String(proposalLabelNode.textContent || '').trim()
-                                        : String(payload.texts && payload.texts.proposalDetails ? payload.texts.proposalDetails : 'Details');
+                                        : String(payload.texts && payload.texts.proposalDetails ? payload.texts.proposalDetails : "Détails");
                                     const proposalContent = payload.proposalContent || {title: true, description: true};
                                     const descriptionDetailsField = proposalContent.title && proposalContent.description
                                         ? '  <label style="display:grid;gap:6px;">'
@@ -667,12 +669,12 @@
                                         + '    <input type="url" class="generic-form-control generic-form-control--compact" data-omo-decision-mj-proposal-modal-info-url placeholder="' + String(payload.texts && payload.texts.proposalInfoUrlPlaceholder ? payload.texts.proposalInfoUrlPlaceholder : 'https://...') + '">'
                                         + '  </label>'
                                         + '  <div style="display:flex;justify-content:flex-end;gap:8px;">'
-                                        + '    <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decision-mj-proposal-modal-cancel>Fermer</button>'
+                                        + ("    <button type=\"button\" class=\"generic-action-button generic-action-button--secondary\" data-omo-decision-mj-proposal-modal-cancel>" + omoUiHtml("fermer", "Fermer") + "</button>")
                                         + '    <button type="button" class="generic-action-button generic-action-button--main" data-omo-decision-mj-proposal-modal-apply>' + String(payload.texts && payload.texts.proposalApply ? payload.texts.proposalApply : 'Enregistrer') + '</button>'
                                         + '  </div>'
                                         + '</div>';
 
-                                    window.commonTopbarOpenModal(modalTitle || 'Details', modalHtml, 'html');
+                                    window.commonTopbarOpenModal(modalTitle || omoUiText("details", "Détails"), modalHtml, 'html');
                                     const modalBody = document.getElementById('commonTopbarModalBody');
                                     if (!modalBody) {
                                         return;
@@ -745,10 +747,10 @@
                                 ? '<div data-omo-proposal-html-field><div class="omo-proposal-html-editor" data-omo-proposal-html-editor data-omo-decision-mj-proposal-description-editor' + (payload.proposalEditable === true ? '' : ' data-omo-proposal-html-disabled="1"') + '></div><textarea hidden aria-hidden="true" name="proposal_descriptions[]" data-omo-proposal-html-value data-omo-decision-mj-proposal-description></textarea></div>'
                                 : '<textarea hidden aria-hidden="true" name="proposal_descriptions[]" data-omo-decision-mj-proposal-description></textarea>';
                             const proposalDetailsButton = proposalContent.url
-                                ? '        <button type="button" class="generic-action-button generic-action-button--secondary omo-decision-majority-judgment__proposal-menu-item" data-omo-decision-mj-proposal-settings role="menuitem">' + String(payload.texts && payload.texts.proposalDetails ? payload.texts.proposalDetails : 'Details') + '</button>'
+                                ? '        <button type="button" class="generic-action-button generic-action-button--secondary omo-decision-majority-judgment__proposal-menu-item" data-omo-decision-mj-proposal-settings role="menuitem">' + String(payload.texts && payload.texts.proposalDetails ? payload.texts.proposalDetails : "Détails") + '</button>'
                                 : '';
                             card.innerHTML = ''
-                                + '<button type="button" class="omo-decision-majority-judgment__proposal-drag generic-drag-handle generic-drag-handle--stretch" data-omo-decision-mj-proposal-drag title="' + String(payload.texts && payload.texts.proposalReorder ? payload.texts.proposalReorder : 'Reordonner') + '" aria-label="' + String(payload.texts && payload.texts.proposalReorder ? payload.texts.proposalReorder : 'Reordonner') + '">&#8942;&#8942;</button>'
+                                + '<button type="button" class="omo-decision-majority-judgment__proposal-drag generic-drag-handle generic-drag-handle--stretch" data-omo-decision-mj-proposal-drag title="' + String(payload.texts && payload.texts.proposalReorder ? payload.texts.proposalReorder : "Réordonner") + '" aria-label="' + String(payload.texts && payload.texts.proposalReorder ? payload.texts.proposalReorder : "Réordonner") + '">&#8942;&#8942;</button>'
                                 + '<div class="omo-decision-majority-judgment__proposal-main">'
                                 + '    <span class="omo-decision-majority-judgment__proposal-label" data-omo-decision-mj-proposal-label></span>'
                                 + '    ' + proposalTitleField
@@ -858,9 +860,9 @@
                                     setFeedback(result.message || (payload.texts && payload.texts.success ? payload.texts.success : ''), false);
                                     if (result.redirectUrl) {
                                         if (typeof window.omoDecisionOpenNestedDrawer === 'function') {
-                                            window.omoDecisionOpenNestedDrawer(result.drawerTitle || payload.drawerTitle || 'Prises de decision', result.redirectUrl, '');
+                                            window.omoDecisionOpenNestedDrawer(result.drawerTitle || payload.drawerTitle || omoUiText("prises_de_decision", "Prises de décision"), result.redirectUrl, '');
                                         } else if (typeof window.commonTopbarOpenDrawer === 'function') {
-                                            window.commonTopbarOpenDrawer(result.drawerTitle || payload.drawerTitle || 'Prises de decision', result.redirectUrl, 'fetch');
+                                            window.commonTopbarOpenDrawer(result.drawerTitle || payload.drawerTitle || omoUiText("prises_de_decision", "Prises de décision"), result.redirectUrl, 'fetch');
                                         } else {
                                             window.location.href = result.redirectUrl;
                                         }
@@ -1001,9 +1003,9 @@
                                     window.dispatchEvent(new CustomEvent('omo-decision-response-saved'));
                                     if (result.redirectUrl) {
                                         if (typeof window.omoDecisionOpenNestedDrawer === 'function') {
-                                            window.omoDecisionOpenNestedDrawer(result.drawerTitle || payload.drawerTitle || 'Prises de decision', result.redirectUrl, '');
+                                            window.omoDecisionOpenNestedDrawer(result.drawerTitle || payload.drawerTitle || omoUiText("prises_de_decision", "Prises de décision"), result.redirectUrl, '');
                                         } else if (typeof window.commonTopbarOpenDrawer === 'function') {
-                                            window.commonTopbarOpenDrawer(result.drawerTitle || payload.drawerTitle || 'Prises de decision', result.redirectUrl, 'fetch');
+                                            window.commonTopbarOpenDrawer(result.drawerTitle || payload.drawerTitle || omoUiText("prises_de_decision", "Prises de décision"), result.redirectUrl, 'fetch');
                                         } else {
                                             window.location.href = result.redirectUrl;
                                         }

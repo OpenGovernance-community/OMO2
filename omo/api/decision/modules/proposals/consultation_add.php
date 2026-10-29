@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../ui_translations.php';
 require_once dirname(__DIR__, 3) . '/bootstrap.php';
 require_once dirname(__DIR__) . '/context.php';
 require_once dirname(__DIR__) . '/common.php';
@@ -74,13 +75,13 @@ function omoDecisionConsultationProposalRespond(array $context, $status, $count 
             'duplicate' => 'Toutes les propositions soumises existent deja.',
             'empty' => 'Ajoutez au moins une proposition.',
             'denied' => omoDecisionGetConsultationProposalDeniedMessage($deniedReason),
-            'error' => 'Impossible d ajouter la proposition pour le moment.',
+            'error' => omoDecisionUiT('impossible_d_ajouter_la_proposition_pour_le_moment'),
         ];
         omoDecisionModuleJsonResponse($statusCode, [
             'status' => $status === 'success',
             'feedbackStatus' => trim((string)$status),
             'count' => (int)$count,
-            'message' => (string)($messages[$status] ?? 'Impossible d ajouter la proposition pour le moment.'),
+            'message' => (string)($messages[$status] ?? omoDecisionUiT('impossible_d_ajouter_la_proposition_pour_le_moment')),
             'redirectUrl' => $redirectUrl,
             'reason' => $deniedReason,
         ]);
@@ -100,13 +101,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
         omoDecisionModuleJsonResponse(405, [
             'status' => false,
             'feedbackStatus' => 'error',
-            'message' => 'Methode non autorisee.',
+            'message' => omoDecisionUiT('methode_non_autorisee'),
             'redirectUrl' => '',
         ]);
     }
 
     http_response_code(405);
-    echo 'Methode non autorisee.';
+    echo omoDecisionUiT('methode_non_autorisee');
     exit;
 }
 
@@ -116,13 +117,13 @@ if (empty($context['status'])) {
         omoDecisionModuleJsonResponse((int)($context['code'] ?? 403), [
             'status' => false,
             'feedbackStatus' => 'error',
-            'message' => 'Accès refusé.',
+            'message' => omoDecisionUiT('acces_refuse'),
             'redirectUrl' => '',
         ]);
     }
 
     http_response_code((int)($context['code'] ?? 403));
-    echo 'Acces refuse.';
+    echo omoDecisionUiT('acces_refuse');
     exit;
 }
 

@@ -30,10 +30,10 @@
 		{
 			return [
 				'username' => 'Nom d\'utilisateur',
-				'firstname' => 'Prenom',
+				'firstname' => 'Prénom',
 				'lastname' => 'Nom',
-				'presentation' => 'Presentation',
-				'latlong' => 'Position geographique',
+				'presentation' => 'Présentation',
+				'latlong' => 'Position géographique',
 				'birthdate' => 'Date de naissance',
 				'email' => 'E-mail',
 				'phone' => 'Téléphone',
@@ -43,22 +43,22 @@
 				'allow_password_login' => 'Autoriser le login avec mot de passe',
 				'siteadmin' => 'Admin du site',
 				'code' => 'Code',
-				'parameters' => 'Parametres',
+				'parameters' => 'Paramètres',
 			];
 		}
 
 		public static function attributeDescriptions() {
 			return [
-				'username' => 'Un nom d\'utilisateur utilise pour vous identifier dans une equipe, comme des initiales.',
-				'firstname' => 'Simplement votre prenom.',
+				'username' => 'Un nom d\'utilisateur utilise pour vous identifier dans une équipe, comme des initiales.',
+				'firstname' => 'Simplement votre prénom.',
 				'lastname' => 'Simplement votre nom de famille.',
-				'presentation' => 'Petit texte de presentation partage entre les organisations, sauf si une organisation le remplace localement.',
-				'latlong' => 'Position geographique generale, partagee dans toutes les organisations.',
-				'birthdate' => 'Date de naissance facultative, utilisee pour afficher le prochain anniversaire.',
-				'email' => 'L\'adresse e-mail utilisee pour vous connecter et pour vous envoyer les messages du systeme.',
-				'phone' => 'Numéro de téléphone partagé entre les organisations, sauf si une organisation le remplace localement.',
-				'telegramID' => 'Identifiant numerique utilise pour associer votre compte Telegram.',
-				'siteadmin' => 'Donne un acces global a l administration du serveur.',
+				'presentation' => 'Petit texte de présentation partage entre les organisations, sauf si une organisation le remplacé localement.',
+				'latlong' => 'Position géographique générale, partagée dans toutes les organisations.',
+				'birthdate' => 'Date de naissance facultative, utilisée pour afficher le prochain anniversaire.',
+				'email' => 'L\'adresse e-mail utilisée pour vous connecter et pour vous envoyer les messages du système.',
+				'phone' => 'Numéro de téléphone partagé entre les organisations, sauf si une organisation le remplacé localement.',
+				'telegramID' => 'Identifiant numérique utilise pour associer votre compte Telegram.',
+				'siteadmin' => 'Donne un accès global à l’administration du serveur.',
 			];
 		}
 

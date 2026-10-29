@@ -4,6 +4,26 @@
 
 	class Holon extends DbObject
 	{
+        protected static function uiMessageSourceLang(): array
+        {
+            return [
+                'vous_n_avez_pas_le_droit_de_gerer_le_statut_admin_dans_ce_contexte' => ['text' => 'Vous n\'avez pas le droit de gérer le statut admin dans ce contexte.', 'context' => 'Validation or action feedback for holon.'],
+                'le_membre_ou_le_contexte_est_invalide' => ['text' => 'Le membre ou le contexte est invalide.', 'context' => 'Validation or action feedback for holon.'],
+                'le_dernier_admin_de_l_organisation_ne_peut_pas_etre_retire' => ['text' => 'Le dernier admin de l\'organisation ne peut pas être retire.', 'context' => 'Validation or action feedback for holon.'],
+                'la_connexion_a_la_base_de_donnees_est_indisponible' => ['text' => 'La connexion à la base de données est indisponible.', 'context' => 'Validation or action feedback for holon.'],
+                'aucune_mise_a_jour_necessaire' => ['text' => 'Aucune mise à jour nécessaire.', 'context' => 'Validation or action feedback for holon.'],
+                'vous_n_avez_pas_le_droit_de_modifier_ce_contexte' => ['text' => 'Vous n\'avez pas le droit de modifier ce contexte.', 'context' => 'Validation or action feedback for holon.'],
+                'droit_de_retrait_insuffisant_dans_un_contexte_descendant' => ['text' => 'Droit de retrait insuffisant dans un contexte descendant.', 'context' => 'Validation or action feedback for holon.'],
+                'vous_n_avez_pas_le_droit_d_ajouter_un_membre_dans_ce_contexte' => ['text' => 'Vous n\'avez pas le droit d\'ajouter un membre dans ce contexte.', 'context' => 'Validation or action feedback for holon.'],
+                'l_organisation_liee_a_cet_espace_est_introuvable' => ['text' => 'L\'organisation liée à cet espace est introuvable.', 'context' => 'Validation or action feedback for holon.'],
+        'admin_maximum' => ['text' => 'Ce rôle ne peut pas avoir plus de {count} administrateur(s).', 'context' => 'Translated interface feedback with named interpolation variables.'],
+        'admin_minimum' => ['text' => 'Ce rôle exige au moins {count} administrateur(s) avant de pouvoir ajouter un membre.', 'context' => 'Translated interface feedback with named interpolation variables.'],
+        'admin_minimum_denied' => ['text' => 'Ce rôle exige au moins {count} administrateur(s) avant de pouvoir ajouter un membre, et vous ne pouvez pas désigner cet administrateur.', 'context' => 'Translated interface feedback with named interpolation variables.'],
+        'admin_member_minimum' => ['text' => 'Cet administrateur ne peut pas devenir membre tant que le rôle ne compte pas au moins {count} administrateur(s).', 'context' => 'Translated interface feedback with named interpolation variables.'],
+        'admin_removal_minimum' => ['text' => 'Ce retrait laisserait moins de {count} administrateur(s) alors que ce rôle compte encore des membres. Nommez ou conservez un administrateur avant ce retrait.', 'context' => 'Translated interface feedback with named interpolation variables.'],
+            ];
+        }
+
 	    public static function tableName()
 		{
 			return 'holon'; // Nom de la table correspondante
@@ -43,11 +63,11 @@
 				'name' => 'Nom',
 				'nomcomplet' => 'Nom complet',
 				'IDholon_org' => 'Organisation',
-				'IDuser' => 'Createur et administrateur',
-				'datecreation' => 'Date de creation',
+				'IDuser' => 'Créateur et administrateur',
+				'datecreation' => 'Date de création',
 				'datemodification' => 'Date de modification',
 				'active' => 'Actif ?',
-				'archived_at' => 'Date d archivage',
+				'archived_at' => 'Date d’archivage',
 				'visible' => 'Visible ?',
 				'color' => 'Couleur',
 				'color_unassigned' => 'Couleur non attribuee',
@@ -57,29 +77,29 @@
 				'IDholon_parent' => 'Parent',
 				'IDholon_template' => 'Template',
 				'icon' => 'Icône',
-				'accesskey' => 'Cle acces',
+				'accesskey' => 'Clé accès',
 				'time_budget_hours' => 'Budget temps',
-				'time_budget_recurrence' => 'Recurrence du budget temps',
+				'time_budget_recurrence' => 'Récurrence du budget temps',
 				'money_budget' => 'Budget argent',
-				'money_budget_recurrence' => 'Recurrence du budget argent',
-				'parameters' => 'Parametres',
+				'money_budget_recurrence' => 'Récurrence du budget argent',
+				'parameters' => 'Paramètres',
 				'mandatory' => 'Obligatoire ?',
-				'lockedname' => 'Nom verrouille ?',
+				'lockedname' => 'Nom verrouillé ?',
 				'lockedicon' => 'Icône verrouillée ?',
 				'unique' => 'Unique ?',
 				'link' => 'Lien ?',
 				'adminparent' => 'Admin parent ?',
-				'admin_min' => 'Nombre minimum d admins',
-				'admin_max' => 'Nombre maximum d admins',
-				'lockedadminmin' => 'Minimum d admins verrouille ?',
-				'lockedadminmax' => 'Maximum d admins verrouille ?',
+				'admin_min' => 'Nombre minimum d’admins',
+				'admin_max' => 'Nombre maximum d’admins',
+				'lockedadminmin' => 'Minimum d’admins verrouillé ?',
+				'lockedadminmax' => 'Maximum d’admins verrouillé ?',
 			];
 		}
 
 		public static function attributeDescriptions()
 		{
 			return [
-				'name' => 'Nom court utilise dans la representation graphique, les chemins et les choix de contexte.',
+				'name' => 'Nom court utilise dans la représentation graphique, les chemins et les choix de contexte.',
 				'nomcomplet' => 'Nom complet facultatif utilise dans les vues textuelles.',
 				'time_budget_hours' => 'Temps prévu directement pour cet espace, exprimé en heures.',
 				'money_budget' => 'Montant prévu directement pour cet espace.',
@@ -3099,7 +3119,7 @@
 					if ((int)$state['adminCount'] + $pendingAdminCount >= (int)$state['max']) {
 						return array(
 							'status' => false,
-							'message' => 'Ce role ne peut pas avoir plus de ' . (int)$state['max'] . ' admin(s).',
+							'message' => self::uiMessage('admin_maximum', ['count' => (int)$state['max']]),
 						);
 					}
 				}
@@ -3111,8 +3131,8 @@
 				return array(
 					'status' => false,
 					'message' => !empty($options['canAssignAdmin'])
-						? 'Ce role exige au moins ' . (int)$state['min'] . ' admin(s) avant de pouvoir ajouter un membre normal.'
-						: 'Ce role exige au moins ' . (int)$state['min'] . ' admin(s) avant de pouvoir ajouter un membre normal, et vous ne pouvez pas definir cet admin.',
+						? self::uiMessage('admin_minimum', ['count' => (int)$state['min']])
+						: self::uiMessage('admin_minimum_denied', ['count' => (int)$state['min']]),
 				);
 			}
 
@@ -3139,7 +3159,7 @@
 			if ((int)$state['adminCount'] - 1 < (int)$state['min']) {
 				return array(
 					'status' => false,
-					'message' => 'Cet admin ne peut pas devenir membre normal tant que le role ne compte pas au moins ' . (int)$state['min'] . ' admin(s).',
+					'message' => self::uiMessage('admin_member_minimum', ['count' => (int)$state['min']]),
 				);
 			}
 
@@ -3161,7 +3181,7 @@
 			if ($remainingMemberCount > 0 && $remainingAdminCount < (int)$state['min']) {
 				return array(
 					'status' => false,
-					'message' => 'Ce retrait laisserait moins de ' . (int)$state['min'] . ' admin(s) alors que ce role compte encore des membres. Nommez ou conservez un admin avant ce retrait.',
+					'message' => self::uiMessage('admin_removal_minimum', ['count' => (int)$state['min']]),
 				);
 			}
 
@@ -3180,14 +3200,14 @@
 			if (!$this->userIsAllowed($currentUserId, 'CAN_ADD_ADMIN', false)) {
 				return array(
 					'status' => false,
-					'message' => "Vous n'avez pas le droit de gerer le statut admin dans ce contexte.",
+					'message' => self::uiMessage('vous_n_avez_pas_le_droit_de_gerer_le_statut_admin_dans_ce_contexte'),
 				);
 			}
 
 			if ($userId <= 0 || $organizationId <= 0) {
 				return array(
 					'status' => false,
-					'message' => 'Le membre ou le contexte est invalide.',
+					'message' => self::uiMessage('le_membre_ou_le_contexte_est_invalide'),
 				);
 			}
 
@@ -3211,7 +3231,7 @@
 				) {
 					return array(
 						'status' => false,
-						'message' => "Le dernier admin de l'organisation ne peut pas etre retire.",
+						'message' => self::uiMessage('le_dernier_admin_de_l_organisation_ne_peut_pas_etre_retire'),
 					);
 				}
 			}
@@ -3220,7 +3240,7 @@
 			if (!$pdo) {
 				return array(
 					'status' => false,
-					'message' => 'La connexion à la base de données est indisponible.',
+					'message' => self::uiMessage('la_connexion_a_la_base_de_donnees_est_indisponible'),
 				);
 			}
 
@@ -3263,7 +3283,7 @@
 							$pdo->commit();
 							return array(
 								'status' => true,
-								'message' => 'Aucune mise à jour nécessaire.',
+								'message' => self::uiMessage('aucune_mise_a_jour_necessaire'),
 							);
 						}
 
@@ -3310,14 +3330,14 @@
 			if (!$this->isAllowed('CAN_DELETE_MEMBER', false)) {
 				return array(
 					'status' => false,
-					'message' => "Vous n'avez pas le droit de modifier ce contexte.",
+					'message' => self::uiMessage('vous_n_avez_pas_le_droit_de_modifier_ce_contexte'),
 				);
 			}
 
 			if ($userId <= 0 || $organizationId <= 0) {
 				return array(
 					'status' => false,
-					'message' => 'Le membre ou le contexte est invalide.',
+					'message' => self::uiMessage('le_membre_ou_le_contexte_est_invalide'),
 				);
 			}
 
@@ -3340,7 +3360,7 @@
 					array('IDholon', $scopeHolonId),
 					array('is_membership', 1),
 				)) && !$scopeHolon->isAllowed('CAN_DELETE_MEMBER', false)) {
-					return array('status' => false, 'message' => 'Droit de retrait insuffisant dans un contexte descendant.');
+					return array('status' => false, 'message' => self::uiMessage('droit_de_retrait_insuffisant_dans_un_contexte_descendant'));
 				}
 
 				$adminConstraintResult = $scopeHolon->validateDirectMemberRemovalAdminBounds($userId, $organizationId);
@@ -3353,7 +3373,7 @@
 			if (!$pdo) {
 				return array(
 					'status' => false,
-					'message' => 'La connexion à la base de données est indisponible.',
+					'message' => self::uiMessage('la_connexion_a_la_base_de_donnees_est_indisponible'),
 				);
 			}
 
@@ -3858,13 +3878,13 @@
 			if (!$this->userIsAllowed($currentUserId, 'CAN_ADD_MEMBER', false)) {
 				return array(
 					'status' => false,
-					'message' => "Vous n'avez pas le droit d'ajouter un membre dans ce contexte.",
+					'message' => self::uiMessage('vous_n_avez_pas_le_droit_d_ajouter_un_membre_dans_ce_contexte'),
 				);
 			}
 			if ($isAdmin && !$this->userIsAllowed($currentUserId, 'CAN_ADD_ADMIN', false)) {
 				return array(
 					'status' => false,
-					'message' => "Vous n'avez pas le droit de gerer le statut admin dans ce contexte.",
+					'message' => self::uiMessage('vous_n_avez_pas_le_droit_de_gerer_le_statut_admin_dans_ce_contexte'),
 				);
 			}
 
@@ -3872,7 +3892,7 @@
 			if ($organizationId <= 0) {
 				return array(
 					'status' => false,
-					'message' => "L'organisation liée à cet espace est introuvable.",
+					'message' => self::uiMessage('l_organisation_liee_a_cet_espace_est_introuvable'),
 				);
 			}
 
@@ -3880,7 +3900,7 @@
 			if (!$pdo) {
 				return array(
 					'status' => false,
-					'message' => 'La connexion à la base de données est indisponible.',
+					'message' => self::uiMessage('la_connexion_a_la_base_de_donnees_est_indisponible'),
 				);
 			}
 

@@ -45,7 +45,7 @@ if ((string)($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
 	faqVoteJsonResponse(array(
 		'status' => false,
 		'success' => false,
-		'message' => 'Methode non autorisee.',
+		'message' => faqPopupT('methode_non_autorisee'),
 	), 405);
 }
 
@@ -53,7 +53,7 @@ if (!faqVoteIsSameOriginRequest()) {
 	faqVoteJsonResponse(array(
 		'status' => false,
 		'success' => false,
-		'message' => 'Requete refusee.',
+		'message' => faqPopupT('requete_refusee'),
 	), 403);
 }
 
@@ -75,7 +75,7 @@ if ($faqId <= 0) {
 	faqVoteJsonResponse(array(
 		'status' => false,
 		'success' => false,
-		'message' => 'FAQ invalide.',
+		'message' => faqPopupT('faq_invalide_2'),
 	), 400);
 }
 
@@ -83,7 +83,7 @@ if ($vote !== 'up' && $vote !== 'down') {
 	faqVoteJsonResponse(array(
 		'status' => false,
 		'success' => false,
-		'message' => 'Vote invalide.',
+		'message' => faqPopupT('vote_invalide'),
 	), 400);
 }
 
@@ -91,7 +91,7 @@ if (!\dbObject\FAQ::hasVoteColumns()) {
 	faqVoteJsonResponse(array(
 		'status' => false,
 		'success' => false,
-		'message' => 'Le schema de vote FAQ n est pas disponible.',
+		'message' => faqPopupT('le_schema_de_vote_faq_n_est_pas_disponible'),
 	), 500);
 }
 
@@ -100,7 +100,7 @@ if (!$faq->load($faqId) || !(int)$faq->getId()) {
 	faqVoteJsonResponse(array(
 		'status' => false,
 		'success' => false,
-		'message' => 'FAQ introuvable.',
+		'message' => faqPopupT('faq_introuvable'),
 	), 404);
 }
 
@@ -108,7 +108,7 @@ if (!$faq->canBeViewedInContext($faqContext ?: array(), $faqScope)) {
 	faqVoteJsonResponse(array(
 		'status' => false,
 		'success' => false,
-		'message' => 'Cette FAQ n est pas disponible.',
+		'message' => faqPopupT('cette_faq_n_est_pas_disponible'),
 	), 403);
 }
 
@@ -120,7 +120,7 @@ if ($lastVoteDate === $today) {
 		'success' => false,
 		'alreadyVoted' => true,
 		'faqId' => $faqId,
-		'message' => 'Vous avez deja vote aujourd hui. Vous pourrez revoter demain.',
+		'message' => faqPopupT('vous_avez_deja_vote_aujourd_hui_vous_pourrez_revoter_demain'),
 		'positiveScore' => (float)$faq->get('positive_score'),
 		'negativeScore' => (float)$faq->get('negative_score'),
 		'totalVotes' => (int)$faq->get('total_votes'),
@@ -133,7 +133,7 @@ if (!$faq->registerVote($vote)) {
 	faqVoteJsonResponse(array(
 		'status' => false,
 		'success' => false,
-		'message' => 'Impossible d enregistrer ce vote.',
+		'message' => faqPopupT('impossible_d_enregistrer_ce_vote'),
 	), 500);
 }
 
@@ -146,7 +146,7 @@ faqVoteJsonResponse(array(
 	'status' => true,
 	'success' => true,
 	'faqId' => $faqId,
-	'message' => 'Vote enregistre. Merci pour votre retour.',
+	'message' => faqPopupT('vote_enregistre_merci_pour_votre_retour'),
 	'positiveScore' => (float)$faq->get('positive_score'),
 	'negativeScore' => (float)$faq->get('negative_score'),
 	'totalVotes' => (int)$faq->get('total_votes'),

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once dirname(__DIR__, 3) . '/common/patreon.php';
 
@@ -24,13 +25,13 @@ $definitionOverrides = array_intersect_key($_POST, array_flip(array(
 
 if ($userId <= 0) {
     http_response_code(401);
-    echo json_encode(array('success' => false, 'status' => false, 'message' => 'Connexion requise.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    echo json_encode(array('success' => false, 'status' => false, 'message' => omoOrganizationsUiT('connexion_requise')), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
 if ($modelId <= 0) {
     http_response_code(422);
-    echo json_encode(array('success' => false, 'status' => false, 'message' => 'Choisissez un modèle public.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    echo json_encode(array('success' => false, 'status' => false, 'message' => omoOrganizationsUiT('choisissez_un_modele_public')), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
@@ -44,7 +45,7 @@ if (empty($result['status']) || !($result['organization'] ?? null) instanceof Or
     echo json_encode(array(
         'success' => false,
         'status' => false,
-        'message' => (string)($result['message'] ?? 'La création depuis le modèle a échoué.'),
+        'message' => (string)($result['message'] ?? omoOrganizationsUiT('la_creation_depuis_le_modele_a_echoue')),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -56,7 +57,7 @@ echo json_encode(array(
     'id' => (int)$organization->getId(),
     'organizationId' => (int)$organization->getId(),
     'mode' => 'create-from-model',
-    'message' => (string)($result['message'] ?? 'Organisation créée depuis le modèle public.'),
+    'message' => (string)($result['message'] ?? omoOrganizationsUiT('organisation_creee_depuis_le_modele_public')),
     'redirect' => commonBuildOrganizationHomeUrl(
         (int)$organization->getId(),
         trim((string)$organization->get('shortname')),

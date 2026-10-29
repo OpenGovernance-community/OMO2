@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
     (function () {
         var form = document.getElementById('omoAccessRequestPopupForm');
         var feedback = document.getElementById('omoAccessRequestPopupFeedback');
@@ -75,12 +77,12 @@
             })
             .then(function (result) {
                 if (!result.ok || !result.data || !result.data.status) {
-                    showFeedback(result.data && result.data.message ? result.data.message : 'Une erreur est survenue.', true);
+                    showFeedback(result.data && result.data.message ? result.data.message : omoUiText("une_erreur_est_survenue", "Une erreur est survenue."), true);
                     submitButton.disabled = false;
                     return;
                 }
 
-                showFeedback(result.data.message || 'Demande envoyee.', false);
+                showFeedback(result.data.message || omoUiText("demande_envoyee", "Demande envoyée."), false);
                 notifyParent(result.data);
 
                 window.setTimeout(function () {
@@ -88,7 +90,7 @@
                 }, 220);
             })
             .catch(function () {
-                showFeedback('Une erreur est survenue.', true);
+                showFeedback(omoUiText("une_erreur_est_survenue", "Une erreur est survenue."), true);
                 submitButton.disabled = false;
             });
         });

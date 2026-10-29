@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once dirname(__DIR__, 3) . '/common/caldav.php';
 require_once dirname(__DIR__, 3) . '/common/external_calendar.php';
@@ -39,7 +40,7 @@ $sourceLang = [
     'calendar.connect.caldav_steps.three' => ['text' => 'Utilisez l’identifiant affiché ci-dessous et votre mot de passe OMO. Si vous n’avez pas de mot de passe, configurez-en un dans votre profil.', 'context' => 'Third step for connecting an OMO CalDAV calendar.'],
     'calendar.connect.caldav_steps.four' => ['text' => 'Validez la connexion, puis activez les agendas OMO proposés dans votre application.', 'context' => 'Final step for connecting an OMO CalDAV calendar.'],
     'calendar.connect.external.title' => ['text' => 'Agendas CalDAV', 'context' => 'Heading for the external calendar connection form.'],
-    'calendar.connect.external.list' => ['text' => 'Calendriers connectes', 'context' => 'Connected calendar list heading.'],
+    'calendar.connect.external.list' => ['text' => 'Calendriers connectés', 'context' => 'Connected calendar list heading.'],
     'calendar.connect.external.add' => ['text' => 'Ajouter un calendrier', 'context' => 'Calendar creation section heading.'],
     'calendar.connect.external.edit' => ['text' => 'Modifier', 'context' => 'Edit calendar button.'],
     'calendar.connect.external.edit_title' => ['text' => 'Modifier le calendrier', 'context' => 'Calendar settings form heading.'],
@@ -47,7 +48,7 @@ $sourceLang = [
     'calendar.connect.external.cancel' => ['text' => 'Annuler', 'context' => 'Cancel calendar editing button.'],
     'calendar.connect.external.keep_secret' => ['text' => 'Laisser vide pour conserver la valeur actuelle.', 'context' => 'Help for replacing a stored calendar credential.'],
     'calendar.connect.external.calendar_url' => ['text' => 'Lien direct du calendrier CalDAV', 'context' => 'URL of the selected CalDAV collection when editing.'],
-    'calendar.connect.external.calendar_url_help' => ['text' => 'Utilisez le lien direct de cet agenda. Pour choisir un autre agenda depuis un serveur, utilisez le formulaire d ajout.', 'context' => 'Help for editing a CalDAV collection URL.'],
+    'calendar.connect.external.calendar_url_help' => ['text' => 'Utilisez le lien direct de cet agenda. Pour choisir un autre agenda depuis un serveur, utilisez le formulaire d’ajout.', 'context' => 'Help for editing a CalDAV collection URL.'],
     'calendar.connect.external.intro' => ['text' => 'Connectez votre compte Nextcloud ou Infomaniak, puis choisissez les agendas à afficher. Les événements restent privés et en lecture seule dans OMO.', 'context' => 'Introductory copy for external calendar discovery.'],
     'calendar.connect.external.name' => ['text' => 'Nom dans OMO', 'context' => 'Label for an external calendar display name.'],
     'calendar.connect.external.url' => ['text' => 'Adresse du serveur CalDAV', 'context' => 'Label for a CalDAV discovery URL.'],
@@ -119,14 +120,14 @@ $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurre
 $viewer = new User();
 if ($currentUserId <= 0 || !$viewer->load($currentUserId)) {
     http_response_code(403);
-    exit('Accès refusé.');
+    exit(omoCalendarUiT('acces_refuse'));
 }
 
 $initialColor = '2563eb';
 $calendar = commonCalDavLoadScopedCalendarForViewer($viewer, $organizationId, $holonId, $range, $initialColor);
 if (!is_array($calendar)) {
     http_response_code(404);
-    exit('Calendrier introuvable.');
+    exit(omoCalendarUiT('calendrier_introuvable'));
 }
 
 $hasPassword = commonUserHasPasswordHash((string)$viewer->get('password'));

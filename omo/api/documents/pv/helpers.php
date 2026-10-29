@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
 require_once dirname(__DIR__, 4) . '/common/calendar/recurrence.php';
 
 function omoDocumentsPvEditorSourceLang(): array
@@ -41,35 +42,35 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.error.forbidden' => ['text' => 'Vous ne pouvez pas ouvrir cet éditeur de PV.', 'context' => 'Error shown when the current viewer cannot use the PV editor.'],
         'documents.pv_editor.error.invalid_request' => ['text' => 'Demande invalide.', 'context' => 'Error shown when the PV editor action endpoint receives an unsupported request method.'],
         'documents.pv_editor.action.add_point' => ['text' => 'Ajouter un point', 'context' => 'Button used to add a new agenda point in the PV editor.'],
-        'documents.pv_editor.import.title' => ['text' => 'Importer des points non traites', 'context' => 'Agenda transfer menu option and popup title.'],
+        'documents.pv_editor.import.title' => ['text' => 'Importer des points non traités', 'context' => 'Agenda transfer menu option and popup title.'],
         'documents.pv_editor.import.options' => ['text' => 'Options d\'ajout', 'context' => 'Accessible label of the agenda split button.'],
-        'documents.pv_editor.import.scope' => ['text' => 'Perimetre', 'context' => 'Scope filter for previous meeting agenda points.'],
-        'documents.pv_editor.import.local' => ['text' => 'Local : meme espace', 'context' => 'Only previous PVs in the current meeting context.'],
+        'documents.pv_editor.import.scope' => ['text' => 'Périmètre', 'context' => 'Scope filter for previous meeting agenda points.'],
+        'documents.pv_editor.import.local' => ['text' => 'Local : même espace', 'context' => 'Only previous PVs in the current meeting context.'],
         'documents.pv_editor.import.global' => ['text' => 'Global : organisation', 'context' => 'All accessible previous PVs of the organization.'],
         'documents.pv_editor.import.members' => ['text' => 'Auteurs des points', 'context' => 'Author filter for previous meeting agenda points.'],
         'documents.pv_editor.import.mine' => ['text' => 'Moi', 'context' => 'Only agenda points authored by the current user.'],
         'documents.pv_editor.import.all' => ['text' => 'Tous les membres', 'context' => 'Agenda points of all authors, available only to the destination PV editor.'],
-        'documents.pv_editor.import.period' => ['text' => 'Date des reunions', 'context' => 'Meeting date filter relative to the destination meeting.'],
+        'documents.pv_editor.import.period' => ['text' => 'Date des réunions', 'context' => 'Meeting date filter relative to the destination meeting.'],
         'documents.pv_editor.import.before' => ['text' => 'Avant', 'context' => 'Agenda points from meetings before the destination meeting.'],
-        'documents.pv_editor.import.after' => ['text' => 'Apres', 'context' => 'Agenda points from meetings after the destination meeting.'],
-        'documents.pv_editor.import.help' => ['text' => 'Choisissez les points a reprendre. Ils seront deplaces depuis les PV en preparation ou en reunion. A partir de la relecture, le PV d\'origine conservera un lien vers cette reunion.', 'context' => 'Explains when an agenda transfer leaves a notice in the source minutes.'],
-        'documents.pv_editor.import.empty' => ['text' => 'Aucun point non traite disponible dans ce perimetre.', 'context' => 'Empty agenda import list.'],
+        'documents.pv_editor.import.after' => ['text' => 'Après', 'context' => 'Agenda points from meetings after the destination meeting.'],
+        'documents.pv_editor.import.help' => ['text' => 'Choisissez les points à reprendre. Ils seront déplacés depuis les PV en préparation ou en réunion. À partir de la relecture, le PV d\'origine conservera un lien vers cette réunion.', 'context' => 'Explains when an agenda transfer leaves a notice in the source minutes.'],
+        'documents.pv_editor.import.empty' => ['text' => 'Aucun point non traité disponible dans ce périmètre.', 'context' => 'Empty agenda import list.'],
         'documents.pv_editor.import.loading' => ['text' => 'Chargement des points...', 'context' => 'Progressive agenda import loading.'],
         'documents.pv_editor.import.add' => ['text' => 'Ajouter ({count})', 'context' => 'Import confirmation with selected point count.'],
         'documents.pv_editor.import.saving' => ['text' => 'Transfert en cours...', 'context' => 'Agenda import in progress.'],
-        'documents.pv_editor.import.retry' => ['text' => 'Reessayer', 'context' => 'Retry loading previous agenda points.'],
+        'documents.pv_editor.import.retry' => ['text' => 'Réessayer', 'context' => 'Retry loading previous agenda points.'],
         'documents.pv_editor.import.abandon' => ['text' => 'Ne plus suivre ce point', 'context' => 'Accessible label and tooltip for the trash icon in the agenda import picker.'],
         'documents.pv_editor.import.abandonConfirm' => ['text' => 'Ne plus suivre le point « {title} » ? Il restera dans son PV d’origine avec la mention qu’il ne nécessite plus de traitement supplémentaire.', 'context' => 'Confirmation before closing follow-up, without deleting an agenda point.'],
         'documents.pv_editor.import.abandonSaving' => ['text' => 'Clôture du suivi…', 'context' => 'Progress while closing an agenda point follow-up.'],
         'documents.pv_editor.import.abandonSuccess' => ['text' => 'Ce point ne nécessite plus de suivi. Son PV d’origine est conservé.', 'context' => 'Topbar success notification after closing follow-up.'],
-        'documents.pv_editor.import.moved_notice' => ['text' => 'Ce point n\'a pas ete traite ici. Il a ete deplace vers la reunion {meeting}.', 'context' => 'Source PV transfer notice; the meeting link follows direct moves of its immediate target, stopping at each retained source notice.'],
-        'documents.pv_editor.import.readonly' => ['text' => 'Ce point a ete deplace vers une autre reunion.', 'context' => 'Read only notice of a transferred agenda point.'],
+        'documents.pv_editor.import.moved_notice' => ['text' => 'Ce point n\'a pas été traité ici. Il a été déplacé vers la réunion {meeting}.', 'context' => 'Source PV transfer notice; the meeting link follows direct moves of its immediate target, stopping at each retained source notice.'],
+        'documents.pv_editor.import.readonly' => ['text' => 'Ce point a été déplacé vers une autre réunion.', 'context' => 'Read only notice of a transferred agenda point.'],
         'documents.pv_editor.action.add_proposal' => ['text' => 'Ajouter une modification', 'context' => 'Button used to attach a deferred proposal to a PV point.'],
         'documents.pv_editor.proposals.title' => ['text' => 'Modifications', 'context' => 'Heading above the deferred proposals attached to a PV point.'],
         'documents.pv_editor.proposals.operation.create' => ['text' => 'Création', 'context' => 'Operation label for a deferred object creation.'],
         'documents.pv_editor.proposals.operation.propose' => ['text' => 'Proposition de projet', 'context' => 'Operation label for a project submitted to another space for acceptance.'],
         'documents.pv_editor.proposals.operation.update' => ['text' => 'Modification', 'context' => 'Operation label for a deferred object update.'],
-        'documents.pv_editor.proposals.operation.move' => ['text' => 'Deplacement', 'context' => 'Deferred holon move operation'],
+        'documents.pv_editor.proposals.operation.move' => ['text' => 'Déplacement', 'context' => 'Deferred holon move operation'],
         'documents.pv_editor.proposals.operation.delete' => ['text' => 'Suppression', 'context' => 'Operation label for a deferred object deletion.'],
         'documents.pv_editor.proposals.holon_summary' => ['text' => '{operation} d’un élément de type {type}', 'context' => 'Summary of a deferred structural object action.'],
         'documents.pv_editor.proposals.status.pending' => ['text' => 'En attente', 'context' => 'Status of a deferred proposal waiting for validation.'],
@@ -307,7 +308,7 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.event.extend.menu_aria' => ['text' => 'Options de prolongation de la réunion', 'context' => 'Accessible label for the menu that extends the associated meeting schedule from the PV editor.'],
         'documents.pv_editor.event.extend.option' => ['text' => 'Ajouter {minutes} minutes', 'context' => 'Menu option that extends the associated meeting end time by a number of minutes.'],
         'documents.pv_editor.event.extend.saving' => ['text' => 'Prolongation…', 'context' => 'Temporary menu option label while the associated meeting is being extended.'],
-        'documents.pv_editor.notice.reorder' => ['text' => 'Reordonner les points', 'context' => 'Title for the PV point reorder handle.'],
+        'documents.pv_editor.notice.reorder' => ['text' => 'Réordonner les points', 'context' => 'Title for the PV point reorder handle.'],
         'documents.pv_editor.notice.move_up' => ['text' => 'Monter', 'context' => 'Title for the touch-friendly move up button.'],
         'documents.pv_editor.notice.move_down' => ['text' => 'Descendre', 'context' => 'Title for the touch-friendly move down button.'],
         'documents.pv_editor.notice.owner_only' => ['text' => 'Vous pouvez modifier ce point car vous en êtes l’auteur.', 'context' => 'Helper text shown on editable PV points.'],
@@ -328,7 +329,7 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.warning.validate_irreversible' => ['text' => 'Valider ce PV est irréversible. Il ne sera plus possible de le modifier. Continuer ?', 'context' => 'Confirmation shown before changing a PV stage to validated.'],
         'documents.pv_editor.summary.meeting_duration' => ['text' => 'Durée de la réunion', 'context' => 'Label for the total meeting duration in the PV editor timing summary.'],
         'documents.pv_editor.summary.remaining_time' => ['text' => 'Temps restant', 'context' => 'Label for the remaining meeting time when the meeting is in progress.'],
-        'documents.pv_editor.summary.point_progress' => ['text' => '{handled}/{total} points traites', 'context' => 'Accessible description of the handled agenda point count in the center of the PV timing chart.'],
+        'documents.pv_editor.summary.point_progress' => ['text' => '{handled}/{total} points traités', 'context' => 'Accessible description of the handled agenda point count in the center of the PV timing chart.'],
         'documents.pv_editor.summary.points_duration' => ['text' => 'Durée des points', 'context' => 'Label for the total planned duration of PV points.'],
         'documents.pv_editor.summary.points_remaining' => ['text' => 'Points restants', 'context' => 'Label for the remaining planned duration of unhandled PV points.'],
         'documents.pv_editor.summary.handled' => ['text' => 'Traités', 'context' => 'Legend label for handled agenda points in the PV editor chart.'],
@@ -346,7 +347,7 @@ function omoDocumentsPvEditorFormatDateTime($value): string
     }
 
     $formatter = class_exists('IntlDateFormatter')
-        ? new \IntlDateFormatter('fr_FR', \IntlDateFormatter::MEDIUM, \IntlDateFormatter::SHORT)
+        ? new \IntlDateFormatter(omoGetTranslationLocale(), \IntlDateFormatter::MEDIUM, \IntlDateFormatter::SHORT)
         : null;
     if ($formatter instanceof \IntlDateFormatter) {
         $formatted = $formatter->format($value);
@@ -590,22 +591,22 @@ function omoDocumentsPvEditorReadonlyNotice(array $pointData, array $uiText): st
         return (string)$uiText['movedReadonly'];
     }
     if (!empty($pointData['isReview'])) {
-        return (string)($uiText['reviewReadonly'] ?? 'Ce point est verrouillé pendant la relecture.');
+        return (string)($uiText['reviewReadonly'] ?? omoDocumentsUiT('ce_point_est_verrouille_pendant_la_relecture'));
     }
     if (!empty($pointData['isHandled'])) {
-        return (string)($uiText['handledReadonly'] ?? 'Ce point est traité et ne peut plus être modifié.');
+        return (string)($uiText['handledReadonly'] ?? omoDocumentsUiT('ce_point_est_traite_et_ne_peut_plus_etre_modifie'));
     }
     if (!empty($pointData['takeover']['mustYield'])) {
-        return (string)($uiText['takeoverYielded'] ?? 'L’éditeur du PV reprend ce point. L’édition est maintenant fermée dans cette session.');
+        return (string)($uiText['takeoverYielded'] ?? omoDocumentsUiT('l_editeur_du_pv_reprend_ce_point_l_edition_est_maintenant_fermee_dans_cette_session'));
     }
     if (!empty($pointData['lock']['isLockedByOther'])) {
         if (!empty($pointData['lock']['isOwnedByCurrentUser'])) {
-            return (string)($uiText['lockedOwnSession'] ?? 'Ce point est déjà en cours d’édition dans une autre de vos sessions et ne peut pas être modifié ici pour le moment.');
+            return (string)($uiText['lockedOwnSession'] ?? omoDocumentsUiT('ce_point_est_deja_en_cours_d_edition_dans_une_autre_de_vos_sessions_et_ne_peut_pas_etre_mo'));
         }
 
         $lockUserLabel = trim((string)($pointData['lock']['userLabel'] ?? ''));
         if ($lockUserLabel === '') {
-            return (string)($uiText['lockedOtherUnknown'] ?? 'Ce point est en cours d’édition dans une autre session et ne peut pas être modifié pour le moment.');
+            return (string)($uiText['lockedOtherUnknown'] ?? omoDocumentsUiT('ce_point_est_en_cours_d_edition_dans_une_autre_session_et_ne_peut_pas_etre_modifie_pour_le'));
         }
 
         return str_replace(
@@ -615,13 +616,13 @@ function omoDocumentsPvEditorReadonlyNotice(array $pointData, array $uiText): st
         );
     }
 
-    return (string)($uiText['notAuthorNotice'] ?? 'Vous pouvez consulter ce point, mais seul son auteur peut le modifier.');
+    return (string)($uiText['notAuthorNotice'] ?? omoDocumentsUiT('vous_pouvez_consulter_ce_point_mais_seul_son_auteur_peut_le_modifier'));
 }
 
 function omoDocumentsPvEditorDurationLabel(?int $minutes, array $uiText): string
 {
     if ($minutes === null || $minutes <= 0) {
-        return (string)($uiText['durationEmpty'] ?? '-- min');
+        return (string)($uiText['durationEmpty'] ?? omoDocumentsUiT('min'));
     }
 
     return str_replace('{minutes}', (string)$minutes, (string)($uiText['durationShort'] ?? '{minutes} min'));
@@ -1018,13 +1019,13 @@ function omoDocumentsPvEditorRenderNavItem(array $pointData, array $uiText): str
     $title = trim((string)($pointData['title'] ?? ''));
     if ($title === '') {
         $title = !empty($pointData['isGroup'])
-            ? (string)($uiText['defaultGroupTitle'] ?? 'Nouveau groupe')
-            : (string)($uiText['defaultTitle'] ?? 'Nouveau point');
+            ? (string)($uiText['defaultGroupTitle'] ?? omoDocumentsUiT('nouveau_groupe'))
+            : (string)($uiText['defaultTitle'] ?? omoDocumentsUiT('nouveau_point'));
     }
 
     if (!empty($pointData['isGroup'])) {
         $reorderHandle = !empty($pointData['canReorder'])
-            ? '<span class="omo-pv-editor__nav-handle generic-drag-handle generic-drag-handle--static" draggable="true" data-omo-pv-point-drag-handle="' . $pointId . '" title="' . omoDocumentsPvEditorEscape((string)($uiText['reorder'] ?? 'Reordonner les points')) . '">::</span>'
+            ? '<span class="omo-pv-editor__nav-handle generic-drag-handle generic-drag-handle--static" draggable="true" data-omo-pv-point-drag-handle="' . $pointId . '" title="' . omoDocumentsPvEditorEscape((string)($uiText['reorder'] ?? omoDocumentsUiT('reordonner_les_points'))) . '">::</span>'
             : '<span class="omo-pv-editor__nav-handle omo-pv-editor__nav-handle--disabled" aria-hidden="true"></span>';
         $titleHtml = !empty($pointData['canEditGroup'])
             ? '<input type="text" class="omo-pv-editor__group-title-input" maxlength="80" value="' . omoDocumentsPvEditorEscape($title) . '" data-omo-pv-group-title="' . $pointId . '" aria-label="' . omoDocumentsPvEditorEscape((string)($uiText['title'] ?? 'Titre')) . '"><button type="button" class="generic-action-button omo-pv-editor__group-title-save" data-omo-pv-group-title-save="' . $pointId . '" disabled aria-disabled="true">' . omoDocumentsPvEditorEscape((string)($uiText['saved'] ?? 'Enregistre')) . '</button>'
@@ -1038,7 +1039,7 @@ function omoDocumentsPvEditorRenderNavItem(array $pointData, array $uiText): str
         return '<section class="omo-pv-editor__nav-group generic-stack generic-stack--compact" data-omo-pv-nav-node="' . $pointId . '" data-omo-pv-group="' . $pointId . '" data-omo-pv-parent-id="' . (int)($pointData['parentId'] ?? 0) . '" data-omo-pv-can-delete="' . ($canDelete ? '1' : '0') . '">'
             . '<div class="omo-pv-editor__group-head">'
             . $reorderHandle
-            . '<button type="button" class="omo-pv-editor__group-toggle" data-omo-pv-group-toggle="' . $pointId . '" aria-expanded="true" title="' . omoDocumentsPvEditorEscape((string)($uiText['toggleGroup'] ?? 'Ouvrir ou fermer le groupe')) . '"><span aria-hidden="true">&#9662;</span></button>'
+            . '<button type="button" class="omo-pv-editor__group-toggle" data-omo-pv-group-toggle="' . $pointId . '" aria-expanded="true" title="' . omoDocumentsPvEditorEscape((string)($uiText['toggleGroup'] ?? omoDocumentsUiT('ouvrir_ou_fermer_le_groupe'))) . '"><span aria-hidden="true">&#9662;</span></button>'
             . '<span class="omo-pv-editor__nav-order omo-pv-editor__group-order">' . omoDocumentsPvEditorEscape((string)($pointData['positionLabel'] ?? '--')) . '</span>'
             . '<span class="omo-pv-editor__group-copy"><span class="omo-pv-editor__group-title-line">' . $titleHtml . '<span class="omo-pv-editor__group-point-count" role="img" aria-label="' . omoDocumentsPvEditorEscape($groupPointCountLabel) . '" title="' . omoDocumentsPvEditorEscape($groupPointCountLabel) . '">' . $groupPointCount . '</span></span><span class="omo-pv-editor__group-summary">' . omoDocumentsPvEditorEscape($groupSummary) . '</span></span>'
             . '</div>'
@@ -1052,7 +1053,7 @@ function omoDocumentsPvEditorRenderNavItem(array $pointData, array $uiText): str
     $pointTypeIcon = (string)($pointTypeIcons[$pointType] ?? $pointTypeIcons['information']);
     $pointTypeLabel = trim((string)($pointData['pointTypeLabel'] ?? ($uiText[$pointType] ?? $pointType)));
     $metaParts = [];
-    $metaParts[] = $author !== '' ? $author : (string)($uiText['readonly'] ?? 'Lecture seule');
+    $metaParts[] = $author !== '' ? $author : (string)($uiText['readonly'] ?? omoDocumentsUiT('lecture_seule'));
     $metaParts[] = omoDocumentsPvEditorDurationLabel(
         isset($pointData['desiredDurationMinutes']) ? (int)$pointData['desiredDurationMinutes'] : null,
         $uiText
@@ -1060,16 +1061,16 @@ function omoDocumentsPvEditorRenderNavItem(array $pointData, array $uiText): str
     if (!empty($pointData['lock']['isLockedByOther'])) {
         $lockUserLabel = trim((string)($pointData['lock']['userLabel'] ?? ''));
         if (!empty($pointData['lock']['isOwnedByCurrentUser'])) {
-            $metaParts[] = (string)($uiText['lockedOwnSessionState'] ?? 'Verrouillé dans une autre session');
+            $metaParts[] = (string)($uiText['lockedOwnSessionState'] ?? omoDocumentsUiT('verrouille_dans_une_autre_session'));
         } else {
             $metaParts[] = $lockUserLabel !== ''
                 ? str_replace('{user}', $lockUserLabel, (string)($uiText['lockedByUserState'] ?? 'Verrouillé par {user}'))
-                : (string)($uiText['lockedState'] ?? 'Verrouillé');
+                : (string)($uiText['lockedState'] ?? omoDocumentsUiT('verrouille'));
         }
     }
 
     $reorderHandle = !empty($pointData['canReorder'])
-        ? '  <span class="omo-pv-editor__nav-handle generic-drag-handle generic-drag-handle--static" draggable="true" data-omo-pv-point-drag-handle="' . $pointId . '" title="' . omoDocumentsPvEditorEscape((string)($uiText['reorder'] ?? 'Reordonner les points')) . '" aria-label="' . omoDocumentsPvEditorEscape((string)($uiText['reorder'] ?? 'Reordonner les points')) . '">::</span>'
+        ? '  <span class="omo-pv-editor__nav-handle generic-drag-handle generic-drag-handle--static" draggable="true" data-omo-pv-point-drag-handle="' . $pointId . '" title="' . omoDocumentsPvEditorEscape((string)($uiText['reorder'] ?? omoDocumentsUiT('reordonner_les_points'))) . '" aria-label="' . omoDocumentsPvEditorEscape((string)($uiText['reorder'] ?? omoDocumentsUiT('reordonner_les_points'))) . '">::</span>'
         : '  <span class="omo-pv-editor__nav-handle omo-pv-editor__nav-handle--disabled" aria-hidden="true"></span>';
     $handledDisabled = empty($pointData['canToggleHandled']) ? ' disabled' : '';
 
@@ -1089,9 +1090,9 @@ function omoDocumentsPvEditorRenderNavItem(array $pointData, array $uiText): str
         . '      <span class="omo-pv-editor__nav-meta">' . omoDocumentsPvEditorEscape(implode(' | ', $metaParts)) . '</span>'
         . '  </button>'
         . '  <div class="omo-pv-editor__nav-actions">'
-        . '  <label class="omo-pv-editor__nav-check" title="' . omoDocumentsPvEditorEscape((string)($uiText['handled'] ?? 'Traité')) . '">'
+        . '  <label class="omo-pv-editor__nav-check" title="' . omoDocumentsPvEditorEscape((string)($uiText['handled'] ?? omoDocumentsUiT('traite'))) . '">'
         . '      <input type="checkbox" data-omo-pv-point-handled="' . $pointId . '"' . (!empty($pointData['isHandled']) ? ' checked' : '') . $handledDisabled . '>'
-        . '      <span class="omo-pv-editor__nav-check-label">' . omoDocumentsPvEditorEscape((string)($uiText['handled'] ?? 'Traité')) . '</span>'
+        . '      <span class="omo-pv-editor__nav-check-label">' . omoDocumentsPvEditorEscape((string)($uiText['handled'] ?? omoDocumentsUiT('traite'))) . '</span>'
         . '  </label>'
         . '  </div>'
         . '</div>';
@@ -1133,7 +1134,7 @@ function omoDocumentsPvEditorRenderPointDiscussionTrigger(array $pointData, arra
     $triggerAttributes = ' data-omo-chat-open'
         . ' data-omo-chat-endpoint="/omo/api/documents/pv/discussion.php"'
         . ' data-omo-chat-context="' . omoDocumentsPvEditorEscape((string)$context) . '"'
-        . ' data-omo-chat-title="' . omoDocumentsPvEditorEscape((string)($uiText['chatPointTitle'] ?? 'Erreurs signalées pour ce point')) . '"'
+        . ' data-omo-chat-title="' . omoDocumentsPvEditorEscape((string)($uiText['chatPointTitle'] ?? omoDocumentsUiT('erreurs_signalees_pour_ce_point'))) . '"'
         . ' data-omo-chat-point-title="' . omoDocumentsPvEditorEscape($pointTitle) . '"'
         . ' data-omo-chat-labels="' . omoDocumentsPvEditorEscape((string)$labels) . '"'
         . ' data-omo-chat-message-count="' . $messageCount . '"';
@@ -1144,9 +1145,9 @@ function omoDocumentsPvEditorRenderPointDiscussionTrigger(array $pointData, arra
         . '<span class="omo-chat-popup-count-value">' . $messageCount . '</span></button>'
         . '<button type="button" class="generic-action-button generic-action-button--main omo-pv-editor__save-button omo-chat-popup-trigger"'
         . $triggerAttributes
-        . ' title="' . omoDocumentsPvEditorEscape((string)($uiText['chatOpen'] ?? 'Signaler des erreurs sur ce point')) . '"'
-        . ' aria-label="' . omoDocumentsPvEditorEscape((string)($uiText['chatOpen'] ?? 'Signaler des erreurs sur ce point')) . '">'
-        . omoDocumentsPvEditorEscape((string)($uiText['chatReportErrors'] ?? 'Signaler des erreurs'))
+        . ' title="' . omoDocumentsPvEditorEscape((string)($uiText['chatOpen'] ?? omoDocumentsUiT('signaler_des_erreurs_sur_ce_point'))) . '"'
+        . ' aria-label="' . omoDocumentsPvEditorEscape((string)($uiText['chatOpen'] ?? omoDocumentsUiT('signaler_des_erreurs_sur_ce_point'))) . '">'
+        . omoDocumentsPvEditorEscape((string)($uiText['chatReportErrors'] ?? omoDocumentsUiT('signaler_des_erreurs')))
         . '</button></div>';
 }
 
@@ -1160,20 +1161,20 @@ function omoDocumentsPvEditorRenderDeferredProposals(array $pointData, array $ui
     }
 
     $operationLabels = [
-        \dbObject\DeferredProposal::OPERATION_CREATE => (string)($uiText['proposalOperationCreate'] ?? 'Création'),
-        \dbObject\DeferredProposal::OPERATION_PROPOSE => (string)($uiText['proposalOperationPropose'] ?? 'Proposition de projet'),
+        \dbObject\DeferredProposal::OPERATION_CREATE => (string)($uiText['proposalOperationCreate'] ?? omoDocumentsUiT('creation')),
+        \dbObject\DeferredProposal::OPERATION_PROPOSE => (string)($uiText['proposalOperationPropose'] ?? omoDocumentsUiT('proposition_de_projet')),
         \dbObject\DeferredProposal::OPERATION_UPDATE => (string)($uiText['proposalOperationUpdate'] ?? 'Modification'),
         \dbObject\DeferredProposal::OPERATION_MOVE => (string)($uiText['proposalOperationMove'] ?? 'Deplacement'),
         \dbObject\DeferredProposal::OPERATION_DELETE => (string)($uiText['proposalOperationDelete'] ?? 'Suppression'),
     ];
     $statusLabels = [
-        \dbObject\DeferredProposal::STATUS_PENDING => (string)($uiText['proposalStatusPending'] ?? 'En attente'),
-        \dbObject\DeferredProposal::STATUS_VALIDATED => (string)($uiText['proposalStatusValidated'] ?? 'Validée'),
-        \dbObject\DeferredProposal::STATUS_APPLIED => (string)($uiText['proposalStatusApplied'] ?? 'Appliquée'),
-        \dbObject\DeferredProposal::STATUS_REJECTED => (string)($uiText['proposalStatusRejected'] ?? 'Refusée'),
-        \dbObject\DeferredProposal::STATUS_REMOVED => (string)($uiText['proposalStatusRemoved'] ?? 'Retirée'),
+        \dbObject\DeferredProposal::STATUS_PENDING => (string)($uiText['proposalStatusPending'] ?? omoDocumentsUiT('en_attente')),
+        \dbObject\DeferredProposal::STATUS_VALIDATED => (string)($uiText['proposalStatusValidated'] ?? omoDocumentsUiT('validee')),
+        \dbObject\DeferredProposal::STATUS_APPLIED => (string)($uiText['proposalStatusApplied'] ?? omoDocumentsUiT('appliquee')),
+        \dbObject\DeferredProposal::STATUS_REJECTED => (string)($uiText['proposalStatusRejected'] ?? omoDocumentsUiT('refusee')),
+        \dbObject\DeferredProposal::STATUS_REMOVED => (string)($uiText['proposalStatusRemoved'] ?? omoDocumentsUiT('retiree')),
         \dbObject\DeferredProposal::STATUS_CONFLICT => (string)($uiText['proposalStatusConflict'] ?? 'Conflit'),
-        \dbObject\DeferredProposal::STATUS_FAILED => (string)($uiText['proposalStatusFailed'] ?? 'Échec'),
+        \dbObject\DeferredProposal::STATUS_FAILED => (string)($uiText['proposalStatusFailed'] ?? omoDocumentsUiT('echec')),
     ];
 
     $pointId = (int)($pointData['id'] ?? 0);
@@ -1224,7 +1225,7 @@ function omoDocumentsPvEditorRenderDeferredProposals(array $pointData, array $ui
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 
             $html .= '<article class="omo-pv-editor__deferred-proposal generic-soft-panel" data-deferred-proposal-id="' . $proposalId . '">';
-            $html .= '<button type="button" class="omo-pv-editor__deferred-proposal-toggle" data-omo-deferred-proposal-toggle aria-expanded="false" aria-controls="' . $detailId . '" aria-label="' . omoDocumentsPvEditorEscape((string)($uiText['proposalDetail'] ?? 'Afficher le détail de la modification')) . '">';
+            $html .= '<button type="button" class="omo-pv-editor__deferred-proposal-toggle" data-omo-deferred-proposal-toggle aria-expanded="false" aria-controls="' . $detailId . '" aria-label="' . omoDocumentsPvEditorEscape((string)($uiText['proposalDetail'] ?? omoDocumentsUiT('afficher_le_detail_de_la_modification'))) . '">';
             $html .= '<strong class="omo-pv-editor__deferred-proposal-summary">' . omoDocumentsPvEditorEscape($summary) . '</strong>';
             $html .= '<span class="omo-pv-editor__deferred-proposal-status">' . omoDocumentsPvEditorEscape($statusLabel) . '</span>';
             $html .= '</button>';
@@ -1239,10 +1240,10 @@ function omoDocumentsPvEditorRenderDeferredProposals(array $pointData, array $ui
                     $editUrl = '/omo/api/deferred_proposals/pv_rule_editor.php?workflow=1&direct=1&oid=' . $organizationId . '&point_id=' . $pointId . '&proposal_id=' . $proposalId;
                 }
                 $html .= '<div class="omo-pv-editor__deferred-proposal-menu generic-menu" data-omo-deferred-proposal-menu>';
-                $html .= '<button type="button" class="generic-menu-toggle" data-omo-deferred-proposal-menu-toggle aria-haspopup="menu" aria-expanded="false" aria-label="' . omoDocumentsPvEditorEscape((string)($uiText['proposalMore'] ?? 'Actions de la modification')) . '">...</button>';
+                $html .= '<button type="button" class="generic-menu-toggle" data-omo-deferred-proposal-menu-toggle aria-haspopup="menu" aria-expanded="false" aria-label="' . omoDocumentsPvEditorEscape((string)($uiText['proposalMore'] ?? omoDocumentsUiT('actions_de_la_modification'))) . '">...</button>';
                 $html .= '<div class="generic-menu-panel generic-menu-panel--wide" data-omo-deferred-proposal-menu-panel role="menu" hidden>';
-                $html .= '<button type="button" class="generic-menu-item" data-omo-deferred-proposal-edit data-omo-deferred-proposal-edit-url="' . omoDocumentsPvEditorEscape($editUrl) . '" data-omo-deferred-proposal-edit-title="' . omoDocumentsPvEditorEscape((string)($uiText['proposalEditTitle'] ?? 'Éditer une modification')) . '" role="menuitem">' . omoDocumentsPvEditorEscape((string)($uiText['proposalEdit'] ?? 'Éditer')) . '</button>';
-                $html .= '<button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-deferred-proposal-delete="' . $proposalId . '" data-omo-deferred-proposal-point-id="' . $pointId . '" data-omo-deferred-proposal-delete-confirm="' . omoDocumentsPvEditorEscape((string)($uiText['proposalDeleteConfirm'] ?? 'Supprimer cette modification ?')) . '" role="menuitem">' . omoDocumentsPvEditorEscape((string)($uiText['proposalDelete'] ?? 'Supprimer')) . '</button>';
+                $html .= '<button type="button" class="generic-menu-item" data-omo-deferred-proposal-edit data-omo-deferred-proposal-edit-url="' . omoDocumentsPvEditorEscape($editUrl) . '" data-omo-deferred-proposal-edit-title="' . omoDocumentsPvEditorEscape((string)($uiText['proposalEditTitle'] ?? omoDocumentsUiT('editer_une_modification'))) . '" role="menuitem">' . omoDocumentsPvEditorEscape((string)($uiText['proposalEdit'] ?? omoDocumentsUiT('editer'))) . '</button>';
+                $html .= '<button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-deferred-proposal-delete="' . $proposalId . '" data-omo-deferred-proposal-point-id="' . $pointId . '" data-omo-deferred-proposal-delete-confirm="' . omoDocumentsPvEditorEscape((string)($uiText['proposalDeleteConfirm'] ?? omoDocumentsUiT('supprimer_cette_modification'))) . '" role="menuitem">' . omoDocumentsPvEditorEscape((string)($uiText['proposalDelete'] ?? 'Supprimer')) . '</button>';
                 $html .= '</div></div>';
             }
             $html .= '<div id="' . $detailId . '" class="omo-pv-editor__deferred-proposal-detail omo-change-details" data-omo-change-details-payload="' . omoDocumentsPvEditorEscape($changePayload) . '" hidden>';
@@ -1267,7 +1268,7 @@ function omoDocumentsPvEditorRenderDeferredProposals(array $pointData, array $ui
     if ($canAdd) {
         $addUrl = '/omo/api/deferred_proposals/pv_proposal_picker.php?oid=' . $organizationId . '&point_id=' . $pointId;
         $html .= '<div class="omo-pv-editor__deferred-proposal-add">';
-        $html .= '<button type="button" class="generic-action-button generic-action-button--secondary" data-omo-pv-point-add-proposal="' . $pointId . '" data-omo-pv-point-proposal-url="' . omoDocumentsPvEditorEscape($addUrl) . '" data-omo-pv-point-proposal-title="' . omoDocumentsPvEditorEscape((string)($uiText['addProposal'] ?? 'Ajouter une modification')) . '">' . omoDocumentsPvEditorEscape((string)($uiText['addProposal'] ?? 'Ajouter une modification')) . '</button>';
+        $html .= '<button type="button" class="generic-action-button generic-action-button--secondary" data-omo-pv-point-add-proposal="' . $pointId . '" data-omo-pv-point-proposal-url="' . omoDocumentsPvEditorEscape($addUrl) . '" data-omo-pv-point-proposal-title="' . omoDocumentsPvEditorEscape((string)($uiText['addProposal'] ?? omoDocumentsUiT('ajouter_une_modification'))) . '">' . omoDocumentsPvEditorEscape((string)($uiText['addProposal'] ?? omoDocumentsUiT('ajouter_une_modification'))) . '</button>';
         $html .= '</div>';
     }
     $html .= '</section>';
@@ -1288,7 +1289,7 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
     $pointTypeIcon = (string)($pointTypeIcons[$pointType] ?? $pointTypeIcons['information']);
     $title = trim((string)($pointData['title'] ?? ''));
     if ($title === '') {
-        $title = (string)($uiText['defaultTitle'] ?? 'Nouveau point');
+        $title = (string)($uiText['defaultTitle'] ?? omoDocumentsUiT('nouveau_point'));
     }
 
     $isEditable = !empty($pointData['isEditable']);
@@ -1346,7 +1347,7 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
         if ($canEditDuration) {
             $html .= '      <label class="omo-pv-editor__point-duration-shell" title="' . omoDocumentsPvEditorEscape((string)$uiText['duration']) . '">';
             $html .= '          <input type="number" min="0" step="1" class="omo-pv-editor__point-duration-input" value="' . omoDocumentsPvEditorEscape($durationValue > 0 ? (string)$durationValue : '') . '" data-omo-pv-point-duration="' . $pointId . '" aria-label="' . omoDocumentsPvEditorEscape((string)$uiText['duration']) . '">';
-            $html .= '          <span>min</span>';
+            $html .= ('          <span>' . htmlspecialchars(omoDocumentsUiT('min_2'), ENT_QUOTES, 'UTF-8') . '</span>');
             $html .= '      </label>';
         } else {
             $html .= '      <span class="omo-pv-editor__point-duration-readonly">' . omoDocumentsPvEditorEscape($durationLabel) . '</span>';
@@ -1419,13 +1420,13 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
         $html .= '          </select>';
         $html .= '      </label>';
     } else {
-        $html .= '      <span class="omo-pv-editor__point-author">' . omoDocumentsPvEditorEscape($authorLabel !== '' ? $authorLabel : (string)($uiText['readonly'] ?? 'Lecture seule')) . '</span>';
+        $html .= '      <span class="omo-pv-editor__point-author">' . omoDocumentsPvEditorEscape($authorLabel !== '' ? $authorLabel : (string)($uiText['readonly'] ?? omoDocumentsUiT('lecture_seule'))) . '</span>';
     }
     if ($canEditNow && $canEditPointDetails && !$isReview && !empty($pointData['hasStructureApplication'])) {
         $html .= '      <label class="omo-pv-editor__point-concerned">';
         $html .= '          <span class="omo-pv-editor__point-concerned-label">' . omoDocumentsPvEditorEscape((string)$uiText['concernedHolon']) . '</span>';
         $html .= '          <select class="omo-pv-editor__point-concerned-select" data-omo-pv-point-concerned-holon="' . $pointId . '" aria-label="' . omoDocumentsPvEditorEscape((string)$uiText['concernedHolon']) . '">';
-        $html .= '              <option value="0">' . omoDocumentsPvEditorEscape((string)($uiText['concernedHolonEmpty'] ?? 'Sans espace')) . '</option>';
+        $html .= '              <option value="0">' . omoDocumentsPvEditorEscape((string)($uiText['concernedHolonEmpty'] ?? omoDocumentsUiT('sans_espace'))) . '</option>';
         $localConcernedHolonCount = count(array_filter($concernedHolonOptions, static function (array $option): bool {
             return !empty($option['isLocal']);
         }));
@@ -1462,7 +1463,7 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
         $html .= '        <button type="button" class="generic-action-button omo-pv-editor__save-button" data-omo-pv-point-save="' . $pointId . '" hidden disabled aria-disabled="true">' . omoDocumentsPvEditorEscape((string)$uiText['saved']) . '</button>';
         $html .= '        <button type="button" class="generic-action-button generic-action-button--secondary omo-pv-editor__save-button" data-omo-pv-point-cancel="' . $pointId . '" hidden>' . omoDocumentsPvEditorEscape((string)$uiText['cancel']) . '</button>';
         if (!empty($pointData['canDelete'])) {
-            $html .= '        <button type="button" class="omo-pv-editor__delete-button" data-omo-pv-point-delete="' . $pointId . '" title="' . omoDocumentsPvEditorEscape((string)($uiText['deletePoint'] ?? 'Supprimer le point')) . '" aria-label="' . omoDocumentsPvEditorEscape((string)($uiText['deletePoint'] ?? 'Supprimer le point')) . '"><img src="/omo/assets/images/documents/poubelle.png" alt="" aria-hidden="true"></button>';
+            $html .= '        <button type="button" class="omo-pv-editor__delete-button" data-omo-pv-point-delete="' . $pointId . '" title="' . omoDocumentsPvEditorEscape((string)($uiText['deletePoint'] ?? omoDocumentsUiT('supprimer_le_point'))) . '" aria-label="' . omoDocumentsPvEditorEscape((string)($uiText['deletePoint'] ?? omoDocumentsUiT('supprimer_le_point'))) . '"><img src="/omo/assets/images/documents/poubelle.png" alt="" aria-hidden="true"></button>';
         }
         $html .= omoDocumentsPvEditorRenderPointDiscussionTrigger($pointData, $uiText, $title);
         $html .= '      </div>';
@@ -1499,7 +1500,7 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
         }
         $html .= '  <span class="omo-pv-editor__point-note">' . omoDocumentsPvEditorEscape($readonlyNote) . '</span>';
         if (!empty($pointData['canTakeOverLock'])) {
-            $html .= '  <button type="button" class="generic-action-button generic-action-button--main omo-pv-editor__take-over-lock" data-omo-pv-point-take-over-lock="' . $pointId . '">' . omoDocumentsPvEditorEscape((string)($uiText['takeOverLock'] ?? 'Reprendre l’édition')) . '</button>';
+            $html .= '  <button type="button" class="generic-action-button generic-action-button--main omo-pv-editor__take-over-lock" data-omo-pv-point-take-over-lock="' . $pointId . '">' . omoDocumentsPvEditorEscape((string)($uiText['takeOverLock'] ?? omoDocumentsUiT('reprendre_l_edition'))) . '</button>';
         }
         $html .= omoDocumentsPvEditorRenderPointDiscussionTrigger($pointData, $uiText, $title);
         $html .= '</div>';

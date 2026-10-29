@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 window.commonPageScripts = window.commonPageScripts || {};
 window.commonPageScripts["/omo/api/holons/member_popup.js"] = function (pageConfig, pageScript) {
     (function () {
@@ -33,7 +35,7 @@ window.commonPageScripts["/omo/api/holons/member_popup.js"] = function (pageConf
             feedback.classList.remove('is-success');
 
             if (!select.value && !emailInput.value.trim()) {
-                feedback.textContent = 'Choisissez une personne ou saisissez une adresse e-mail.';
+                feedback.textContent = omoUiText("choisissez_une_personne_ou_saisissez_une_adresse_e_mail", "Choisissez une personne ou saisissez une adresse e-mail.");
                 return;
             }
 
@@ -57,12 +59,12 @@ window.commonPageScripts["/omo/api/holons/member_popup.js"] = function (pageConf
                 })
                 .then(function (result) {
                     if (!result.ok || !result.data || !result.data.status) {
-                        window.omoNotify(result.data && result.data.message ? result.data.message : 'Une erreur est survenue.', 'error');
+                        window.omoNotify(result.data && result.data.message ? result.data.message : omoUiText("une_erreur_est_survenue", "Une erreur est survenue."), 'error');
                         submitButton.disabled = false;
                         return;
                     }
 
-                    window.omoNotify(result.data.message || 'Membre ajouté.', 'success');
+                    window.omoNotify(result.data.message || omoUiText("membre_ajoute", "Membre ajouté."), 'success');
 
                     if (typeof refreshDrawer === 'function') {
                         var drawerUrl = '/omo/api/team/index.php?oid=' + organizationId;
@@ -99,7 +101,7 @@ window.commonPageScripts["/omo/api/holons/member_popup.js"] = function (pageConf
                     }, 250);
                 })
                 .catch(function () {
-                    window.omoNotify("Impossible d'ajouter ce membre pour le moment.", 'error');
+                    window.omoNotify(omoUiText("impossible_d_ajouter_ce_membre_pour_le_moment", "Impossible d'ajouter ce membre pour le moment."), 'error');
                     submitButton.disabled = false;
                 });
         });

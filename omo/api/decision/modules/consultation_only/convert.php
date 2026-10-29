@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../ui_translations.php';
 
 require_once dirname(__DIR__, 3) . '/bootstrap.php';
 require_once dirname(__DIR__) . '/context.php';
@@ -13,33 +14,33 @@ use dbObject\DecisionProposal;
 header('Content-Type: application/json; charset=UTF-8');
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
-    omoDecisionModuleJsonResponse(405, ['status' => false, 'message' => 'Méthode non autorisée.']);
+    omoDecisionModuleJsonResponse(405, ['status' => false, 'message' => omoDecisionUiT('methode_non_autorisee')]);
 }
 
 $context = omoDecisionResolveManagementContext($_POST);
 if (empty($context['status'])) {
-    omoDecisionModuleJsonResponse((int)($context['code'] ?? 400), ['status' => false, 'message' => 'Contexte de consultation invalide.']);
+    omoDecisionModuleJsonResponse((int)($context['code'] ?? 400), ['status' => false, 'message' => omoDecisionUiT('contexte_de_consultation_invalide')]);
 }
 
 $decision = $context['decision'] ?? null;
 $decisionGroup = $context['decisionGroup'] ?? null;
 if (!$decision instanceof DecisionProcess || !$decisionGroup instanceof DecisionGroup) {
-    omoDecisionModuleJsonResponse(404, ['status' => false, 'message' => 'Consultation introuvable.']);
+    omoDecisionModuleJsonResponse(404, ['status' => false, 'message' => omoDecisionUiT('consultation_introuvable')]);
 }
 if (DecisionProcess::normalizeEvaluationMethod($decisionGroup->get('evaluation_method')) !== DecisionProcess::METHOD_CONSULTATION_ONLY) {
-    omoDecisionModuleJsonResponse(409, ['status' => false, 'message' => 'Cette prise de décision ne peut pas être transformée depuis une consultation seule.']);
+    omoDecisionModuleJsonResponse(409, ['status' => false, 'message' => omoDecisionUiT('cette_prise_de_decision_ne_peut_pas_etre_transformee_depuis_une_consultation_seule')]);
 }
 if (!$decision->hasConsultationEnded() || $decision->hasEvaluationStarted()) {
-    omoDecisionModuleJsonResponse(409, ['status' => false, 'message' => 'La consultation doit être terminée avant de choisir un mode de vote.']);
+    omoDecisionModuleJsonResponse(409, ['status' => false, 'message' => omoDecisionUiT('la_consultation_doit_etre_terminee_avant_de_choisir_un_mode_de_vote')]);
 }
 
 $targetMethod = DecisionProcess::normalizeEvaluationMethod((string)($_POST['target_method'] ?? ''));
 if (!in_array($targetMethod, [DecisionProcess::METHOD_SIMPLE_VOTE, DecisionProcess::METHOD_MAJORITY_JUDGMENT, DecisionProcess::METHOD_CONSENT], true)) {
-    omoDecisionModuleJsonResponse(400, ['status' => false, 'message' => 'Mode de vote invalide.']);
+    omoDecisionModuleJsonResponse(400, ['status' => false, 'message' => omoDecisionUiT('mode_de_vote_invalide')]);
 }
 $definition = omoDecisionGetModuleDefinition($targetMethod, (int)$context['organizationId']);
 if (empty($definition['available']) || empty($definition['shared_file']) || !is_file((string)$definition['shared_file'])) {
-    omoDecisionModuleJsonResponse(403, ['status' => false, 'message' => 'Ce mode de vote n’est pas disponible dans cette organisation.']);
+    omoDecisionModuleJsonResponse(403, ['status' => false, 'message' => omoDecisionUiT('ce_mode_de_vote_n_est_pas_disponible_dans_cette_organisation')]);
 }
 require_once $definition['shared_file'];
 
@@ -70,7 +71,7 @@ if ($targetMethod === DecisionProcess::METHOD_SIMPLE_VOTE) {
 
 $pdo = DbObject::getPdo();
 if (!$pdo) {
-    omoDecisionModuleJsonResponse(500, ['status' => false, 'message' => 'Connexion à la base impossible.']);
+    omoDecisionModuleJsonResponse(500, ['status' => false, 'message' => omoDecisionUiT('connexion_a_la_base_impossible')]);
 }
 
 $ownsTransaction = !$pdo->inTransaction();
@@ -114,7 +115,7 @@ try {
     if ($ownsTransaction && $pdo->inTransaction()) {
         $pdo->rollBack();
     }
-    omoDecisionModuleJsonResponse(500, ['status' => false, 'message' => 'Impossible de changer le mode de cette consultation pour le moment.']);
+    omoDecisionModuleJsonResponse(500, ['status' => false, 'message' => omoDecisionUiT('impossible_de_changer_le_mode_de_cette_consultation_pour_le_moment')]);
 }
 
 omoDecisionModuleJsonResponse(200, [

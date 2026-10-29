@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
 require_once dirname(__DIR__, 4) . '/common/topbar.php';
 $currentUserId = (int)commonGetCurrentUserId();
 ?>
@@ -16,7 +17,7 @@ commonRenderTopbar([
     'logoutReturnTo' => omoLmsBuildPath('/'),
     'search' => [
         'enabled' => true,
-        'placeholder' => 'Rechercher un parcours ou une mission',
+        'placeholder' => omoLmsUiT('rechercher_un_parcours_ou_une_mission'),
         'buttonLabel' => 'Recherche',
         'callback' => 'lmsHandleTopbarSearch',
     ],
@@ -27,28 +28,28 @@ commonRenderTopbar([
         'editUrl' => '/popup/profil.php',
         'editMode' => 'fetch',
     ],
-    'helpLabel' => 'Aide',
+    'helpLabel' => omoLmsUiT('aide'),
     'helpItems' => [
         [
             'key' => 'faq',
             'label' => 'FAQ',
-            'description' => 'Accès aux questions les plus courantes, avec moteur de recherche pour trouver facilement la réponse à ses questions.',
-            'title' => 'FAQ LMS',
-            'html' => '<div class="common-help-list"><div class="common-help-card"><h4>FAQ</h4><p>Cette zone pourra accueillir les questions fréquentes du LMS. Pour l’instant, elle sert de point d’entrée commun.</p></div></div>',
+            'description' => omoLmsUiT('acces_aux_questions_les_plus_courantes_avec_moteur_de_recherche_pour_trouver_facilement_la'),
+            'title' => omoLmsUiT('faq_lms'),
+            'html' => ('<div class="common-help-list"><div class="common-help-card"><h4>' . htmlspecialchars(omoLmsUiT('faq'), ENT_QUOTES, 'UTF-8') . '</h4><p>' . htmlspecialchars(omoLmsUiT('cette_zone_pourra_accueillir_les_questions_frequentes_du_lms_pour_l_instant_elle_sert_de_p'), ENT_QUOTES, 'UTF-8') . '</p></div></div>'),
         ],
         [
             'key' => 'tour',
-            'label' => 'Visite guidée',
-            'description' => 'Tour des fonctions visibles à l’écran avec explication pour chaque bouton et chaque possibilité.',
-            'title' => 'Visite guidée',
-            'html' => '<div class="common-help-list"><div class="common-help-card"><h4>Visite guidée</h4><p>La visite guidée du LMS pourra être branchée ici application par application.</p></div></div>',
+            'label' => omoLmsUiT('visite_guidee'),
+            'description' => omoLmsUiT('tour_des_fonctions_visibles_a_l_ecran_avec_explication_pour_chaque_bouton_et_chaque_possib'),
+            'title' => omoLmsUiT('visite_guidee'),
+            'html' => ('<div class="common-help-list"><div class="common-help-card"><h4>' . htmlspecialchars(omoLmsUiT('visite_guidee'), ENT_QUOTES, 'UTF-8') . '</h4><p>' . htmlspecialchars(omoLmsUiT('la_visite_guidee_du_lms_pourra_etre_branchee_ici_application_par_application'), ENT_QUOTES, 'UTF-8') . '</p></div></div>'),
         ],
         [
             'key' => 'tutorials',
             'label' => 'Tutoriels',
-            'description' => 'Des formations ciblées pour monter en compétences dans l’utilisation du logiciel.',
+            'description' => omoLmsUiT('des_formations_ciblees_pour_monter_en_competences_dans_l_utilisation_du_logiciel'),
             'title' => 'Tutoriels',
-            'html' => '<div class="common-help-list"><div class="common-help-card"><h4>Tutoriels</h4><p>Cette section pourra ensuite lister des tutoriels vidéo, des guides pas à pas ou des supports de formation.</p></div></div>',
+            'html' => ('<div class="common-help-list"><div class="common-help-card"><h4>' . htmlspecialchars(omoLmsUiT('tutoriels'), ENT_QUOTES, 'UTF-8') . '</h4><p>' . htmlspecialchars(omoLmsUiT('cette_section_pourra_ensuite_lister_des_tutoriels_video_des_guides_pas_a_pas_ou_des_suppor'), ENT_QUOTES, 'UTF-8') . '</p></div></div>'),
         ],
     ],
 ]);

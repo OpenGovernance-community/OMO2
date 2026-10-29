@@ -21,7 +21,7 @@ $sourceLang = [
     'documents.detail.action.edit' => ['text' => 'Modifier', 'context' => 'Button opening the document editor from the document detail drawer.'],
     'documents.detail.action.delete' => ['text' => 'Effacer', 'context' => 'Icon-only button permanently deleting a document from the document detail drawer.'],
     'documents.detail.confirm_delete' => ['text' => 'Effacer définitivement ce document ?', 'context' => 'Confirmation shown before permanently deleting a document from its detail drawer.'],
-    'documents.detail.delete_error' => ['text' => 'Impossible d effacer le document.', 'context' => 'Error shown when permanent document deletion fails from its detail drawer.'],
+    'documents.detail.delete_error' => ['text' => 'Impossible d’effacer le document.', 'context' => 'Error shown when permanent document deletion fails from its detail drawer.'],
     'documents.detail.action.fullscreen' => ['text' => 'Plein écran', 'context' => 'Button used to show a collaborative document iframe in fullscreen.'],
     'documents.detail.action.exit_fullscreen' => ['text' => 'Quitter le plein écran', 'context' => 'Button used to leave the collaborative document fullscreen mode.'],
     'documents.detail.action.download' => ['text' => 'Télécharger', 'context' => 'Button used to download an uploaded PDF displayed in the document detail drawer.'],
@@ -54,7 +54,7 @@ $holonId = isset($_GET['cid']) ? (int)$_GET['cid'] : 0;
 $escape = 'omoApiEscape';
 
 $formatter = class_exists('IntlDateFormatter')
-    ? new IntlDateFormatter('fr_FR', IntlDateFormatter::MEDIUM, IntlDateFormatter::SHORT)
+    ? new IntlDateFormatter(omoGetTranslationLocale(), IntlDateFormatter::MEDIUM, IntlDateFormatter::SHORT)
     : null;
 
 $formatDateTime = static function ($value) use ($formatter): string {

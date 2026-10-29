@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../ui_translations.php';
 require_once dirname(__DIR__, 3) . '/bootstrap.php';
 require_once dirname(__DIR__) . '/context.php';
 require_once dirname(__DIR__) . '/common.php';
@@ -10,7 +11,7 @@ header('Content-Type: application/json; charset=UTF-8');
 if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? '')) !== 'POST') {
     omoDecisionModuleJsonResponse(405, [
         'status' => false,
-        'message' => 'Méthode non autorisée.',
+        'message' => omoDecisionUiT('methode_non_autorisee'),
     ]);
 }
 
@@ -18,7 +19,7 @@ $context = omoDecisionResolveEditorContext($_POST);
 if (empty($context['status'])) {
     omoDecisionModuleJsonResponse((int)($context['code'] ?? 403), [
         'status' => false,
-        'message' => 'Accès refusé.',
+        'message' => omoDecisionUiT('acces_refuse'),
     ]);
 }
 
@@ -28,7 +29,7 @@ if ($userId <= 0 && $participantId <= 0) {
     omoDecisionModuleJsonResponse(403, [
         'status' => false,
         'reason' => 'participant_required',
-        'message' => 'Un participant valide est nécessaire pour supprimer une proposition.',
+        'message' => omoDecisionUiT('un_participant_valide_est_necessaire_pour_supprimer_une_proposition'),
     ]);
 }
 
@@ -36,14 +37,14 @@ $proposal = omoDecisionLoadProposalForContext((int)($_POST['proposal_id'] ?? 0),
 if (!$proposal instanceof DecisionProposal) {
     omoDecisionModuleJsonResponse(404, [
         'status' => false,
-        'message' => 'Proposition introuvable.',
+        'message' => omoDecisionUiT('proposition_introuvable'),
     ]);
 }
 
 if (!omoDecisionCanEditProposalFromPublicInterface($proposal, $context)) {
     omoDecisionModuleJsonResponse(403, [
         'status' => false,
-        'message' => 'Vous ne pouvez supprimer que vos propres propositions avant le début du scrutin.',
+        'message' => omoDecisionUiT('vous_ne_pouvez_supprimer_que_vos_propres_propositions_avant_le_debut_du_scrutin'),
     ]);
 }
 
@@ -60,7 +61,7 @@ if (empty($result['status'])) {
 
 omoDecisionModuleJsonResponse(200, [
     'status' => true,
-    'message' => (string)($result['message'] ?? 'Proposition supprimée.'),
+    'message' => (string)($result['message'] ?? omoDecisionUiT('proposition_supprimee')),
     'proposalId' => (int)$proposal->getId(),
 ]);
 

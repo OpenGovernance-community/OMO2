@@ -526,7 +526,7 @@ function commonGetAuthSharedSourceLang(): array
             'context' => 'Generic error shown when an authentication request is temporarily rate limited.'
         ],
         'auth.error.mail_configuration' => [
-            'text' => 'L envoi des e-mails de connexion est indisponible : la configuration du serveur est incomplete. Contactez l administrateur.',
+            'text' => 'L’envoi des e-mails de connexion est indisponible : la configuration du serveur est incomplète. Contactez l’administrateur.',
             'context' => 'Authentication email service is unavailable because its canonical public URL is missing or invalid.'
         ],
         'auth.error.password_login_disabled' => [

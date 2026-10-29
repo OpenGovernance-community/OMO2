@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/invitations_shared.php';
 require_once __DIR__ . '/permissions_shared.php';
@@ -21,30 +22,30 @@ use dbObject\Project;
 
 $sourceLang = array_merge(commonMeetingRecurrenceSourceLang(), commonCalendarAvailabilityPreviewSourceLang(), [
     'calendar.create.holon.choose' => ['text' => 'Choisir un espace', 'context' => 'Open the event assignment picker.'],
-    'calendar.create.holon.hint' => ['text' => 'Choisissez un espace dans lequel vous pouvez creer des evenements.', 'context' => 'Permission-filtered event assignment picker.'],
+    'calendar.create.holon.hint' => ['text' => 'Choisissez un espace dans lequel vous pouvez créer des événements.', 'context' => 'Permission-filtered event assignment picker.'],
     'calendar.create.holon.confirm' => ['text' => 'Choisir cet espace', 'context' => 'Confirm event assignment.'],
-    'calendar.create.buffers.enable' => ['text' => 'Definir mes temps de preparation/cloture', 'context' => 'Toggle personal preparation and closing times.'],
-    'calendar.create.buffers.before' => ['text' => 'Preparation / deplacement avant (minutes)', 'context' => 'Minutes reserved before this event.'],
-    'calendar.create.buffers.after' => ['text' => 'Cloture / deplacement apres (minutes)', 'context' => 'Minutes reserved after this event.'],
-    'calendar.create.buffers.hint' => ['text' => 'Ces temps sont personnels et deduits uniquement de vos disponibilites. Chaque invite definit ses propres durees.', 'context' => 'Explanation of personal event time buffers.'],
+    'calendar.create.buffers.enable' => ['text' => 'Définir mes temps de préparation/clôture', 'context' => 'Toggle personal preparation and closing times.'],
+    'calendar.create.buffers.before' => ['text' => 'Préparation / déplacement avant (minutes)', 'context' => 'Minutes reserved before this event.'],
+    'calendar.create.buffers.after' => ['text' => 'Clôture / déplacement après (minutes)', 'context' => 'Minutes reserved after this event.'],
+    'calendar.create.buffers.hint' => ['text' => 'Ces temps sont personnels et déduits uniquement de vos disponibilités. Chaque invité définit ses propres durées.', 'context' => 'Explanation of personal event time buffers.'],
     'calendar.create.buffers.invalid' => ['text' => 'Indiquez des nombres entiers entre 0 et 1440 minutes.', 'context' => 'Invalid event buffer duration.'],
-    'calendar.availability.warning' => ['text' => 'Un point sur les disponibilites', 'context' => 'Heading of the event availability review.'],
-    'calendar.availability.waiting' => ['text' => 'Verification des disponibilites...', 'context' => 'Animated progress indicator while checking and refreshing invitee calendars.'],
+    'calendar.availability.warning' => ['text' => 'Un point sur les disponibilités', 'context' => 'Heading of the event availability review.'],
+    'calendar.availability.waiting' => ['text' => 'Vérification des disponibilités...', 'context' => 'Animated progress indicator while checking and refreshing invitee calendars.'],
     'calendar.availability.waiting_hint' => ['text' => 'Les agendas sont actualisés si nécessaire.', 'context' => 'Explanation while refreshing calendars before saving an event.'],
     'calendar.availability.conflict_label' => ['text' => 'Conflit', 'context' => 'Compact label after a warning icon at the beginning of a conflicting appointment row.'],
-    'calendar.availability.unknown' => ['text' => 'A verifier', 'context' => 'Label on an invitee whose availability could not be verified.'],
+    'calendar.availability.unknown' => ['text' => 'À vérifier', 'context' => 'Label on an invitee whose availability could not be verified.'],
     'calendar.availability.adjust' => ['text' => 'Modifier les horaires', 'context' => 'Return to the event schedule after reviewing availability.'],
     'calendar.availability.conflict' => ['text' => '{name} - {context} : du {start} au {end}', 'context' => 'Conflicting appointment with its organization and circle or role, and full time range; no event title.'],
     'calendar.availability.external' => ['text' => 'Agenda externe', 'context' => 'Generic source label for a conflicting external appointment.'],
     'calendar.availability.outside' => ['text' => 'Hors des plages de disponibilité', 'context' => 'Invitee is outside external availability windows, not in a conflicting appointment.'],
     'calendar.availability.omo' => ['text' => 'Agenda OMO', 'context' => 'Fallback source label when an appointment organization has no name.'],
     'calendar.availability.cache' => ['text' => '{name} : l’agenda n’a pas pu être actualisé ou ne couvre pas cette période.', 'context' => 'Partial external calendar availability check after a refresh attempt.'],
-    'calendar.availability.saved_cache_warning' => ['text' => 'Evenement enregistre. Les conflits ont ete verifies avec les donnees disponibles, qui peuvent ne pas etre a jour.', 'context' => 'Non-blocking topbar warning after saving with an incomplete external calendar cache.'],
+    'calendar.availability.saved_cache_warning' => ['text' => 'Événement enregistré. Les conflits ont été vérifiés avec les données disponibles, qui peuvent ne pas être à jour.', 'context' => 'Non-blocking topbar warning after saving with an incomplete external calendar cache.'],
     'calendar.availability.detail.cache' => ['text' => 'L’agenda n’a pas pu être actualisé ou ne couvre pas cette période.', 'context' => 'Availability card when refreshing is unsuccessful or coverage is incomplete.'],
-    'calendar.availability.detail.storage' => ['text' => 'La verification est momentanement indisponible.', 'context' => 'Availability card when storage cannot be checked.'],
-    'calendar.availability.storage' => ['text' => '{name} : verification indisponible pour le moment.', 'context' => 'Availability storage failure; never imply the guest is free.'],
+    'calendar.availability.detail.storage' => ['text' => 'La vérification est momentanément indisponible.', 'context' => 'Availability card when storage cannot be checked.'],
+    'calendar.availability.storage' => ['text' => '{name} : vérification indisponible pour le moment.', 'context' => 'Availability storage failure; never imply the guest is free.'],
     'calendar.availability.note' => ['text' => 'Vous pouvez ajuster les horaires ou conserver ce rendez-vous.', 'context' => 'Options after an availability warning.'],
-    'calendar.availability.confirm' => ['text' => 'Enregistrer quand meme', 'context' => 'Explicit override of an event availability warning.'],
+    'calendar.availability.confirm' => ['text' => 'Enregistrer quand même', 'context' => 'Explicit override of an event availability warning.'],
     'calendar.create.title' => [
         'text' => 'Nouvel événement',
         'context' => 'Title shown at the top of the event creation form.',
@@ -159,11 +160,11 @@ $sourceLang = array_merge(commonMeetingRecurrenceSourceLang(), commonCalendarAva
         'context' => 'Required file picker for a new uploaded meeting document.',
     ],
     'calendar.create.error.document_file' => [
-        'text' => 'Selectionnez un fichier pour ce document.',
+        'text' => 'Sélectionnez un fichier pour ce document.',
         'context' => 'Validation error when a meeting attachment has no uploaded file.',
     ],
     'calendar.create.error.document_upload' => [
-        'text' => 'Le transfert du fichier a echoue. Verifiez sa taille et reessayez.',
+        'text' => 'Le transfert du fichier a échoué. Vérifiez sa taille et réessayez.',
         'context' => 'Validation error for a failed or incomplete meeting attachment upload.',
     ],
     'calendar.create.error.document_url' => [
@@ -430,10 +431,10 @@ if ($organizationId <= 0 || $currentUserId <= 0) {
         header('Content-Type: application/json; charset=UTF-8');
         echo json_encode([
             'status' => false,
-            'message' => 'Accès refusé.',
+            'message' => omoCalendarUiT('acces_refuse'),
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     } else {
-        echo '<div class="omo-empty-state">Accès refusé.</div>';
+        echo ('<div class="omo-empty-state">' . htmlspecialchars(omoCalendarUiT('acces_refuse'), ENT_QUOTES, 'UTF-8') . '</div>');
     }
     exit;
 }
@@ -445,10 +446,10 @@ if (!$organization->load($organizationId) || !$organization->canViewDetail()) {
         header('Content-Type: application/json; charset=UTF-8');
         echo json_encode([
             'status' => false,
-            'message' => 'Organisation invalide.',
+            'message' => omoCalendarUiT('organisation_invalide'),
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     } else {
-        echo '<div class="omo-empty-state">Organisation invalide.</div>';
+        echo ('<div class="omo-empty-state">' . htmlspecialchars(omoCalendarUiT('organisation_invalide'), ENT_QUOTES, 'UTF-8') . '</div>');
     }
     exit;
 }
@@ -514,10 +515,10 @@ if ($eventId > 0) {
             header('Content-Type: application/json; charset=UTF-8');
             echo json_encode([
                 'status' => false,
-                'message' => 'Événement invalide.',
+                'message' => omoCalendarUiT('evenement_invalide'),
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         } else {
-            echo '<div class="omo-empty-state">Événement invalide.</div>';
+            echo ('<div class="omo-empty-state">' . htmlspecialchars(omoCalendarUiT('evenement_invalide'), ENT_QUOTES, 'UTF-8') . '</div>');
         }
         exit;
     }
@@ -633,10 +634,10 @@ if (!$isEditMode && !$canCreateEvent) {
         header('Content-Type: application/json; charset=UTF-8');
         echo json_encode([
             'status' => false,
-            'message' => 'Accès refusé.',
+            'message' => omoCalendarUiT('acces_refuse'),
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     } else {
-        echo '<div class="omo-empty-state">Accès refusé.</div>';
+        echo ('<div class="omo-empty-state">' . htmlspecialchars(omoCalendarUiT('acces_refuse'), ENT_QUOTES, 'UTF-8') . '</div>');
     }
     exit;
 }
@@ -988,7 +989,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             http_response_code(403);
             echo json_encode([
                 'status' => false,
-                'message' => 'Accès refusé.',
+                'message' => omoCalendarUiT('acces_refuse'),
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         }
@@ -1060,7 +1061,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ) {
             echo json_encode([
                 'status' => false,
-                'message' => 'Modèle de document invalide ou inaccessible.',
+                'message' => omoCalendarUiT('modele_de_document_invalide_ou_inaccessible'),
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         }

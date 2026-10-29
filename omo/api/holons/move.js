@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 window.commonPageScripts = window.commonPageScripts || {};
 window.commonPageScripts["/omo/api/holons/move.js"] = function (pageConfig, pageScript) {
 (() => {
@@ -95,9 +97,9 @@ function updateSubmitState() {
 
     if (elements.hint) {
         if (selectedId <= 0) {
-            elements.hint.textContent = 'Choisissez une destination valide.';
+            elements.hint.textContent = omoUiText("choisissez_une_destination_valide", "Choisissez une destination valide.");
         } else if (selectedId === currentParentId) {
-            elements.hint.textContent = 'Selectionnez un autre parent pour activer le deplacement.';
+            elements.hint.textContent = omoUiText("selectionnez_un_autre_parent_pour_activer_le_deplacement", "Sélectionnez un autre parent pour activer le déplacement.");
         } else {
             elements.hint.textContent = '';
         }
@@ -113,7 +115,7 @@ function renderDestinations() {
     if (!destinations.length) {
         const option = document.createElement('option');
         option.value = '';
-        option.textContent = 'Aucune destination correspondante';
+        option.textContent = omoUiText("aucune_destination_correspondante", "Aucune destination correspondante");
         option.disabled = true;
         option.selected = true;
         elements.destination.appendChild(option);
@@ -149,12 +151,12 @@ function submitMove(event) {
     const currentParentId = getCurrentParentId();
 
     if (targetParentId <= 0) {
-        showStatus('Choisissez une destination valide.', 'error');
+        showStatus(omoUiText("choisissez_une_destination_valide", "Choisissez une destination valide."), 'error');
         return;
     }
 
     if (targetParentId === currentParentId) {
-showStatus('Sélectionnez un autre parent avant de déplacer cet espace.', 'error');
+showStatus(omoUiText("selectionnez_un_autre_parent_avant_de_deplacer_cet_espace", "Sélectionnez un autre parent avant de déplacer cet espace."), 'error');
         return;
     }
 
@@ -184,7 +186,7 @@ showStatus('Sélectionnez un autre parent avant de déplacer cet espace.', 'erro
         })
         .then(function (result) {
             if (!result.ok || !result.data || result.data.status !== 'ok') {
-throw new Error(result.data && result.data.message ? result.data.message : "Impossible de déplacer l’espace.");
+throw new Error(result.data && result.data.message ? result.data.message : omoUiText("impossible_de_deplacer_l_espace", "Impossible de déplacer l’espace."));
             }
 
             const movedHolonId = Number(result.data.holon && result.data.holon.id || state.data.holonId || 0);
@@ -222,7 +224,7 @@ throw new Error(result.data && result.data.message ? result.data.message : "Impo
                 elements.submit.disabled = false;
             }
 
-showStatus(error && error.message ? error.message : "Impossible de déplacer l’espace.", 'error');
+showStatus(error && error.message ? error.message : omoUiText("impossible_de_deplacer_l_espace", "Impossible de déplacer l’espace."), 'error');
         });
 }
 

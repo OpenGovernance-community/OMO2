@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 use dbObject\Organization;
@@ -11,7 +12,7 @@ if ($organizationId <= 0) {
     echo json_encode(
         array(
             'status' => 'error',
-            'message' => "Aucune organisation n'est sélectionnée.",
+            'message' => omoOrganizationsUiT('aucune_organisation_n_est_selectionnee'),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -24,7 +25,7 @@ if (!$organization->load($organizationId)) {
     echo json_encode(
         array(
             'status' => 'error',
-            'message' => "L'organisation demandée est introuvable.",
+            'message' => omoOrganizationsUiT('l_organisation_demandee_est_introuvable'),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -37,7 +38,7 @@ if (!is_array($payload)) {
     echo json_encode(
         array(
             'status' => 'error',
-            'message' => 'La requête envoyée est invalide.',
+            'message' => omoOrganizationsUiT('la_requete_envoyee_est_invalide'),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -51,7 +52,7 @@ if (!($result['status'] ?? false)) {
     echo json_encode(
         array(
             'status' => 'error',
-            'message' => (string)($result['message'] ?? "L'initialisation de l'organisation a échoué."),
+            'message' => (string)($result['message'] ?? omoOrganizationsUiT('l_initialisation_de_l_organisation_a_echoue')),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -63,7 +64,7 @@ $rootHolon = $result['rootHolon'] ?? null;
 echo json_encode(
     array(
         'status' => 'ok',
-        'message' => (string)($result['message'] ?? 'Organisation initialisée.'),
+        'message' => (string)($result['message'] ?? omoOrganizationsUiT('organisation_initialisee')),
         'rootHolon' => $rootHolon
             ? array(
                 'id' => (int)$rootHolon->getId(),

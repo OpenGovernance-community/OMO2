@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
 require_once __DIR__ . '/bootstrap.php';
 
 header('Content-Type: application/json; charset=UTF-8');
@@ -11,7 +12,7 @@ $level = (int)($_POST['level'] ?? 0);
 if ($currentUserId <= 0 || $organizationId <= 0 || !commonCurrentUserHasOrganizationAccess($organizationId)) {
 	echo json_encode([
 		'status' => false,
-		'message' => 'Validation impossible dans ce contexte.',
+		'message' => omoInterfaceUiT('validation_impossible_dans_ce_contexte'),
 	], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	exit;
 }

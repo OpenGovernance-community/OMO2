@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 use dbObject\Document;
@@ -26,7 +27,7 @@ if (
     http_response_code(403);
     echo json_encode(array(
         'status' => false,
-        'message' => 'Accès refusé.',
+        'message' => omoDocumentsUiT('acces_refuse'),
     ));
     exit;
 }
@@ -36,7 +37,7 @@ if (!$shareLink) {
     http_response_code(404);
     echo json_encode(array(
         'status' => false,
-        'message' => 'Lien introuvable.',
+        'message' => omoDocumentsUiT('lien_introuvable'),
     ));
     exit;
 }
@@ -48,12 +49,12 @@ if (!is_array($result) || empty($result['status'])) {
     http_response_code(422);
     echo json_encode(array(
         'status' => false,
-        'message' => 'Suppression impossible.',
+        'message' => omoDocumentsUiT('suppression_impossible'),
     ));
     exit;
 }
 
 echo json_encode(array(
     'status' => true,
-    'message' => 'Lien supprimé.',
+    'message' => omoDocumentsUiT('lien_supprime'),
 ));

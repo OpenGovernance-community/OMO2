@@ -3,6 +3,16 @@ namespace dbObject;
 
 class Rule extends DbObject
 {
+        protected static function uiMessageSourceLang(): array
+        {
+            return [
+                'la_portee_de_la_regle_est_invalide' => ['text' => 'La portée de la règle est invalide.', 'context' => 'Validation or action feedback for rule.'],
+                'le_domaine_d_autorite_doit_etre_actif_et_rattache_a_cet_espace' => ['text' => 'Le domaine d’autorité doit être actif et rattaché à cet espace.', 'context' => 'Validation or action feedback for rule.'],
+                'un_domaine_d_autorite_est_obligatoire_pour_cette_portee' => ['text' => 'Un domaine d’autorité est obligatoire pour cette portée.', 'context' => 'Validation or action feedback for rule.'],
+                'la_valeur_choisie_doit_appartenir_a_cette_organisation' => ['text' => 'La valeur choisie doit appartenir à cette organisation.', 'context' => 'Validation or action feedback for rule.'],
+            ];
+        }
+
 	protected $preserveImportedAuditMetadata = false;
 	protected $auditUserIdOverride = null;
 
@@ -164,16 +174,16 @@ class Rule extends DbObject
     public static function validateScopeAttachment($scope, ?Holon $holon, $authorityId = 0): array
     {
         if (!in_array($scope, self::scopes(), true)) {
-            return ['status' => false, 'text' => 'La portée de la règle est invalide.'];
+            return ['status' => false, 'text' => self::uiMessage('la_portee_de_la_regle_est_invalide')];
         }
         $context = self::getScopeContext($holon);
         if ((int)$authorityId > 0) {
             if (!in_array((int)$authorityId, array_column($context['authorities'], 'id'), true)) {
-                return ['status' => false, 'text' => 'Le domaine d’autorité doit être actif et rattaché à cet espace.'];
+                return ['status' => false, 'text' => self::uiMessage('le_domaine_d_autorite_doit_etre_actif_et_rattache_a_cet_espace')];
             }
         } elseif ($context['usesAuthorities'] && ($scope === self::SCOPE_GLOBAL || $scope === self::SCOPE_DESCENDANTS
             || ($scope === self::SCOPE_CIRCLE && $context['isRole']))) {
-            return ['status' => false, 'text' => 'Un domaine d’autorité est obligatoire pour cette portée.'];
+            return ['status' => false, 'text' => self::uiMessage('un_domaine_d_autorite_est_obligatoire_pour_cette_portee')];
         }
         return ['status' => true];
     }
@@ -265,7 +275,7 @@ class Rule extends DbObject
         $this->set('IDorganization', $organizationId);
         $valueId = (int)$this->get('IDvaleur');
         if ($valueId > 0 && !Valeur::loadInOrganization($valueId, $organizationId)) {
-            return ['status' => false, 'text' => 'La valeur choisie doit appartenir a cette organisation.'];
+            return ['status' => false, 'text' => self::uiMessage('la_valeur_choisie_doit_appartenir_a_cette_organisation')];
         }
         $this->set('IDvaleur', $valueId > 0 ? $valueId : null);
 

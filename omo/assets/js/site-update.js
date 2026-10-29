@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 (function () {
     function escapeHtml(value) {
         return String(value || '')
@@ -25,7 +27,7 @@
         }
 
         try {
-            return new Intl.DateTimeFormat('fr-CH', {
+            return new Intl.DateTimeFormat((window.omoConfig && window.omoConfig.translationLocale) || document.documentElement.lang || 'fr-CH', {
                 dateStyle: 'medium',
                 timeStyle: 'short'
             }).format(parsed);
@@ -47,16 +49,16 @@
         root.innerHTML = [
             '<div class="omo-site-update-banner__card">',
             '  <div class="omo-site-update-banner__copy">',
-            '    <div class="omo-site-update-banner__eyebrow">Admin du site</div>',
+            ("    <div class=\"omo-site-update-banner__eyebrow\">" + omoUiHtml("admin_du_site", "Admin du site") + "</div>"),
             '    <strong class="omo-site-update-banner__title"></strong>',
             '    <p class="omo-site-update-banner__message"></p>',
             '    <div class="omo-site-update-banner__meta"></div>',
             '    <div class="omo-site-update-banner__local-changes" hidden></div>',
             '  </div>',
             '  <div class="omo-site-update-banner__actions">',
-            '    <button type="button" class="omo-site-update-banner__button omo-site-update-banner__button--secondary" data-omo-site-update-dismiss>Ignorer</button>',
-            '    <button type="button" class="omo-site-update-banner__button omo-site-update-banner__button--main" data-omo-site-update-run>Installer</button>',
-            '    <button type="button" class="omo-site-update-banner__button omo-site-update-banner__button--force" data-omo-site-update-force hidden>Forcer la mise a jour</button>',
+            ("    <button type=\"button\" class=\"omo-site-update-banner__button omo-site-update-banner__button--secondary\" data-omo-site-update-dismiss>" + omoUiHtml("ignorer", "Ignorer") + "</button>"),
+            ("    <button type=\"button\" class=\"omo-site-update-banner__button omo-site-update-banner__button--main\" data-omo-site-update-run>" + omoUiHtml("installer", "Installer") + "</button>"),
+            ("    <button type=\"button\" class=\"omo-site-update-banner__button omo-site-update-banner__button--force\" data-omo-site-update-force hidden>" + omoUiHtml("forcer_la_mise_a_jour", "Forcer la mise à jour") + "</button>"),
             '  </div>',
             '</div>'
         ].join('');
@@ -226,13 +228,13 @@
         }
 
         if (behindCount > 0) {
-            pills.push('<span class="omo-site-update-banner__pill">' + escapeHtml(behindCount + (behindCount > 1 ? ' versions' : ' version')) + '</span>');
+            pills.push('<span class="omo-site-update-banner__pill">' + escapeHtml(behindCount + (behindCount > 1 ? ' versions' : omoUiText("version", " version"))) + '</span>');
         }
 
         if (remoteDate) {
-            pills.push('<span class="omo-site-update-banner__pill">' + escapeHtml('Derniere version: ' + remoteDate) + '</span>');
+            pills.push('<span class="omo-site-update-banner__pill">' + escapeHtml(omoUiText("derniere_version", "Dernière version: ") + remoteDate) + '</span>');
         } else if (localDate) {
-            pills.push('<span class="omo-site-update-banner__pill">' + escapeHtml('Version installee: ' + localDate) + '</span>');
+            pills.push('<span class="omo-site-update-banner__pill">' + escapeHtml(omoUiText("version_installee", "Version installée: ") + localDate) + '</span>');
         } else if (localCommit) {
             pills.push('<span class="omo-site-update-banner__pill">' + escapeHtml(localCommit) + '</span>');
         }
@@ -271,7 +273,7 @@
             return '';
         }
 
-        var title = changes.length + (changes.length > 1 ? ' fichiers locaux detectes' : ' fichier local detecte');
+        var title = changes.length + (changes.length > 1 ? ' fichiers locaux detectes' : omoUiText("fichier_local_detecte", " fichier local detecte"));
         if (overlapCount > 0) {
             title += '. ' + overlapCount + (overlapCount > 1 ? ' sont aussi modifies par le patch distant.' : ' est aussi modifie par le patch distant.');
         }
@@ -329,7 +331,7 @@
         if (forceButton) {
             forceButton.hidden = options.showForce !== true;
             forceButton.disabled = options.forceDisabled === true;
-            forceButton.textContent = options.forceLabel || 'Forcer la mise a jour';
+            forceButton.textContent = options.forceLabel || "Forcer la mise à jour";
         }
 
         if (dismissButton) {
@@ -378,8 +380,8 @@
                 if (payload.updating === true) {
                     setBannerState(root, {
                         type: '',
-                        title: 'Mise a jour en cours',
-                        message: payload.message || 'Un autre admin est en train de synchroniser le site.',
+                        title: omoUiText("mise_a_jour_en_cours", "Mise à jour en cours"),
+                        message: payload.message || omoUiText("un_autre_admin_est_en_train_de_synchroniser_le_site", "Un autre admin est en train de synchroniser le site."),
                         metaHtml: renderMeta(payload),
                         showRun: false,
                         showDismiss: true
@@ -391,11 +393,11 @@
                     completeOnly = true;
                     setBannerState(root, {
                         type: 'error',
-                        title: 'Finaliser la mise a jour',
-                        message: 'Installer les dependances PHP et executer les migrations pour le code deja present sur le serveur.',
+                        title: omoUiText("finaliser_la_mise_a_jour", "Finaliser la mise à jour"),
+                        message: omoUiText("installer_les_dependances_php_et_executer_les_migrations_pour_le_code_deja_present_sur_le", "Installer les dépendances PHP et executer les migrations pour le code déjà présent sur le serveur."),
                         metaHtml: renderMeta(payload),
                         showRun: true,
-                        runLabel: 'Finaliser',
+                        runLabel: omoUiText("finaliser", "Finaliser"),
                         showDismiss: true
                     });
                     return;
@@ -409,8 +411,8 @@
                     if (hasUntrackedOverlap) {
                         setBannerState(root, {
                             type: 'error',
-                            title: 'Fichiers locaux en conflit',
-                            message: 'Vous pouvez forcer la mise a jour. Les fichiers identiques a la version distante ne seront pas sauvegardes ; seules les differences seront sauvegardees avant remplacement.',
+                            title: omoUiText("fichiers_locaux_en_conflit", "Fichiers locaux en conflit"),
+                            message: omoUiText("vous_pouvez_forcer_la_mise_a_jour_les_fichiers_identiques_a_la_version_distante_ne_seront", "Vous pouvez forcer la mise à jour. Les fichiers identiques à la version distante ne seront pas sauvegardés ; seules les différences seront sauvegardées avant remplacement."),
                             metaHtml: renderMeta(payload),
                             localChangesHtml: renderLocalChanges(payload),
                             showRun: false,
@@ -424,8 +426,8 @@
                     if (hasTrackedChanges) {
                         setBannerState(root, {
                             type: 'error',
-                            title: 'Modifications locales detectees',
-                            message: 'La mise a jour est bloquee pour proteger ces modifications. Verifiez la liste avant de forcer la synchronisation.',
+                            title: omoUiText("modifications_locales_detectees", "Modifications locales détectées"),
+                            message: omoUiText("la_mise_a_jour_est_bloquee_pour_proteger_ces_modifications_verifiez_la_liste_avant_de_forc", "La mise à jour est bloquée pour protéger ces modifications. Vérifiez la liste avant de forcer la synchronisation."),
                             metaHtml: renderMeta(payload),
                             localChangesHtml: renderLocalChanges(payload),
                             showRun: false,
@@ -438,13 +440,13 @@
 
                     setBannerState(root, {
                         type: '',
-                        title: behindCount > 1 ? (behindCount + ' mises a jour disponibles') : 'Nouvelle version disponible',
-                        message: payload.message || payload.remoteHeadline || 'Une version plus recente du site peut etre installee maintenant.',
+                        title: behindCount > 1 ? (behindCount + omoUiText("mises_a_jour_disponibles", " mises à jour disponibles")) : omoUiText("nouvelle_version_disponible", "Nouvelle version disponible"),
+                        message: payload.message || payload.remoteHeadline || omoUiText("une_version_plus_recente_du_site_peut_etre_installee_maintenant", "Une version plus récente du site peut être installée maintenant."),
                         metaHtml: renderMeta(payload),
                         localChangesHtml: renderLocalChanges(payload),
                         showRun: true,
                         runDisabled: false,
-                        runLabel: 'Installer',
+                        runLabel: omoUiText("installer", "Installer"),
                         showDismiss: true
                     });
                     return;
@@ -470,26 +472,26 @@
             if (force === true) {
                 var trackedCount = lastPayload && lastPayload.trackedLocalChangeCount ? Number(lastPayload.trackedLocalChangeCount) : 0;
                 var untrackedCount = lastPayload && lastPayload.untrackedOverlappingLocalChangeCount ? Number(lastPayload.untrackedOverlappingLocalChangeCount) : 0;
-                var warning = 'Cette action synchronisera le site avec la version distante : ' + trackedCount + ' fichiers suivis modifies et ' + untrackedCount + ' fichiers non suivis en conflit. Les contenus identiques ne seront pas sauvegardes. Les contenus differents seront sauvegardes hors du dossier public avant remplacement. Les fichiers non suivis sans conflit seront conserves. Continuer ?';
+                var warning = omoUiText("cette_action_synchronisera_le_site_avec_la_version_distante", "Cette action synchronisera le site avec la version distante : ") + trackedCount + ' fichiers suivis modifies et ' + untrackedCount + omoUiText("fichiers_non_suivis_en_conflit_les_contenus_identiques_ne_seront_pas_sauvegardes_les_conte", " fichiers non suivis en conflit. Les contenus identiques ne seront pas sauvegardés. Les contenus différents seront sauvegardes hors du dossier public avant remplacement. Les fichiers non suivis sans conflit seront conservés. Continuer ?");
                 if (!window.confirm(warning)) {
                     return;
                 }
-            } else if (!window.confirm(completeOnly ? 'Installer les dependances et appliquer les migrations du code actuel ?' : 'Installer la nouvelle version du site maintenant ?')) {
+            } else if (!window.confirm(completeOnly ? omoUiText("installer_les_dependances_et_appliquer_les_migrations_du_code_actuel", "Installer les dépendances et appliquer les migrations du code actuel ?") : omoUiText("installer_la_nouvelle_version_du_site_maintenant", "Installer la nouvelle version du site maintenant ?"))) {
                 return;
             }
 
             setBannerState(root, {
                 type: '',
-                title: 'Mise a jour en cours',
-                message: completeOnly ? 'Installation des dependances et execution des migrations SQL...' : 'Synchronisation du code et execution des migrations SQL...',
+                title: omoUiText("mise_a_jour_en_cours", "Mise à jour en cours"),
+                message: completeOnly ? omoUiText("installation_des_dependances_et_execution_des_migrations_sql", "Installation des dépendances et exécution des migrations SQL...") : omoUiText("synchronisation_du_code_et_execution_des_migrations_sql", "Synchronisation du code et exécution des migrations SQL..."),
                 metaHtml: renderMeta(lastPayload || {}),
                 localChangesHtml: renderLocalChanges(lastPayload || {}),
                 showRun: !force,
                 runDisabled: true,
-                runLabel: 'Installation...',
+                runLabel: omoUiText("installation", "Installation..."),
                 showForce: force,
                 forceDisabled: true,
-                forceLabel: 'Installation...',
+                forceLabel: omoUiText("installation", "Installation..."),
                 showDismiss: false
             });
 
@@ -512,7 +514,7 @@
                 return response.json().catch(function () {
                     return {
                         status: false,
-                        message: 'Reponse invalide.'
+                        message: omoUiText("reponse_invalide", "Réponse invalide.")
                     };
                 });
             })
@@ -521,8 +523,8 @@
                     lastPayload = payload;
                     setBannerState(root, {
                         type: 'error',
-                        title: 'Modifications locales detectees',
-                        message: payload.message || 'La mise a jour est bloquee pour proteger les modifications locales.',
+                        title: omoUiText("modifications_locales_detectees", "Modifications locales détectées"),
+                        message: payload.message || omoUiText("la_mise_a_jour_est_bloquee_pour_proteger_les_modifications_locales", "La mise à jour est bloquée pour protéger les modifications locales."),
                         metaHtml: renderMeta(payload),
                         localChangesHtml: renderLocalChanges(payload),
                         showRun: false,
@@ -537,8 +539,8 @@
                     lastPayload = payload;
                     setBannerState(root, {
                         type: 'error',
-                        title: 'Fichiers non suivis a proteger',
-                        message: payload.message || 'Des fichiers non suivis doivent etre deplaces ou supprimes avant la mise a jour.',
+                        title: omoUiText("fichiers_non_suivis_a_proteger", "Fichiers non suivis a protéger"),
+                        message: payload.message || omoUiText("des_fichiers_non_suivis_doivent_etre_deplaces_ou_supprimes_avant_la_mise_a_jour", "Des fichiers non suivis doivent être déplacés ou supprimés avant la mise à jour."),
                         metaHtml: renderMeta(payload),
                         localChangesHtml: renderLocalChanges(payload),
                         showRun: false,
@@ -549,13 +551,13 @@
                 }
 
                 if (!payload || payload.status !== true) {
-                    throw new Error(payload && payload.message ? payload.message : 'La mise a jour a echoue.');
+                    throw new Error(payload && payload.message ? payload.message : omoUiText("la_mise_a_jour_a_echoue", "La mise à jour a échoué."));
                 }
 
                 setBannerState(root, {
                     type: 'success',
-                    title: payload.updated === false ? 'Site deja a jour' : 'Mise a jour terminee',
-                    message: payload.message || payload.localHeadline || 'La mise a jour du site est terminee.',
+                    title: payload.updated === false ? omoUiText("site_deja_a_jour", "Site déjà à jour") : omoUiText("mise_a_jour_terminee", "Mise à jour terminée"),
+                    message: payload.message || payload.localHeadline || omoUiText("la_mise_a_jour_du_site_est_terminee", "La mise à jour du site est terminée."),
                     metaHtml: renderMeta(payload),
                     showRun: false,
                     showForce: false,
@@ -575,16 +577,16 @@
             .catch(function (error) {
                 setBannerState(root, {
                     type: 'error',
-                    title: 'Mise a jour impossible',
-                    message: error && error.message ? error.message : 'La mise a jour du site a echoue.',
+                    title: omoUiText("mise_a_jour_impossible", "Mise à jour impossible"),
+                    message: error && error.message ? error.message : omoUiText("la_mise_a_jour_du_site_a_echoue", "La mise à jour du site a échoué."),
                     metaHtml: renderMeta(lastPayload || {}),
                     localChangesHtml: renderLocalChanges(lastPayload || {}),
                     showRun: !force,
                     runDisabled: false,
-                    runLabel: 'Reessayer',
+                    runLabel: omoUiText("reessayer", "Réessayer"),
                     showForce: force,
                     forceDisabled: false,
-                    forceLabel: 'Forcer la mise a jour',
+                    forceLabel: omoUiText("forcer_la_mise_a_jour", "Forcer la mise à jour"),
                     showDismiss: true
                 });
             });

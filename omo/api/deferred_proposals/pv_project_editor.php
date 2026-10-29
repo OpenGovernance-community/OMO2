@@ -16,7 +16,7 @@ $sourceLang = [
     'denied' => ['text' => 'Accès refusé.', 'context' => 'Deferred project proposal forbidden error'],
     'unavailable' => ['text' => 'Cette modification ne peut plus être modifiée.', 'context' => 'Deferred project proposal unavailable error'],
     'save' => ['text' => 'Enregistrer la modification', 'context' => 'Deferred project proposal save button'],
-    'create' => ['text' => 'Creer le projet', 'context' => 'Deferred project creation submit button'],
+    'create' => ['text' => 'Créer le projet', 'context' => 'Deferred project creation submit button'],
     'propose' => ['text' => 'Proposer le projet', 'context' => 'Deferred project proposal submit button when only proposal permission is granted'],
     'cancel' => ['text' => 'Annuler', 'context' => 'Deferred project proposal cancel button'],
     'delete_intro' => ['text' => 'La suppression sera appliquée uniquement lorsque cette modification sera validée.', 'context' => 'Deferred project deletion confirmation intro'],
