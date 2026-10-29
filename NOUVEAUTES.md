@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- Holons / principes des valeurs (2026-10-29) : retrait de generic-form-stack du conteneur du principe ; paragraphes en flux normal avec une demi-ligne d espacement.
+
 - Connexion / renvoi de code (2026-10-29) : bouton desactive pendant 60 secondes apres chaque envoi, avec decompte visible et reprise du temps restant apres rechargement de la page.
 
 - Holons / presentation des regles associees (2026-10-29) : compteur integre sous forme de capsule arrondie compacte (padding reduit, hauteur 26 px) avec survol discret, masque en l absence de regles ; marges uniformes et espacement resserre des cartes dans la popup.

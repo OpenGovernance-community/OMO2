@@ -48,5 +48,6 @@ function omoRuleValueRender(?\dbObject\Valeur $value, bool $showRules = false): 
     }
     return '<details class="generic-accordion generic-accordion--inset"><summary>'
         . htmlspecialchars((string)$value->get('title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
-        . '</summary><div class="generic-section generic-section--plain generic-form-stack">' . \dbObject\PropertyFormat::sanitizeHtml($value->get('principle')) . $rulesLink . '</div></details>';
+        . '</summary><div class="generic-section generic-section--plain generic-rich-text">'
+        . \dbObject\PropertyFormat::sanitizeHtml($value->get('principle')) . $rulesLink . '</div></details>';
 }
