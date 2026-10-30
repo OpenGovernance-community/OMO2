@@ -8,13 +8,26 @@ require_once dirname(__DIR__, 4) . '/common/pv_meeting_permissions.php';
 
 header('Content-Type: application/json; charset=UTF-8');
 
-$sourceLang = omoDocumentsPvEditorSourceLang();
-$lang = omoLoadTranslationBundle('omo_documents_pv_editor', $sourceLang);
+$sourceLang = null;
+$lang = null;
 
 function omoDocumentsPvEditorActionT($key, array $replace = [])
 {
     global $lang, $sourceLang;
+    if ($lang === null) {
+        $sourceLang = omoDocumentsPvEditorSourceLang();
+        $lang = omoLoadTranslationBundle('omo_documents_pv_editor', $sourceLang);
+    }
     return t($key, $replace, $lang, $sourceLang);
+}
+
+/** A response is a read phase, including after a successful POST mutation. */
+function omoDocumentsPvEditorPrepareResponseReads(): void
+{
+    if (!\dbObject\DbObject::isReadOnlyMemoizationEnabled()) {
+        \dbObject\DbObject::enableReadOnlyMemoization();
+    }
+    // The shared dbObject write path clears this snapshot if another write follows.
 }
 
 function omoDocumentsPvEditorJsonResponse(array $payload, int $statusCode = 200): void
@@ -114,6 +127,7 @@ function omoDocumentsPvEditorBuildLockPayload(array $lockResult, string $lockTok
 
 function omoDocumentsPvEditorBuildPointResponsePayload(\dbObject\DocumentPvPoint $point, int $organizationId, int $currentUserId, ?\dbObject\DocumentShareLink $publicParticipationLink = null): array
 {
+    omoDocumentsPvEditorPrepareResponseReads();
     $uiText = omoDocumentsPvEditorBuildUiText(
         'omoDocumentsPvEditorActionT',
         omoDocumentsPvEditorGetOrganizationPriorityLabels($organizationId)
@@ -165,6 +179,7 @@ function omoDocumentsPvEditorBuildPointResponsePayload(\dbObject\DocumentPvPoint
 
 function omoDocumentsPvEditorBuildPointsPayloadForDocument(int $documentId, int $organizationId, int $currentUserId, string $lockToken = '', ?\dbObject\DocumentShareLink $publicParticipationLink = null): array
 {
+    omoDocumentsPvEditorPrepareResponseReads();
     $uiText = omoDocumentsPvEditorBuildUiText(
         'omoDocumentsPvEditorActionT',
         omoDocumentsPvEditorGetOrganizationPriorityLabels($organizationId)
@@ -225,6 +240,7 @@ function omoDocumentsPvEditorBuildPointsPayloadForDocument(int $documentId, int 
 
 function omoDocumentsPvEditorBuildDocumentPayload(\dbObject\Document $document, int $organizationId, int $currentUserId, ?\dbObject\DocumentShareLink $publicParticipationLink = null): array
 {
+    omoDocumentsPvEditorPrepareResponseReads();
     $stageUserId = $publicParticipationLink instanceof \dbObject\DocumentShareLink
         ? commonPvParticipationRecipientOrganizationUserId($publicParticipationLink, $organizationId)
         : $currentUserId;
@@ -370,6 +386,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
 }
 
 $action = trim((string)($_POST['action'] ?? ''));
+if ($action === 'poll_updates') {
+    // This POST only reads; never enable a snapshot around mutation validation.
+    omoDocumentsPvEditorPrepareResponseReads();
+}
 $documentId = isset($_POST['document_id']) ? (int)$_POST['document_id'] : 0;
 $organizationId = isset($_POST['oid']) ? (int)$_POST['oid'] : (int)($_SESSION['currentOrganization'] ?? 0);
 $currentUserId = (int)commonGetCurrentUserId();
@@ -464,12 +484,12 @@ if (
         'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
     ], 403);
 }
-if ($document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW) {
+if ($document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW && $action !== 'poll_updates') {
     $reviewAllowedActions = ['lock_point', 'unlock_point', 'take_over_point_lock', 'save_point', 'update_stage', 'poll_updates'];
     $canManageReviewAction = $isPublicParticipation
         ? ($action === 'update_stage' && $document->canManagePvStage($organizationId, $publicParticipationUserId))
         : $document->canUserManagePvDocument($currentUserId);
-    if (!in_array($action, $reviewAllowedActions, true) || ($action !== 'poll_updates' && !$canManageReviewAction)) {
+    if (!in_array($action, $reviewAllowedActions, true) || !$canManageReviewAction) {
         omoDocumentsPvEditorJsonResponse([
             'status' => false,
             'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
@@ -558,6 +578,10 @@ if ($action === 'poll_updates') {
 
     $hasTeamApplication = omoDocumentsPvEditorOrganizationHasApplication($organizationId, $currentUserId, 'team');
     $showPublicAttendance = $isPublicParticipation;
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        if ($currentUserId > 0) commonGetCurrentUserOrganizationPermissionSet();
+        session_write_close();
+    }
     omoDocumentsPvEditorJsonResponse([
         'status' => true,
         'unchanged' => false,
