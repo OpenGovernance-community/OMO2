@@ -476,8 +476,8 @@
 			return $metadata;
 		}
 
-		protected static function getSqlPerformanceCaller() {
-			$trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 12);
+		protected static function getSqlPerformanceCaller(?array $trace = null) {
+			$trace ??= debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 12);
 			$currentFile = realpath(__FILE__);
 			foreach ($trace as $frame) {
 				$file = isset($frame["file"]) ? realpath((string)$frame["file"]) : false;
@@ -545,14 +545,12 @@
 				register_shutdown_function(array(self::class, "writeSqlPerformanceRequestSummary"));
 			}
 
-			$sql = self::sanitizeSqlForPerformanceLog($query);
+			// Keep the call site, but format diagnostics only if the query will be logged.
 			return array(
-				"startedAtNs" => hrtime(true),
-				"sql" => $sql,
-				"fingerprint" => self::getSqlPerformanceFingerprint($sql),
-				"queryType" => self::getSqlPerformanceQueryType($sql),
+				"query" => (string)$query,
 				"parameters" => self::getSqlPerformanceParameterMetadata($params),
-				"caller" => self::getSqlPerformanceCaller(),
+				"trace" => debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 12),
+				"startedAtNs" => hrtime(true),
 			);
 		}
 
@@ -576,20 +574,21 @@
 			}
 
 			self::$_sqlPerformanceStats["loggedQueryCount"]++;
+			$sql = self::sanitizeSqlForPerformanceLog($profile["query"]);
 			$payload = array(
 				"event" => "query",
 				"time" => date("c"),
 				"request_id" => self::getSqlPerformanceRequestId(),
 				"duration_ms" => round($durationMs, 3),
 				"operation" => (string)$operation,
-				"query_type" => (string)$profile["queryType"],
-				"fingerprint" => (string)$profile["fingerprint"],
-				"sql" => (string)$profile["sql"],
+				"query_type" => self::getSqlPerformanceQueryType($sql),
+				"fingerprint" => self::getSqlPerformanceFingerprint($sql),
+				"sql" => $sql,
 				"parameter_count" => count($profile["parameters"]),
 				"parameters" => $profile["parameters"],
 				"success" => (bool)$success,
 				"row_count" => is_null($rowCount) ? null : (int)$rowCount,
-				"caller" => $profile["caller"],
+				"caller" => self::getSqlPerformanceCaller($profile["trace"]),
 				"request_path" => self::getSqlPerformanceRequestPath(),
 				"method" => (string)($_SERVER["REQUEST_METHOD"] ?? ""),
 				"script" => (string)($_SERVER["SCRIPT_NAME"] ?? ""),

@@ -529,6 +529,34 @@ class EventRecurrence extends DbObject
             ['series' => $this->getId(), 'position' => (int)$event->get('recurrence_position'), 'now' => new \DateTimeImmutable()]);
     }
 
+    /** One lookup per batch instead of one per occurrence and calendar scope. */
+    public static function followingByEvent(array $events): array
+    {
+        $seriesIds = [];
+        foreach ($events as $event) {
+            if ($event instanceof Event && (int)$event->get('IDeventrecurrence') > 0) {
+                $seriesIds[(int)$event->get('IDeventrecurrence')] = (int)$event->get('IDeventrecurrence');
+            }
+        }
+        $positions = [];
+        $now = new \DateTimeImmutable();
+        foreach (array_chunk(array_values($seriesIds), 500) as $chunk) {
+            $rows = self::fetchAll('SELECT e.IDeventrecurrence, MAX(e.recurrence_position) AS last_position FROM event e
+                JOIN event_recurrence r ON r.id = e.IDeventrecurrence
+                WHERE e.IDeventrecurrence IN (' . implode(',', $chunk) . ') AND e.active = 1 AND e.end_at >= :now
+                GROUP BY e.IDeventrecurrence', ['now' => $now]);
+            if (!is_array($rows)) throw new \RuntimeException('Unable to load following occurrences.');
+            foreach ($rows as $row) $positions[(int)$row['IDeventrecurrence']] = $row['last_position'];
+        }
+        $result = [];
+        foreach ($events as $event) {
+            if (!$event instanceof Event) continue;
+            $last = $positions[(int)$event->get('IDeventrecurrence')] ?? null;
+            $result[(int)$event->getId()] = $last !== null && (int)$last > (int)$event->get('recurrence_position');
+        }
+        return $result;
+    }
+
     public function canManage(int $organizationId, int $userId, string $permission = 'CAN_EDIT_EVENT'): bool
     {
         if ($organizationId !== (int)$this->get('IDorganization') || $userId <= 0) { return false; }

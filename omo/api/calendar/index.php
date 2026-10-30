@@ -915,11 +915,17 @@ if (ExternalCalendar::isStorageAvailable()) {
     }
 }
 $eventIds = [];
+$nativeEvents = [];
 foreach ($events as $event) {
     if ($event instanceof Event && (int)$event->getId() > 0 && $event->isDraftVisibleToViewer($currentUserId)) {
         $eventIds[] = (int)$event->getId();
+        if (!isset($externalEventMetaByVirtualId[(int)$event->getId()])) $nativeEvents[] = $event;
     }
 }
+\dbObject\EventTimeBuffer::preloadForUser(array_map(static fn (Event $event) => (int)$event->getId(), $nativeEvents), $currentUserId);
+$followingByEventId = \dbObject\EventRecurrence::followingByEvent($nativeEvents);
+$personallyRelevantEventIds = array_fill_keys(array_map(static fn (Event $event) => (int)$event->getId(),
+    Event::filterInvitedForUser($nativeEvents, $currentUserId)), true);
 $associatedDocumentsByEventId = [];
 if ($eventIds !== []) {
     $associatedDocuments = new ArrayDocument();
@@ -1062,7 +1068,7 @@ foreach ($events as $event) {
         'editUrl' => (string)($externalMeta['editUrl'] ?? ''),
     ] : [];
     $isAllDay = (bool)$event->get('is_all_day');
-    $isPersonallyRelevant = $isExternalEvent || $event->isPersonallyRelevantToViewer($currentUserId, $organizationId);
+    $isPersonallyRelevant = $isExternalEvent || isset($personallyRelevantEventIds[$eventId]);
     [$preparationMinutes, $closingMinutes] = $isPersonallyRelevant ? $event->getTimeBuffers($currentUserId) : [0, 0];
     [$occupiedStart, $occupiedEnd] = $event->getBusyInterval($isPersonallyRelevant ? $currentUserId : 0) ?? [$startAt, $endAt];
     $isInCurrentContext = !$canToggleScope || $eventHolonId === 0 || $eventHolonId === $currentHolonId;
@@ -1072,7 +1078,7 @@ foreach ($events as $event) {
         || $event->canEditTimeBuffers($currentUserId));
     $canDeleteEvent = !$isExternalEvent
         && omoCalendarCanDeleteEvent($event, $organizationId, $currentUserId, $rootHolon, false);
-    $eventHasAssociatedDocuments = $canDeleteEvent && count($event->getAssociatedDocuments()) > 0;
+    $eventHasAssociatedDocuments = $canDeleteEvent && !empty($associatedDocumentsByEventId[$eventId]);
     $associatedDocumentOpenData = omoCalendarBuildAssociatedDocumentOpenData(
         $event,
         $associatedDocumentsByEventId[$eventId] ?? [],
@@ -1149,7 +1155,7 @@ foreach ($events as $event) {
                 'canDelete' => $canDeleteEvent,
                 'deleteUrl' => $eventDeleteUrl,
                 'isRecurring' => !$isExternalEvent && (int)$event->get('IDeventrecurrence') > 0,
-                'hasFollowing' => !$isExternalEvent && ($event->getRecurrence()?->hasFollowing($event) ?? false),
+                'hasFollowing' => !$isExternalEvent && ($followingByEventId[$eventId] ?? false),
                 'hasAssociatedDocuments' => $eventHasAssociatedDocuments,
                 'documentUrl' => $associatedDocumentOpenData['url'],
                 'documentTitle' => $associatedDocumentOpenData['title'],

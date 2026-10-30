@@ -4896,7 +4896,7 @@
 					['field' => 'IDholon_parent', 'value' => $parentId],
 				];
 				if (!$includeHidden) $where[] = ['field' => 'visible', 'value' => 1];
-				$children->load(['where' => $where]);
+				$children->loadHydrated(['where' => $where]);
 				return $children;
 			});
 		}
