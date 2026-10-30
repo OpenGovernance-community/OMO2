@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- Performance / pages courantes (2026-10-30) : lectures groupees des recurrences, invitations et temps personnels du calendrier, reutilisation des documents deja charges et hydratation directe des enfants des holons. Diagnostic SQL formate uniquement pour les requetes journalisees. En local, calendrier de 370 a 129 requetes et mediane de 294 a 164 ms ; scrutins de 142 a 78 requetes. Contenu, droits, sauvegardes et invalidation des caches verifies sous PHP 8.5 ; rapport global dans docs/performance/.
+
 - OMO / traductions (2026-10-29) : correction du français dans les écrans, les notifications et les formulaires ; raccordement des libellés et messages d’API manquants, des choix adminEdit et des outils JavaScript. Catalogues partagés, variables et pluriels traduisibles, langue des dates, de l’éditeur HTML et de la page hors ligne adaptée. Grands catalogues traduits par lots pour éviter les réponses tronquées. Contrôles sur la conservation des valeurs techniques et l’échappement HTML.
 
 - MCP / API / valeurs (2026-10-29) : catalogue de l organisation et filtre par holon (valeurs locales et heritees), lecture du principe actuel, navigation vers les regles associees et lecture de la valeur incarnee par une regle. Proprietes des holons resolues depuis les valeurs en base ; pagination, droits et isolation des organisations communs aux deux transports. Routes et schemas OpenAPI mis a jour ; tests HTTP REST/MCP, contrats et lectures existantes verifies.
