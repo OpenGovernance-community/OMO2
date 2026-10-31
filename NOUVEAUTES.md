@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- Accueil / survey (2026-10-31) : le lien du test de maturite organisationnelle utilise /survey/ sur le serveur courant au lieu du domaine local de developpement.
+
 - Calendrier / rendez-vous et CalDAV (2026-10-31) : correction de la plage demandee par /meeting/ en fin de mois ; les jours passes ne bloquent plus l affichage le 31 lorsque le cache couvre trente jours, avec conservation des temps personnels. Limite de decouverte CalDAV ramenee de quinze a dix minutes. Tests HTTP des imports, dates deplacees, disponibilites, cache, ecritures et refus 429 ; les transferts REPORT continuent pendant la limitation de decouverte.
 
 - PV / synchronisation et reponses des actions (2026-10-30) : reutilisation des lectures de hierarchie et de droits pendant le polling et la construction des reponses apres sauvegarde. Traductions chargees a la demande et session liberee avant les reponses completes. Sur un PV local de cinq points, synchronisation complete de 1 338 a 213 requetes, mediane HTTP de 1 339 a 185 ms ; JSON identique. Tests HTTPS des sauvegardes, verrous, liens publics, droits et revisions passes sous PHP 8.5.
