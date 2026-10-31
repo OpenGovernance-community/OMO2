@@ -24,7 +24,7 @@ function rateEndBurst(array $ticket): array
     mcpCheck(is_file($path), 'Only successful HTTP requests create a verified limit record.');
     $record = json_decode(file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
     $record['burst_until'] = time() - 1;
-    $record['expires_at'] = time() + 800;
+    $record['expires_at'] = time() + $ticket['window'] - 100;
     file_put_contents($path, json_encode($record, JSON_THROW_ON_ERROR), LOCK_EX);
     return $record;
 }
@@ -39,7 +39,7 @@ try {
     $principal = '/omo/api/caldav/principals/' . $items['user']->getId() . '/';
     $xml = '<d:propfind xmlns:d="DAV:"><d:prop><d:displayname/></d:prop></d:propfind>';
     $ticket = $tickets[] = rateTicket($items, $principal, 'PROPFIND', $xml);
-    mcpCheck($ticket !== null && $ticket['window'] === 900 && $ticket['burst'] === 30, 'Default policy is a 30-second burst inside a 15-minute window.');
+    mcpCheck($ticket !== null && $ticket['window'] === 600 && $ticket['burst'] === 30, 'Default policy is a 30-second burst inside a 10-minute window.');
     mcpCheck(CalDavRateLimit::inspect($ticket['key']) === null && !is_file(rateFile($ticket)), 'Unverified requests create no records.');
     $first = calendarCacheHttp($items, $principal, 'PROPFIND', $xml);
     $burst = calendarCacheHttp($items, $principal, 'PROPFIND', $xml);
@@ -47,7 +47,7 @@ try {
     $stored = rateEndBurst($ticket);
     $blocked = calendarCacheHttp($items, $principal, 'PROPFIND', $xml);
     mcpCheck($blocked['status'] === 429 && (int)$blocked['headers']['retry-after'] > 0
-        && (int)$blocked['headers']['retry-after'] <= 800 && str_contains($blocked['headers']['cache-control'], 'no-store'), 'Repeated discovery is rejected with Retry-After and no-store.');
+        && (int)$blocked['headers']['retry-after'] <= 600 && str_contains($blocked['headers']['cache-control'], 'no-store'), 'Repeated discovery is rejected with Retry-After bounded by ten minutes and no-store.');
     mcpCheck(!str_contains($blocked['body'], (string)$items['user']->get('email')), '429 contains no private calendar data.');
     $samples = new class extends ArrayDbObject { public static function objectName() { return PerformanceRequest::class; } };
     $samples->loadHydrated(['where' => [['field' => 'IDuser', 'value' => $items['user']->getId()], ['field' => 'status_code', 'value' => 429]],
@@ -106,11 +106,12 @@ try {
     $unitKey = hash('sha256', 'rate-unit-' . bin2hex(random_bytes(8)));
     $unitTicket = $tickets[] = ['key' => $unitKey];
     $now = time();
-    mcpCheck(CalDavRateLimit::remember($unitKey, 1, 0, [], 900, 30, $now), 'Store unit window.');
-    CalDavRateLimit::remember($unitKey, 1, 0, [], 900, 30, $now + 10);
+    mcpCheck(CalDavRateLimit::remember($unitKey, 1, 0, [], 600, 30, $now), 'Store unit window.');
+    CalDavRateLimit::remember($unitKey, 1, 0, [], 600, 30, $now + 10);
     mcpCheck(CalDavRateLimit::inspect($unitKey, $now + 29) === null
-        && CalDavRateLimit::inspect($unitKey, $now + 30)['retry_after'] === 870
-        && CalDavRateLimit::inspect($unitKey, $now + 900) === null, 'Burst boundary and non-sliding expiry.');
+        && CalDavRateLimit::inspect($unitKey, $now + 30)['retry_after'] === 570
+        && CalDavRateLimit::inspect($unitKey, $now + 599)['retry_after'] === 1
+        && CalDavRateLimit::inspect($unitKey, $now + 600) === null, 'Burst boundary, ten-minute expiry and non-sliding window.');
     $lock = fopen(rateFile($unitTicket), 'r+');
     flock($lock, LOCK_EX);
     mcpCheck(CalDavRateLimit::inspect($unitKey, $now + 31) === null, 'Contended storage falls back to authentication instead of waiting.');
