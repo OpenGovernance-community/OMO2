@@ -1,11 +1,19 @@
 <?php
 
-// Shared Vimeo video until each principle has its own presentation.
+// Fallback Vimeo video if a principle has no dedicated presentation.
 $surveyDefaultPrincipleVideoId = '1239260563';
 // Override by principle number, for example: 1 => 'VIMEO_VIDEO_ID'.
 $surveyPrincipleVideoIds = [
     1 => '1241662996', // Authority.
     2 => '1241666751', // Collective intelligence.
+    3 => '1241741370', // Purpose.
+    4 => '1241741371', // Circulating power.
+    5 => '1241742229', // Trust and transparency.
+    6 => '1241742980', // Learning structures.
+    7 => '1241744006', // Roles.
+    8 => '1241744805', // Tensions.
+    9 => '1241746331', // Conscious presence.
+    10 => '1241747131', // Ecosystem care.
 ];
 
 // Full manifesto text used by the optional principle detail drawer.
