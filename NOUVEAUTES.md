@@ -1,6 +1,8 @@
 # Journal des nouveautés
 
-- Survey / presentation des principes (2026-10-31) : video Vimeo dans le drawer En savoir plus, a droite du texte sur ordinateur et avant le texte sur telephone. Video specifique pour le principe de l autorite, video commune provisoire pour les autres, remplacable par principe dans survey/manifest.php ; lecture arretee a la fermeture.
+- Survey / reglages video (2026-10-31) : volume initial a 80 % et sous-titres desactives a chaque ouverture du drawer via le SDK Vimeo. Chargement asynchrone et liberation du lecteur a la fermeture ; reglages ensuite modifiables par le visiteur.
+
+- Survey / presentation des principes (2026-10-31) : video Vimeo dans le drawer En savoir plus, a droite du texte sur ordinateur et avant le texte sur telephone. Videos specifiques pour les principes de l autorite et de l intelligence du collectif, video commune provisoire pour les autres, remplacable par principe dans survey/manifest.php ; lecture arretee a la fermeture.
 
 - Accueil / survey (2026-10-31) : le lien du test de maturite organisationnelle utilise /survey/ sur le serveur courant au lieu du domaine local de developpement.
 

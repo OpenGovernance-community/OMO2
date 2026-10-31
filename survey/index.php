@@ -517,6 +517,7 @@ $surveyConfig = [
         window.SURVEY_PROTOTYPE = <?= json_encode($surveyConfig, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
     </script>
     <script src="<?= $escape(commonAssetUrl('/common/notifications/notifications.js')) ?>"></script>
+    <script src="https://player.vimeo.com/api/player.js" id="surveyVimeoSdk" async></script>
     <script src="<?= $escape(commonAssetUrl('/survey/survey.js')) ?>"></script>
 </body>
 </html>

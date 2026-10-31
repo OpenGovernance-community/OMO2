@@ -5,6 +5,7 @@ $surveyDefaultPrincipleVideoId = '1239260563';
 // Override by principle number, for example: 1 => 'VIMEO_VIDEO_ID'.
 $surveyPrincipleVideoIds = [
     1 => '1241662996', // Authority.
+    2 => '1241666751', // Collective intelligence.
 ];
 
 // Full manifesto text used by the optional principle detail drawer.
