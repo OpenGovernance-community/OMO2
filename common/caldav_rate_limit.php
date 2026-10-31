@@ -8,7 +8,7 @@ function commonCalDavReadLimitTicket(): ?array
     if (!in_array($method, ['OPTIONS', 'PROPFIND'], true)) return null;
     $credentials = commonCardDavGetBasicCredentials();
     if (!is_array($credentials) || trim($credentials[0]) === '' || $credentials[1] === '') return null;
-    $window = max(60, min(86400, (int)envValue('CALDAV_READ_LIMIT_SECONDS', 900)));
+    $window = max(60, min(86400, (int)envValue('CALDAV_READ_LIMIT_SECONDS', 600)));
     $burst = max(1, min($window - 1, (int)envValue('CALDAV_READ_LIMIT_BURST_SECONDS', 30)));
     $raw = $GLOBALS['commonCardDavRawInput'] ?? file_get_contents('php://input', false, null, 0, 131073);
     if (!is_string($raw)) return null;

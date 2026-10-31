@@ -209,6 +209,13 @@ function meetingDestination(MeetingProfile $profile): ExternalCalendar
     return $calendar;
 }
 
+/** Only bookable days need coverage; past days are disabled by meetingDay(). */
+function meetingCalendarQueryRange(DateTimeImmutable $month, DateTimeImmutable $now, int $preparation, int $closing): array
+{
+    return [max($month, $now->setTime(0, 0))->modify('-' . $preparation . ' minutes'),
+        $month->modify('+1 month +' . $closing . ' minutes')];
+}
+
 function meetingBusy(MeetingProfile $profile, DateTimeImmutable $start, DateTimeImmutable $end,
     bool $live = false, string $except = '', ?callable $request = null): array
 {

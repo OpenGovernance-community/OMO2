@@ -62,6 +62,18 @@ meetingReject(fn() => meetingValidateHours($invalid), 'hours_invalid');
 $zone = new DateTimeZone('Europe/Zurich');
 $day = meetingDate('2030-01-07', $zone); // Monday
 $before = $day->modify('-1 day');
+// The 31st used to request the first of the month before the rolling import window.
+foreach (['2026-10-31 12:00', '2026-03-31 12:00', '2028-02-29 12:00'] as $date) {
+    $reference = new DateTimeImmutable($date, $zone);
+    $month = $reference->modify('first day of this month')->setTime(0, 0);
+    [$start, $end] = meetingCalendarQueryRange($month, $reference, 60, 30);
+    [$coveredStart, $coveredEnd] = ExternalCalendar::synchronizationRange($reference);
+    meetingExpect($start == $reference->setTime(0, 0)->modify('-60 minutes')
+        && $end == $month->modify('+1 month +30 minutes'), 'Month query retains both personal time buffers.');
+    meetingExpect($start >= $coveredStart && $end <= $coveredEnd, 'End-of-month display fits a fresh import window.');
+    [$futureStart] = meetingCalendarQueryRange($month->modify('+1 month'), $reference, 60, 30);
+    meetingExpect($futureStart == $month->modify('+1 month -60 minutes'), 'Future months keep their complete range.');
+}
 $free = meetingDay($day, $hours, [], $before, 60);
 meetingExpect($free['state'] === 'free', 'Lunch alone should not make the day yellow');
 $map = array_column($free['slots'], 'free', 'time');

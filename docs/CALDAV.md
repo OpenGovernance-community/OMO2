@@ -134,7 +134,7 @@ La limitation est active par defaut avec ces valeurs :
 
 ```dotenv
 CALDAV_READ_LIMIT_ENABLED=true
-CALDAV_READ_LIMIT_SECONDS=900
+CALDAV_READ_LIMIT_SECONDS=600
 CALDAV_READ_LIMIT_BURST_SECONDS=30
 ```
 
@@ -143,7 +143,7 @@ La premiere requete passe l authentification et les controles habituels.
 Seule une reponse HTTP 2xx sans erreur fatale cree un enregistrement de limitation.
 Les repetitions restent autorisees pendant 30 secondes pour laisser un cycle
 de synchronisation se terminer. Ensuite, la meme requete recoit HTTP 429
-Too Many Requests et Retry-After, jusqu a 900 secondes apres le premier succes.
+Too Many Requests et Retry-After, jusqu a 600 secondes (dix minutes) apres le premier succes.
 Les repetitions autorisees ou refusees ne repoussent jamais cette echeance.
 
 La cle est une empreinte HMAC avec le secret existant AUTH_RATE_LIMIT_SECRET
