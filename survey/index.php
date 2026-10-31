@@ -42,6 +42,7 @@ foreach ($surveyQuestionDefinitions as $questionDefinition) {
         'title' => t($questionPrefix . '.title', [], $lang, $sourceLang),
         'principle' => t($questionPrefix . '.principle', [], $lang, $sourceLang),
         'manifest' => $manifest,
+        'videoId' => $surveyPrincipleVideoIds[$questionNumber] ?? $surveyDefaultPrincipleVideoId,
         'options' => $options,
     ];
 }
@@ -189,6 +190,7 @@ $surveyConfig = [
         'principleLearnMore' => t('survey.principle.learn_more', [], $lang, $sourceLang),
         'principleDrawerEyebrow' => t('survey.principle.drawer_eyebrow', [], $lang, $sourceLang),
         'principleDrawerClose' => t('survey.principle.drawer_close', [], $lang, $sourceLang),
+        'principleVideoTitle' => t('survey.principle.video_title', [], $lang, $sourceLang),
         'scalePhaseLabel' => t('survey.phase.scale.label', [], $lang, $sourceLang),
         'scaleTitle' => t('survey.phase.scale.title', [], $lang, $sourceLang),
         'scaleHelp' => t('survey.phase.scale.help', [], $lang, $sourceLang),
@@ -295,7 +297,7 @@ $surveyConfig = [
     <title><?= $escape($pageTitle) ?></title>
     <link rel="stylesheet" href="/common/assets/components.css?v=20260830-layout7">
     <link rel="stylesheet" href="<?= $escape(commonAssetUrl('/common/notifications/notifications.css')) ?>">
-    <link rel="stylesheet" href="/survey/survey.css?v=20260915-drafts">
+    <link rel="stylesheet" href="<?= $escape(commonAssetUrl('/survey/survey.css')) ?>">
 </head>
 <body>
     <main class="survey-page" id="surveyPage">

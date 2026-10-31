@@ -720,10 +720,22 @@
         elements.principleDrawerEyebrow.textContent = labels.principleDrawerEyebrow;
         elements.principleDrawerTitle.textContent = question.title;
         var fragment = document.createDocumentFragment();
+        var videoId = String(question.videoId || '');
+        if (/^\d+$/.test(videoId)) {
+            var video = el('iframe', 'survey-principle-drawer__video');
+            video.src = 'https://player.vimeo.com/video/' + videoId + '?dnt=1';
+            video.title = interpolate(labels.principleVideoTitle, { principle: question.title });
+            video.allow = 'fullscreen; picture-in-picture; encrypted-media';
+            video.allowFullscreen = true;
+            fragment.appendChild(video);
+        }
+        var text = el('div', 'survey-principle-drawer__text');
         paragraphs.forEach(function (paragraph) {
-            fragment.appendChild(el('p', '', paragraph));
+            text.appendChild(el('p', '', paragraph));
         });
+        fragment.appendChild(text);
         elements.principleDrawerContent.replaceChildren(fragment);
+        elements.principleDrawerContent.scrollTop = 0;
 
         if (typeof elements.principleDrawer.showModal === 'function') {
             if (!elements.principleDrawer.open) {
@@ -735,6 +747,7 @@
     }
 
     function closePrincipleDrawer() {
+        elements.principleDrawerContent.replaceChildren();
         if (typeof elements.principleDrawer.close === 'function' && elements.principleDrawer.open) {
             elements.principleDrawer.close();
             return;
@@ -1417,6 +1430,9 @@
     });
     elements.principleMore.addEventListener('click', openPrincipleDrawer);
     elements.principleDrawerClose.addEventListener('click', closePrincipleDrawer);
+    elements.principleDrawer.addEventListener('close', function () {
+        elements.principleDrawerContent.replaceChildren();
+    });
     elements.principleDrawer.addEventListener('click', function (event) {
         if (event.target === elements.principleDrawer) {
             closePrincipleDrawer();

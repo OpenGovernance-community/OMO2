@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- Survey / presentation des principes (2026-10-31) : video Vimeo dans le drawer En savoir plus, a droite du texte sur ordinateur et avant le texte sur telephone. Video specifique pour le principe de l autorite, video commune provisoire pour les autres, remplacable par principe dans survey/manifest.php ; lecture arretee a la fermeture.
+
 - Accueil / survey (2026-10-31) : le lien du test de maturite organisationnelle utilise /survey/ sur le serveur courant au lieu du domaine local de developpement.
 
 - Calendrier / rendez-vous et CalDAV (2026-10-31) : correction de la plage demandee par /meeting/ en fin de mois ; les jours passes ne bloquent plus l affichage le 31 lorsque le cache couvre trente jours, avec conservation des temps personnels. Limite de decouverte CalDAV ramenee de quinze a dix minutes. Tests HTTP des imports, dates deplacees, disponibilites, cache, ecritures et refus 429 ; les transferts REPORT continuent pendant la limitation de decouverte.

@@ -1,5 +1,12 @@
 <?php
 
+// Shared Vimeo video until each principle has its own presentation.
+$surveyDefaultPrincipleVideoId = '1239260563';
+// Override by principle number, for example: 1 => 'VIMEO_VIDEO_ID'.
+$surveyPrincipleVideoIds = [
+    1 => '1241662996', // Authority.
+];
+
 // Full manifesto text used by the optional principle detail drawer.
 $surveyPrincipleManifest = [
     1 => [
