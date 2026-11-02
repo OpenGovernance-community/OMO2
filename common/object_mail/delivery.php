@@ -37,5 +37,5 @@ function omoObjectMailDeliver(array $audience, array $row): bool
     $html = commonRenderMailLayout(['brand_name' => $audience['organization_name'], 'heading' => $row['subject'],
         'body_html' => \dbObject\ObjectMail::renderMessage($row['message'], $row['message_format'] ?? 'plain'), 'footer_html' => commonMailTextToHtml($signature)]);
     return myHTMLMail([$from, $audience['sender']['name'] . ' - ' . $audience['organization_name']], $row['email'], $row['subject'], $html,
-        null, null, [], $plain, [$audience['sender']['email'], $audience['sender']['name']]);
+        null, null, [], $plain, [$audience['sender']['email'], $audience['sender']['name']], (int)$audience['organization_id']);
 }

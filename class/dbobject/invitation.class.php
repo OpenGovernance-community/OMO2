@@ -758,7 +758,7 @@
 				$fromAddress = 'noreply@' . ($host !== '' ? $host : 'localhost');
 			}
 
-			if (!myHTMLMail([$fromAddress, (string)$organization->get('name')], $email, 'Invitation a rejoindre ' . $organizationName, $message)) {
+			if (!myHTMLMail([$fromAddress, (string)$organization->get('name')], $email, 'Invitation a rejoindre ' . $organizationName, $message, organizationId: (int)$organization->getId())) {
 				throw new \RuntimeException("L'invitation n'a pas pu etre envoyee.");
 			}
 
@@ -837,7 +837,7 @@
 				return (string)$recipient['email'];
 			}, $recipients);
 
-			if (!myHTMLMail([$fromAddress, (string)$organization->get('name')], $recipientEmails, 'Demande d acces a ' . $organizationName, $message)) {
+			if (!myHTMLMail([$fromAddress, (string)$organization->get('name')], $recipientEmails, 'Demande d acces a ' . $organizationName, $message, organizationId: (int)$organization->getId())) {
 				throw new \RuntimeException("La demande n'a pas pu etre envoyee aux administrateurs.");
 			}
 
@@ -895,7 +895,7 @@
 				$fromAddress = 'noreply@' . ($host !== '' ? $host : 'localhost');
 			}
 
-			if (!myHTMLMail([$fromAddress, (string)$organization->get('name')], $email, 'Inscription validee dans ' . $organizationName, $message)) {
+			if (!myHTMLMail([$fromAddress, (string)$organization->get('name')], $email, 'Inscription validee dans ' . $organizationName, $message, organizationId: (int)$organization->getId())) {
 				throw new \RuntimeException("L'e-mail de confirmation n'a pas pu etre envoye.");
 			}
 

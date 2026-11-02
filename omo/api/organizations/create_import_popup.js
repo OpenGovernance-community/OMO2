@@ -14,6 +14,7 @@ window.commonPageScripts["/omo/api/organizations/create_import_popup.js"] = func
     var mappingsValue = form ? form.querySelector('[data-omo-create-import-mapping-value="1"]') : null;
     var propertyMappingsValue = form ? form.querySelector('[data-omo-create-import-property-mapping-value="1"]') : null;
     var memberInvitationEmailChoice = form ? form.querySelector('[data-omo-create-import-member-invitation-email-choice="1"]') : null;
+    var roleplayInput = form ? form.querySelector('input[name="roleplay"]') : null;
     var submitButton = root.querySelector('[data-omo-create-import-submit="1"]');
     var feedback = root.querySelector('[data-omo-create-import-feedback="1"]');
     var cancelButton = root.querySelector('[data-omo-create-import-cancel="1"]');
@@ -34,6 +35,17 @@ window.commonPageScripts["/omo/api/organizations/create_import_popup.js"] = func
     var isImportComplete = false;
     var previewSequence = 0;
     var ui = pageConfig.ui;
+
+    function syncRoleplayInvitationChoice() {
+        if (!memberInvitationEmailChoice || !roleplayInput) { return; }
+        var enabled = !!roleplayInput.checked;
+        memberInvitationEmailChoice.disabled = enabled;
+        memberInvitationEmailChoice.required = !enabled;
+        var field = memberInvitationEmailChoice.closest('label');
+        if (field) { field.hidden = enabled; }
+    }
+    if (roleplayInput) { roleplayInput.addEventListener('change', syncRoleplayInvitationChoice); }
+    syncRoleplayInvitationChoice();
 
     function setFeedback(message, isError) {
         feedback.hidden = !message;
@@ -600,7 +612,7 @@ window.commonPageScripts["/omo/api/organizations/create_import_popup.js"] = func
         if (isImporting || isImportComplete) { return; }
         if (!fileInput || !fileInput.files || !fileInput.files[0]) { showError(ui.fileError); return; }
         if (!importPayload) { showError(ui.genericError); return; }
-        if (!memberInvitationEmailChoice || ['send', 'skip'].indexOf(memberInvitationEmailChoice.value) === -1) { showError(ui.memberInvitationEmailChoiceError); return; }
+        if (!(roleplayInput && roleplayInput.checked) && (!memberInvitationEmailChoice || ['send', 'skip'].indexOf(memberInvitationEmailChoice.value) === -1)) { showError(ui.memberInvitationEmailChoiceError); return; }
         if (hasDuplicateTemplateMappings()) { showError(ui.mappingDuplicate); return; }
         if (hasDuplicatePropertyMappings()) { showError(ui.propertyMappingDuplicate); return; }
         submitButton.disabled = true;

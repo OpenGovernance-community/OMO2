@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- Import / jeu de role (2026-11-02) : membres importes comme personnages actifs et distincts des comptes reels, avec adresses affichees suffixees par .invalid, sans invitation ni connexion directe. Les e-mails des personnages sont rediriges vers les administrateurs reels de leur organisation, y compris dans les traitements differes. Les statuts admin du fichier sont ignores et la personne qui importe devient administrateur, meme si elle ne figure pas dans le fichier.
+
 - Import / images des organisations (2026-11-02) : conservation des images lorsque img ou img/upload pointe vers un dossier partage hors de la racine du site. Les URL publiques sont preservees a l import et les images restent exportables ; les chemins sortant du stockage autorise sont refuses.
 
 - Tensions / choix des holons (2026-11-02) : correction du filtre et du controle d enregistrement pour les holons dont l organisation est deduite de la racine via IDholon_org. Ces espaces sont proposes selon les memes droits que les holons portant directement IDorganization.

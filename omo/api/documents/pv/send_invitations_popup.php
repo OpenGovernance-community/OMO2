@@ -93,7 +93,7 @@ function omoDocumentsPvSendInvitationEmail(Document $document, Organization $org
         'footer_html' => '<p style="margin:0;">' . commonMailEscape(omoDocumentsPvSendInvitationT('documents.pv_invitations.footer', ['organization' => $organizationName])) . '</p>',
     ]);
 
-    $mailSent = (bool)myHTMLMail([$fromAddress, $organizationName], $email, $subject, $html);
+    $mailSent = (bool)myHTMLMail([$fromAddress, $organizationName], $email, $subject, $html, organizationId: (int)$organization->getId());
     return [
         'status' => $mailSent,
         'reason' => $mailSent ? '' : 'mail_failed',

@@ -2648,6 +2648,8 @@ function commonIsAjaxJsonRequest()
 
 function commonSendLoginCode($userId, $email, array $organizationContext, $remember, $returnTo, $verifyPath = '/common/login_verify.php')
 {
+    $loginUser = new \dbObject\User();
+    if (!$loginUser->load((int)$userId) || $loginUser->isRoleplayCharacter()) { return false; }
     $sourceLang = commonGetAuthPhpSourceLang();
     $lang = commonAuthLoadBundle('common_auth_page', $sourceLang);
     $requestToken = bin2hex(random_bytes(32));
@@ -2767,7 +2769,7 @@ function commonBuildPasswordResetUrl($code)
 function commonSendPasswordResetEmail(\dbObject\User $user, array $organizationContext)
 {
     $email = trim((string)$user->get('email'));
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    if ($user->isRoleplayCharacter() || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         return [
             'status' => false,
             'error' => 'invalid_email',

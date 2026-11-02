@@ -8,7 +8,7 @@ const root = path.join(__dirname, '..');
 (async () => {
     const browser = await chromium.launch({channel: 'msedge', headless: true});
     try {
-        for (const scenario of ['warnings', 'clean', 'no-redirect', 'retry']) {
+        for (const scenario of ['warnings', 'clean', 'no-redirect', 'retry', 'roleplay']) {
             const page = await browser.newPage();
             page.setDefaultTimeout(10000);
             const errors = [];
@@ -28,7 +28,8 @@ const root = path.join(__dirname, '..');
             await page.goto('http://import.test/');
             await page.setContent(`<div id="commonTopbarModal"><button type="button" data-topbar-modal-close>Close window</button><div data-omo-create-import="1">
                 <form data-omo-create-import-form="1"><input type="file" name="omo1_export_file"><input name="organization_name">
-                    <select name="member_invitation_email_choice" data-omo-create-import-member-invitation-email-choice="1"><option value="">Choose</option><option value="skip">Skip</option></select>
+                    <label><input type="checkbox" name="roleplay" value="1">Roleplay</label>
+                    <label><select name="member_invitation_email_choice" required data-omo-create-import-member-invitation-email-choice="1"><option value="">Choose</option><option value="skip">Skip</option></select></label>
                     <button type="button" data-omo-create-import-cancel="1">Cancel</button><button type="submit" data-omo-create-import-submit="1" disabled>Import</button></form>
                 <section data-omo-create-import-waiting="1" hidden aria-busy="true">Wait</section>
                 <section data-omo-create-import-completed="1" hidden><h3>Import complete</h3><div data-omo-create-import-warnings="1" hidden><ul data-omo-create-import-warning-list="1"></ul></div>
@@ -50,7 +51,18 @@ const root = path.join(__dirname, '..');
             await page.evaluate(() => window.commonPageScripts['/omo/api/organizations/create_import_popup.js']({templateCatalog: [], ui: {genericError: 'Import failed'}}));
             await page.locator('input[type="file"]').setInputFiles({name: 'fixture.json', mimeType: 'application/json', buffer: Buffer.from('{}')});
             await page.waitForFunction(() => !document.querySelector('[data-omo-create-import-submit]').disabled);
-            await page.locator('select').selectOption('skip');
+            if (scenario === 'roleplay') {
+                await page.locator('[name="roleplay"]').check();
+                assert.equal(await page.locator('select').isDisabled(), true);
+                assert.equal(await page.locator('select').isVisible(), false, 'Characters do not need an invitation choice');
+                await page.locator('[name="roleplay"]').uncheck();
+                assert.equal(await page.locator('select').isDisabled(), false);
+                assert.equal(await page.locator('select').evaluate(element => element.required), true);
+                await page.locator('[name="roleplay"]').check();
+                assert.equal(await page.locator('select').inputValue(), '', 'Roleplay can submit without selecting send or skip');
+            } else {
+                await page.locator('select').selectOption('skip');
+            }
             await page.locator('[name="organization_name"]').fill('Chosen organization');
             const dirty = () => page.evaluate(() => window.commonDrawerHasUnsavedChanges(document.getElementById('commonTopbarModal')));
             assert.equal(await dirty(), true, 'An unsubmitted import must retain discard protection');

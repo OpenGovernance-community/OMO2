@@ -46,6 +46,11 @@ try {
         'password' => commonHashUserPassword($password), 'active' => 1, 'siteadmin' => 0,
         'allow_password_login' => 1, 'security_version' => 0, 'parameters' => ['isSiteAdmin' => false]]);
     $id = (int)$user->getId();
+    // OAuth security checks require an eligible account, like the shared MCP fixtures.
+    $GLOBALS['patreonClientId'] = 'fixture-client';
+    $GLOBALS['patreonClientSecret'] = 'fixture-secret';
+    $items['patreon_subscription'] = mcpFixture(\dbObject\UserPatreon::class, ['IDuser' => $id,
+        'is_connected' => 1, 'refresh_token' => 'fixture-only', 'patron_status' => 'active_patron', 'currently_entitled_amount_cents' => 100]);
     $originalEmail = $user->get('email');
     $items['other'] = $other = mcpFixture(User::class, ['email' => 'sec-other-' . $nonce . '@example.invalid', 'active' => 1]);
     $items['org'] = $org = mcpFixture(McpTestOrganization::class, ['name' => 'Security ' . $nonce]);

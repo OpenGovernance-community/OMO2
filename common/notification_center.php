@@ -325,7 +325,7 @@ if (!function_exists('notificationCenterSendEmail')) {
             $link = '<p><a href="' . htmlspecialchars($absoluteUrl, ENT_QUOTES, 'UTF-8') . '">Ouvrir dans OMO</a></p>';
         }
         $html = '<h2>' . $safeTitle . '</h2><p>' . $safeBody . '</p>' . $link;
-        return myHTMLMail([$fromAddress, $organization ? (trim((string)$organization->get('name')) ?: 'OMO') : 'OMO'], $email, $title, $html);
+        return myHTMLMail([$fromAddress, $organization ? (trim((string)$organization->get('name')) ?: 'OMO') : 'OMO'], $email, $title, $html, organizationId: $organization ? (int)$organization->getId() : null);
     }
 }
 

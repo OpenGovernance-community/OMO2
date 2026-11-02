@@ -37,7 +37,7 @@ function omoSendOrganizationBackup(OrganizationBackup $backup): void
     if (!myHTMLMail([$from, $name], $recipients, $subject, $html, null, null, [[
         'name' => 'omo2-backup-' . $organizationId . '-' . $now->format('Ymd-His') . '.json',
         'type' => 'application/json', 'content' => $json,
-    ]], $subject . "\n\n" . $body)) { throw new RuntimeException('Backup email delivery failed.'); }
+    ]], $subject . "\n\n" . $body, organizationId: $organizationId)) { throw new RuntimeException('Backup email delivery failed.'); }
     $backup->recordAttempt(new DateTimeImmutable(), true);
 }
 
