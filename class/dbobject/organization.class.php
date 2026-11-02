@@ -4265,20 +4265,15 @@
 				return null;
 			}
 
-			$absolutePath = realpath($documentRoot . DIRECTORY_SEPARATOR . ltrim(str_replace('\\', '/', $path), '/'));
-			if (!is_string($absolutePath) || $absolutePath === '') {
+			$absolutePath = OrganizationArchive::localImageFile($path, $documentRoot);
+			if ($absolutePath === null) {
 				return null;
 			}
 
-			$normalizedRoot = rtrim(str_replace('\\', '/', $documentRoot), '/') . '/';
-			$normalizedPath = str_replace('\\', '/', $absolutePath);
-			if (stripos($normalizedPath, $normalizedRoot) !== 0 || !is_file($absolutePath) || !is_readable($absolutePath)) {
-				return null;
-			}
-
+			// A shared upload directory can live outside DOCUMENT_ROOT; keep its public URL.
 			return @getimagesize($absolutePath) === false
 				? null
-				: '/' . ltrim(substr($normalizedPath, strlen($normalizedRoot)), '/');
+				: $path;
 		}
 
 		protected static function sanitizeOmo1ImportedMediaReferences(array $payload, array &$warnings): array

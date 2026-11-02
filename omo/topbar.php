@@ -603,8 +603,7 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
             'mode' => 'fetch',
         ],
         'tension' => [
-            // Temporarily hidden until the tension workflow is ready to be released.
-            'enabled' => false,
+            'enabled' => !$isDemoGuest && $variant === 'app' && $currentUserId > 0 && $hasOrganizationContext,
             'buttonLabel' => $tensionLabel,
             'title' => omoTopbarTranslate('topbar.tension.title_template', [
                 'tensionArticle' => trim((string)($tensionTerm['article'] ?? 'une')),

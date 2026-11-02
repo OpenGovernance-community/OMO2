@@ -4,7 +4,10 @@ require_once __DIR__ . '/../ui_translations.php';
 require_once __DIR__ . '/bootstrap.php';
 require_once dirname(__DIR__, 2) . '/common/holon_scope_helper.php';
 
-$sourceLang = ['space_hint' => ['text' => 'Choisissez un espace auquel vous appartenez pour déclarer cette tension.', 'context' => 'Tension space assignment picker help.']];
+$sourceLang = [
+    'space_hint' => ['text' => 'Choisissez un espace dans lequel vous avez le droit de creer des tensions.', 'context' => 'Tension space assignment picker help.'],
+    'no_target' => ['text' => 'Vous ne disposez d aucun espace autorise pour creer une tension.', 'context' => 'Empty state when no tension creation destination is allowed.'],
+];
 $locale = translationBundleResolveRequestLocale('lang', translationBundleGetSupportedLocales(), 'fr');
 $lang = loadTranslationBundle('tension_popup', $locale, $sourceLang);
 
@@ -21,10 +24,13 @@ $defaultTitle = trim((string)($_POST['title'] ?? ''));
 $defaultDescription = trim((string)($_POST['description'] ?? ''));
 $formAction = '/omo/api/tension_save.php';
 
-if ($organizationId > 0 && $organization->load($organizationId)) {
+if ($currentUserId > 0 && $organizationId > 0 && $organization->load($organizationId)
+    && commonCurrentUserHasOrganizationAccess($organizationId)) {
     $contextHolon = commonHolonScopeResolveOrganizationHolon($organization, $requestedHolonId);
     $rootHolon = $organization->getStructuralRootHolon();
-    $holonOptions = commonHolonScopeLoadOptionsForOrganization($organization);
+    foreach (\dbObject\Tension::loadCreationTargets($organizationId, $currentUserId) as $targetHolon) {
+        $holonOptions[] = ['id' => (int)$targetHolon->getId(), 'selectable' => true];
+    }
 
     foreach ($holonOptions as $holonOption) {
         $optionId = (int)($holonOption['id'] ?? 0);
@@ -72,6 +78,11 @@ $holonSelectorConfig = ['organizationId' => $organizationId, 'selectableHolonIds
         <div class="omo-tension-popup__error generic-section generic-section--stack">
             <h3 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(omoInterfaceUiT('contexte_indisponible'), ENT_QUOTES, 'UTF-8') ?></h3>
             <p><?= htmlspecialchars(omoInterfaceUiT('impossible_de_retrouver_l_organisation_courante_pour_enregistrer_la_tension'), ENT_QUOTES, 'UTF-8') ?></p>
+        </div>
+    <?php elseif ($selectableHolonIds === []): ?>
+        <div class="omo-tension-popup__error generic-section generic-section--stack">
+            <h3 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(omoInterfaceUiT('contexte_indisponible'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <p><?= htmlspecialchars(t('no_target', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></p>
         </div>
     <?php else: ?>
         <div class="omo-tension-popup__header generic-drawer-header generic-drawer-header--sticky">

@@ -1,5 +1,13 @@
 # Journal des nouveautés
 
+- Import / images des organisations (2026-11-02) : conservation des images lorsque img ou img/upload pointe vers un dossier partage hors de la racine du site. Les URL publiques sont preservees a l import et les images restent exportables ; les chemins sortant du stockage autorise sont refuses.
+
+- Tensions / choix des holons (2026-11-02) : correction du filtre et du controle d enregistrement pour les holons dont l organisation est deduite de la racine via IDholon_org. Ces espaces sont proposes selon les memes droits que les holons portant directement IDorganization.
+
+- Tensions / droits de creation (2026-11-02) : droit contextuel CAN_CREATE_TENSION configurable dans les editeurs de holons et de modeles, avec profils, portees et heritage existants. Sans attribution dans l organisation, creation ouverte a tous les membres dans tous les espaces ; des la premiere attribution, seules les portees accordees s appliquent. Espaces proposes selon les droits et controle a l enregistrement, y compris pour une tension rattachee a toute l organisation.
+
+- Topbar / tensions (2026-11-02) : bouton de declaration reactive pour les utilisateurs connectes dans une organisation active, avec le formulaire et l enregistrement existants.
+
 - Tableau de bord / texte HTML (2026-11-02) : nouveau module autonome, configurable comme le module video, pour afficher un encart de texte mis en forme. Editeur HTML partage, nettoyage du contenu et enregistrement avec les vues personnelles ou par defaut existantes.
 
 - Survey / reglages video (2026-10-31) : volume initial a 80 % et sous-titres desactives a chaque ouverture du drawer via le SDK Vimeo. Chargement asynchrone et liberation du lecteur a la fermeture ; reglages ensuite modifiables par le visiteur.
