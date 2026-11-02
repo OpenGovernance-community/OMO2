@@ -218,6 +218,8 @@ $sourceLang = [
     'personal_space.editor.configure_audience' => ['text' => 'Affichage', 'context' => 'Label for the audience setting in a dashboard module configuration dialog.'],
     'personal_space.editor.configure_video' => ['text' => 'Vidéo', 'context' => 'Label for the embedded video URL in a dashboard module configuration dialog.'],
     'personal_space.editor.configure_video_hint' => ['text' => 'Lien Vimeo, YouTube ou Infomaniak.', 'context' => 'Supported video providers hint in the dashboard module configuration dialog.'],
+    'personal_space.editor.configure_html' => ['text' => 'Contenu du texte', 'context' => 'Label for the rich text editor in the dashboard HTML module configuration dialog.'],
+    'personal_space.editor.configure_html_placeholder' => ['text' => 'Saisissez votre texte mis en forme...', 'context' => 'Placeholder for the dashboard rich text editor.'],
     'personal_space.editor.configure_apply' => ['text' => 'Appliquer', 'context' => 'Apply dashboard module configuration changes.'],
     'personal_space.editor.delete' => ['text' => 'Supprimer', 'context' => 'Delete a dashboard module action.'],
     'personal_space.editor.catalog' => ['text' => 'Modules disponibles', 'context' => 'Dashboard module picker title.'],
@@ -237,6 +239,7 @@ $sourceLang = [
     'personal_space.module.checklist' => ['text' => 'Processus', 'context' => 'Dashboard process module title.'],
     'personal_space.module.activities' => ['text' => 'Tâches récurrentes', 'context' => 'Dashboard recurring tasks module title.'],
     'personal_space.module.video' => ['text' => 'Vidéo', 'context' => 'Dashboard embedded video module title.'],
+    'personal_space.module.html' => ['text' => 'Texte HTML', 'context' => 'Dashboard formatted text module title.'],
     'personal_space.metric.modified' => ['text' => 'Modifiées', 'context' => 'Recently modified rules metric.'],
     'personal_space.metric.review' => ['text' => 'À revoir', 'context' => 'Rules due for review metric.'],
     'personal_space.metric.obsolete' => ['text' => 'Obsolètes', 'context' => 'Expired rules metric.'],
@@ -259,6 +262,8 @@ $sourceLang = [
     'personal_space.module.empty' => ['text' => 'Aucun élément à afficher.', 'context' => 'Empty dashboard module fallback.'],
     'personal_space.video.empty' => ['text' => 'Aucune vidéo n’est configurée pour ce module.', 'context' => 'Empty state for an unconfigured dashboard video module.'],
     'personal_space.video.player_title' => ['text' => 'Vidéo de présentation', 'context' => 'Title of the embedded video player in the dashboard.'],
+    'personal_space.html.empty' => ['text' => 'Aucun texte configure pour ce module.', 'context' => 'Empty state for an unconfigured dashboard HTML module.'],
+    'personal_space.html.configured' => ['text' => 'Texte mis en forme', 'context' => 'Summary for a configured dashboard HTML module in the layout editor.'],
     'personal_space.module.unavailable' => ['text' => 'Cette application n’est pas active dans ce contexte.', 'context' => 'Unavailable dashboard module message.'],
     'personal_space.module.more' => ['one' => 'Et {count} de plus', 'other' => 'Et {count} de plus', 'context' => 'Summary shown below a dashboard module when more items exist than are displayed.'],
     'personal_space.module.more_template' => ['text' => 'Et {count} de plus', 'context' => 'Template used by the dashboard client when recalculating the number of hidden items after a filter.'],
@@ -589,6 +594,8 @@ $dashboardMetricLabels = array(
         'configureVideo' => t('personal_space.editor.configure_video', [], $lang, $sourceLang),
         'videoConfigured' => t('personal_space.module.video', [], $lang, $sourceLang),
         'videoMissing' => t('personal_space.video.empty', [], $lang, $sourceLang),
+        'htmlConfigured' => t('personal_space.html.configured', [], $lang, $sourceLang),
+        'htmlMissing' => t('personal_space.html.empty', [], $lang, $sourceLang),
         'configureApply' => t('personal_space.editor.configure_apply', [], $lang, $sourceLang),
         'cancel' => t('personal_space.editor.cancel', [], $lang, $sourceLang),
         'rootLabels' => $dashboardRootLabels,
@@ -771,6 +778,10 @@ $dashboardMetricLabels = array(
                     <input class="generic-form-control" type="url" inputmode="url" maxlength="2000" placeholder="https://..." data-omo-dashboard-configurator-video>
                     <span class="generic-help-text"><?= omoApiEscape(t('personal_space.editor.configure_video_hint', [], $lang, $sourceLang)) ?></span>
                 </label>
+                <div class="generic-form-field" data-omo-dashboard-configurator-html-field hidden>
+                    <span class="generic-form-label"><?= omoApiEscape(t('personal_space.editor.configure_html', [], $lang, $sourceLang)) ?></span>
+                    <div data-omo-dashboard-configurator-html data-placeholder="<?= omoApiEscape(t('personal_space.editor.configure_html_placeholder', [], $lang, $sourceLang)) ?>"></div>
+                </div>
                 <div class="generic-form-actions">
                     <button type="button" class="generic-action-button generic-action-button--main" data-omo-dashboard-configurator-apply><?= omoApiEscape(t('personal_space.editor.configure_apply', [], $lang, $sourceLang)) ?></button>
                     <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-dashboard-configurator-close><?= omoApiEscape(t('personal_space.editor.cancel', [], $lang, $sourceLang)) ?></button>
@@ -780,4 +791,5 @@ $dashboardMetricLabels = array(
     </div>
     <?php endif; ?>
 </div>
+<script src="<?= commonAssetUrl('/omo/assets/js/simple-html-field.js') ?>"></script>
 <script src="<?= commonAssetUrl('/omo/assets/js/personal-space-dashboard.js') ?>"></script>

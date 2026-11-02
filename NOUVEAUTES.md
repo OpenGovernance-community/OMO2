@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- Tableau de bord / texte HTML (2026-11-02) : nouveau module autonome, configurable comme le module video, pour afficher un encart de texte mis en forme. Editeur HTML partage, nettoyage du contenu et enregistrement avec les vues personnelles ou par defaut existantes.
+
 - Survey / reglages video (2026-10-31) : volume initial a 80 % et sous-titres desactives a chaque ouverture du drawer via le SDK Vimeo. Chargement asynchrone et liberation du lecteur a la fermeture ; reglages ensuite modifiables par le visiteur.
 
 - Survey / presentation des principes (2026-10-31) : video Vimeo dans le drawer En savoir plus, a droite du texte sur ordinateur et avant le texte sur telephone. Les dix principes disposent chacun de leur video specifique, configurable dans survey/manifest.php ; lecture arretee a la fermeture.
