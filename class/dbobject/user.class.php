@@ -14,7 +14,7 @@
 				[['email'], 'required'],
 				[['id', 'security_version'], 'integer'],
 				[['username', 'email', 'phone', 'firstname', 'lastname', 'code', 'telegramID'], 'string'],
-				[['presentation'], 'text'],
+				[['presentation'], 'html'],
 				[['latlong'], 'latlong'],
 				[['password'], 'password'],
 				[['image'], 'sizedimage'],
@@ -78,6 +78,11 @@
 
 		public static function getOrder() {
 			return "firstname, lastname";
+		}
+
+		public static function attributeHtmlEditorProfiles()
+		{
+			return ['presentation' => 'simple'];
 		}
 
 		public function canView() {

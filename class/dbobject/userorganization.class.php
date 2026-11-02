@@ -159,13 +159,18 @@
 				[['id'], 'integer'],
 				[['IDuser', 'IDorganization'], 'fk'],
 				[['username', 'email', 'phone'], 'string'],
-				[['presentation'], 'text'],
+				[['presentation'], 'html'],
 				[['image'], 'sizedimage'],
 				[['parameters'], 'parameters'],
 				[['datecreation', 'dateconnexion'], 'datetime'],
 				[['active'], 'boolean'],
 				[['id'], 'safe'],
 			];
+		}
+
+		public static function attributeHtmlEditorProfiles()
+		{
+			return ['presentation' => 'simple'];
 		}
 
 		public static function attributeLabels()

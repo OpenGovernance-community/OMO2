@@ -255,6 +255,25 @@
 			return self::sanitizeHtml($content);
 		}
 
+		/** Keep legacy plain text line breaks when a field becomes editable HTML. */
+		public static function textOrHtmlToHtml($value): string
+		{
+			$content = is_scalar($value) ? (string)$value : '';
+			$content = str_replace(["\r\n", "\r"], "\n", $content);
+			$hasTags = preg_match('~</?[a-z][a-z0-9]*(?:\s[^<>]*)?/?>~i', $content) === 1;
+			return self::formattedTextToHtml($content, $hasTags ? 'html' : 'text');
+		}
+
+		/** Plain-text channels such as vCard NOTE must not expose markup. */
+		public static function htmlToPlainText($value): string
+		{
+			$html = preg_replace('/[\r\n]+/', ' ', self::textOrHtmlToHtml($value));
+			$html = preg_replace('~<br\s*/?>|</(?:p|div|li|tr|h[1-6]|blockquote)>~i', "\n", $html);
+			$text = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+			$text = preg_replace('/[\t ]+/', ' ', $text);
+			return trim((string)preg_replace('/ *\n */', "\n", $text));
+		}
+
 		public static function sanitizeHtml($html)
 		{
 			$html = is_scalar($html) ? (string)$html : '';

@@ -80,6 +80,18 @@ try {
         && commonVerifyUserPassword($password, (string)$user->get('password')) && !(bool)$user->get('totp_enabled')
         && !$user->get('telegramID') && $user->get('firstname') === 'Allowed', 'Protected fields remain unchanged in database');
     mcpCheck((int)$user->get('allow_password_login') === 1, 'Preference save preserves password-login setting');
+    foreach (["First legacy line\nSecond legacy line", '<p>HTTP <strong>formatted</strong></p><ul><li>List entry</li></ul>'] as $presentation) {
+        $savedPresentation = securityHttp('/ajax/saveaccount.php', ['presentation' => $presentation]);
+        mcpCheck(!empty($savedPresentation['json']['status']), 'Presentation save succeeds through the real profile endpoint');
+        $details = securityHttp('/popup/user.php?id=' . $id . '&oid=' . $org->getId());
+        $detailsDom = new DOMDocument(); @$detailsDom->loadHTML('<?xml encoding="utf-8" ?>' . $details['body']);
+        $detailsXPath = new DOMXPath($detailsDom);
+        $containers = $detailsXPath->query('//div[contains(concat(" ",normalize-space(@class)," ")," omo-user-context__presentation ")]');
+        mcpCheck($details['status'] === 200 && $containers->length === 1, 'Member popup renders a presentation container');
+        $formattedPresentation = str_contains($presentation, '<strong>');
+        mcpCheck($detailsXPath->query($formattedPresentation ? './/strong' : './/br', $containers->item(0))->length === 1,
+            'The real member popup renders formatting or legacy line breaks instead of escaped markup');
+    }
     $textPayload = '</textarea><img id="security-editor-xss-proof" src=x onerror=alert(1)>';
     securityHttp('/ajax/saveaccount.php', ['presentation' => $textPayload]);
     $form = securityHttp('/popup/profil_scope.php?section=profile');

@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- Profils / presentations (2026-11-02) : presentations generales et propres aux organisations en HTML simple, avec Summernote via adminEdit et affichage mis en forme dans les fiches membres. Les anciens textes conservent leurs retours a la ligne ; contenu HTML nettoye et notes CardDAV conservees en texte lisible.
+
 - Import / jeu de role (2026-11-02) : membres importes comme personnages actifs et distincts des comptes reels, avec adresses affichees suffixees par .invalid, sans invitation ni connexion directe. Les e-mails des personnages sont rediriges vers les administrateurs reels de leur organisation, y compris dans les traitements differes. Les statuts admin du fichier sont ignores et la personne qui importe devient administrateur, meme si elle ne figure pas dans le fichier.
 
 - Import / images des organisations (2026-11-02) : conservation des images lorsque img ou img/upload pointe vers un dossier partage hors de la racine du site. Les URL publiques sont preservees a l import et les images restent exportables ; les chemins sortant du stockage autorise sont refuses.

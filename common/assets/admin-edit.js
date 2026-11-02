@@ -74,6 +74,7 @@ function adminEditInitHtmlFields(scope) {
                 placeholder: field.getAttribute('placeholder') || (labels[0] ? labels[0].textContent.trim() : ''),
                 surfaceId: field.id ? field.id + '-html' : '',
                 editorProfile: field.getAttribute('data-editor-profile') === 'simple' ? 'simple' : 'admin',
+                simpleOnly: field.getAttribute('data-editor-profile') === 'simple',
                 customButtons: [{
                     name: 'omoHighlight', group: 'color', label: 'Surlignage', title: 'Modifier le surlignage',
                     contents: '<img src="/omo/images/tools/surligneur.png" alt="" class="omo-simple-html-highlight-icon">',
