@@ -6,6 +6,7 @@ require_once BASE_PATH . '/common/auth.php';
 commonRestoreRememberedUser();
 include 'inc/org.php';
 require_once __DIR__ . '/inc/access.php';
+require_once BASE_PATH . '/common/lms/navigation.php';
 
 $parcours_id = (int)($_GET['idp'] ?? 0);
 $isEmbedded = !empty($_GET['embed']);
@@ -58,6 +59,15 @@ if ($parcoursRef->load($parcours_id)) {
 }
 
 $isAnonymousViewer = lmsIsAnonymousViewer($accessContext);
+$catalogItems = !empty($accessContext['hasOrganizationAccess'])
+	? \dbObject\Parcours::fetchForOrganizationWithProgress((int)$org['id'], $user_id, true, lmsCurrentUserHasExplicitOrganizationAdminMode((int)$org['id']))
+	: \dbObject\Parcours::fetchPublicForOrganizationWithProgress((int)$org['id'], $user_id);
+$catalogUrl = '';
+foreach ($catalogItems ?: [] as $catalogItem) {
+	if (!empty($catalogItem['ispack'])) continue;
+	$catalogUrl = lmsBuildLocalPath('/lms/', ['embed' => $isEmbedded ? 1 : null]);
+	break;
+}
 $showLoginDrawerButton = $user_id <= 0;
 $loginDrawerReturnTo = lmsBuildLocalPath('/lms/parcours.php', array(
 	'idp' => $parcours_id,
@@ -75,6 +85,7 @@ $organizationColor = commonGetOrganizationExplicitColor($org);
 	<?= commonStylesheetTags('/shared_css.css') ?>
 	<?php require BASE_PATH . '/common/lms/notifications.php'; ?>
 	<link rel="stylesheet" href="/lms/css/std.css">
+	<link rel="stylesheet" href="<?= commonAssetUrl('/common/lms/navigation.css') ?>">
 	<script src="<?= commonAssetUrl('/common/assets/components.js') ?>"></script>
 	<script src="/shared_functions.js"></script>
 	<script>
@@ -329,6 +340,7 @@ $organizationColor = commonGetOrganizationExplicitColor($org);
 <?php if (!$isEmbedded): ?>
 <?php include 'inc/menu.php'; ?>
 <div class="org-banner" style="background-color: <?php echo htmlspecialchars($org['color'] ?? '#CCC'); ?>">
+<?php commonLmsRenderCatalogBackLink($catalogUrl); ?>
 <h1><?php echo htmlspecialchars($parcours['title']); ?></h1>
 <p><?php echo htmlspecialchars($parcours['description']); ?></p>
 <?php if ($isAnonymousViewer): ?>

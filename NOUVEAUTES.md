@@ -1,5 +1,9 @@
 # Journal des nouveautés
 
+- Tutoriels / contenu des parcours (2026-11-03) : icones video, devoirs et quiz a cote du bouton Ouvrir dans les catalogues et les packs. Noir si le contenu est present, gris tres clair sinon, avec une infobulle descriptive. Les packs regroupent le contenu de leurs parcours.
+
+- Tutoriels / retour au catalogue (2026-11-03) : lien Retour au catalogue au-dessus du titre du parcours, sur les pages publiques et dans les iframes. Le contexte public ou organisation, le mode integre et les prerequis termines sont conserves ; le lien est masque en l absence de catalogue accessible.
+
 - Tutoriels / notifications en iframe (2026-11-03) : chargement des notifications partagees dans le document du tutoriel, meme sans topbar. Les mauvaises reponses et les erreurs du quiz s affichent au-dessus du panneau, avec fermeture automatique et sans dependance a la page parente.
 
 - Tutoriels / confirmation de lecture (2026-11-03) : le bouton Marquer comme lu est active une fois le bas du contenu de la mission atteint. Les contenus entierement visibles restent validables directement ; le chargement tardif des images et les devoirs requis sont pris en compte.

@@ -286,6 +286,46 @@
 			return array_values($normalizedIds);
 		}
 
+		public static function fetchContentIndicators(array $parcoursIds): array
+		{
+			$parcoursIds = self::normalizePositiveIds($parcoursIds);
+			if (!$parcoursIds) return [];
+			// IDs are normalized positive integers before inclusion in these bulk queries.
+			$packLinks = self::tableExists('parcours_parcours') ? self::fetchAll(
+				'SELECT IDparcours_parent, IDparcours_child FROM parcours_parcours WHERE IDparcours_parent IN (' . implode(',', $parcoursIds) . ')'
+			) : [];
+			$lookupIds = $parcoursIds;
+			foreach ($packLinks ?: [] as $link) $lookupIds[] = (int)$link['IDparcours_child'];
+			$lookupIds = self::normalizePositiveIds($lookupIds);
+			$indicators = array_fill_keys($lookupIds, ['video' => false, 'homework' => false, 'quiz' => false]);
+			$homeworkSql = self::tableExists('mission_homework')
+				? 'EXISTS (SELECT 1 FROM mission_homework mh INNER JOIN homework h ON h.id = mh.IDhomework WHERE mh.IDmission = m.id)'
+				: '0';
+			$quizSql = self::tableExists('mission_question')
+				? 'EXISTS (SELECT 1 FROM mission_question mq INNER JOIN question q ON q.id = mq.IDquestion WHERE mq.IDmission = m.id)'
+				: '0';
+			$rows = self::fetchAll(
+				"SELECT pm.IDparcours,
+					MAX(TRIM(COALESCE(m.video, '')) <> '') AS has_video,
+					MAX($homeworkSql) AS has_homework,
+					MAX($quizSql) AS has_quiz
+				FROM parcours_mission pm INNER JOIN mission m ON m.id = pm.IDmission
+				WHERE pm.IDparcours IN (" . implode(',', $lookupIds) . ") GROUP BY pm.IDparcours"
+			);
+			foreach ($rows ?: [] as $row) {
+				$indicators[(int)$row['IDparcours']] = ['video' => (bool)$row['has_video'], 'homework' => (bool)$row['has_homework'], 'quiz' => (bool)$row['has_quiz']];
+			}
+			// Packs contain direct child courses, never other packs.
+			foreach ($packLinks ?: [] as $link) {
+				if (!isset($indicators[(int)$link['IDparcours_child']])) continue;
+				foreach (['video', 'homework', 'quiz'] as $feature) {
+					$indicators[(int)$link['IDparcours_parent']][$feature] = $indicators[(int)$link['IDparcours_parent']][$feature]
+						|| $indicators[(int)$link['IDparcours_child']][$feature];
+				}
+			}
+			return array_intersect_key($indicators, array_flip($parcoursIds));
+		}
+
 		protected static function rowHasVisiblePrerequisites(array $row, $userId, array $completedParcoursIds = [])
 		{
 			$parcoursId = (int)($row['id'] ?? 0);

@@ -1,4 +1,5 @@
 <?php
+require_once dirname(__DIR__, 4) . '/common/lms/content-indicators.php';
 $sourceLang = [
     'lms.parcours_content.pack.title' => ['text' => 'Parcours du pack', 'context' => 'Section title shown when viewing a pack parcours.'],
     'lms.parcours_content.pack.intro' => ['text' => 'Seuls les parcours compatibles avec les applications actives dans cette organisation sont affichés.', 'context' => 'Intro text shown above the list of child parcours in a pack.'],
@@ -31,13 +32,16 @@ $packChildren = $isPackParcours
         $canEditPackParcours
     )
     : [];
+$contentIndicators = \dbObject\Parcours::fetchContentIndicators(array_column($packChildren, 'id'));
 ?>
 <?php if ($isPackParcours): ?>
 <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/lms/css/parcours-content.css') ?>">
+<link rel="stylesheet" href="<?= commonAssetUrl('/common/lms/content-indicators.css') ?>">
 <?php endif; ?>
 <div class="content lms-parcours-content<?php echo $isEmbedded ? ' lms-parcours-content--embed' : ''; ?>">
 <?php if ($isEmbedded): ?>
     <div class="lms-parcours-embed-header">
+        <?php commonLmsRenderCatalogBackLink($catalogUrl ?? ''); ?>
         <h1><?php echo htmlspecialchars($parcours['title']); ?></h1>
         <?php if ($parcours['description'] !== ''): ?>
             <p><?php echo htmlspecialchars($parcours['description']); ?></p>
@@ -78,7 +82,10 @@ $packChildren = $isPackParcours
                         <?php endif; ?>
                         <div class="card-footer">
                             <div class="progress-circle" data-percent="<?php echo (int)$percent; ?>"></div>
-                            <button type="button" class="open-btn" <?php echo $isVisibleParcours ? 'onclick="event.stopPropagation(); goToPackChildParcours(' . (int)($childParcours['id'] ?? 0) . ')"' : 'disabled'; ?>><?php echo htmlspecialchars($isVisibleParcours ? lmsParcoursContentT('lms.parcours_content.pack.open') : lmsParcoursContentT('lms.parcours_content.pack.hidden')); ?></button>
+                            <div class="generic-action-row generic-action-row--nowrap">
+                                <?php commonLmsRenderContentIndicators($contentIndicators[(int)$childParcours['id']] ?? []); ?>
+                                <button type="button" class="open-btn" <?php echo $isVisibleParcours ? 'onclick="event.stopPropagation(); goToPackChildParcours(' . (int)($childParcours['id'] ?? 0) . ')"' : 'disabled'; ?>><?php echo htmlspecialchars($isVisibleParcours ? lmsParcoursContentT('lms.parcours_content.pack.open') : lmsParcoursContentT('lms.parcours_content.pack.hidden')); ?></button>
+                            </div>
                         </div>
                     </div>
                 </div>

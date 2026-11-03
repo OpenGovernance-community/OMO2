@@ -5,6 +5,7 @@ require_once __DIR__ . '/bootstrap.php';
 commonRestoreRememberedUser();
 include 'inc/org.php';
 require_once __DIR__ . '/inc/access.php';
+require_once dirname(__DIR__, 3) . '/common/lms/content-indicators.php';
 
 $sourceLang = [
     'lms.index.title.catalog_brand' => ['text' => 'Tutoriels OMO', 'context' => 'Page title used in the basic LMS catalog mode.'],
@@ -84,6 +85,7 @@ $parcours = $isBasicCatalogMode
     ? \dbObject\Parcours::fetchBasicCatalogWithProgress($user_id, $anonymousCompletedParcoursIds)
     : \dbObject\Parcours::fetchForOrganizationWithProgress($org['id'], $user_id, $hasOrganizationAccess, $canEditParcours);
 $parcours = is_array($parcours) ? $parcours : [];
+$contentIndicators = \dbObject\Parcours::fetchContentIndicators(array_column($parcours, 'id'));
 $pendingParcours = [];
 $completedParcours = [];
 $packParcours = [];
@@ -117,6 +119,7 @@ foreach ($parcours as $parcoursItem) {
     <title><?php echo htmlspecialchars($isBasicCatalogMode ? lmsIndexT('lms.index.title.catalog_brand') : $org['name']); ?></title>
     <link rel="stylesheet" href="/common/assets/theme.css">
     <?= commonStylesheetTags('/shared_css.css') ?>
+    <link rel="stylesheet" href="<?= commonAssetUrl('/common/lms/content-indicators.css') ?>">
     <?php require dirname(__DIR__, 3) . '/common/lms/notifications.php'; ?>
     <link rel="stylesheet" href="<?php echo htmlspecialchars(omoLmsBuildPath('/css/std.css')); ?>">
     <?php if ($isEmbedded && $canCreateParcours): ?>
@@ -235,7 +238,10 @@ if (!$isEmbedded) {
 
         <div class="card-footer">
             <div class="progress-circle" data-percent="<?php echo (int)$percent; ?>"></div>
-            <button class="open-btn"<?php echo $isVisibleParcours ? '' : ' type="button" disabled'; ?>><?php echo htmlspecialchars($isVisibleParcours ? lmsIndexT('lms.index.card.open') : lmsIndexT('lms.index.card.hidden')); ?></button>
+            <div class="generic-action-row generic-action-row--nowrap">
+                <?php commonLmsRenderContentIndicators($contentIndicators[(int)$p['id']] ?? []); ?>
+                <button class="open-btn"<?php echo $isVisibleParcours ? '' : ' type="button" disabled'; ?>><?php echo htmlspecialchars($isVisibleParcours ? lmsIndexT('lms.index.card.open') : lmsIndexT('lms.index.card.hidden')); ?></button>
+            </div>
         </div>
     </div>
 </div>
@@ -338,7 +344,10 @@ if (!$isEmbedded) {
 
             <div class="card-footer">
                 <div class="progress-circle" data-percent="<?php echo (int)$percent; ?>"></div>
-                <button class="open-btn"<?php echo $isVisibleParcours ? '' : ' type="button" disabled'; ?>><?php echo htmlspecialchars($isVisibleParcours ? lmsIndexT('lms.index.card.open') : lmsIndexT('lms.index.card.hidden')); ?></button>
+                <div class="generic-action-row generic-action-row--nowrap">
+                    <?php commonLmsRenderContentIndicators($contentIndicators[(int)$p['id']] ?? []); ?>
+                    <button class="open-btn"<?php echo $isVisibleParcours ? '' : ' type="button" disabled'; ?>><?php echo htmlspecialchars($isVisibleParcours ? lmsIndexT('lms.index.card.open') : lmsIndexT('lms.index.card.hidden')); ?></button>
+                </div>
             </div>
         </div>
     </div>
@@ -415,7 +424,10 @@ if (!$isEmbedded) {
 
             <div class="card-footer">
                 <div class="progress-circle" data-percent="<?php echo (int)$percent; ?>"></div>
-                <button class="open-btn"<?php echo $isVisibleParcours ? '' : ' type="button" disabled'; ?>><?php echo htmlspecialchars($isVisibleParcours ? lmsIndexT('lms.index.card.open') : lmsIndexT('lms.index.card.hidden')); ?></button>
+                <div class="generic-action-row generic-action-row--nowrap">
+                    <?php commonLmsRenderContentIndicators($contentIndicators[(int)$p['id']] ?? []); ?>
+                    <button class="open-btn"<?php echo $isVisibleParcours ? '' : ' type="button" disabled'; ?>><?php echo htmlspecialchars($isVisibleParcours ? lmsIndexT('lms.index.card.open') : lmsIndexT('lms.index.card.hidden')); ?></button>
+                </div>
             </div>
         </div>
     </div>

@@ -6,6 +6,7 @@ require_once BASE_PATH . '/common/auth.php';
 commonRestoreRememberedUser();
 include 'inc/org.php';
 require_once __DIR__ . '/inc/access.php';
+require_once BASE_PATH . '/common/lms/content-indicators.php';
 
 $isEmbedded = !empty($_GET['embed']);
 $user_id = (int)($_SESSION['currentUser'] ?? 0);
@@ -26,6 +27,7 @@ if ($hasOrganizationAccess) {
 }
 
 $parcours = is_array($parcours) ? $parcours : [];
+$contentIndicators = \dbObject\Parcours::fetchContentIndicators(array_column($parcours, 'id'));
 
 if ($user_id <= 0 && !$isGuestAllowed && count($parcours) === 0) {
     $loginReturnTo = lmsBuildLocalPath('/lms/', $isEmbedded ? ['embed' => 1] : []);
@@ -80,6 +82,7 @@ $loginDrawerReturnTo = lmsBuildLocalPath('/lms/', $isEmbedded ? ['embed' => 1] :
     <title><?php echo htmlspecialchars($org['name']); ?></title>
     <link rel="stylesheet" href="/common/assets/theme.css">
     <?= commonStylesheetTags('/shared_css.css') ?>
+    <link rel="stylesheet" href="<?= commonAssetUrl('/common/lms/content-indicators.css') ?>">
     <?php require BASE_PATH . '/common/lms/notifications.php'; ?>
     <link rel="stylesheet" href="/lms/css/std.css">
     <script src="/shared_functions.js"></script>
@@ -378,9 +381,12 @@ $loginDrawerReturnTo = lmsBuildLocalPath('/lms/', $isEmbedded ? ['embed' => 1] :
                     <div><?php echo htmlspecialchars((string)$p['description']); ?></div>
                     <div class="card-footer">
                         <div class="progress-circle" data-percent="<?php echo (int)$percent; ?>"></div>
-                        <button class="open-btn" type="button" <?php echo $isPreviewOnly ? 'disabled' : ''; ?>>
-                            <?php echo $isPreviewOnly ? htmlspecialchars(lmsParcoursPreviewLabel($p)) : 'Ouvrir'; ?>
-                        </button>
+                        <div class="generic-action-row generic-action-row--nowrap">
+                            <?php commonLmsRenderContentIndicators($contentIndicators[(int)$p['id']] ?? []); ?>
+                            <button class="open-btn" type="button" <?php echo $isPreviewOnly ? 'disabled' : ''; ?>>
+                                <?php echo $isPreviewOnly ? htmlspecialchars(lmsParcoursPreviewLabel($p)) : 'Ouvrir'; ?>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -419,9 +425,12 @@ $loginDrawerReturnTo = lmsBuildLocalPath('/lms/', $isEmbedded ? ['embed' => 1] :
                     <div><?php echo htmlspecialchars((string)$p['description']); ?></div>
                     <div class="card-footer">
                         <div class="progress-circle" data-percent="<?php echo (int)$percent; ?>"></div>
-                        <button class="open-btn" type="button" <?php echo $isPreviewOnly ? 'disabled' : ''; ?>>
-                            <?php echo $isPreviewOnly ? htmlspecialchars(lmsParcoursPreviewLabel($p)) : 'Ouvrir'; ?>
-                        </button>
+                        <div class="generic-action-row generic-action-row--nowrap">
+                            <?php commonLmsRenderContentIndicators($contentIndicators[(int)$p['id']] ?? []); ?>
+                            <button class="open-btn" type="button" <?php echo $isPreviewOnly ? 'disabled' : ''; ?>>
+                                <?php echo $isPreviewOnly ? htmlspecialchars(lmsParcoursPreviewLabel($p)) : 'Ouvrir'; ?>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

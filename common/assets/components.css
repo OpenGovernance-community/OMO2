@@ -730,6 +730,16 @@ input:focus-visible + .generic-choice-card,
     gap: var(--generic-action-row-gap, var(--generic-space-2));
 }
 
+.generic-action-row--nowrap {
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+}
+
+/* Keep legacy button margins from shifting controls within a single action row. */
+.generic-action-row--nowrap > button {
+    margin-block: 0;
+}
+
 .generic-action-row--start {
     justify-content: flex-start;
 }
@@ -1514,7 +1524,7 @@ html[data-theme="dark"] .black-icon,
     border: 0;
     border-radius: 0;
     background: transparent;
-    color: var(--color-primary, #2563eb);
+    color: var(--param-action-link-color, var(--color-primary, #2563eb));
     text-decoration: underline;
     text-underline-offset: 3px;
 }
