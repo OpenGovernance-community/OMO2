@@ -79,7 +79,8 @@
             var createdAtLabel = createdAt && !isNaN(createdAt.getTime())
                 ? createdAt.toLocaleString(undefined, {dateStyle: 'short', timeStyle: 'short'})
                 : '';
-            return '<a class="' + classes + '" href="' + escapeHtml(item.url || '#') + '" data-omo-notification-item data-notification-id="' + Number(item.id || 0) + '" data-notification-url="' + escapeHtml(item.url || '') + '">'
+            return '<a class="' + classes + '" href="' + escapeHtml(item.url || '#') + '" data-omo-notification-item data-notification-id="' + Number(item.id || 0) + '" data-notification-url="' + escapeHtml(item.url || '') + '"'
+                + (item.eventKey === 'site_update_installed' ? ' data-site-update-news' : '') + '>'
                 + '<strong>' + escapeHtml(item.title) + '</strong>'
                 + (item.body ? '<span>' + escapeHtml(item.body) + '</span>' : '')
                 + (createdAtLabel ? '<time class="omo-notification-inbox__date" datetime="' + escapeHtml(item.createdAt) + '">' + escapeHtml(createdAtLabel) + '</time>' : '')
@@ -123,6 +124,16 @@
         if (!item) {
             return;
         }
+        if (item.hasAttribute('data-site-update-news') && typeof window.commonTopbarOpenModal === 'function'
+            && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
+            var url = new URL(item.href, window.location.href);
+            var newsId = Number(url.searchParams.get('site-update-news'));
+            if (newsId > 0 && url.origin === window.location.origin) {
+                event.preventDefault();
+                window.commonTopbarOpenModal(item.querySelector('strong').textContent,
+                    '/omo/api/notifications/site_update_news.php?id=' + newsId, 'fetch');
+            }
+        }
         item.classList.remove('is-unread');
         markRead({
             notificationId: item.getAttribute('data-notification-id'),
@@ -138,5 +149,13 @@
 
     window.addEventListener('DOMContentLoaded', function () {
         refreshInbox();
+        var url = new URL(window.location.href);
+        var newsId = Number(url.searchParams.get('site-update-news'));
+        if (newsId > 0 && typeof window.commonTopbarOpenModal === 'function') {
+            window.commonTopbarOpenModal('', '/omo/api/notifications/site_update_news.php?id=' + newsId, 'fetch');
+            markRead({url: '/omo/?site-update-news=' + newsId}).then(refreshInbox);
+            url.searchParams.delete('site-update-news');
+            window.history.replaceState(window.history.state, '', url.toString());
+        }
     });
 }());

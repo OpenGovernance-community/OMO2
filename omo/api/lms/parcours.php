@@ -42,6 +42,13 @@ if ($parcoursRef->load($parcours_id)) {
 
 $isAnonymousViewer = lmsIsAnonymousViewer($accessContext);
 $organizationColor = commonGetOrganizationExplicitColor($org);
+$headerColor = $organizationColor;
+$ownerOrganization = new \dbObject\Organization();
+if ($ownerOrganization->load($parcoursRef->getOwnerOrganizationId())) {
+	$headerColor = commonGetOrganizationExplicitColor(['color' => $ownerOrganization->get('color')]);
+}
+require_once dirname(__DIR__, 3) . '/common/avatar.php';
+$headerTextColor = $headerColor !== '' ? commonAvatarResolveTextColor($headerColor) : '#ffffff';
 ?>
 
 <!DOCTYPE html>
@@ -51,7 +58,7 @@ $organizationColor = commonGetOrganizationExplicitColor($org);
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<link rel="stylesheet" href="/common/assets/theme.css">
 	<?= commonStylesheetTags('/shared_css.css') ?>
-	<link rel="stylesheet" href="<?php echo htmlspecialchars(omoLmsBuildPath('/css/std.css')); ?>">
+	<link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/lms/css/std.css') ?>">
 	<script src="<?= commonAssetUrl('/common/assets/components.js') ?>"></script>
 	<script src="/shared_functions.js"></script>
 	<script>
@@ -72,19 +79,12 @@ $organizationColor = commonGetOrganizationExplicitColor($org);
 <body class="<?php echo $isEmbedded ? 'lms-embed-mode' : ''; ?>">
 <?php if (!$isEmbedded): ?>
 <?php include 'inc/menu.php'; ?>
-<div class="org-banner" style="background-color: <?php echo htmlspecialchars($org['color'] ?? '#CCC'); ?>">
+<header class="org-banner org-banner--compact" style="background-color: <?= htmlspecialchars($headerColor !== '' ? $headerColor : 'var(--primary)', ENT_QUOTES, 'UTF-8') ?>; color: <?= htmlspecialchars($headerTextColor, ENT_QUOTES, 'UTF-8') ?>">
 <h1><?php echo htmlspecialchars($parcours['title']); ?></h1>
+<?php if ($parcours['description'] !== ''): ?>
 <p><?php echo htmlspecialchars($parcours['description']); ?></p>
-<?php if ($isAnonymousViewer): ?>
-<div class="lms-anonymous-note">
-	<?= htmlspecialchars(omoLmsUiT('votre_avancement_est_memorise_localement_sur_cet_appareil_tant_que_vous_restez_deconnecte'), ENT_QUOTES, 'UTF-8') ?>
-</div>
-<?php elseif (!$canTrackProgress): ?>
-<div class="lms-anonymous-note">
-	<?= htmlspecialchars(omoLmsUiT('la_validation_de_progression_n_est_pas_disponible_dans_ce_contexte'), ENT_QUOTES, 'UTF-8') ?>
-</div>
 <?php endif; ?>
-</div>
+</header>
 <?php endif; ?>
 
 <?php include 'inc/parcours_content.php'; ?>

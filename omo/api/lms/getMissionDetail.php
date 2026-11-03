@@ -98,7 +98,7 @@ if ($homeworksJson === false) {
 	$homeworksJson = '[]';
 }
 
-echo "<div class=\"generic-section generic-section--plain\">";
+echo "<div class=\"lms-mission-detail generic-section generic-section--plain\">";
 
 if ($m) {
 	$embedVideoUrl = $m['video_embed_url'];
@@ -117,176 +117,6 @@ if ($m) {
 			$iframeSrc .= (strpos($iframeSrc, '?') === false ? '?' : '&') . 'controls=0';
 		}
 ?>
-	<style>
-		body {
-			font-family: Arial, sans-serif;
-			margin: 0;
-			padding: 20px;
-		}
-
-		* {
-			box-sizing: border-box;
-		}
-
-		.video-portal {
-			--video-aspect-ratio: 16 / 9;
-			--video-ratio-number: 1.7777778;
-			position: relative;
-			width: min(100%, 960px, calc(50dvh * var(--video-ratio-number)));
-			font-family: sans-serif;
-			overflow: hidden;
-			margin: auto;
-		}
-
-		.video-inner {
-			position: relative;
-			aspect-ratio: var(--video-aspect-ratio);
-		}
-
-		.video-inner iframe {
-			position: absolute;
-			width: 100%;
-			height: 100%;
-			top: 0;
-			left: 0;
-		}
-
-		.branding-overlay {
-			position: absolute;
-			inset: 0;
-			pointer-events: none;
-			background: url("<?= htmlspecialchars(omoLmsBuildPath('/branding-client.png'), ENT_QUOTES, 'UTF-8') ?>") center/contain no-repeat;
-		}
-
-		.video-portal {
-			position: relative;
-			max-width: 960px;
-			font-family: sans-serif;
-			overflow: hidden;
-		}
-
-		.custom-controls {
-			position: absolute;
-			left: 0;
-			bottom: 0;
-			width: 100%;
-			padding: 12px;
-			background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
-			display: flex;
-			align-items: center;
-			gap: 10px;
-			opacity: 0;
-			transform: translateY(10px);
-			transition: opacity 0.25s ease, transform 0.25s ease;
-		}
-
-		.video-portal:hover .custom-controls {
-			opacity: 1;
-			transform: translateY(0);
-		}
-
-		.custom-controls button {
-			border: none;
-			padding: 5px 10px;
-			cursor: pointer;
-		}
-
-		.volume-controls {
-			display: flex;
-			align-items: center;
-			gap: 8px;
-			margin-left: 12px;
-		}
-
-		.volume-controls input[type="range"] {
-			width: 96px;
-			cursor: pointer;
-		}
-
-		.progressvideo {
-			flex: 1;
-			height: 6px;
-			background: #444;
-			cursor: pointer;
-			position: relative;
-		}
-
-		.progressvideo-bar {
-			height: 100%;
-			width: 0%;
-			background: #fff;
-		}
-
-		@media (max-width: 640px) {
-			.video-portal {
-				width: min(100%, calc(42dvh * var(--video-ratio-number)));
-			}
-
-			.video-portal .custom-controls {
-				position: static;
-				width: auto;
-				opacity: 1;
-				transform: none;
-				padding: 8px 10px;
-				gap: 8px;
-				flex-wrap: wrap;
-				align-items: center;
-				background: color-mix(in srgb, var(--bg-card, #111827) 88%, #000);
-				border-top: 1px solid color-mix(in srgb, var(--border-color, #374151) 55%, transparent);
-			}
-
-			.video-portal .custom-controls button {
-				padding: 6px 10px;
-				min-width: 0;
-				min-height: 34px;
-				border-radius: 999px;
-				font-size: 0.9rem;
-			}
-
-			.video-portal #playBtn,
-			.video-portal #volumeBtn {
-				flex: 0 0 auto;
-			}
-
-			.video-portal .progressvideo {
-				order: 10;
-				flex: 1 0 100%;
-				height: 6px;
-			}
-
-			.video-portal #time {
-				font-size: 0.82rem;
-				opacity: 0.9;
-			}
-
-			.video-portal .volume-controls {
-				margin-left: auto;
-				gap: 6px;
-				flex: 0 1 auto;
-			}
-
-			.video-portal .volume-controls input[type="range"] {
-				width: 78px;
-			}
-		}
-
-		@media (max-width: 420px) {
-			.video-portal .custom-controls {
-				padding: 7px 8px;
-				gap: 6px;
-			}
-
-			.video-portal .custom-controls button {
-				padding: 5px 8px;
-				min-height: 32px;
-				font-size: 0.85rem;
-			}
-
-			.video-portal .volume-controls input[type="range"] {
-				width: 64px;
-			}
-		}
-	</style>
 
 	<div class="video-portal">
 		<div class="video-inner">
@@ -301,7 +131,7 @@ if ($m) {
 			</iframe>
 		</div>
 
-		<div class="branding-overlay"></div>
+		<div class="branding-overlay" style="background-image: url('<?= htmlspecialchars(omoLmsBuildPath('/branding-client.png'), ENT_QUOTES, 'UTF-8') ?>')"></div>
 
 		<div class="custom-controls"<?php echo $videoControlMode === 'custom' ? '' : ' style="display:none"'; ?>>
 			<button id="playBtn"><?= htmlspecialchars(lmsMissionDetailT('lms.mission_detail.video.play')); ?></button>

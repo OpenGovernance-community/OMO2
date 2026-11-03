@@ -9,6 +9,7 @@ $sourceLang = [
     'lms.parcours_content.views.todo' => ['text' => 'Mes missions', 'context' => 'Button used to show pending missions in a parcours.'],
     'lms.parcours_content.views.done' => ['text' => 'Terminées', 'context' => 'Button used to show completed missions in a parcours.'],
     'lms.parcours_content.views.next' => ['text' => 'À venir', 'context' => 'Button used to show upcoming missions in a parcours.'],
+    'lms.parcours_content.progress' => ['text' => 'Progression du parcours', 'context' => 'Accessible label of the parcours completion progress bar.'],
 ];
 
 $lang = omoLoadTranslationBundle('omo_lms_parcours_content', $sourceLang);
@@ -91,9 +92,15 @@ $packChildren = $isPackParcours
     <button onclick="setView('done')" id="btnDone"><?php echo htmlspecialchars(lmsParcoursContentT('lms.parcours_content.views.done')); ?></button>
     <button onclick="setView('next')" id="btnNext"><?php echo htmlspecialchars(lmsParcoursContentT('lms.parcours_content.views.next')); ?></button>
 </div>
-<div class="progress-container">
-    <div class="progress-bar" id="progressBar"></div>
+<div class="lms-parcours-progress">
+    <div class="progress-container" id="parcoursProgress" role="progressbar" aria-label="<?= htmlspecialchars(lmsParcoursContentT('lms.parcours_content.progress'), ENT_QUOTES, 'UTF-8') ?>" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <span class="lms-parcours-progress__value" id="progressPercent">0 %</span>
 </div>
+<?php if (!$isEmbedded && ($isAnonymousViewer || !$canTrackProgress)): ?>
+<p class="generic-description generic-description--small lms-parcours-note"><?= htmlspecialchars(omoLmsUiT($isAnonymousViewer ? 'votre_avancement_est_memorise_localement_sur_cet_appareil_tant_que_vous_restez_deconnecte' : 'la_validation_de_progression_n_est_pas_disponible_dans_ce_contexte'), ENT_QUOTES, 'UTF-8') ?></p>
+<?php endif; ?>
 <div id="missions" class="missions"></div>
 <?php endif; ?>
 

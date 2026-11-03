@@ -3,7 +3,6 @@ require_once __DIR__ . '/../ui_translations.php';
 require_once dirname(__DIR__, 4) . '/common/topbar.php';
 $currentUserId = (int)commonGetCurrentUserId();
 ?>
-<script src="/shared_functions.js"></script>
 <script>
 sharedApplyDocumentTheme({
     preference: <?php echo $currentUserId > 0 ? 'undefined' : "'system'"; ?>

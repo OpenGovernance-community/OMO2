@@ -24,6 +24,7 @@ foreach (\dbObject\Notification::getInboxForUser($userId, $organizationId, 30) a
     $createdAt = $notification->get('created_at');
     $items[] = [
         'id' => (int)$notification->getId(),
+        'eventKey' => (string)$notification->get('event_key'),
         'title' => (string)$notification->get('title'),
         'body' => (string)$notification->get('body'),
         'url' => (string)$notification->get('url'),

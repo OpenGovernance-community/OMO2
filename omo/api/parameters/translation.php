@@ -214,6 +214,7 @@ function omoServerEnvSourceLang()
         'parameters.server_env.field.GITHUB_BUGREPORT_REPO_NAME.label' => ['text' => 'Repository name GitHub', 'context' => 'Label of the GITHUB_BUGREPORT_REPO_NAME field in the server environment editor.'],
         'parameters.server_env.field.GITHUB_BUGREPORT_LABELS.label' => ['text' => 'Labels GitHub', 'context' => 'Label of the GITHUB_BUGREPORT_LABELS field in the server environment editor.'],
         'parameters.server_env.field.GITHUB_BUGREPORT_USER_AGENT.label' => ['text' => 'User-Agent GitHub', 'context' => 'Label of the GITHUB_BUGREPORT_USER_AGENT field in the server environment editor.'],
+        'parameters.server_env.field.SITE_UPDATE_GITHUB_TOKEN.label' => ['text' => 'Token GitHub pour les descriptions des mises a jour', 'context' => 'Optional read token for private repository pull request descriptions.'],
         'parameters.server_env.field.secret_keep.help' => ['text' => 'Laissez vide pour conserver la valeur actuelle.', 'context' => 'Help text shown under secret fields in the server environment editor.'],
         'parameters.server_env.field.help_label' => ['text' => 'Aide : {field}', 'context' => 'Accessible label for a server configuration field help bubble.'],
         'parameters.server_env.field.help_source' => ['text' => 'Ouvrir la documentation Patreon', 'context' => 'Link inside Patreon settings help bubbles to the official documentation.'],

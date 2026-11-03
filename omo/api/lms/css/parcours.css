@@ -81,7 +81,7 @@
 
 .branch {
 	margin-bottom: 25px;
-	width: 100dvw;
+	width: 100%;
 }
 
 .branch-header {
@@ -134,12 +134,29 @@
 }
 
 .progress-container {
-	width: 100%;
+	flex: 1;
+	min-width: 0;
 	height: 20px;
 	background: var(--progress-bg);
 	border-radius: var(--radius-md);
 	overflow: hidden;
-	margin-bottom: 20px;
+}
+
+.lms-parcours-progress {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 12px;
+}
+
+.lms-parcours-progress__value {
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.lms-parcours-content > .lms-parcours-note {
+	margin: 0 0 12px;
 }
 
 .progress-bar {
@@ -164,7 +181,8 @@
 .view-switch {
 	display: flex;
 	gap: 10px;
-	margin-bottom: 15px;
+	flex-wrap: wrap;
+	margin-bottom: 12px;
 }
 
 .view-switch button {

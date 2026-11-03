@@ -50,7 +50,8 @@ var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; 
             '<div class="omo-site-update-banner__card">',
             '  <div class="omo-site-update-banner__copy">',
             ("    <div class=\"omo-site-update-banner__eyebrow\">" + omoUiHtml("admin_du_site", "Admin du site") + "</div>"),
-            '    <strong class="omo-site-update-banner__title"></strong>',
+            '    <div class="generic-heading-with-help"><strong class="omo-site-update-banner__title"></strong>',
+            '    <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--pill" data-omo-site-update-details hidden aria-haspopup="dialog">?</button></div>',
             '    <p class="omo-site-update-banner__message"></p>',
             '    <div class="omo-site-update-banner__meta"></div>',
             '    <div class="omo-site-update-banner__local-changes" hidden></div>',
@@ -371,6 +372,10 @@ var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; 
             })
             .then(function (payload) {
                 lastPayload = payload;
+                var detailsButton = root.querySelector('[data-omo-site-update-details]');
+                detailsButton.hidden = !payload || !payload.changelogHtml || (!payload.available && !payload.requiresCompletion);
+                detailsButton.title = payload && payload.changelogTitle || '';
+                detailsButton.setAttribute('aria-label', detailsButton.title);
 
                 if (!payload || payload.status !== true || payload.supported !== true) {
                     hideBanner();
@@ -462,6 +467,12 @@ var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; 
         if (dismissButton) {
             dismissButton.addEventListener('click', hideBanner);
         }
+
+        root.querySelector('[data-omo-site-update-details]').addEventListener('click', function () {
+            if (lastPayload && lastPayload.changelogHtml && typeof window.commonTopbarOpenModal === 'function') {
+                window.commonTopbarOpenModal(lastPayload.changelogTitle, lastPayload.changelogHtml, 'html');
+            }
+        });
 
         function runUpdate(force) {
             if (!completeOnly && force !== true && (!lastPayload || lastPayload.available !== true)) {

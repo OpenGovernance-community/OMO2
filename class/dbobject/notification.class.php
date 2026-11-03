@@ -55,7 +55,7 @@ class Notification extends DbObject
 
     public static function createForUser($userId, $organizationId, $eventKey, $sourceKey, $title, $body = '', $url = '', $dedupeKey = '')
     {
-        if ((int)$userId <= 0 || ((int)$organizationId <= 0 && !NotificationPreference::isPersonalEvent($eventKey))) { return null; }
+        if ((int)$userId <= 0 || ((int)$organizationId <= 0 && !NotificationPreference::isPersonalEvent($eventKey) && $eventKey !== 'site_update_installed')) { return null; }
         if (!self::isStorageAvailable()) {
             return null;
         }

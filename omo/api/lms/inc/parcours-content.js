@@ -230,7 +230,10 @@ function loadMissions() {
             document.getElementById('missions').innerHTML = data.html || '';
 
             if (data.progress !== undefined) {
-                document.getElementById('progressBar').style.width = data.progress + '%';
+                const progress = Math.max(0, Math.min(100, Number(data.progress) || 0));
+                document.getElementById('progressBar').style.width = progress + '%';
+                document.getElementById('progressPercent').textContent = progress + ' %';
+                document.getElementById('parcoursProgress').setAttribute('aria-valuenow', String(progress));
             }
 
             restoreBranches();

@@ -137,6 +137,19 @@
 			return (bool)$this->getParameter('roleplay_character');
 		}
 
+		public static function getSiteUpdateRecipientIds(): array
+		{
+			$rows = self::fetchAll('SELECT id, parameters FROM `user` WHERE active = 1');
+			if (!is_array($rows)) { throw new \RuntimeException('Impossible de charger les destinataires des nouveautes.'); }
+			$ids = [];
+			foreach ($rows as $row) {
+				$user = new self();
+				$user->loadFromArray($row);
+				if (!$user->isRoleplayCharacter() && !$user->isHistoricalPlaceholder()) { $ids[] = (int)$row['id']; }
+			}
+			return $ids;
+		}
+
 		public function canEdit() {
 			if (isset($_SESSION["currentUser"]) && $_SESSION["currentUser"] == $this->getId()) {
 				return true;
