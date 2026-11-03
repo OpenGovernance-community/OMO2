@@ -1,5 +1,13 @@
 # Journal des nouveautés
 
+- Tutoriels / notifications en iframe (2026-11-03) : chargement des notifications partagees dans le document du tutoriel, meme sans topbar. Les mauvaises reponses et les erreurs du quiz s affichent au-dessus du panneau, avec fermeture automatique et sans dependance a la page parente.
+
+- Tutoriels / confirmation de lecture (2026-11-03) : le bouton Marquer comme lu est active une fois le bas du contenu de la mission atteint. Les contenus entierement visibles restent validables directement ; le chargement tardif des images et les devoirs requis sont pris en compte.
+
+- Tutoriels / complements pedagogiques (2026-11-03) : apres une bonne reponse au quiz, affichage de Bien joue et du champ reponse si renseigne. Bouton Suivant pour continuer ou Fermer pour terminer et memoriser la mission apres lecture de la derniere explication.
+
+- Synchronisation / presentation des versions (2026-11-03) : texte Markdown prepare dans la pull request affiche en priorite et conserve sans reecriture, avec le journal dans un accordeon discret ferme par defaut. Sans presentation preparee, affichage direct du journal ; les titres et messages techniques des merges ne sont plus presentes. Presentation et journal conserves separement dans les news.
+
 - Tutoriels / quiz publics (2026-11-03) : validation des reponses sans connexion avec conservation du contexte public, controle du lien entre parcours, mission et question, et progression finale memorisee sur cet appareil. Les erreurs de verification permettent de reessayer sans perdre la reponse selectionnee.
 
 - Tutoriels / prerequis de mission (2026-11-03) : ajout et retrait d un prerequis avec mise a jour du seul bloc concerne ; les champs non enregistres, les editeurs HTML et les autres blocs du formulaire restent conserves.

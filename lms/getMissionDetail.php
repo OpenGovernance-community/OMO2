@@ -3,6 +3,7 @@ define('BASE_PATH', dirname(__DIR__));
 require_once BASE_PATH . '/shared_functions.php';
 require_once BASE_PATH . '/common/auth.php';
 require_once BASE_PATH . '/common/translation_bundles.php';
+require_once BASE_PATH . '/common/lms/quiz.php';
 
 commonRestoreRememberedUser();
 include __DIR__ . '/inc/org.php';
@@ -348,14 +349,21 @@ if ($m) {
 }
 ?>
 <?php
-$quizSourceLang = ['check_answer_error' => ['text' => 'Impossible de verifier cette reponse. Reessayez.', 'context' => 'Quiz answer verification failure notification.']];
+$quizSourceLang = [
+    'check_answer_error' => ['text' => 'Impossible de verifier cette reponse. Reessayez.', 'context' => 'Quiz answer verification failure notification.'],
+    'scroll_to_end' => ['text' => "Faites defiler le contenu jusqu'en bas pour marquer cette mission comme lue.", 'context' => 'Instruction shown while mission read confirmation is locked until the end of the content.'],
+];
 $quizLang = loadTranslationBundle('lms_quiz', translationBundleResolveRequestLocale('lang'), $quizSourceLang);
 ?>
+<script src="<?= commonAssetUrl('/common/lms/quiz.js') ?>"></script>
+<script src="<?= commonAssetUrl('/common/lms/read-progress.js') ?>"></script>
 <?= commonPageScriptTags('/lms/mission-detail.js', [
+    'quizFeedbackText' => commonLmsQuizFeedbackTexts(),
     'checkAnswerUrl' => lmsBuildLocalPath('/lms/checkAnswer.php'),
     'questionsUrl' => lmsBuildLocalPath('/lms/getMissionQuestions.php', ['parcours_id' => $parcours_id]),
     'actionUrl' => lmsBuildLocalPath('/lms/action.php'),
     'checkAnswerError' => t('check_answer_error', [], $quizLang, $quizSourceLang),
+    'scrollToEnd' => t('scroll_to_end', [], $quizLang, $quizSourceLang),
     'lmsMissionId' => (int)$mission_id,
     'lmsMissionViewerCanTrack' => ($canTrackProgress),
     'lmsMissionViewerIsAnonymous' => ($isAnonymousViewer),

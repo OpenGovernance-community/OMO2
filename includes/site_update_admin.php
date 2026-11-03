@@ -935,7 +935,7 @@ function siteUpdateAdminPublishInstalledNews(array $state): int
     if (empty($changelog['description'])) { throw new RuntimeException('Impossible de publier une news sans description.'); }
     $news = \dbObject\SiteUpdateNews::publish($from, $to,
         siteUpdateNewsT('title', ['date' => (new DateTimeImmutable('now', new DateTimeZone('Europe/Zurich')))->format('d.m.Y')]),
-        $changelog['description']);
+        $changelog['description'], (string)($changelog['journal'] ?? ''));
     return (int)$news->getId();
 }
 

@@ -10,6 +10,8 @@ window.commonPageScripts["/lms/mission-detail.js"] = function (pageConfig, pageS
 	let currentMission = null;
 	let quizMode = false;
 	let isCheckingAnswer = false;
+	let isShowingAnswer = false;
+	let hasReadMission = false;
 	const lmsMissionId = pageConfig.lmsMissionId;
 	const lmsMissionViewerCanTrack = pageConfig.lmsMissionViewerCanTrack;
 	const lmsMissionViewerIsAnonymous = pageConfig.lmsMissionViewerIsAnonymous;
@@ -148,6 +150,7 @@ window.commonPageScripts["/lms/mission-detail.js"] = function (pageConfig, pageS
 
 	function updateMissionValidationState() {
 		const quizZone = document.getElementById('quiz-zone');
+		quizZone.hidden = false;
 		const doneBtn = document.getElementById('doneBtn');
 		const quizCount = parseInt(document.getElementById('quiz-info').dataset.quizCount || 0, 10);
 
@@ -185,7 +188,7 @@ window.commonPageScripts["/lms/mission-detail.js"] = function (pageConfig, pageS
 		const allHomeworksDone = areAllHomeworksDone();
 		const remainingHomeworks = Math.max(0, lmsMissionHomeworks.length - getDoneHomeworkCount());
 
-		doneBtn.disabled = !allHomeworksDone;
+		doneBtn.disabled = !allHomeworksDone || (quizCount === 0 && !hasReadMission);
 		doneBtn.textContent = quizCount > 0 ? "Commencer le quiz" : "Marquer comme lu";
 
 		if (!allHomeworksDone) {
@@ -206,7 +209,11 @@ window.commonPageScripts["/lms/mission-detail.js"] = function (pageConfig, pageS
 			return;
 		}
 
-		quizZone.innerHTML = '';
+        const readingHint = document.createElement('p');
+        readingHint.className = 'generic-help-text';
+        readingHint.textContent = pageConfig.scrollToEnd;
+        quizZone.replaceChildren(readingHint);
+        quizZone.hidden = hasReadMission;
 	}
 
 	function initMissionUI() {
@@ -300,6 +307,7 @@ window.commonPageScripts["/lms/mission-detail.js"] = function (pageConfig, pageS
 		html += `</div>`;
 
 		document.getElementById('quiz-zone').innerHTML = html;
+		document.getElementById('quiz-zone').scrollTop = 0;
 
 		const doneBtn = document.getElementById('doneBtn');
 		doneBtn.disabled = true;
@@ -318,6 +326,14 @@ window.commonPageScripts["/lms/mission-detail.js"] = function (pageConfig, pageS
 			doneBtn.textContent = 'Valider la réponse';
 		}
 	}
+
+	function advanceQuiz() {
+        isShowingAnswer = false;
+        document.getElementById('doneBtn').disabled = true;
+        currentIndex++;
+        if (currentIndex >= currentQuestions.length) completeMission();
+        else showQuestion();
+    }
 
 	async function submitAnswer() {
         if (isCheckingAnswer || !currentQuestions[currentIndex]) return;
@@ -341,9 +357,8 @@ window.commonPageScripts["/lms/mission-detail.js"] = function (pageConfig, pageS
             if (typeof data.correct !== 'boolean') throw new Error('invalid_answer_result');
             if (data.correct) {
                 advanced = true;
-                currentIndex++;
-                if (currentIndex >= currentQuestions.length) completeMission();
-                else showQuestion();
+                isShowingAnswer = window.commonLmsShowQuizFeedback(data.answer, pageConfig.quizFeedbackText, currentIndex === currentQuestions.length - 1);
+                if (!isShowingAnswer) advanceQuiz();
             } else {
                 (typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window,'Mauvaise reponse.', 'warning');
             }
@@ -403,9 +418,15 @@ window.commonPageScripts["/lms/mission-detail.js"] = function (pageConfig, pageS
 			return;
 		}
 
+		if (isShowingAnswer) {
+			advanceQuiz();
+			return;
+		}
+
 		const quizCount = parseInt(document.getElementById('quiz-info').dataset.quizCount || 0, 10);
 
 		if (quizCount === 0) {
+			if (!hasReadMission) return;
 			completeMission();
 			return;
 		}
@@ -418,6 +439,15 @@ window.commonPageScripts["/lms/mission-detail.js"] = function (pageConfig, pageS
 		submitAnswer();
 	};
 	initMissionUI();
+    const readingContainer = document.getElementById('drawer-content');
+    window.commonLmsWatchMissionReadProgress(readingContainer, pageScript.closest('.lms-mission-detail'), function (hasRead) {
+        hasReadMission = hasRead;
+        const info = document.getElementById('quiz-info');
+        if (!info || quizMode || !lmsMissionViewerCanTrack || Number(info.dataset.quizCount || 0) > 0) return;
+        const ready = areAllHomeworksDone();
+        document.getElementById('doneBtn').disabled = !ready || !hasRead;
+        if (ready) document.getElementById('quiz-zone').hidden = hasRead;
+    });
 	window.initMissionUI = initMissionUI;
 })();
 };

@@ -3,17 +3,24 @@
 Le bouton `?` du bandeau administrateur affiche les modifications entre le commit
 installe et le commit distant. Les descriptions des pull requests fusionnees sont
 lues depuis GitHub, pour les merges classiques et les commits squash portant
-`(#numero)`. Les autres commits et leurs messages complets restent presents.
-Les descriptions sont mises en cache cinq minutes hors de la racine publique.
-Les ajouts de `NOUVEAUTES.md` entre ces memes revisions sont presentes en premier,
-pour disposer d explications utiles meme quand le merge ne comporte aucun descriptif.
-Si GitHub est indisponible, limite les requetes ou ne fournit pas de description,
-les messages Git servent de secours. Aucune synthese automatique n invente de contenu.
-Le rendu partage retire les paragraphes et puces repetes entre ces sources, ainsi
-que les titres devenus vides. Les informations complementaires restent visibles.
-Ce nettoyage s applique aussi aux news deja enregistrees, sans modifier leur contenu
-stocke ni recreer de notifications. Le titre de la news figure uniquement dans
-l entete de la popup.
+`(#numero)`, sur la ligne principale des livraisons (first parent), sans reprendre
+les PR imbriquees dans un merge. Les descriptions sont mises en cache cinq minutes
+hors de la racine publique.
+
+Le texte Markdown prepare dans la description GitHub est la presentation principale.
+Sa mise en page et ses repetitions intentionnelles sont conservees, avec le nettoyage
+HTML commun pour la securite. Les titres et messages techniques des commits ne sont
+jamais ajoutes. Plusieurs presentations de livraisons sont separees par un trait.
+Les ajouts de `NOUVEAUTES.md` de la meme plage sont proposes en dessous, en petit,
+dans un accordeon ferme par defaut. Si aucune presentation n est preparee ou que
+GitHub est inaccessible, le journal est affiche directement. Sans aucune de ces
+sources, un message indique qu aucune description n est disponible.
+
+La presentation et le journal optionnel sont stockes separement ; la migration
+`2026-11-03-02-site-update-news-journal.sql` ajoute ce champ. Les anciennes news
+contenant les sections concatenees connues sont relues dans ce nouvel ordre sans
+modifier leur stockage ni recreer de notifications. Le titre de la news figure
+uniquement dans l entete de la popup.
 
 Pour un depot prive, renseigner `SITE_UPDATE_GITHUB_TOKEN` dans Admin du serveur
 ou dans `.env`, avec un acces en lecture aux pull requests du depot suivi.

@@ -5,6 +5,7 @@ require_once __DIR__ . '/bootstrap.php';
 commonRestoreRememberedUser();
 include __DIR__ . '/inc/org.php';
 require_once __DIR__ . '/inc/access.php';
+require_once dirname(__DIR__, 3) . '/common/lms/quiz.php';
 
 $sourceLang = [
     'lms.mission_detail.error.access_denied' => ['text' => 'Accès refusé', 'context' => 'Error shown when the viewer cannot access the mission detail.'],
@@ -21,6 +22,7 @@ $sourceLang = [
     'lms.mission_detail.validation.unavailable' => ['text' => 'La validation de cette mission n’est pas disponible dans ce contexte.', 'context' => 'Message shown when mission validation cannot be used.'],
     'lms.mission_detail.validation.start_quiz' => ['text' => 'Commencer le quiz', 'context' => 'Button label used to start the quiz.'],
     'lms.mission_detail.validation.mark_read' => ['text' => 'Marquer comme lu', 'context' => 'Button label used to complete a mission without quiz.'],
+    'lms.mission_detail.validation.scroll_to_end' => ['text' => "Faites defiler le contenu jusqu'en bas pour marquer cette mission comme lue.", 'context' => 'Instruction shown while read confirmation is locked until the mission content has been scrolled to the end.'],
     'lms.mission_detail.validation.remaining' => ['text' => 'Terminez encore {count} devoir{suffix} pour continuer.', 'context' => 'Info message shown when some homeworks remain before validation.'],
     'lms.mission_detail.validation.quiz_info' => ['text' => 'Cette mission sera validée par {count} question{suffix}', 'context' => 'Info message shown before starting the quiz.'],
     'lms.mission_detail.quiz.counter' => ['text' => 'Question {current}/{total}', 'context' => 'Counter shown above the current quiz question.'],
@@ -115,7 +117,10 @@ if ($m) {
 	echo lmsMissionDetailT('lms.mission_detail.error.not_found');
 }
 ?>
+<script src="<?= commonAssetUrl('/common/lms/quiz.js') ?>"></script>
+<script src="<?= commonAssetUrl('/common/lms/read-progress.js') ?>"></script>
 <?= commonPageScriptTags('/omo/api/lms/getMissionDetail.js', [
+    'quizFeedbackText' => commonLmsQuizFeedbackTexts(),
     'lmsMissionText' => [
 		'homeworksTitle' => lmsMissionDetailT('lms.mission_detail.homeworks.title'),
 		'homeworkDone' => lmsMissionDetailT('lms.mission_detail.homeworks.status_done'),
@@ -129,6 +134,7 @@ if ($m) {
 		'validationUnavailable' => lmsMissionDetailT('lms.mission_detail.validation.unavailable'),
 		'startQuiz' => lmsMissionDetailT('lms.mission_detail.validation.start_quiz'),
 		'markRead' => lmsMissionDetailT('lms.mission_detail.validation.mark_read'),
+		'scrollToEnd' => lmsMissionDetailT('lms.mission_detail.validation.scroll_to_end'),
 		'remaining' => lmsMissionDetailT('lms.mission_detail.validation.remaining'),
 		'quizInfo' => lmsMissionDetailT('lms.mission_detail.validation.quiz_info'),
 		'quizCounter' => lmsMissionDetailT('lms.mission_detail.quiz.counter'),

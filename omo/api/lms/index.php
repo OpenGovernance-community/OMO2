@@ -117,6 +117,7 @@ foreach ($parcours as $parcoursItem) {
     <title><?php echo htmlspecialchars($isBasicCatalogMode ? lmsIndexT('lms.index.title.catalog_brand') : $org['name']); ?></title>
     <link rel="stylesheet" href="/common/assets/theme.css">
     <?= commonStylesheetTags('/shared_css.css') ?>
+    <?php require dirname(__DIR__, 3) . '/common/lms/notifications.php'; ?>
     <link rel="stylesheet" href="<?php echo htmlspecialchars(omoLmsBuildPath('/css/std.css')); ?>">
     <?php if ($isEmbedded && $canCreateParcours): ?>
     <script src="/common/assets/components.js"></script>

@@ -80,6 +80,7 @@ $loginDrawerReturnTo = lmsBuildLocalPath('/lms/', $isEmbedded ? ['embed' => 1] :
     <title><?php echo htmlspecialchars($org['name']); ?></title>
     <link rel="stylesheet" href="/common/assets/theme.css">
     <?= commonStylesheetTags('/shared_css.css') ?>
+    <?php require BASE_PATH . '/common/lms/notifications.php'; ?>
     <link rel="stylesheet" href="/lms/css/std.css">
     <script src="/shared_functions.js"></script>
     <script>

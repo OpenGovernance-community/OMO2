@@ -73,6 +73,7 @@ $organizationColor = commonGetOrganizationExplicitColor($org);
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<link rel="stylesheet" href="/common/assets/theme.css">
 	<?= commonStylesheetTags('/shared_css.css') ?>
+	<?php require BASE_PATH . '/common/lms/notifications.php'; ?>
 	<link rel="stylesheet" href="/lms/css/std.css">
 	<script src="<?= commonAssetUrl('/common/assets/components.js') ?>"></script>
 	<script src="/shared_functions.js"></script>

@@ -198,10 +198,22 @@
 #drawer #quiz-zone {
 	margin-top: 16px;
 	background: transparent;
+	max-height: 55dvh;
+	min-height: 0;
+	overflow-y: auto;
+	overscroll-behavior: contain;
 }
 
 #drawer #quiz-zone:empty {
 	display: none;
+}
+
+#drawer:has([data-lms-quiz-feedback]) #drawer-footer > button:not(#doneBtn) {
+	display: none;
+}
+
+#drawer:has([data-lms-quiz-feedback]) #drawer-footer {
+	justify-content: flex-end;
 }
 
 #drawer .quiz {
