@@ -11,7 +11,7 @@ function commonLmsRenderMissionVideo(string $video, array $presentation, string 
         'sound' => ['text' => 'Son', 'context' => 'Custom tutorial video sound button.'],
         'muted' => ['text' => 'Muet', 'context' => 'Custom tutorial video muted button.'],
         'volume' => ['text' => 'Volume', 'context' => 'Custom tutorial video volume control.'],
-        'unavailable' => ['text' => "La video de cette mission n'est pas disponible pour le moment.", 'context' => 'Unavailable tutorial video message.'],
+        'unavailable' => ['text' => "La vidéo de cette mission n’est pas disponible pour le moment.", 'context' => 'Unavailable tutorial video message.'],
     ];
     $lang ??= loadTranslationBundle('lms_video', translationBundleResolveRequestLocale('lang'), $sourceLang);
     $labels = [];

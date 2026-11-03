@@ -69,7 +69,7 @@ $result = \dbObject\UserMission::markDone((int)$accessContext['userId'], $missio
 
 if (empty($result['status'])) {
 	http_response_code(500);
-	echo isset($result['text']) ? $result['text'] : "Save error";
+	echo isset($result['text']) ? $result['text'] : commonLmsUiT('save_error');
 	exit;
 }
 

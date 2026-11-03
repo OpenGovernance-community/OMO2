@@ -92,7 +92,7 @@ if (!is_array($saveResult) || empty($saveResult['status'])) {
         'success' => false,
             'message' => is_array($saveResult) && !empty($saveResult['text'])
                 ? (string)$saveResult['text']
-            : ($isEditMode ? 'Impossible de mettre a jour ce devoir.' : 'Impossible de creer ce devoir.'),
+            : ($isEditMode ? commonLmsUiT('update_homework_error') : commonLmsUiT('create_homework_error')),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -105,7 +105,7 @@ if (!$isEditMode) {
             'success' => false,
             'message' => is_array($attachResult) && !empty($attachResult['message'])
                 ? (string)$attachResult['message']
-                : 'Le devoir a ete cree mais pas lie a la mission.',
+                : commonLmsUiT('attach_created_homework_error'),
             'id' => (int)$homework->getId(),
         ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
@@ -115,6 +115,6 @@ if (!$isEditMode) {
 echo json_encode(array(
     'status' => true,
     'success' => true,
-    'message' => $isEditMode ? 'Devoir mis a jour.' : 'Devoir cree.',
+    'message' => $isEditMode ? commonLmsUiT('homework_updated') : commonLmsUiT('homework_created'),
     'id' => (int)$homework->getId(),
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

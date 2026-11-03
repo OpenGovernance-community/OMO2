@@ -110,6 +110,10 @@ function omoGetTopbarSourceLang(): array
             'text' => 'Tutoriels',
             'context' => 'Title of the tutorials help entry in the OMO topbar.',
         ],
+        'topbar.help.tutorials.organization_title' => [
+            'text' => 'Tutoriels {organization}',
+            'context' => 'Tutorial drawer title including the name of the organization whose catalog is displayed.',
+        ],
         'topbar.help.unavailable_html' => [
             'text' => '<p>Contenu indisponible.</p>',
             'context' => 'Fallback HTML shown when a help item cannot be loaded from the OMO topbar.',
@@ -316,7 +320,7 @@ function omoTopbarTranslate(string $key, array $variables = []): string
     return t($key, $variables, $bundle, $sourceLang);
 }
 
-function omoGetTopbarHelpItems(string $variant = 'app', int $organizationId = 0): array
+function omoGetTopbarHelpItems(string $variant = 'app', int $organizationId = 0, string $organizationName = ''): array
 {
     $tutorialsQuery = [
         'embed' => 1,
@@ -343,7 +347,9 @@ function omoGetTopbarHelpItems(string $variant = 'app', int $organizationId = 0)
         'key' => 'tutorials',
         'label' => omoTopbarTranslate('topbar.help.tutorials.label'),
         'description' => omoTopbarTranslate('topbar.help.tutorials.description'),
-        'title' => omoTopbarTranslate('topbar.help.tutorials.title'),
+        'title' => $organizationId > 0 && trim($organizationName) !== ''
+            ? omoTopbarTranslate('topbar.help.tutorials.organization_title', ['organization' => trim($organizationName)])
+            : omoTopbarTranslate('topbar.help.tutorials.title'),
         'mode' => 'drawer',
         'url' => $tutorialsUrl,
     ];
@@ -516,7 +522,7 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
         'organization' => $organizationContext,
         'logoutReturnTo' => (string)($options['logoutReturnTo'] ?? '/omo/'),
         'helpLabel' => omoTopbarTranslate('topbar.help.button'),
-        'helpItems' => omoGetTopbarHelpItems($variant, $helpOrganizationId),
+        'helpItems' => omoGetTopbarHelpItems($variant, $helpOrganizationId, $hasOrganizationContext ? (string)($organizationContext['name'] ?? '') : ''),
         'helpLinks' => omoGetTopbarHelpLinks(
             $variant === 'app' && $hasOrganizationContext
                 ? (int)$organizationContext['id']

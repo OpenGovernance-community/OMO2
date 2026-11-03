@@ -1,0 +1,5 @@
+.lms-catalog-navigation {
+    /* Match the header foreground, including on organization-colored banners. */
+    --param-action-link-color: currentColor;
+    margin-bottom: 8px;
+}

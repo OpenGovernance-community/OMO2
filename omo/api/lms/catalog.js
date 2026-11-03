@@ -2184,7 +2184,7 @@ async function deleteParcoursFromCard(event, parcoursId) {
 
         let confirmationMessage = String(previewPayload.confirmMessage || '').trim();
         if (parcoursTitle !== '') {
-            confirmationMessage = `Parcours: "${parcoursTitle}"\n\n${confirmationMessage}`;
+            confirmationMessage = formatLmsIndexText(lmsIndexText.deleteHeading, { title: parcoursTitle }) + '\n\n' + confirmationMessage;
         }
         if (confirmationMessage === '') {
             confirmationMessage = parcoursTitle !== ''

@@ -62,7 +62,7 @@ if (!is_array($deleteResult) || empty($deleteResult['status'])) {
 		'success' => false,
 		'message' => is_array($deleteResult) && !empty($deleteResult['message'])
 			? (string)$deleteResult['message']
-			: 'Impossible de supprimer ce parcours.',
+			: commonLmsUiT('delete_error'),
 	), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	exit;
 }

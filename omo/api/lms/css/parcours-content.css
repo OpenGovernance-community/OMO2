@@ -14,7 +14,7 @@
     flex: none;
 }
 
-.lms-pack-children__grid .card-image {
+.lms-pack-children__grid .card-image:not(.lms-parcours-cover--empty) {
     aspect-ratio: 5 / 2 !important;
     overflow: hidden;
 }

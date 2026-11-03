@@ -73,7 +73,7 @@ if (!is_array($result) || empty($result['status'])) {
         'success' => false,
         'message' => is_array($result) && !empty($result['message'])
             ? (string)$result['message']
-            : 'Impossible d ajouter ce prerequis.',
+            : commonLmsUiT('add_prerequisite_error'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -81,5 +81,5 @@ if (!is_array($result) || empty($result['status'])) {
 echo json_encode([
     'status' => true,
     'success' => true,
-    'message' => !empty($result['created']) ? 'Prerequis ajoute.' : 'Prerequis deja present.',
+    'message' => !empty($result['created']) ? commonLmsUiT('prerequisite_added') : commonLmsUiT('prerequisite_already_added'),
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

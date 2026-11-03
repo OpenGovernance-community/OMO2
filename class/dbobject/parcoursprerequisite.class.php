@@ -3,6 +3,17 @@
 
 	class ParcoursPrerequisite extends DbObject
 	{
+        protected static function uiMessageSourceLang(): array
+        {
+            return [
+                'parcours_invalide' => ['text' => 'Parcours invalide.', 'context' => 'Tutorial data validation and action feedback.'],
+                'la_table_des_prerequis_de_parcours_est_absente' => ['text' => 'La table des prérequis de parcours est absente.', 'context' => 'Tutorial data validation and action feedback.'],
+                'ce_prerequis_creerait_une_boucle_entre_parcours' => ['text' => 'Ce prérequis créerait une boucle entre parcours.', 'context' => 'Tutorial data validation and action feedback.'],
+                'impossible_d_ajouter_ce_prerequis' => ['text' => 'Impossible d’ajouter ce prérequis.', 'context' => 'Tutorial data validation and action feedback.'],
+                'impossible_de_retirer_ce_prerequis' => ['text' => 'Impossible de retirer ce prérequis.', 'context' => 'Tutorial data validation and action feedback.'],
+            ];
+        }
+
 		public static function tableName()
 		{
 			return 'parcours_prerequisite';
@@ -107,21 +118,21 @@
 			if ($parcoursId <= 0 || $requiredParcoursId <= 0 || $parcoursId === $requiredParcoursId) {
 				return [
 					'status' => false,
-					'message' => 'Parcours invalide.',
+					'message' => self::uiMessage('parcours_invalide'),
 				];
 			}
 
 			if (!self::tableExists('parcours_prerequisite')) {
 				return [
 					'status' => false,
-					'message' => 'La table des prerequis de parcours est absente.',
+					'message' => self::uiMessage('la_table_des_prerequis_de_parcours_est_absente'),
 				];
 			}
 
 			if (self::wouldCreateCycle($parcoursId, $requiredParcoursId)) {
 				return [
 					'status' => false,
-					'message' => 'Ce prerequis creerait une boucle entre parcours.',
+					'message' => self::uiMessage('ce_prerequis_creerait_une_boucle_entre_parcours'),
 				];
 			}
 
@@ -142,7 +153,7 @@
 					'status' => false,
 					'message' => is_array($saveResult) && !empty($saveResult['text'])
 						? (string)$saveResult['text']
-						: 'Impossible d ajouter ce prerequis.',
+						: self::uiMessage('impossible_d_ajouter_ce_prerequis'),
 				];
 			}
 
@@ -160,14 +171,14 @@
 			if ($parcoursId <= 0 || $requiredParcoursId <= 0) {
 				return [
 					'status' => false,
-					'message' => 'Parcours invalide.',
+					'message' => self::uiMessage('parcours_invalide'),
 				];
 			}
 
 			if (!self::tableExists('parcours_prerequisite')) {
 				return [
 					'status' => false,
-					'message' => 'La table des prerequis de parcours est absente.',
+					'message' => self::uiMessage('la_table_des_prerequis_de_parcours_est_absente'),
 				];
 			}
 
@@ -184,7 +195,7 @@
 			if (!$result) {
 				return [
 					'status' => false,
-					'message' => 'Impossible de retirer ce prerequis.',
+					'message' => self::uiMessage('impossible_de_retirer_ce_prerequis'),
 				];
 			}
 

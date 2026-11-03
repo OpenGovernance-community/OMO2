@@ -67,6 +67,10 @@ function lmsBuildLocalPath(string $path, array $params = []): string
         $params['oid'] = $organizationId;
     }
 
+    if (!array_key_exists('lang', $params)) {
+        $params['lang'] = translationBundleResolveRequestLocale('lang');
+    }
+
     foreach ($params as $key => $value) {
         if ($value === null || $value === '') {
             unset($params[$key]);

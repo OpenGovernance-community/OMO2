@@ -3,6 +3,15 @@
 
 	class OrganizationParcours extends DbObject
 	{
+        protected static function uiMessageSourceLang(): array
+        {
+            return [
+                'unavailable' => ['text' => 'Ce parcours n’est plus disponible pour de nouvelles organisations.', 'context' => 'Tutorial import rejection after retirement.'],
+                'invalid' => ['text' => 'Organisation ou parcours invalide.', 'context' => 'Tutorial organization link validation.'],
+                'attach_error' => ['text' => 'Impossible de rattacher ce parcours à l’organisation.', 'context' => 'Tutorial import link save error.'],
+            ];
+        }
+
 		protected static $hasAnonymousColumnCache = null;
 
 		public static function tableName()
@@ -75,7 +84,7 @@
 				$parcours = self::fetchRow('SELECT id, isarchived FROM parcours WHERE id = :id FOR UPDATE', ['id' => (int)$parcoursId]);
 				if (!$parcours || (!empty($parcours['isarchived']) && !self::loadForOrganizationParcours((int)$organizationId, (int)$parcoursId))) {
 					if ($startedTransaction) $pdo->rollBack();
-					return ['status' => false, 'message' => 'Ce parcours n est plus disponible pour de nouvelles organisations.'];
+					return ['status' => false, 'message' => self::uiMessage('unavailable')];
 				}
 				$result = self::saveOrganizationAttachment($organizationId, $parcoursId, $options);
 				if ($startedTransaction) {
@@ -95,7 +104,7 @@
 			if ($organizationId <= 0 || $parcoursId <= 0) {
 				return array(
 					'status' => false,
-					'message' => 'Organisation ou parcours invalide.',
+					'message' => self::uiMessage('invalid'),
 				);
 			}
 
@@ -140,7 +149,7 @@
 					'status' => false,
 					'message' => is_array($saveResult) && !empty($saveResult['text'])
 						? (string)$saveResult['text']
-						: 'Impossible d attacher ce parcours a l organisation.',
+						: self::uiMessage('attach_error'),
 				);
 			}
 

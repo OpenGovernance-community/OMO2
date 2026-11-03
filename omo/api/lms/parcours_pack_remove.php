@@ -58,7 +58,7 @@ if (!is_array($result) || empty($result['status'])) {
         'success' => false,
         'message' => is_array($result) && !empty($result['message'])
             ? (string)$result['message']
-            : 'Impossible de retirer ce parcours du pack.',
+            : commonLmsUiT('remove_pack_child_error'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }

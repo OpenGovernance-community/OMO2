@@ -3,6 +3,18 @@
 
 	class MissionQuestion extends DbObject
 	{
+        protected static function uiMessageSourceLang(): array
+        {
+            return [
+                'mission_ou_question_invalide' => ['text' => 'Mission ou question invalide.', 'context' => 'Tutorial data validation and action feedback.'],
+                'impossible_d_ajouter_cette_question_a_la_mission' => ['text' => 'Impossible d’ajouter cette question à la mission.', 'context' => 'Tutorial data validation and action feedback.'],
+                'mission_invalide' => ['text' => 'Mission invalide.', 'context' => 'Tutorial data validation and action feedback.'],
+                'impossible_de_charger_les_questions_de_la_mission' => ['text' => 'Impossible de charger les questions de la mission.', 'context' => 'Tutorial data validation and action feedback.'],
+                'la_liste_des_questions_a_reordonner_est_incomplete' => ['text' => 'La liste des questions à réordonner est incomplète.', 'context' => 'Tutorial data validation and action feedback.'],
+                'impossible_de_reordonner_les_questions_de_la_mission' => ['text' => 'Impossible de réordonner les questions de la mission.', 'context' => 'Tutorial data validation and action feedback.'],
+            ];
+        }
+
 		public static function tableName()
 		{
 			return 'mission_question';
@@ -81,7 +93,7 @@
 			if ($missionId <= 0 || $questionId <= 0) {
 				return array(
 					'status' => false,
-					'message' => 'Mission ou question invalide.',
+					'message' => self::uiMessage('mission_ou_question_invalide'),
 				);
 			}
 
@@ -116,7 +128,7 @@
 					'status' => false,
 					'message' => is_array($saveResult) && !empty($saveResult['text'])
 						? (string)$saveResult['text']
-						: 'Impossible d ajouter cette question a la mission.',
+						: self::uiMessage('impossible_d_ajouter_cette_question_a_la_mission'),
 				);
 			}
 
@@ -133,7 +145,7 @@
 			if ($missionId <= 0) {
 				return array(
 					'status' => false,
-					'message' => 'Mission invalide.',
+					'message' => self::uiMessage('mission_invalide'),
 				);
 			}
 
@@ -155,7 +167,7 @@
 			if (!is_array($currentRows)) {
 				return array(
 					'status' => false,
-					'message' => 'Impossible de charger les questions de la mission.',
+					'message' => self::uiMessage('impossible_de_charger_les_questions_de_la_mission'),
 				);
 			}
 
@@ -174,7 +186,7 @@
 			if ($comparisonQuestionIds !== $currentQuestionIds) {
 				return array(
 					'status' => false,
-					'message' => 'La liste des questions a reordonner est incomplete.',
+					'message' => self::uiMessage('la_liste_des_questions_a_reordonner_est_incomplete'),
 				);
 			}
 
@@ -193,7 +205,7 @@
 				if (!$result) {
 					return array(
 						'status' => false,
-						'message' => 'Impossible de reordonner les questions de la mission.',
+						'message' => self::uiMessage('impossible_de_reordonner_les_questions_de_la_mission'),
 					);
 				}
 			}

@@ -83,7 +83,7 @@ if (!is_array($saveResult) || empty($saveResult['status'])) {
         'success' => false,
         'message' => is_array($saveResult) && !empty($saveResult['text'])
             ? (string)$saveResult['text']
-            : 'Impossible de creer cette mission.',
+            : commonLmsUiT('create_mission_error'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -95,7 +95,7 @@ if (!is_array($attachResult) || empty($attachResult['status'])) {
         'success' => false,
         'message' => is_array($attachResult) && !empty($attachResult['message'])
             ? (string)$attachResult['message']
-            : 'La mission a ete creee mais pas ajoutee au parcours.',
+            : commonLmsUiT('attach_created_mission_error'),
         'id' => (int)$mission->getId(),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;

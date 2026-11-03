@@ -62,7 +62,7 @@ if (!is_array($previewResult) || empty($previewResult['status'])) {
 		'success' => false,
 		'message' => is_array($previewResult) && !empty($previewResult['message'])
 			? (string)$previewResult['message']
-			: 'Impossible de preparer la suppression de ce parcours.',
+			: commonLmsUiT('delete_preview_error'),
 	), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	exit;
 }

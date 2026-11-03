@@ -44,18 +44,6 @@ function siteUpdateChangelogParseGit(string $output): array
     return $entries;
 }
 
-function siteUpdateChangelogMarkdown(array $entries): string
-{
-    $blocks = [];
-    foreach ($entries as $entry) {
-        $title = preg_replace('/[\r\n]+/', ' ', (string)$entry['title']);
-        $title = preg_replace('/([\\\\`*_{}\[\]<>()#+.!|~-])/', '\\\\$1', $title);
-        $blocks[] = '## ' . $title . (!empty($entry['number']) ? ' (#' . (int)$entry['number'] . ')' : '')
-            . "\n\n" . trim((string)$entry['description']);
-    }
-    return trim(implode("\n\n", $blocks));
-}
-
 function siteUpdateChangelogParseJournal(string $diff): string
 {
     $lines = [];
@@ -68,17 +56,32 @@ function siteUpdateChangelogParseJournal(string $diff): string
     return trim(implode("\n", $lines));
 }
 
+function siteUpdateChangelogContent(array $entries, string $journal): array
+{
+    $presentations = [];
+    foreach ($entries as $entry) {
+        // Only the GitHub body is editorial content; Git subjects/bodies are technical metadata.
+        $prepared = trim((string)($entry['preparedDescription'] ?? ''));
+        if (trim((string)preg_replace('/<!--.*?-->/s', '', $prepared)) !== '') {
+            $presentations[hash('sha256', $prepared)] = $prepared;
+        }
+    }
+    return $presentations
+        ? ['description' => implode("\n\n---\n\n", $presentations), 'journal' => $journal]
+        : ['description' => $journal !== '' ? $journal : siteUpdateNewsT('empty'), 'journal' => ''];
+}
+
 function siteUpdateAdminGetChangelog(array $context, string $from, string $to): array
 {
     if ($from === $to) { return ['entries' => [], 'description' => '', 'fallback' => false]; }
     $url = siteUpdateAdminRunCommand(['git', 'remote', 'get-url', $context['remote']], $context['repoRoot'], $exitCode);
     $repository = $exitCode === 0 ? siteUpdateChangelogRepository($url) : null;
-    $cachePath = siteUpdateAdminEnsureRuntimeDir() . '/changelog-' . hash('sha256', 'v3' . $from . $to . $repository) . '.json';
+    $cachePath = siteUpdateAdminEnsureRuntimeDir() . '/changelog-' . hash('sha256', 'v4' . $from . $to . $repository) . '.json';
     if (is_file($cachePath) && filemtime($cachePath) > time() - 300) {
         $cached = json_decode((string)file_get_contents($cachePath), true);
         if (is_array($cached) && isset($cached['entries'], $cached['description'], $cached['fallback'])) { return $cached; }
     }
-    $output = siteUpdateAdminRunCommand(['git', 'log', '-z', '--format=%H%x00%s%x00%b', $from . '..' . $to, '--'],
+    $output = siteUpdateAdminRunCommand(['git', 'log', '--first-parent', '-z', '--format=%H%x00%s%x00%b', $from . '..' . $to, '--'],
         $context['repoRoot'], $exitCode, true);
     if ($exitCode !== 0) { throw new RuntimeException('Impossible de lire les modifications Git.'); }
     $entries = siteUpdateChangelogParseGit($output);
@@ -97,6 +100,7 @@ function siteUpdateAdminGetChangelog(array $context, string $from, string $to): 
             $entry['title'] = trim((string)$pull['title']);
             if (trim((string)($pull['body'] ?? '')) !== '') {
                 $entry['description'] = trim((string)$pull['body']);
+                $entry['preparedDescription'] = trim((string)$pull['body']);
             } else { $fallback = true; }
         } else { $fallback = true; }
     }
@@ -110,12 +114,7 @@ function siteUpdateAdminGetChangelog(array $context, string $from, string $to): 
     $journalDiff = siteUpdateAdminRunCommand(['git', 'diff', '--no-ext-diff', '--no-textconv', '--unified=0', $from, $to, '--', 'NOUVEAUTES.md'],
         $context['repoRoot'], $exitCode);
     $journal = $exitCode === 0 ? siteUpdateChangelogParseJournal($journalDiff) : '';
-    $description = siteUpdateChangelogMarkdown($entries);
-    if ($journal !== '') {
-        $description = '## ' . siteUpdateNewsT('journal') . "\n\n" . $journal
-            . "\n\n## " . siteUpdateNewsT('history') . "\n\n" . $description;
-    }
-    $result = ['entries' => $entries, 'description' => $description, 'fallback' => $fallback];
+    $result = array_merge(['entries' => $entries, 'fallback' => $fallback], siteUpdateChangelogContent($entries, $journal));
     // Private repositories may contain private descriptions; keep the cache outside the web root.
     file_put_contents($cachePath, json_encode($result, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE), LOCK_EX);
     @chmod($cachePath, 0600);
@@ -124,7 +123,5 @@ function siteUpdateAdminGetChangelog(array $context, string $from, string $to): 
 
 function siteUpdateAdminChangelogHtml(array $changelog): string
 {
-    $html = !empty($changelog['fallback'])
-        ? '<p class="generic-help-text">' . htmlspecialchars(siteUpdateNewsT('fallback'), ENT_QUOTES, 'UTF-8') . '</p>' : '';
-    return $html . siteUpdateNewsRender($changelog['description'] ?: siteUpdateNewsT('empty'));
+    return siteUpdateNewsRender($changelog['description'] ?: siteUpdateNewsT('empty'), (string)($changelog['journal'] ?? ''));
 }

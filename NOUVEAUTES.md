@@ -1,5 +1,27 @@
 # Journal des nouveautés
 
+- Tutoriels / français et traductions (2026-11-03) : relecture des catalogues publics et OMO, des parcours, missions, devoirs, quiz, formulaires et réglages vidéo. Accents, apostrophes, ponctuation et pluriels corrigés ; boutons anglais et messages non traduisibles raccordés aux traductions partagées. Langue conservée dans la navigation et les appels des tutoriels ; suppression du double chargement du script partagé sur les pages publiques.
+
+- PV / synchronisation en arriere-plan (2026-11-03) : suspension des verifications serveur lorsque l onglet est masque, la fenetre perd le focus ou le PV est replie dans OMO. Verification immediate au retour, sans perdre les modifications locales ni multiplier les appels lors des evenements de reprise.
+
+- Tutoriels / titre du catalogue (2026-11-03) : suppression de l entete en double dans le catalogue integre. Le nom de l organisation figure dans le titre du drawer OMO, sous la forme Tutoriels suivi du nom ; le grand titre centre du catalogue est conserve.
+
+- Tutoriels / retour au pack (2026-11-03) : un parcours ouvert depuis un pack affiche Retour au catalogue puis Retour au pack, sans soulignement sur les deux liens. Le lien conserve le contexte public ou organisation et le mode integre ; il apparait uniquement pour un pack lie au parcours et accessible.
+
+- Tutoriels / icones des missions (2026-11-03) : indicateurs video, devoirs et quiz alignes a gauche du pied des cartes de missions disponibles, terminees et verrouillees, avec le bouton a droite. Sur les parcours et les packs, icones blanches en bas a gauche de l image, avec un bandeau compact si aucune image n est definie.
+
+- Tutoriels / contenu des parcours (2026-11-03) : icones video, devoirs et quiz a cote du bouton Ouvrir dans les catalogues et les packs. Noir si le contenu est present, gris tres clair sinon, avec une infobulle descriptive. Les packs regroupent le contenu de leurs parcours.
+
+- Tutoriels / retour au catalogue (2026-11-03) : lien Retour au catalogue au-dessus du titre du parcours, sur les pages publiques et dans les iframes. Le contexte public ou organisation, le mode integre et les prerequis termines sont conserves ; le lien est masque en l absence de catalogue accessible.
+
+- Tutoriels / notifications en iframe (2026-11-03) : chargement des notifications partagees dans le document du tutoriel, meme sans topbar. Les mauvaises reponses et les erreurs du quiz s affichent au-dessus du panneau, avec fermeture automatique et sans dependance a la page parente.
+
+- Tutoriels / confirmation de lecture (2026-11-03) : le bouton Marquer comme lu est active une fois le bas du contenu de la mission atteint. Les contenus entierement visibles restent validables directement ; le chargement tardif des images et les devoirs requis sont pris en compte.
+
+- Tutoriels / complements pedagogiques (2026-11-03) : apres une bonne reponse au quiz, affichage de Bien joue et du champ reponse si renseigne. Bouton Suivant pour continuer ou Fermer pour terminer et memoriser la mission apres lecture de la derniere explication.
+
+- Synchronisation / presentation des versions (2026-11-03) : texte Markdown prepare dans la pull request affiche en priorite et conserve sans reecriture, avec le journal dans un accordeon discret ferme par defaut. Sans presentation preparee, affichage direct du journal ; les titres et messages techniques des merges ne sont plus presentes. Presentation et journal conserves separement dans les news.
+
 - Tutoriels / quiz publics (2026-11-03) : validation des reponses sans connexion avec conservation du contexte public, controle du lien entre parcours, mission et question, et progression finale memorisee sur cet appareil. Les erreurs de verification permettent de reessayer sans perdre la reponse selectionnee.
 
 - Tutoriels / prerequis de mission (2026-11-03) : ajout et retrait d un prerequis avec mise a jour du seul bloc concerne ; les champs non enregistres, les editeurs HTML et les autres blocs du formulaire restent conserves.

@@ -3,9 +3,11 @@
 function commonLmsCheckAnswer(int $organizationId): never
 {
     header('Content-Type: application/json; charset=UTF-8');
-    $respond = static function (int $status, bool $correct = false): never {
+    $respond = static function (int $status, bool $correct = false, string $answer = ''): never {
         http_response_code($status);
-        echo json_encode(['correct' => $correct]);
+        $payload = ['correct' => $correct];
+        if ($correct && trim($answer) !== '') $payload['answer'] = $answer;
+        echo json_encode($payload);
         exit;
     };
     if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') $respond(405);
@@ -30,5 +32,8 @@ function commonLmsCheckAnswer(int $organizationId): never
         || !$questionLink->load([['IDmission', $ids['mission_id']], ['IDquestion', $ids['question_id']]])) {
         $respond(404);
     }
-    $respond(200, \dbObject\QuestionChoice::isSelectionCorrect($selected, $ids['question_id']));
+    $correct = \dbObject\QuestionChoice::isSelectionCorrect($selected, $ids['question_id']);
+    $question = new \dbObject\Question();
+    $answer = $correct && $question->load($ids['question_id']) ? (string)$question->get('answer') : '';
+    $respond(200, $correct, $answer);
 }

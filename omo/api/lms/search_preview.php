@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 return static function (\dbObject\Parcours $parcours, $organization = null, int $currentHolonId = 0,
     string $query = '', int $missionId = 0): array {
     $object = $parcours;
@@ -6,7 +7,7 @@ return static function (\dbObject\Parcours $parcours, $organization = null, int 
         $link = new \dbObject\ParcoursMission();
         $mission = new \dbObject\Mission();
         if (!$link->load([['IDparcours', (int)$parcours->getId()], ['IDmission', $missionId]]) || !$mission->load($missionId)) {
-            throw new RuntimeException('Preview unavailable');
+            throw new RuntimeException(commonLmsUiT('preview_unavailable'));
         }
         $object = $mission;
     }

@@ -1,4 +1,5 @@
 <?php
+require_once dirname(__DIR__, 2) . '/common/translation_bundles.php';
 require_once dirname(__DIR__, 2) . '/common/auth.php';
 
 $defaultOrganizationId = (int)($_SESSION['currentOrganization'] ?? 0);
@@ -26,6 +27,10 @@ function lmsBuildLocalPath(string $path, array $params = []): string
 
     if ($organizationId > 0 && !array_key_exists('oid', $params)) {
         $params['oid'] = $organizationId;
+    }
+
+    if (!array_key_exists('lang', $params)) {
+        $params['lang'] = translationBundleResolveRequestLocale('lang');
     }
 
     foreach ($params as $key => $value) {

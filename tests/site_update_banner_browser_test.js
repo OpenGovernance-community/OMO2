@@ -14,7 +14,8 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
             const errors = [];
             page.on('pageerror', error => errors.push(error.message));
             await page.route('https://omo.test/news', route => route.fulfill({status: 200, contentType: 'text/html', body: read('tmp/site-update-news-rendered.html')}));
-            await page.route('https://omo.test/**', route => route.request().url() === 'https://omo.test/news' ? route.fallback() : route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({
+            await page.route('https://omo.test/news-fallback', route => route.fulfill({status: 200, contentType: 'text/html', body: read('tmp/site-update-news-fallback.html')}));
+            await page.route('https://omo.test/**', route => route.request().url().startsWith('https://omo.test/news') ? route.fallback() : route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({
                 status: true, supported: true, available: true, behindCount: 8,
                 message: '8 updates available', changelogTitle: 'Modifications de la mise a jour',
                 changelogHtml: '<section class="generic-section"><h2>Bug fixes</h2><ul><li>New features</li></ul></section>'
@@ -45,10 +46,26 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
                 window.commonTopbarOpenModal('', '/news', 'fetch');
             });
             await page.waitForFunction(() => document.getElementById('commonTopbarModalTitle').textContent === 'Nouveautes du site - 03.11.2026');
-            assert.equal(await page.locator('#commonTopbarModalBody li').count(), 2);
+            assert.equal(await page.locator('#commonTopbarModalBody li:visible').count(), 1);
             assert.equal(await page.locator('#commonTopbarModalBody h2').count(), 1);
             assert(!(await page.locator('#commonTopbarModalBody').innerText()).includes('Nouveautes du site - 03.11.2026'));
+            assert(!(await page.locator('#commonTopbarModalBody').innerText()).includes('Tutoriels publics'));
+            assert.equal(await page.locator('#commonTopbarModalBody details').getAttribute('open'), null);
+            assert.equal(await page.locator('#commonTopbarModalBody strong').innerText(), 'Bienvenue');
+            const fontSizes = await page.evaluate(() => [
+                getComputedStyle(document.querySelector('#commonTopbarModalBody details')).fontSize,
+                getComputedStyle(document.querySelector('#commonTopbarModalBody .generic-rich-text')).fontSize
+            ].map(parseFloat));
+            assert(fontSizes[0] < fontSizes[1], 'Technical journal uses smaller text');
             await page.screenshot({path: path.join(root, `tmp/site-update-news-clean-${width}.png`)});
+            await page.locator('#commonTopbarModalBody details summary').click();
+            assert.equal(await page.locator('#commonTopbarModalBody li:visible').count(), 3);
+            await page.evaluate(() => window.commonTopbarOpenModal('Fallback', '/news-fallback', 'fetch'));
+            await page.locator('#commonTopbarModalBody li').first().waitFor({state: 'visible'});
+            assert.equal(await page.locator('#commonTopbarModalBody li:visible').count(), 2);
+            assert.equal(await page.locator('#commonTopbarModalBody details').count(), 0);
+            assert(!(await page.locator('#commonTopbarModalBody').innerText()).includes('Merge pull request'));
+            await page.screenshot({path: path.join(root, `tmp/site-update-news-fallback-${width}.png`)});
             assert.deepEqual(errors, []);
             await page.close();
         }

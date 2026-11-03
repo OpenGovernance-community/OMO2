@@ -192,16 +192,26 @@
 	border: 1px solid var(--border-color, #d8e0e8);
 	background: var(--bg-header, #eff5f8);
 	color: var(--text-main, #264052);
-	margin-top: 16px;
 }
 
 #drawer #quiz-zone {
-	margin-top: 16px;
 	background: transparent;
+	max-height: 55dvh;
+	min-height: 0;
+	overflow-y: auto;
+	overscroll-behavior: contain;
 }
 
 #drawer #quiz-zone:empty {
 	display: none;
+}
+
+#drawer:has([data-lms-quiz-feedback]) #drawer-footer > button:not(#doneBtn) {
+	display: none;
+}
+
+#drawer:has([data-lms-quiz-feedback]) #drawer-footer {
+	justify-content: flex-end;
 }
 
 #drawer .quiz {

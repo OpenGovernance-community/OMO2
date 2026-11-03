@@ -23,22 +23,35 @@ updateCheck($entries[0]['description'] === 'Feature description', 'Preserve desc
 updateCheck(siteUpdateChangelogParseJournal("--- a/NOUVEAUTES.md\n+++ b/NOUVEAUTES.md\n@@ -1 +1 @@\n-old note\n+- New note\n unchanged") === '- New note', 'Journal contains only added lines');
 $html = siteUpdateNewsRender("## Corrections\n\n- Fix **important**\n\n<script>alert(1)</script>\n\n[bad](javascript:alert(1))");
 updateCheck(str_contains($html, '<strong>important</strong>') && !str_contains($html, '<script') && !str_contains($html, 'href="javascript:'), 'Safe Markdown rendering');
-$hostileTitle = siteUpdateNewsRender(siteUpdateChangelogMarkdown([['title' => '<img src=x onerror=alert(1)> [bad](javascript:alert(1))', 'description' => '', 'number' => 2]]));
-updateCheck(!str_contains($hostileTitle, '<img') && !str_contains($hostileTitle, '<a'), 'Titles must remain literal text');
-
 $tutorialNote = 'Tutoriels publics (2026-11-03) : styles des missions isoles.';
 $syncNote = 'Synchronisation / nouveautes (2026-11-03) : nouvelles notifications.';
-$repeatedNotes = "## Journal des nouveautes\n\n- $tutorialNote\n- $syncNote\n\n"
+$journalNotes = "- $tutorialNote\n- $syncNote";
+$preparedMarkdown = "## Une belle presentation\n\n**Bienvenue** dans cette version.\n\n"
+    . "Un paragraphe volontairement repete.\n\nUn paragraphe volontairement repete.\n\n- Une nouveaute expliquee simplement.\n";
+$preparedEntries = [['title' => 'Technical merge subject', 'description' => 'Technical Git body', 'preparedDescription' => $preparedMarkdown]];
+$content = siteUpdateChangelogContent($preparedEntries, $journalNotes);
+updateCheck($content['description'] === trim($preparedMarkdown) && $content['journal'] === $journalNotes, 'Keep prepared Markdown and journal separate');
+$preparedHtml = siteUpdateAdminChangelogHtml($content);
+updateCheck(str_contains($preparedHtml, '<strong>Bienvenue</strong>') && substr_count($preparedHtml, 'Un paragraphe volontairement repete.') === 2, 'Preserve authored formatting and intentional repetitions');
+updateCheck(str_contains($preparedHtml, '<details class="generic-accordion generic-help-text">') && !str_contains($preparedHtml, '<details open'), 'Journal is compact and collapsed by default');
+updateCheck(strpos($preparedHtml, 'Bienvenue') < strpos($preparedHtml, '<details'), 'Prepared introduction comes first');
+updateCheck(!str_contains($preparedHtml, 'Technical merge') && !str_contains($preparedHtml, 'Technical Git body'), 'Do not display merge metadata');
+$fallback = siteUpdateChangelogContent([['title' => 'Merge pull request #530', 'description' => 'Not editorial']], $journalNotes);
+updateCheck($fallback === ['description' => $journalNotes, 'journal' => ''], 'Journal replaces a missing PR body');
+updateCheck(!str_contains(siteUpdateAdminChangelogHtml($fallback), '<details'), 'Fallback journal is expanded directly');
+updateCheck(siteUpdateChangelogContent([['preparedDescription' => '<!-- template comment -->']], $journalNotes) === $fallback, 'Comment-only PR bodies are not prepared presentations');
+updateCheck(siteUpdateChangelogContent($preparedEntries, '')['journal'] === '', 'Prepared text works without a journal');
+updateCheck(siteUpdateChangelogContent([], '')['description'] === siteUpdateNewsT('empty'), 'No technical fallback when no source has notes');
+$legacyDescription = "## Journal des nouveautes\n\n$journalNotes\n\n"
     . "## Descriptions GitHub et historique Git\n\n## Update tutoriel public access and MAJ (#530)\n\n"
-    . "$tutorialNote\n\n- $syncNote\n\n## Update tutoriel public access and MAJ\n";
-$cleanHtml = siteUpdateNewsRender($repeatedNotes);
-updateCheck(substr_count($cleanHtml, $tutorialNote) === 1 && substr_count($cleanHtml, $syncNote) === 1, 'Journal and PR notes appear only once in saved news');
-updateCheck(substr_count($cleanHtml, '<li>') === 2, 'Both notes retain their list markers');
-updateCheck(!str_contains($cleanHtml, 'Update tutoriel') && !str_contains($cleanHtml, 'Descriptions GitHub'), 'Remove headings whose descriptions were redundant');
-$additionalHtml = siteUpdateNewsRender($repeatedNotes . "\n\n## Other correction (#531)\n\nIndependent fix.\n");
-updateCheck(str_contains($additionalHtml, 'Other correction') && str_contains($additionalHtml, 'Independent fix.'), 'Keep information absent from the journal');
-$listHtml = siteUpdateNewsRender("## Release (#530)\n\n$tutorialNote\n\n- $syncNote\n\n## Release\n");
-updateCheck(substr_count($listHtml, '<li>') === 2 && substr_count($listHtml, '<h2>') === 1, 'Repair a copied journal list and remove the bare commit title');
+    . $preparedMarkdown . "\n\n## Update tutoriel public access and MAJ\n";
+$legacyContent = siteUpdateNewsLegacyContent($legacyDescription);
+updateCheck($legacyContent['description'] === trim($preparedMarkdown) && $legacyContent['journal'] === $journalNotes, 'Existing saved news use prepared text first');
+updateCheck(str_contains(siteUpdateNewsRender($legacyDescription), '<details class="generic-accordion generic-help-text">'), 'Legacy saved news also use the collapsed journal');
+$legacyFallback = "## Journal des nouveautes\n\n$journalNotes\n\n## Descriptions GitHub et historique Git\n\n## Update (#530)\n\nUpdate\n\n## Update\n";
+updateCheck(siteUpdateNewsLegacyContent($legacyFallback) === $fallback, 'Existing merge-title-only news show the journal');
+$legacyGitFallback = "## Journal des nouveautes\n\n$journalNotes\n\n## Descriptions GitHub et historique Git\n\n## Merge pull request #530 from owner/Beta (#530)\n\nA technical merge description\n";
+updateCheck(siteUpdateNewsLegacyContent($legacyGitFallback) === $fallback, 'Unresolved legacy merge messages are not prepared presentations');
 $linksHtml = siteUpdateNewsRender("- [Documentation](https://example.test/one)\n\n- [Documentation](https://example.test/two)");
 updateCheck(substr_count($linksHtml, '<li>') === 2, 'Different link destinations are distinct information');
 $nestedHtml = siteUpdateNewsRender("## Details\n\n- Main note\n  - Nested note\n\n```text\nPreserved code\n```");
@@ -65,15 +78,20 @@ try {
     $git(['remote', 'add', 'origin', 'https://example.invalid/owner/repo.git']);
     $git(['commit', '--quiet', '--allow-empty', '-m', 'Already installed']);
     $fromGit = $git(['rev-parse', 'HEAD']);
+    $deliveryBranch = $git(['symbolic-ref', '--short', 'HEAD']);
+    $git(['checkout', '--quiet', '-b', 'internal-feature']);
     file_put_contents($fixture . '/NOUVEAUTES.md', "# Journal\n\n- New feature for users\n");
     $git(['add', 'NOUVEAUTES.md']);
-    $git(['commit', '--quiet', '--allow-empty', '-m', 'Merge pull request #529 from owner/Beta', '-m', "Bug fixes\n\nNew features"]);
+    $git(['commit', '--quiet', '-m', 'Internal feature (#999)', '-m', 'Internal technical details']);
+    $git(['checkout', '--quiet', $deliveryBranch]);
+    $git(['merge', '--quiet', '--no-ff', 'internal-feature', '-m', 'Merge pull request #529 from owner/Beta', '-m', "Bug fixes\n\nNew features"]);
     $git(['commit', '--quiet', '--allow-empty', '-m', 'Direct correction', '-m', 'Preserved details']);
     $toGit = $git(['rev-parse', 'HEAD']);
     $context = ['repoRoot' => $fixture, 'remote' => 'origin'];
     $changelog = siteUpdateAdminGetChangelog($context, $fromGit, $toGit);
     updateCheck(count($changelog['entries']) === 2 && $changelog['fallback'], 'Full revision range and API fallback');
-    updateCheck(str_contains($changelog['description'], "Bug fixes\n\nNew features") && str_contains($changelog['description'], 'Preserved details'), 'Preserve full Git bodies');
+    updateCheck(!in_array(999, array_column($changelog['entries'], 'number'), true), 'Use delivery PRs rather than nested implementation PRs');
+    updateCheck(!str_contains($changelog['description'], 'Bug fixes') && !str_contains($changelog['description'], 'Preserved details'), 'Git metadata never replaces the journal');
     updateCheck(!str_contains($changelog['description'], 'Already installed'), 'Exclude installed changes');
     updateCheck(str_contains($changelog['description'], '- New feature for users'), 'Include new release notes');
     updateCheck(siteUpdateAdminGetChangelog($context, $fromGit, $toGit) === $changelog, 'Cached description');
@@ -85,6 +103,7 @@ $pdo = DbObject::getPdo();
 executeSqlMigrationStatements($pdo, file_get_contents(dirname(__DIR__) . '/sql/fixtures/site-update-news.sql'));
 executeSqlMigrationStatements($pdo, str_replace('CREATE TABLE IF NOT EXISTS', 'CREATE TEMPORARY TABLE IF NOT EXISTS',
     file_get_contents(dirname(__DIR__) . '/sql/2026-11-03-01-site-update-news.sql')));
+executeSqlMigrationStatements($pdo, file_get_contents(dirname(__DIR__) . '/sql/2026-11-03-02-site-update-news-journal.sql'));
 $users = [];
 foreach (['real', 'inactive', 'roleplay', 'historical'] as $type) {
     $user = new User();
@@ -98,8 +117,9 @@ foreach (['real', 'inactive', 'roleplay', 'historical'] as $type) {
 updateCheck(User::getSiteUpdateRecipientIds() === [$users['real']], 'Only active real users receive news');
 $from = str_repeat('a', 40);
 $to = str_repeat('b', 40);
-$news = SiteUpdateNews::publish($from, $to, 'New features', "## Changes\n\nBug fixed");
+$news = SiteUpdateNews::publish($from, $to, 'New features', "## Changes\n\nBug fixed", $journalNotes);
 updateCheck((int)$news->getId() > 0, 'News published');
+updateCheck($news->get('journal') === $journalNotes, 'Store the optional journal separately');
 $inbox = Notification::getInboxForUser($users['real'], 123);
 updateCheck(count($inbox) === 1 && $inbox[0]->get('event_key') === 'site_update_installed', 'Personal notification created');
 updateCheck(count(Notification::getInboxForUser($users['real'], 456)) === 1, 'Visible across organizations');
@@ -107,6 +127,7 @@ updateCheck(count(Notification::getInboxForUser($users['roleplay'], 123)) === 0,
 $again = SiteUpdateNews::publish($from, $to, 'Retry', 'Different content');
 updateCheck($again->getId() === $news->getId() && count(Notification::getInboxForUser($users['real'], 123)) === 1, 'No duplicate on retry');
 updateCheck($again->get('description') === "## Changes\n\nBug fixed", 'Published snapshot remains immutable');
+updateCheck($again->get('journal') === $journalNotes, 'Retry preserves the stored journal');
 
 // Force a notification collision after the news insert: the whole publish must roll back.
 $failureRevision = str_repeat('c', 40);
@@ -120,13 +141,14 @@ try {
 $missing = new SiteUpdateNews();
 updateCheck(!$missing->load([['revision', $failureRevision]]), 'No published news after notification failure');
 
-// Exercise the actual popup endpoint with a legacy, already stored description.
+// Exercise the actual popup endpoint with a separately stored presentation and journal.
 $displayNews = new SiteUpdateNews();
 $displayNews->set('revision', str_repeat('d', 40));
 $displayNews->set('previous_revision', $to);
 $displayNews->set('title', 'Nouveautes du site - 03.11.2026');
-$displayNews->set('description', $repeatedNotes);
-updateCheck(!empty($displayNews->save()['status']), 'Create legacy display fixture');
+$displayNews->set('description', $preparedMarkdown);
+$displayNews->set('journal', $journalNotes);
+updateCheck(!empty($displayNews->save()['status']), 'Create display fixture');
 $viewer = new User();
 updateCheck($viewer->load($users['real']), 'Load popup viewer');
 if (session_status() === PHP_SESSION_ACTIVE) { session_write_close(); }
@@ -141,6 +163,7 @@ $_SESSION = $previousSession;
 $_GET = $previousGet;
 updateCheck(str_contains($popupHtml, 'data-topbar-modal-title="Nouveautes du site - 03.11.2026"'), 'Provide the title to the popup header');
 updateCheck(!str_contains(strip_tags($popupHtml), 'Nouveautes du site - 03.11.2026'), 'No repeated news title inside the body');
-updateCheck(substr_count($popupHtml, $tutorialNote) === 1 && substr_count($popupHtml, '<li>') === 2, 'Existing news endpoint uses the shared cleanup');
+updateCheck(str_contains($popupHtml, '<details') && str_contains($popupHtml, '<strong>Bienvenue</strong>'), 'Existing news endpoint uses prepared text and collapsed journal');
 file_put_contents(dirname(__DIR__) . '/tmp/site-update-news-rendered.html', $popupHtml);
+file_put_contents(dirname(__DIR__) . '/tmp/site-update-news-fallback.html', siteUpdateNewsRender($fallback['description'], $fallback['journal']));
 echo "site_update_news_test: OK\n";

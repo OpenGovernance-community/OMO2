@@ -2531,6 +2531,9 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
     }
 
     function stopPvEditorBackgroundWork() {
+        window.removeEventListener('focus', updateEditorPollingActivity);
+        window.removeEventListener('blur', updateEditorPollingActivity);
+        document.removeEventListener('visibilitychange', updateEditorPollingActivity);
         if (syncPollTimer !== null) {
             window.clearTimeout(syncPollTimer);
             syncPollTimer = null;
@@ -6740,7 +6743,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
     })();
 
     function isPvEditorSessionActive() {
-        if (!root.isConnected || document.hidden) {
+        if (!root.isConnected || document.hidden || !document.hasFocus()) {
             return false;
         }
 
@@ -6774,7 +6777,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             window.clearTimeout(syncPollTimer);
             syncPollTimer = null;
         }
-        if (currentDocumentPayload.isPvValidated === true || !root.isConnected) {
+        if (currentDocumentPayload.isPvValidated === true || !isPvEditorPollingActive()) {
             return;
         }
 
@@ -6787,7 +6790,6 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
                 return;
             }
             if (!isPvEditorPollingActive()) {
-                scheduleNextSyncPoll(idleSyncPollDelayMs);
                 return;
             }
 
@@ -6801,20 +6803,26 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         scheduleNextSyncPoll(activeSyncPollDelayMs);
     }
 
+    function updateEditorPollingActivity() {
+        const pollingActive = isPvEditorPollingActive();
+        if (!pollingActive || !editorWasPollingActive) {
+            // Clear the pending timer while inactive; resume with one immediate poll.
+            scheduleNextSyncPoll(0);
+        }
+        editorWasPollingActive = pollingActive;
+    }
+
     function startEditorLifecycleObserver() {
         const externalDrawer = root.closest('[data-omo-external-panel-drawer="1"]');
         editorWasPollingActive = isPvEditorPollingActive();
+        window.addEventListener('focus', updateEditorPollingActivity);
+        window.addEventListener('blur', updateEditorPollingActivity);
+        document.addEventListener('visibilitychange', updateEditorPollingActivity);
         if (!(externalDrawer instanceof HTMLElement) || typeof MutationObserver !== 'function') {
             return;
         }
 
-        editorLifecycleObserver = new MutationObserver(function () {
-            const pollingActive = isPvEditorPollingActive();
-            if (pollingActive && !editorWasPollingActive) {
-                scheduleNextSyncPoll(0);
-            }
-            editorWasPollingActive = pollingActive;
-        });
+        editorLifecycleObserver = new MutationObserver(updateEditorPollingActivity);
         editorLifecycleObserver.observe(externalDrawer, {
             attributes: true,
             attributeFilter: ['class', 'hidden']
@@ -6822,7 +6830,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
     }
 
     function syncEditorFromServer() {
-        if (currentDocumentPayload.isPvValidated === true) {
+        if (currentDocumentPayload.isPvValidated === true || !isPvEditorPollingActive()) {
             return Promise.resolve(null);
         }
         if (syncPollPending instanceof Promise) {
@@ -6912,12 +6920,6 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
     window.addEventListener('pagehide', function (event) {
         if (!event.persisted) {
             releaseActiveLocksWithBeacon();
-        }
-    });
-
-    document.addEventListener('visibilitychange', function () {
-        if (!document.hidden && isPvEditorPollingActive()) {
-            scheduleNextSyncPoll(0);
         }
     });
 

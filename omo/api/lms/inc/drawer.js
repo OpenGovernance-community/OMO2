@@ -103,7 +103,7 @@ function openDrawer(content, options) {
     return lmsExecuteDrawerScripts(container).then(() => {
         applyScrollPosition();
     }).catch(() => {
-        window.omoNotify(omoUiText("impossible_de_charger_les_scripts_du_drawer", "Impossible de charger les scripts du drawer."), 'error');
+        window.omoNotify(omoUiText("impossible_de_charger_les_scripts_du_drawer", "Impossible de charger le panneau latéral."), 'error');
     });
 }
 

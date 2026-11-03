@@ -1,4 +1,5 @@
 <?php
+require_once dirname(__DIR__, 4) . '/common/lms/content-indicators.php';
 $sourceLang = [
     'lms.parcours_content.pack.title' => ['text' => 'Parcours du pack', 'context' => 'Section title shown when viewing a pack parcours.'],
     'lms.parcours_content.pack.intro' => ['text' => 'Seuls les parcours compatibles avec les applications actives dans cette organisation sont affichés.', 'context' => 'Intro text shown above the list of child parcours in a pack.'],
@@ -31,6 +32,7 @@ $packChildren = $isPackParcours
         $canEditPackParcours
     )
     : [];
+$contentIndicators = \dbObject\Parcours::fetchContentIndicators(array_column($packChildren, 'id'));
 ?>
 <?php if ($isPackParcours): ?>
 <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/lms/css/parcours-content.css') ?>">
@@ -38,6 +40,7 @@ $packChildren = $isPackParcours
 <div class="content lms-parcours-content<?php echo $isEmbedded ? ' lms-parcours-content--embed' : ''; ?>">
 <?php if ($isEmbedded): ?>
     <div class="lms-parcours-embed-header">
+        <?php commonLmsRenderCatalogBackLink($catalogUrl ?? '', $packUrl ?? ''); ?>
         <h1><?php echo htmlspecialchars($parcours['title']); ?></h1>
         <?php if ($parcours['description'] !== ''): ?>
             <p><?php echo htmlspecialchars($parcours['description']); ?></p>
@@ -64,11 +67,7 @@ $packChildren = $isPackParcours
                 $isVisibleParcours = !empty($childParcours['isvisible']);
                 ?>
                 <div class="card<?php echo !$isVisibleParcours ? ' card--visibility-hidden' : ''; ?>" onclick="<?php echo $isVisibleParcours ? 'goToPackChildParcours(' . (int)($childParcours['id'] ?? 0) . ')' : ''; ?>">
-                    <?php if (!empty($childParcours['image'])): ?>
-                        <div class="card-image">
-                            <img src="<?php echo htmlspecialchars((string)$childParcours['image']); ?>" alt="">
-                        </div>
-                    <?php endif; ?>
+                    <?php commonLmsRenderParcoursCover($childParcours, $contentIndicators[(int)$childParcours['id']] ?? []); ?>
 
                     <div class="card-content">
                         <h3><?php echo htmlspecialchars((string)($childParcours['title'] ?? '')); ?></h3>

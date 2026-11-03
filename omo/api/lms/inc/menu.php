@@ -11,19 +11,19 @@ sharedApplyDocumentTheme({
 <?php
 commonRenderTopbar(array_merge([
     'appKey' => 'lms',
-    'appLabel' => 'LMS',
+    'appLabel' => commonLmsUiT('tutoriels'),
     'organization' => isset($org) ? $org : null,
     'logoutReturnTo' => omoLmsBuildPath('/'),
     'search' => [
         'enabled' => true,
         'placeholder' => omoLmsUiT('rechercher_un_parcours_ou_une_mission'),
-        'buttonLabel' => 'Recherche',
+        'buttonLabel' => commonLmsUiT('search'),
         'callback' => 'lmsHandleTopbarSearch',
     ],
     'profile' => [
         'enabled' => $currentUserId > 0,
-        'buttonLabel' => 'Profil',
-        'editTitle' => 'Votre profil',
+        'buttonLabel' => commonLmsUiT('profile'),
+        'editTitle' => commonLmsUiT('your_profile'),
         'editUrl' => '/popup/profil.php',
         'editMode' => 'fetch',
     ],
@@ -45,9 +45,9 @@ commonRenderTopbar(array_merge([
         ],
         [
             'key' => 'tutorials',
-            'label' => 'Tutoriels',
+            'label' => commonLmsUiT('tutoriels'),
             'description' => omoLmsUiT('des_formations_ciblees_pour_monter_en_competences_dans_l_utilisation_du_logiciel'),
-            'title' => 'Tutoriels',
+            'title' => commonLmsUiT('tutoriels'),
             'html' => ('<div class="common-help-list"><div class="common-help-card"><h4>' . htmlspecialchars(omoLmsUiT('tutoriels'), ENT_QUOTES, 'UTF-8') . '</h4><p>' . htmlspecialchars(omoLmsUiT('cette_section_pourra_ensuite_lister_des_tutoriels_video_des_guides_pas_a_pas_ou_des_suppor'), ENT_QUOTES, 'UTF-8') . '</p></div></div>'),
         ],
     ],

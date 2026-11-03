@@ -66,7 +66,7 @@ if (!is_array($result) || empty($result['status'])) {
         'success' => false,
         'message' => is_array($result) && !empty($result['message'])
             ? (string)$result['message']
-            : 'Impossible d ajouter ce prerequis.',
+            : commonLmsUiT('add_prerequisite_error'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }

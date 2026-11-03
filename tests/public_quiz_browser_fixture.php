@@ -14,9 +14,10 @@ try {
     $items['public_attachment'] = mcpFixture(\dbObject\OrganizationParcours::class, ['IDorganization' => $items['org']->getId(), 'IDparcours' => $items['public_parcours']->getId(), 'everybody' => 1, 'anonymous' => 1]);
     $questions = [];
     foreach (['single' => ['Right' => 1, 'Wrong' => 0], 'multiple' => ['First' => 1, 'Second' => 1, 'Wrong' => 0], 'private' => ['Private right' => 1]] as $key => $choices) {
-        $items[$key . '_question'] = mcpFixture(Question::class, ['question' => 'Quiz ' . $key, 'answer' => 'Answer explanation']);
+        $explanation = $key === 'single' ? "First educational explanation.\nLiteral <strong>text</strong>." : "Final educational explanation.\n" . str_repeat("More details to understand the answer.\n", 30);
+        $items[$key . '_question'] = mcpFixture(Question::class, ['question' => 'Quiz ' . $key, 'answer' => $explanation]);
         $items[$key . '_question_link'] = mcpFixture(MissionQuestion::class, ['IDmission' => $items[$key === 'private' ? 'private_mission' : 'public_mission']->getId(), 'IDquestion' => $items[$key . '_question']->getId(), 'position' => count($questions) + 1]);
-        $questions[$key] = ['id' => (int)$items[$key . '_question']->getId(), 'correct' => [], 'wrong' => []];
+        $questions[$key] = ['id' => (int)$items[$key . '_question']->getId(), 'answer' => $explanation, 'correct' => [], 'wrong' => []];
         foreach ($choices as $label => $correct) {
             $itemKey = $key . '_choice_' . count($items);
             $items[$itemKey] = mcpFixture(QuestionChoice::class, ['IDquestion' => $items[$key . '_question']->getId(), 'label' => $label, 'is_correct' => $correct]);

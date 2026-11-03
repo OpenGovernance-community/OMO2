@@ -1,4 +1,5 @@
 <?php
+require_once dirname(__DIR__, 2) . '/common/lms/ui-translations.php';
 require_once dirname(__DIR__, 2) . '/shared_functions.php';
 require_once dirname(__DIR__, 2) . '/common/auth.php';
 
@@ -110,12 +111,12 @@ function lmsParcoursIsPreviewOnly(array $parcoursRow)
 function lmsParcoursPreviewLabel(array $parcoursRow)
 {
 	if (empty($parcoursRow['isapplicationvisible'])) {
-		return 'Masque par application inactive';
+		return commonLmsUiT('hidden_inactive_app');
 	}
 
 	if (empty($parcoursRow['isprerequisitevisible'])) {
-		return 'Prerequis non atteints';
+		return commonLmsUiT('hidden_prerequisites');
 	}
 
-	return 'Masque dans ce contexte';
+	return commonLmsUiT('hidden_context');
 }

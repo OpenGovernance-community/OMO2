@@ -63,7 +63,7 @@ if (!is_array($result) || empty($result['status'])) {
         'success' => false,
         'message' => is_array($result) && !empty($result['message'])
             ? (string)$result['message']
-            : 'Impossible d ajouter cette mission.',
+            : commonLmsUiT('add_mission_error'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -71,5 +71,5 @@ if (!is_array($result) || empty($result['status'])) {
 echo json_encode(array(
     'status' => true,
     'success' => true,
-    'message' => !empty($result['created']) ? 'Mission ajoutee.' : 'Mission deja presente.',
+    'message' => !empty($result['created']) ? commonLmsUiT('mission_added') : commonLmsUiT('mission_already_added'),
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

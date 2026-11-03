@@ -3,6 +3,19 @@
 
 	class ParcoursMission extends DbObject
 	{
+        protected static function uiMessageSourceLang(): array
+        {
+            return [
+                'parcours_ou_mission_invalide' => ['text' => 'Parcours ou mission invalide.', 'context' => 'Tutorial data validation and action feedback.'],
+                'impossible_d_ajouter_cette_mission_au_parcours' => ['text' => 'Impossible d’ajouter cette mission au parcours.', 'context' => 'Tutorial data validation and action feedback.'],
+                'parcours_invalide' => ['text' => 'Parcours invalide.', 'context' => 'Tutorial data validation and action feedback.'],
+                'impossible_de_charger_les_missions_du_parcours' => ['text' => 'Impossible de charger les missions du parcours.', 'context' => 'Tutorial data validation and action feedback.'],
+                'la_liste_des_missions_a_reordonner_est_incomplete' => ['text' => 'La liste des missions à réordonner est incomplète.', 'context' => 'Tutorial data validation and action feedback.'],
+                'impossible_de_reordonner_les_missions_du_parcours' => ['text' => 'Impossible de réordonner les missions du parcours.', 'context' => 'Tutorial data validation and action feedback.'],
+                'impossible_de_retirer_cette_mission_du_parcours' => ['text' => 'Impossible de retirer cette mission du parcours.', 'context' => 'Tutorial data validation and action feedback.'],
+            ];
+        }
+
 		public static function tableName()
 		{
 			return 'parcours_mission';
@@ -121,7 +134,7 @@
 			if ($parcoursId <= 0 || $missionId <= 0) {
 				return array(
 					'status' => false,
-					'message' => 'Parcours ou mission invalide.',
+					'message' => self::uiMessage('parcours_ou_mission_invalide'),
 				);
 			}
 
@@ -164,7 +177,7 @@
 					'status' => false,
 					'message' => is_array($saveResult) && !empty($saveResult['text'])
 						? (string)$saveResult['text']
-						: 'Impossible d ajouter cette mission au parcours.',
+						: self::uiMessage('impossible_d_ajouter_cette_mission_au_parcours'),
 				);
 			}
 
@@ -181,7 +194,7 @@
 			if ($parcoursId <= 0) {
 				return array(
 					'status' => false,
-					'message' => 'Parcours invalide.',
+					'message' => self::uiMessage('parcours_invalide'),
 				);
 			}
 
@@ -203,7 +216,7 @@
 			if (!is_array($currentRows)) {
 				return array(
 					'status' => false,
-					'message' => 'Impossible de charger les missions du parcours.',
+					'message' => self::uiMessage('impossible_de_charger_les_missions_du_parcours'),
 				);
 			}
 
@@ -222,7 +235,7 @@
 			if ($comparisonMissionIds !== $currentMissionIds) {
 				return array(
 					'status' => false,
-					'message' => 'La liste des missions a reordonner est incomplete.',
+					'message' => self::uiMessage('la_liste_des_missions_a_reordonner_est_incomplete'),
 				);
 			}
 
@@ -241,7 +254,7 @@
 				if (!$result) {
 					return array(
 						'status' => false,
-						'message' => 'Impossible de reordonner les missions du parcours.',
+						'message' => self::uiMessage('impossible_de_reordonner_les_missions_du_parcours'),
 					);
 				}
 			}
@@ -258,7 +271,7 @@
 			if ($parcoursId <= 0 || $missionId <= 0) {
 				return array(
 					'status' => false,
-					'message' => 'Parcours ou mission invalide.',
+					'message' => self::uiMessage('parcours_ou_mission_invalide'),
 				);
 			}
 
@@ -274,7 +287,7 @@
 			if ($result === false) {
 				return array(
 					'status' => false,
-					'message' => 'Impossible de retirer cette mission du parcours.',
+					'message' => self::uiMessage('impossible_de_retirer_cette_mission_du_parcours'),
 				);
 			}
 

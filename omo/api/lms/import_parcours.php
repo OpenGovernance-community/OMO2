@@ -71,7 +71,7 @@ if (!is_array($attachResult) || empty($attachResult['status'])) {
         'success' => false,
         'message' => is_array($attachResult) && !empty($attachResult['message'])
             ? (string)$attachResult['message']
-            : 'Impossible d importer ce parcours.',
+            : commonLmsUiT('import_error'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
