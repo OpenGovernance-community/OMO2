@@ -3127,7 +3127,7 @@ if (!function_exists('omoDecisionSendParticipantAccessEmail')) {
             'footer_html' => '<p style="margin:0;">' . commonMailEscape(omoDecisionInvitationT('decisions.invitations.email.footer', ['organization' => $organizationName])) . '</p>',
         ]);
 
-        $mailSent = myHTMLMail([$fromAddress, $organizationName !== '' ? $organizationName : 'Organisation'], $email, $subject, $html);
+        $mailSent = myHTMLMail([$fromAddress, $organizationName !== '' ? $organizationName : 'Organisation'], $email, $subject, $html, organizationId: $organization ? (int)$organization->getId() : null);
         if (!$mailSent) {
             return [
                 'status' => false,
@@ -3241,7 +3241,7 @@ if (!function_exists('omoDecisionSendParticipantAccessCodeEmail')) {
             'footer_html' => '<p style="margin:0;">' . commonMailEscape(omoDecisionInvitationT('decisions.invitations.email.footer', ['organization' => $organizationName])) . '</p>',
         ]);
 
-        $mailSent = myHTMLMail([$fromAddress, $organizationName !== '' ? $organizationName : 'Organisation'], $email, $subject, $html);
+        $mailSent = myHTMLMail([$fromAddress, $organizationName !== '' ? $organizationName : 'Organisation'], $email, $subject, $html, organizationId: $organization ? (int)$organization->getId() : null);
         if (!$mailSent) {
             $participant->clearPublicAccessCode();
             return [

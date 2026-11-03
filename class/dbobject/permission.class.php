@@ -314,6 +314,12 @@ class Permission extends DbObject
                 'iscontextual' => true,
                 'group' => 'recurring_tasks',
             ],
+            'CAN_CREATE_TENSION' => [
+                'title' => 'Creer des tensions',
+                'description' => 'Autorise la creation de tensions dans le contexte cible.',
+                'iscontextual' => true,
+                'group' => 'tensions',
+            ],
             'CAN_CREATE_PROJECT' => [
                 'title' => 'Creer des projets',
                 'description' => 'Autorise la creation de projets dans le contexte cible.',
@@ -427,6 +433,7 @@ class Permission extends DbObject
             'decisions' => ['title' => 'Decisions', 'order' => 120, 'application' => 'decision'],
             'budget' => ['title' => 'Budget', 'order' => 130, 'application' => 'budget'],
             'help' => ['title' => 'Aide', 'order' => 140],
+            'tensions' => ['title' => Organization::formatLexiconText('Tensions', $lexicon), 'order' => 150],
             'content' => ['title' => 'Contenus et reunions', 'order' => 990],
             'other' => ['title' => 'Autres droits', 'order' => 999],
         ];

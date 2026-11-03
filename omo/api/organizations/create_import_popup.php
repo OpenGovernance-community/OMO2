@@ -4,6 +4,7 @@ require_once dirname(__DIR__) . '/bootstrap.php';
 $sourceLang = array(
     'organization_import.roleplay' => ['text' => 'Importer comme jeu de rôle', 'context' => 'Date shift option on import.'],
     'organization_import.roleplay_help' => ['text' => 'Décale les dates du nombre de jours entre la date d’export et aujourd’hui. Les heures et les intervalles sont conservés. Sans cette option, les dates du fichier sont conservées.', 'context' => 'Explanation of roleplay import.'],
+    'organization_import.roleplay_characters_help' => ['text' => 'En mode jeu de role, les membres deviennent des personnages actifs, sans invitation ni connexion directe, avec des adresses suffixees par .invalid. Leurs e-mails sont transmis aux administrateurs de cette organisation. Vous devenez administrateur ; les droits d administration des membres du fichier ne sont pas repris.', 'context' => 'Character accounts, mail routing and administrator rights when importing a roleplay organization.'],
     'organization_import.action.cancel' => array('text' => 'Annuler', 'context' => 'Cancel button in the organization import popup.'),
     'organization_import.action.close' => ['text' => 'Fermer', 'context' => 'Close the completed organization import.'],
     'organization_import.action.open' => ['text' => 'Ouvrir l’organisation', 'context' => 'Open the successfully imported organization.'],
@@ -108,6 +109,7 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
             <span><?= htmlspecialchars(t('organization_import.roleplay', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></span>
         </label>
         <p class="generic-help-text"><?= htmlspecialchars(t('organization_import.roleplay_help', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></p>
+        <p class="generic-help-text"><?= htmlspecialchars(t('organization_import.roleplay_characters_help', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></p>
         <label class="omo-create-import__field">
             <span><?= htmlspecialchars(t('organization_import.field.template', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></span>
             <select name="organization_template_id" class="generic-form-control" data-omo-create-import-template="1">

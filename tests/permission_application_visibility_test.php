@@ -40,7 +40,7 @@ foreach ($appGroups as $disabledApp => $hiddenGroups) {
     permissionVisibilityCheck($visible === $expected, 'Only the disabled app rights must disappear: ' . $disabledApp);
 }
 $minimal = Permission::getEditorCatalog([], []);
-permissionVisibilityCheck(array_values(array_unique(array_column($minimal, 'group'))) === ['organization', 'help'], 'Organization and Help remain available without optional apps');
+permissionVisibilityCheck(array_values(array_unique(array_column($minimal, 'group'))) === ['organization', 'help', 'tensions'], 'Organization, Help and Tensions remain available without optional apps');
 permissionVisibilityCheck(Permission::getEditorCatalog() === $fullCatalog, 'The unrestricted catalog must remain available to permission evaluation and exports');
 
 $organizations = new ArrayOrganization();

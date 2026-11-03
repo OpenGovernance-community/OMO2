@@ -1,5 +1,23 @@
 # Journal des nouveautés
 
+- Profils / presentations (2026-11-02) : presentations generales et propres aux organisations en HTML simple, avec Summernote via adminEdit et affichage mis en forme dans les fiches membres. Les anciens textes conservent leurs retours a la ligne ; contenu HTML nettoye et notes CardDAV conservees en texte lisible.
+
+- Import / jeu de role (2026-11-02) : membres importes comme personnages actifs et distincts des comptes reels, avec adresses affichees suffixees par .invalid, sans invitation ni connexion directe. Les e-mails des personnages sont rediriges vers les administrateurs reels de leur organisation, y compris dans les traitements differes. Les statuts admin du fichier sont ignores et la personne qui importe devient administrateur, meme si elle ne figure pas dans le fichier.
+
+- Import / images des organisations (2026-11-02) : conservation des images lorsque img ou img/upload pointe vers un dossier partage hors de la racine du site. Les URL publiques sont preservees a l import et les images restent exportables ; les chemins sortant du stockage autorise sont refuses.
+
+- Tensions / choix des holons (2026-11-02) : correction du filtre et du controle d enregistrement pour les holons dont l organisation est deduite de la racine via IDholon_org. Ces espaces sont proposes selon les memes droits que les holons portant directement IDorganization.
+
+- Tensions / droits de creation (2026-11-02) : droit contextuel CAN_CREATE_TENSION configurable dans les editeurs de holons et de modeles, avec profils, portees et heritage existants. Sans attribution dans l organisation, creation ouverte a tous les membres dans tous les espaces ; des la premiere attribution, seules les portees accordees s appliquent. Espaces proposes selon les droits et controle a l enregistrement, y compris pour une tension rattachee a toute l organisation.
+
+- Topbar / tensions (2026-11-02) : bouton de declaration reactive pour les utilisateurs connectes dans une organisation active, avec le formulaire et l enregistrement existants.
+
+- Tableau de bord / texte HTML (2026-11-02) : nouveau module autonome, configurable comme le module video, pour afficher un encart de texte mis en forme. Editeur HTML partage, nettoyage du contenu et enregistrement avec les vues personnelles ou par defaut existantes.
+
+- Survey / reglages video (2026-10-31) : volume initial a 80 % et sous-titres desactives a chaque ouverture du drawer via le SDK Vimeo. Chargement asynchrone et liberation du lecteur a la fermeture ; reglages ensuite modifiables par le visiteur.
+
+- Survey / presentation des principes (2026-10-31) : video Vimeo dans le drawer En savoir plus, a droite du texte sur ordinateur et avant le texte sur telephone. Les dix principes disposent chacun de leur video specifique, configurable dans survey/manifest.php ; lecture arretee a la fermeture.
+
 - Accueil / survey (2026-10-31) : le lien du test de maturite organisationnelle utilise /survey/ sur le serveur courant au lieu du domaine local de developpement.
 
 - Calendrier / rendez-vous et CalDAV (2026-10-31) : correction de la plage demandee par /meeting/ en fin de mois ; les jours passes ne bloquent plus l affichage le 31 lorsque le cache couvre trente jours, avec conservation des temps personnels. Limite de decouverte CalDAV ramenee de quinze a dix minutes. Tests HTTP des imports, dates deplacees, disponibilites, cache, ecritures et refus 429 ; les transferts REPORT continuent pendant la limitation de decouverte.

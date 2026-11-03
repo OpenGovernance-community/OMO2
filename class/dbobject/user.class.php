@@ -14,7 +14,7 @@
 				[['email'], 'required'],
 				[['id', 'security_version'], 'integer'],
 				[['username', 'email', 'phone', 'firstname', 'lastname', 'code', 'telegramID'], 'string'],
-				[['presentation'], 'text'],
+				[['presentation'], 'html'],
 				[['latlong'], 'latlong'],
 				[['password'], 'password'],
 				[['image'], 'sizedimage'],
@@ -80,6 +80,11 @@
 			return "firstname, lastname";
 		}
 
+		public static function attributeHtmlEditorProfiles()
+		{
+			return ['presentation' => 'simple'];
+		}
+
 		public function canView() {
 			return $this->resolveViewPermission(false);
 		}
@@ -127,6 +132,11 @@
 			return !empty($this->getParameter('historical_placeholder'));
 		}
 
+		public function isRoleplayCharacter(): bool
+		{
+			return (bool)$this->getParameter('roleplay_character');
+		}
+
 		public function canEdit() {
 			if (isset($_SESSION["currentUser"]) && $_SESSION["currentUser"] == $this->getId()) {
 				return true;
@@ -158,6 +168,7 @@
 
 		public function issuePasswordResetCode(): string
 		{
+			if ($this->isRoleplayCharacter()) { return ''; }
 			$code = bin2hex(random_bytes(32));
 			$this->set('code', hash('sha256', $code));
 			$this->set('codeexpiration', new \DateTime('+1 hour'));
@@ -166,6 +177,7 @@
 
 		public function activateForVerifiedLogin(): bool
 		{
+			if ($this->isRoleplayCharacter()) { return false; }
 			if ((int)$this->get('active')) return true;
 			if (!(int)$this->get('activation_pending')) return false;
 			$this->set('active', 1);
@@ -185,6 +197,7 @@
 		/** Lock, validate and consume once, including against concurrent requests. */
 		public function consumePasswordResetCode($code, string $passwordHash, array $profile = []): bool
 		{
+			if ($this->isRoleplayCharacter()) { return false; }
 			if (!is_string($code) || !preg_match('/^[a-f0-9]{64}$/D', $code) || $this->getId() <= 0) return false;
 			$pdo = self::getPdo();
 			if ($pdo->inTransaction()) throw new \LogicException('Recovery requires its own transaction.');
@@ -347,7 +360,7 @@
 
 		public function allowsPasswordLogin()
 		{
-			return trim((string)$this->get('password')) !== ''
+			return !$this->isRoleplayCharacter() && trim((string)$this->get('password')) !== ''
 				&& (bool)$this->get('allow_password_login');
 		}
 

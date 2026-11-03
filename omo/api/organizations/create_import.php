@@ -13,7 +13,8 @@ if ($currentUserId <= 0) {
     exit;
 }
 
-$memberInvitationEmailChoice = trim((string)($_POST['member_invitation_email_choice'] ?? ''));
+$roleplay = ($_POST['roleplay'] ?? '') === '1';
+$memberInvitationEmailChoice = $roleplay ? 'skip' : trim((string)($_POST['member_invitation_email_choice'] ?? ''));
 if (!in_array($memberInvitationEmailChoice, array('send', 'skip'), true)) {
     http_response_code(422);
     echo json_encode(array('status' => false, 'message' => omoOrganizationsUiT('choisissez_explicitement_si_les_e_mails_d_invitation_aux_membres_doivent_etre_envoyes')), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -51,7 +52,7 @@ foreach ($availableModules as $module) {
 $organizationName = trim((string)($_POST['organization_name'] ?? ''));
 $importOptions = array(
     'sendMemberInvitationEmails' => $memberInvitationEmailChoice === 'send',
-    'roleplay' => ($_POST['roleplay'] ?? '') === '1',
+    'roleplay' => $roleplay,
 );
 $templateCalibration = array(
     'templateRootHolonId' => (int)($_POST['organization_template_id'] ?? 0),

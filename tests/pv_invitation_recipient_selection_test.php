@@ -23,6 +23,7 @@ namespace dbObject {
     }
     class Organization
     {
+        public function getId(): int { return 1; }
         public function load($id): bool { return true; }
         public function get($key): string { return $key === 'name' ? 'Fixture organization' : ''; }
         public static function formatLexiconText($text): string { return $text; }
@@ -58,7 +59,7 @@ namespace {
     function commonGetRequestHost(): string { return 'example.invalid'; }
     function commonBuildUrl($path, $host): string { return 'https://' . $host . $path; }
     function commonBuildAbsoluteAssetUrl($path): string { return $path === '' ? '' : commonBuildUrl($path, commonGetRequestHost()); }
-    function myHTMLMail($from, $to, $subject, $html): bool
+    function myHTMLMail($from, $to, $subject, $html, ?int $organizationId = null): bool
     {
         $GLOBALS['fixtureMails'][] = ['email' => $to, 'html' => $html];
         if (in_array($to, $GLOBALS['fixtureUnknownEmails'], true)) { throw new \RuntimeException('Fixture uncertain delivery'); }
@@ -138,7 +139,7 @@ namespace {
         }
     }
     $reviewPopup = $request([], ['render' => true, 'stage' => 'review']);
-    pvRecipientExpect(str_contains($reviewPopup['html'], 'est en revision.') && str_contains($reviewPopup['html'], 'name="message"')
+    pvRecipientExpect(preg_match('/est en r(?:e|\x{00e9})vision\./u', $reviewPopup['html']) === 1 && str_contains($reviewPopup['html'], 'name="message"')
         && str_contains($reviewPopup['html'], 'name="recipient_emails[]"'), 'Review keeps recipient selection and an editable reminder message.');
     foreach ([[], ['recipient_emails' => []], ['recipient_emails' => 'alice@example.invalid'],
         ['recipient_emails' => [['alice@example.invalid']]], ['recipient_emails' => [$emails[0], 'outsider@example.invalid']]] as $selection) {

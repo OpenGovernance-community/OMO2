@@ -566,10 +566,22 @@
 	
 	
 	// Fonction E-mail passant par un serveur, pour minimier les effets SPAM
-	function myHTMLMail($from,$to,$subject,$body,$cc=null, $bcc=null, array $attachments = [], ?string $plainTextBody = null, ?array $replyTo = null) {
+	function myHTMLMail($from,$to,$subject,$body,$cc=null, $bcc=null, array $attachments = [], ?string $plainTextBody = null, ?array $replyTo = null, ?int $organizationId = null) {
 
 
 		appSetLastMailError('');
+		try {
+			$envelope = \dbObject\OrganizationRoleplay::routeMail([
+				'to' => appMailExtractAddresses($to), 'cc' => appMailExtractAddresses($cc), 'bcc' => appMailExtractAddresses($bcc),
+			], $organizationId);
+			if ($envelope['to'] === [] && $envelope['cc'] === [] && $envelope['bcc'] === []) {
+				throw new \DomainException('Aucun destinataire valide.');
+			}
+		} catch (\Throwable $error) {
+			appSetLastMailError($error->getMessage());
+			error_log('Mail routing failed: ' . $error->getMessage());
+			return false;
+		}
 		$mail = new PHPMailer(true);
 		$debugLines = [];
 
@@ -613,12 +625,9 @@
 		if ($replyTo !== null) {
 			$mail->addReplyTo((string)$replyTo[0], (string)($replyTo[1] ?? ''));
 		}
-		if (is_array($to))
-			foreach ($to as $dest) {
-				$mail->addAddress($dest); // Destinataire
-			}
-		else
-			$mail->addAddress($to); // Destinataire
+		foreach ($envelope['to'] as $dest) { $mail->addAddress($dest); }
+		foreach ($envelope['cc'] as $dest) { $mail->addCC($dest); }
+		foreach ($envelope['bcc'] as $dest) { $mail->addBCC($dest); }
 		
 
 		// Sujet et corps du message

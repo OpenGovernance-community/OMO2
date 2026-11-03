@@ -30,7 +30,7 @@ if (($argv[1] ?? '') === '--request') {
         faqPopupRenderScopeFields($faq, $context, ['allowScopeEditing' => true, 'allowContextualAttachment' => true, 'allowParcoursAttachment' => true]);
         exit;
     }
-    if (!in_array($endpoint, ['calendar/create.php', 'projects/create.php', 'projects/action.php', 'tension_popup.php', 'checklist/item_edit.php'], true)) { exit(1); }
+    if (!in_array($endpoint, ['calendar/create.php', 'projects/create.php', 'projects/action.php', 'tension_popup.php', 'tension_save.php', 'checklist/item_edit.php'], true)) { exit(1); }
     $_SERVER['REQUEST_URI'] = '/omo/api/' . $endpoint;
     require dirname(__DIR__) . '/omo/api/' . $endpoint;
     exit;
@@ -102,7 +102,7 @@ try {
             'IDholon_parent' => $root->getId(), 'name' => $name, 'IDtypeholon' => $name === 'revoked' ? 1 : 2, 'visible' => 1, 'active' => 1]);
         $fixture(\dbObject\UserHolon::class, ['IDholon' => $spaces[$name]->getId(), 'IDuser' => $user->getId(), 'active' => 1, 'is_membership' => 1]);
         $keys = $name === 'denied' ? [] : ['CAN_EDIT_EVENT', 'CAN_EDIT_PROJECT'];
-        if (in_array($name, ['allowed', 'revoked'], true)) { $keys = array_merge($keys, ['CAN_CREATE_EVENT', 'CAN_CREATE_PROJECT', 'CAN_CREATE_FAQ']); }
+        if (in_array($name, ['allowed', 'revoked'], true)) { $keys = array_merge($keys, ['CAN_CREATE_EVENT', 'CAN_CREATE_PROJECT', 'CAN_CREATE_FAQ', 'CAN_CREATE_TENSION']); }
         foreach ($keys as $key) {
             $grants[$name][$key] = $fixture(\dbObject\HolonPermission::class, ['IDholon' => $spaces[$name]->getId(),
                 'IDpermission' => \dbObject\Permission::findByKey($key)->getId(), 'member_type' => 'member', 'range' => 'self']);
@@ -149,11 +149,36 @@ try {
     $grants['revoked']['CAN_CREATE_FAQ']->delete();
     $faqRequest['post']['IDholon'] = $spaces['revoked']->getId();
     assignmentExpect(!assignmentResult($faqRequest)['status'], 'FAQ creation rights must be rechecked after revocation.');
+    // Existing installations commonly derive the organization from IDholon_org.
+    $spaces['revoked']->set('IDorganization', null); $spaces['revoked']->save();
     $request['endpoint'] = 'tension_popup.php';
     $config = assignmentSelector($request, 'allowed');
-    assignmentExpect(in_array((int)$spaces['allowed']->getId(), $config['selectableHolonIds'], true)
-        && !in_array((int)$nonMemberSpace->getId(), $config['selectableHolonIds'], true) && !$config['allowOrganization'],
-        'The tension picker must preserve its membership restrictions.');
+    $ids = $config['selectableHolonIds']; sort($ids); $sorted = $expected; sort($sorted);
+    assignmentExpect($ids === $sorted && !$config['allowOrganization'], 'Tensions must only offer permitted creation destinations.');
+    $inheritedOrganizationRequest = $request;
+    $inheritedOrganizationRequest['get']['cid'] = $spaces['revoked']->getId();
+    assignmentSelector($inheritedOrganizationRequest, 'revoked');
+    $deniedTensionRequest = $request;
+    $deniedTensionRequest['get']['cid'] = $spaces['denied']->getId();
+    assignmentSelector($deniedTensionRequest, 'allowed');
+    $tensionRequest = $request;
+    $tensionRequest['endpoint'] = 'tension_save.php'; $tensionRequest['method'] = 'POST';
+    $tensionRequest['post'] = ['oid' => $org->getId(), 'IDholon' => $spaces['revoked']->getId(),
+        'title' => 'Fixture tension', 'description' => 'Created in a permitted destination.'];
+    $tensionResult = assignmentResult($tensionRequest);
+    assignmentExpect(!empty($tensionResult['status']), 'Tension creation in another permitted space must succeed.');
+    $savedTension = new \dbObject\Tension();
+    assignmentExpect($savedTension->load((int)$tensionResult['id']), 'Cannot reload created tension.');
+    $fixtures[] = $savedTension;
+    assignmentExpect((int)$savedTension->get('IDholon') === (int)$spaces['revoked']->getId(), 'Tension must retain the chosen space.');
+    foreach ([$spaces['denied']->getId(), $spaces['editOnly']->getId(), $nonMemberSpace->getId(), 0] as $forbiddenId) {
+        $tensionRequest['post']['IDholon'] = $forbiddenId;
+        assignmentExpect(empty(assignmentResult($tensionRequest)['status']), 'A forged tension destination must be rejected.');
+    }
+    $grants['revoked']['CAN_CREATE_TENSION']->delete();
+    $tensionRequest['post']['IDholon'] = $spaces['revoked']->getId();
+    assignmentExpect(empty(assignmentResult($tensionRequest)['status']), 'Tension creation rights must be rechecked after revocation.');
+    $spaces['revoked']->set('IDorganization', $org->getId()); $spaces['revoked']->save();
     $request['endpoint'] = 'checklist/item_edit.php';
     $request['get']['checklist_id'] = $checklist->getId();
     $config = assignmentSelector($request, 'allowed');
@@ -215,6 +240,19 @@ try {
     $request['post'] = ['IDholon' => $spaces['revoked']->getId(), 'title' => 'Revoked', 'status' => Event::STATUS_DRAFT,
         'start_at' => '2030-01-09T10:00', 'end_at' => '2030-01-09T11:00'];
     assignmentExpect(!assignmentResult($request)['status'], 'Event grants must be rechecked on save.');
+    $grants['allowed']['CAN_CREATE_TENSION']->delete();
+    $emptyTensionRequest = $request;
+    $emptyTensionRequest['endpoint'] = 'tension_popup.php'; $emptyTensionRequest['method'] = 'GET'; $emptyTensionRequest['post'] = [];
+    $unconfiguredTargets = assignmentSelector($emptyTensionRequest);
+    assignmentExpect(in_array((int)$spaces['denied']->getId(), $unconfiguredTargets['selectableHolonIds'], true)
+        && in_array((int)$nonMemberSpace->getId(), $unconfiguredTargets['selectableHolonIds'], true)
+        && $unconfiguredTargets['allowOrganization'], 'Removing all tension grants must offer all valid destinations again.');
+    $tensionRequest['post']['IDholon'] = $spaces['denied']->getId();
+    $unconfiguredResult = assignmentResult($tensionRequest);
+    assignmentExpect(!empty($unconfiguredResult['status']), 'Removing the last assignment must restore creation in previously denied spaces.');
+    $unconfiguredTension = new \dbObject\Tension();
+    assignmentExpect($unconfiguredTension->load((int)$unconfiguredResult['id']), 'Cannot reload tension created with default rights.');
+    $fixtures[] = $unconfiguredTension;
     echo "assignment_target_permissions_test: OK\n";
 } finally {
     foreach (array_reverse($fixtures) as $object) { $object->delete(); }

@@ -1232,7 +1232,9 @@
 				} else
 
 				if (false !== array_search("html", array_column($param, 1))) {
-					$this->_fields[$field] = PropertyFormat::sanitizeHtml($value);
+					$this->_fields[$field] = (static::attributeHtmlEditorProfiles()[$field] ?? '') === 'simple'
+						? PropertyFormat::textOrHtmlToHtml($value)
+						: PropertyFormat::sanitizeHtml($value);
 				} else
 					
 				if (false !== array_search("sizedimage", array_column($param, 1))) {

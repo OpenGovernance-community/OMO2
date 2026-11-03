@@ -1031,7 +1031,7 @@ if (!function_exists('commonCardDavBuildContactResource')) {
                 $usernames[] = $scopedUsername;
             }
 
-            $scopedPresentation = trim((string)$membership->getScopedPresentation());
+            $scopedPresentation = \dbObject\PropertyFormat::htmlToPlainText($membership->getScopedPresentation());
             if ($scopedPresentation !== '') {
                 $presentationValues[] = $scopedPresentation;
             }
@@ -1079,7 +1079,7 @@ if (!function_exists('commonCardDavBuildContactResource')) {
         if (count($presentationValues) > 0) {
             $noteParts[] = $presentationValues[0];
         } else {
-            $globalPresentation = trim((string)$user->getScopedPresentation());
+            $globalPresentation = \dbObject\PropertyFormat::htmlToPlainText($user->getScopedPresentation());
             if ($globalPresentation !== '') {
                 $noteParts[] = $globalPresentation;
             }

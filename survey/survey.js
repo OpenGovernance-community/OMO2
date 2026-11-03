@@ -15,6 +15,7 @@
     var advanceTimer = null;
     var automaticInvitationSaveAttempted = false;
     var associatedSaveChain = Promise.resolve();
+    var principleVideoPlayer = null;
 
     var elements = {
         welcome: document.getElementById('surveyWelcome'),
@@ -710,6 +711,34 @@
         elements.omoDialog.removeAttribute('open');
     }
 
+    function initializePrincipleVideo() {
+        var video = elements.principleDrawerContent.querySelector('iframe');
+        if (!video || principleVideoPlayer || !window.Vimeo || typeof window.Vimeo.Player !== 'function') {
+            return;
+        }
+        try {
+            principleVideoPlayer = new window.Vimeo.Player(video);
+            Promise.all([
+                principleVideoPlayer.setVolume(0.8),
+                principleVideoPlayer.disableTextTrack()
+            ]).catch(function (error) {
+                console.warn('Unable to apply survey video defaults.', error);
+            });
+        } catch (error) {
+            console.warn('Unable to initialize survey video player.', error);
+        }
+    }
+
+    function clearPrincipleVideo() {
+        if (principleVideoPlayer) {
+            principleVideoPlayer.destroy().catch(function (error) {
+                console.warn('Unable to destroy survey video player.', error);
+            });
+            principleVideoPlayer = null;
+        }
+        elements.principleDrawerContent.replaceChildren();
+    }
+
     function openPrincipleDrawer() {
         var question = questions[state.questionIndex];
         var paragraphs = question && Array.isArray(question.manifest) ? question.manifest : [];
@@ -720,10 +749,24 @@
         elements.principleDrawerEyebrow.textContent = labels.principleDrawerEyebrow;
         elements.principleDrawerTitle.textContent = question.title;
         var fragment = document.createDocumentFragment();
+        var videoId = String(question.videoId || '');
+        if (/^\d+$/.test(videoId)) {
+            var video = el('iframe', 'survey-principle-drawer__video');
+            video.src = 'https://player.vimeo.com/video/' + videoId + '?dnt=1';
+            video.title = interpolate(labels.principleVideoTitle, { principle: question.title });
+            video.allow = 'fullscreen; picture-in-picture; encrypted-media';
+            video.allowFullscreen = true;
+            fragment.appendChild(video);
+        }
+        var text = el('div', 'survey-principle-drawer__text');
         paragraphs.forEach(function (paragraph) {
-            fragment.appendChild(el('p', '', paragraph));
+            text.appendChild(el('p', '', paragraph));
         });
+        fragment.appendChild(text);
+        clearPrincipleVideo();
         elements.principleDrawerContent.replaceChildren(fragment);
+        elements.principleDrawerContent.scrollTop = 0;
+        initializePrincipleVideo();
 
         if (typeof elements.principleDrawer.showModal === 'function') {
             if (!elements.principleDrawer.open) {
@@ -735,6 +778,7 @@
     }
 
     function closePrincipleDrawer() {
+        clearPrincipleVideo();
         if (typeof elements.principleDrawer.close === 'function' && elements.principleDrawer.open) {
             elements.principleDrawer.close();
             return;
@@ -1417,6 +1461,8 @@
     });
     elements.principleMore.addEventListener('click', openPrincipleDrawer);
     elements.principleDrawerClose.addEventListener('click', closePrincipleDrawer);
+    elements.principleDrawer.addEventListener('close', clearPrincipleVideo);
+    document.getElementById('surveyVimeoSdk').addEventListener('load', initializePrincipleVideo);
     elements.principleDrawer.addEventListener('click', function (event) {
         if (event.target === elements.principleDrawer) {
             closePrincipleDrawer();

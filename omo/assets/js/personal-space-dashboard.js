@@ -22,6 +22,9 @@ var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; 
     var configuratorAudiences = root.querySelector('[data-omo-dashboard-configurator-audiences]');
     var configuratorVideoField = root.querySelector('[data-omo-dashboard-configurator-video-field]');
     var configuratorVideo = root.querySelector('[data-omo-dashboard-configurator-video]');
+    var configuratorHtmlField = root.querySelector('[data-omo-dashboard-configurator-html-field]');
+    var configuratorHtml = root.querySelector('[data-omo-dashboard-configurator-html]');
+    var htmlEditor = null;
     var saveMenu = root.querySelector('[data-omo-dashboard-save-menu]');
     var saveMenuToggle = root.querySelector('[data-omo-dashboard-save-menu-toggle]');
     var saveMenuPanel = root.querySelector('[data-omo-dashboard-save-menu-panel]');
@@ -83,8 +86,13 @@ var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; 
         return Boolean(item && item.settings && item.settings.video);
     }
 
+    function moduleHasHtmlSetting(type) {
+        var item = moduleCatalogItem(type);
+        return Boolean(item && item.settings && item.settings.html);
+    }
+
     function moduleHasConfigSetting(type) {
-        return moduleHasScopeSetting(type) || moduleHasAudienceSetting(type) || moduleHasVideoSetting(type);
+        return moduleHasScopeSetting(type) || moduleHasAudienceSetting(type) || moduleHasVideoSetting(type) || moduleHasHtmlSetting(type);
     }
 
     function rootScopes(scopeRoot) {
@@ -125,6 +133,9 @@ var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; 
         }
         if (moduleHasVideoSetting(type)) {
             settings.video = '';
+        }
+        if (moduleHasHtmlSetting(type)) {
+            settings.html = '';
         }
         return settings;
     }
@@ -167,6 +178,11 @@ var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; 
             labels.push(normalizeVideo(module.settings && module.settings.video) !== ''
                 ? (texts.videoConfigured || 'Vidéo')
                 : (texts.videoMissing || 'Aucune vidéo configurée'));
+        }
+        if (moduleHasHtmlSetting(module.type)) {
+            labels.push(String(module.settings && module.settings.html || '').trim() !== ''
+                ? (texts.htmlConfigured || 'Texte mis en forme')
+                : (texts.htmlMissing || 'Aucun texte configure'));
         }
         return labels.join(' · ');
     }
@@ -300,6 +316,10 @@ var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; 
     }
 
     function closeConfigurator() {
+        if (htmlEditor) {
+            htmlEditor.destroy();
+            htmlEditor = null;
+        }
         if (configurator) {
             configurator.hidden = true;
         }
@@ -378,6 +398,19 @@ var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; 
             configuratorVideo.value = pendingVideo;
         }
         configurator.hidden = false;
+        if (configuratorHtmlField) {
+            configuratorHtmlField.hidden = !moduleHasHtmlSetting(module.type);
+        }
+        if (htmlEditor) {
+            htmlEditor.destroy();
+            htmlEditor = null;
+        }
+        if (configuratorHtml && moduleHasHtmlSetting(module.type) && window.omoSimpleHtmlField) {
+            htmlEditor = window.omoSimpleHtmlField.mount(configuratorHtml, {
+                value: String(module.settings && module.settings.html || ''),
+                placeholder: configuratorHtml.getAttribute('data-placeholder') || ''
+            });
+        }
     }
 
     function selectConfiguratorScope(scope) {
@@ -421,6 +454,9 @@ var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; 
         }
         if (moduleHasVideoSetting(module.type)) {
             module.settings.video = normalizeVideo(configuratorVideo ? configuratorVideo.value : pendingVideo);
+        }
+        if (moduleHasHtmlSetting(module.type) && htmlEditor) {
+            module.settings.html = htmlEditor.getValue();
         }
         closeConfigurator();
         renderEditor();

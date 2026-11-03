@@ -155,7 +155,7 @@ if (!function_exists('commonHolonScopeLoadMemberVisibilityMap')) {
         $visibleIds = $selectableIds;
         foreach (array_keys($selectableIds) as $memberHolonId) {
             $memberHolon = new \dbObject\Holon();
-            if (!$memberHolon->load((int)$memberHolonId) || (int)$memberHolon->get('IDorganization') !== $organizationId) {
+            if (!$memberHolon->load((int)$memberHolonId) || $memberHolon->resolveOrganizationId() !== $organizationId) {
                 continue;
             }
 
@@ -266,7 +266,7 @@ if (!function_exists('commonHolonScopeResolveOrganizationHolon')) {
         }
 
         $holon = new \dbObject\Holon();
-        if (!$holon->load($holonId) || (int)$holon->get('IDorganization') !== $organizationId) {
+        if (!$holon->load($holonId) || $holon->resolveOrganizationId() !== $organizationId) {
             return null;
         }
 

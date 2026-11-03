@@ -7,6 +7,7 @@ if (!function_exists('omoDashboardGetModuleDefinitions')) {
         $dataPath = $basePath . '/data';
         return array(
             'video' => array('id' => 'video', 'object' => 'video', 'variant' => 'embedded', 'standalone' => true, 'loader' => $dataPath . '/video.php', 'template' => $basePath . '/video.php'),
+            'html' => array('id' => 'html', 'object' => 'html', 'variant' => 'formatted', 'standalone' => true, 'loader' => $dataPath . '/html.php', 'template' => $basePath . '/html.php'),
             'rules' => array('id' => 'rules', 'object' => 'rule', 'variant' => 'attention', 'app' => 'policy', 'route' => 'policy', 'loader' => $dataPath . '/rules.php', 'template' => $basePath . '/rules.php'),
             'decisions' => array('id' => 'decisions', 'object' => 'decision', 'variant' => 'active', 'app' => 'decision', 'route' => 'decision', 'loader' => $dataPath . '/decisions.php', 'template' => $basePath . '/decisions.php'),
             'projects' => array('id' => 'projects', 'object' => 'project', 'variant' => 'priority', 'app' => 'projects', 'route' => 'projects', 'loader' => $dataPath . '/projects.php', 'template' => $basePath . '/projects.php'),

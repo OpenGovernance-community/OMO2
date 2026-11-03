@@ -29,6 +29,10 @@ const root = path.join(__dirname, '..');
                 field.name = 'description[]';
                 field.className = 'summernote';
                 field.value = '<p>Admin <strong>' + i + '</strong></p>';
+                if (i === 38) {
+                    field.dataset.editorProfile = 'simple';
+                    field.value = '<p>Legacy first<br>Legacy second</p>';
+                }
                 if (i === 39) field.disabled = true;
                 document.querySelector('#admin').append(label, field);
             }
@@ -248,6 +252,21 @@ const root = path.join(__dirname, '..');
         });
         assert.equal(saved[0], '<p>Source <em>edited</em></p>');
         assert.equal(saved[30], '<p>Admin <strong>30</strong></p>');
+        assert((await page.locator('#field38-html').innerText()).includes('Legacy first\nLegacy second'), 'Legacy presentation line breaks remain visible before focus.');
+        await page.locator('label[for="field38-html"]').click();
+        await page.locator('#field38 + div .note-editable').waitFor();
+        assert.equal(await page.locator('#field38 + div .note-icon-table, #field38 + div .note-icon-code').count(), 0, 'Simple presentations do not expose table or code-view tools.');
+        await page.locator('#field38 + div .note-editable').fill('Presentation edited');
+        await page.keyboard.press('Enter');
+        await page.keyboard.type('Second line');
+        await page.locator('#outside').focus();
+        await page.locator('#field38 + div .note-editor').waitFor({state: 'detached'});
+        assert((await page.locator('#field38-html').innerText()).includes('Second line'), 'Simple presentations survive the Summernote-to-div transition.');
+        const presentationSaved = await page.evaluate(() => {
+            window.adminEditSyncHtmlFields(document.querySelector('#admin'));
+            return new FormData(document.querySelector('#admin')).getAll('description[]')[38];
+        });
+        assert(presentationSaved.includes('Presentation edited') && presentationSaved.includes('Second line') && /<(?:p|br|div)\b/.test(presentationSaved), 'The form posts formatted presentation HTML.');
         await page.evaluate(() => window.adminEditDestroyHtmlFields(document.querySelector('#admin')));
         assert.equal(await page.locator('#admin .admin-edit__html-field').count(), 0);
         assert.equal(await page.locator('#field0').inputValue(), saved[0]);

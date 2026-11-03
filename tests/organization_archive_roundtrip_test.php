@@ -19,7 +19,7 @@ $GLOBALS['dbUser'] = 'root';
 $GLOBALS['dbPassword'] = 'omo-transfer-fixture';
 require 'shared_functions.php';
 
-use dbObject\{Organization, OrganizationArchive, OrganizationExport, OrganizationTransferDates};
+use dbObject\{Organization, OrganizationArchive, OrganizationExport, OrganizationTransferDates, OrganizationRoleplay};
 
 function transferCheck(bool $ok, string $message): void { if (!$ok) { throw new RuntimeException($message); } }
 function transferCalendarValues($value) {
@@ -60,12 +60,31 @@ foreach ([false, true] as $roleplay) {
     try {
         $payload = $read['payload'];
         if ($roleplay) { $payload['exportedAt'] = (new DateTimeImmutable('today'))->modify('-30 days')->format('c'); }
-        $expected = $roleplay ? OrganizationTransferDates::shift($payload) : $payload;
+        $expected = $roleplay ? OrganizationRoleplay::preparePayload(OrganizationTransferDates::shift($payload)) : $payload;
         $result = Organization::importOmo1ExportAsNewOrganization($payload, $selected, 2135, $sourcePayload['organization']['name'], [], ['sendMemberInvitationEmails' => false, 'roleplay' => $roleplay]);
         transferCheck(!empty($result['status']), 'Import failed: '.json_encode($result, JSON_UNESCAPED_UNICODE));
         $target = $result['organization'];
         commonSetCurrentUserAdminMode(true, (int)$target->getId());
         $actual = OrganizationExport::build($target, $selected);
+        if ($roleplay) {
+            $membersByEmail = array_column($actual['modules']['members']['records'], null, 'email');
+            $userMap = [];
+            foreach ($expected['modules']['members']['records'] as $member) {
+                $copy = $membersByEmail[$member['email']] ?? [];
+                transferCheck(!empty($copy['roleplayCharacter']) && empty($copy['organizationMembership']['isAdmin']), 'Roleplay characters are isolated and never import administrator status');
+                $userMap[(int)$member['sourceId']] = (int)$copy['sourceId'];
+            }
+            $remapUsers = function (array $node) use (&$remapUsers, $userMap): array {
+                foreach ($node as $key => &$value) {
+                    if ($key === 'followerSourceUserIds' && is_array($value)) { $value = array_map(static fn ($id) => $userMap[(int)$id] ?? $id, $value); }
+                    elseif (is_array($value)) { $value = $remapUsers($value); }
+                    elseif (is_string($key) && preg_match('/^source(?:.*User|Creator|Modifier)Id$/D', $key)) { $value = $userMap[(int)$value] ?? $value; }
+                }
+                unset($value);
+                return $node;
+            };
+            $expected = $remapUsers($expected);
+        }
         file_put_contents('tmp/transfer-roundtrip-'.($roleplay ? 'roleplay' : 'normal').'.json', json_encode(['expected' => $expected, 'actual' => $actual, 'result' => ['stats' => $result['stats'], 'warnings' => $result['warnings']]], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
         $holonMap = $result['holonIdMap'];
         $sourceNodes = $targetNodes = [];

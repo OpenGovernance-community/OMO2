@@ -151,6 +151,7 @@
 		{
 			return array(
 				'video' => array('standalone' => true, 'settings' => array('video' => true)),
+				'html' => array('standalone' => true, 'settings' => array('html' => true)),
 				'rules' => array('app' => 'policy', 'settings' => array('scope' => true)),
 				'decisions' => array('app' => 'decision', 'settings' => array('scope' => true)),
 				'projects' => array('app' => 'projects', 'settings' => array('scope' => true, 'audience' => true)),
@@ -289,6 +290,9 @@
 			if (!empty($configuration['video'])) {
 				$videoUrl = mb_substr(trim((string)($settings['video'] ?? '')), 0, 2000, 'UTF-8');
 				$normalized['video'] = VideoEmbedHelper::buildEmbedUrl($videoUrl);
+			}
+			if (!empty($configuration['html'])) {
+				$normalized['html'] = PropertyFormat::sanitizeHtml($settings['html'] ?? '');
 			}
 
 			return $normalized;

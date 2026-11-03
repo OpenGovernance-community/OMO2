@@ -175,7 +175,8 @@ if ($notifyRequester && filter_var($requesterEmail, FILTER_VALIDATE_EMAIL)) {
 		[$mailFrom, faqMailBrandOptions($organization)['brand_name']],
 		$requesterEmail,
 		'Réponse à votre question dans la FAQ',
-		faqMailRenderAnswer($faq, $organization)
+		faqMailRenderAnswer($faq, $organization),
+		organizationId: $organization instanceof \dbObject\Organization ? (int)$organization->getId() : null
 	);
 	if (!$requesterNotified) {
 		$faq->set('request_answered_at', null);

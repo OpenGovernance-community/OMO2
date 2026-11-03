@@ -4265,20 +4265,15 @@
 				return null;
 			}
 
-			$absolutePath = realpath($documentRoot . DIRECTORY_SEPARATOR . ltrim(str_replace('\\', '/', $path), '/'));
-			if (!is_string($absolutePath) || $absolutePath === '') {
+			$absolutePath = OrganizationArchive::localImageFile($path, $documentRoot);
+			if ($absolutePath === null) {
 				return null;
 			}
 
-			$normalizedRoot = rtrim(str_replace('\\', '/', $documentRoot), '/') . '/';
-			$normalizedPath = str_replace('\\', '/', $absolutePath);
-			if (stripos($normalizedPath, $normalizedRoot) !== 0 || !is_file($absolutePath) || !is_readable($absolutePath)) {
-				return null;
-			}
-
+			// A shared upload directory can live outside DOCUMENT_ROOT; keep its public URL.
 			return @getimagesize($absolutePath) === false
 				? null
-				: '/' . ltrim(substr($normalizedPath, strlen($normalizedRoot)), '/');
+				: $path;
 		}
 
 		protected static function sanitizeOmo1ImportedMediaReferences(array $payload, array &$warnings): array
@@ -5918,7 +5913,7 @@
 			self::omo1ImportSave($membership, 'Le lien membre n a pas pu etre cree');
 		}
 
-		protected static function omo1ImportMembers(\dbObject\Organization $organization, array $records, $actorUserId, array &$userIdMap, array &$pendingUserIds, array &$pendingInvitations, array &$stats, array &$warnings, $createMemberInvitations = true)
+		protected static function omo1ImportMembers(\dbObject\Organization $organization, array $records, $actorUserId, array &$userIdMap, array &$pendingUserIds, array &$pendingInvitations, array &$stats, array &$warnings, $createMemberInvitations = true, bool $roleplay = false)
 		{
 			$createMemberInvitations = (bool)$createMemberInvitations;
 			foreach ($records as $record) {
@@ -5928,26 +5923,34 @@
 
 				$sourceId = (int)($record['sourceId'] ?? 0);
 				$email = trim((string)($record['email'] ?? ''));
+				$isCharacter = $roleplay || !empty($record['roleplayCharacter']);
+				if ($isCharacter) { $email = $record['email'] = OrganizationRoleplay::invalidEmail($email, $sourceId); }
 				if ($sourceId <= 0 || $email === '') {
 					$warnings[] = 'Un membre sans adresse e-mail n a pas pu etre importe.';
 					continue;
 				}
 
-				$user = \dbObject\User::findByLoginIdentifier($email);
+				$user = $isCharacter ? null : \dbObject\User::findByLoginIdentifier($email);
 				if (!($user instanceof \dbObject\User)) {
-					$emailMatchSummary = \dbObject\User::debugLoginIdentifierMatchSummary($email);
+					$emailMatchSummary = $isCharacter ? [] : \dbObject\User::debugLoginIdentifierMatchSummary($email);
 					if ((int)($emailMatchSummary['globalEmailMatches'] ?? 0) > 0) {
 						$warnings[] = 'Le membre ' . $email . ' n a pas ete importe car plusieurs comptes existants utilisent deja cette adresse e-mail.';
 						continue;
 					}
 
 					$user = new \dbObject\User();
-					$user->set('email', self::omo1ImportLimitText($email, 250));
+					// Keep login identities unique across imports; the membership holds the visible email.
+					$user->set('email', $isCharacter ? 'r-' . substr(hash('sha256', (int)$organization->getId() . ':' . $sourceId), 0, 16) . '@invalid' : self::omo1ImportLimitText($email, 250));
+					if ($isCharacter) {
+						$user->set('parameters', ['roleplay_character' => true, 'roleplay_organization_id' => (int)$organization->getId()]);
+						$user->set('allow_password_login', false);
+						$user->set('activation_pending', false);
+					}
 					$user->set('firstname', self::omo1ImportLimitText($record['firstname'] ?? '', 25));
 					$user->set('lastname', self::omo1ImportLimitText($record['lastname'] ?? '', 25));
 					$user->set('username', self::omo1ImportLimitText($record['username'] ?? '', 30));
 					$user->set('presentation', $record['presentation'] ?? null);
-					$user->set('active', !array_key_exists('active', $record) || !empty($record['active']));
+					$user->set('active', $isCharacter || !array_key_exists('active', $record) || !empty($record['active']));
 					$createdAt = self::omo1ImportDate($record['createdAt'] ?? null);
 					if ($createdAt) {
 						$user->set('datecreation', $createdAt);
@@ -5961,10 +5964,10 @@
 
 				$targetUserId = (int)$user->getId();
 				$userIdMap[$sourceId] = $targetUserId;
-				$isAdmin = !empty($record['organizationMembership']['isAdmin']);
+				$isAdmin = !$isCharacter && !empty($record['organizationMembership']['isAdmin']);
 				$isActor = $targetUserId === (int)$actorUserId;
-				self::omo1ImportUserMembership($organization, $targetUserId, $isAdmin, $record, $isActor);
-				if (!$isActor) {
+				self::omo1ImportUserMembership($organization, $targetUserId, $isAdmin, $record, $isCharacter || $isActor);
+				if (!$isActor && !$isCharacter) {
 					$pendingUserIds[$targetUserId] = true;
 					if ($createMemberInvitations) {
 						$invitationIssue = \dbObject\Invitation::issue(
@@ -6680,6 +6683,8 @@
 				if ($targetUserId <= 0 || empty($record['roleAssignments']) || !is_array($record['roleAssignments'])) {
 					continue;
 				}
+				$assignedUser = new \dbObject\User();
+				$isCharacter = $assignedUser->load($targetUserId) && $assignedUser->isRoleplayCharacter();
 
 				foreach ($record['roleAssignments'] as $assignment) {
 					$sourceHolonId = (int)($assignment['sourceHolonId'] ?? 0);
@@ -6706,8 +6711,8 @@
 					$link->set('active', !isset($pendingUserIds[$targetUserId]));
 					self::omo1ImportSave($link, 'Une attribution de role n a pas pu etre creee');
 
-					$isContextAdmin = !empty($assignment['isContextAdmin'])
-						|| (isset($assignment['kind']) && $assignment['kind'] === 'role_owner');
+					$isContextAdmin = !$isCharacter && (!empty($assignment['isContextAdmin'])
+						|| (isset($assignment['kind']) && $assignment['kind'] === 'role_owner'));
 					if ($isContextAdmin && !$link->isHolonAdmin()) {
 						$adminSaveResult = $link->setHolonAdmin(true);
 						if (!is_array($adminSaveResult) || empty($adminSaveResult['status'])) {
@@ -8189,21 +8194,23 @@
 
 		public static function importOmo1ExportAsNewOrganization(array $payload, array $requestedModules, $actorUserId, $organizationName = '', array $templateCalibration = array(), array $importOptions = array())
 		{
+			$roleplay = !empty($importOptions['roleplay']);
 			try { if (!empty($importOptions['roleplay'])) { $payload = OrganizationTransferDates::shift($payload); } }
 			catch (\Throwable $e) { return ['status' => false, 'message' => $e->getMessage()]; }
 			$actorUserId = (int)$actorUserId;
 			if ($actorUserId <= 0) {
 				return array('status' => false, 'message' => self::uiMessage('connexion_requise'));
 			}
-			if (!array_key_exists('sendMemberInvitationEmails', $importOptions) || !is_bool($importOptions['sendMemberInvitationEmails'])) {
+			if (!$roleplay && (!array_key_exists('sendMemberInvitationEmails', $importOptions) || !is_bool($importOptions['sendMemberInvitationEmails']))) {
 				return array('status' => false, 'message' => self::uiMessage('choisissez_explicitement_si_les_e_mails_d_invitation_aux_membres_doivent_etre_envoyes'));
 			}
-			$sendMemberInvitationEmails = $importOptions['sendMemberInvitationEmails'];
+			$sendMemberInvitationEmails = !$roleplay && $importOptions['sendMemberInvitationEmails'];
 			if ((string)($payload['format'] ?? '') !== 'openmyorganization-structure-export' || (int)($payload['version'] ?? 0) !== 4) {
 				return array('status' => false, 'message' => self::uiMessage('le_fichier_doit_etre_un_export_omo_compact_version_4'));
 			}
 			$mediaWarnings = array_values(array_filter((array)($payload['source']['mediaWarnings'] ?? []), 'is_string'));
 			$payload = self::sanitizeOmo1ImportedMediaReferences($payload, $mediaWarnings);
+			if ($roleplay) { $payload = OrganizationRoleplay::preparePayload($payload); }
 
 			$availableModules = array('structure', 'rules', 'members', 'documents', 'projects', 'tasks', 'checklists', 'indicators', 'calendar', 'pv');
 			$sourceModules = isset($payload['modules']) && is_array($payload['modules']) ? $payload['modules'] : array();
@@ -8255,6 +8262,7 @@
 			$importJournalReference = self::omo1ImportJournalStart($payload, $selectedModules, $templateCalibration, $actorUserId);
 			self::omo1ImportJournalWrite('organization_creation_started');
 			$organization = new self();
+			if ($roleplay) { $organization->setParametersArray(['roleplay' => true]); }
 			$organization->set('name', self::omo1ImportLimitText($name, 100));
 			$organization->set('description', (string)($sourceOrganization['description'] ?? ''));
 			$organization->set('url', (string)($sourceOrganization['url'] ?? ''));
@@ -8358,7 +8366,7 @@
 						'recordCount' => count(self::omo1ImportModuleRecords($payload, 'members')),
 					));
 					$memberRecords = self::omo1ImportModuleRecords($payload, 'members');
-					self::omo1ImportMembers($organization, $memberRecords, $actorUserId, $userIdMap, $pendingUserIds, $pendingInvitations, $stats, $warnings, $sendMemberInvitationEmails);
+					self::omo1ImportMembers($organization, $memberRecords, $actorUserId, $userIdMap, $pendingUserIds, $pendingInvitations, $stats, $warnings, $sendMemberInvitationEmails, $roleplay);
 					self::omo1ImportRoleAssignments($memberRecords, $userIdMap, $holonIdMap, $pendingUserIds, $stats);
 					if ($isOmo2Export) { OrganizationTransferContent::restoreMembers($organization, $memberRecords, $userIdMap, $holonIdMap); }
 					self::omo1ImportJournalWrite('module_members_completed', array(

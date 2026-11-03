@@ -1041,7 +1041,7 @@ foreach ($competenceRows as $competenceRow) {
                                 <div class="omo-user-context__summary generic-soft-panel">
                                     <div class="omo-user-context__summary-copy">
                                         <strong class="generic-card-title generic-card-title--small">Présentation</strong>
-                                        <p class="omo-user-context__presentation"><?= nl2br(omoApiEscape($presentation)) ?></p>
+                                        <div class="omo-user-context__presentation generic-rich-text"><?= \dbObject\PropertyFormat::textOrHtmlToHtml($presentation) ?></div>
                                     </div>
                                 </div>
                             <?php endif; ?>

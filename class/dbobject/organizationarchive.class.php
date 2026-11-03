@@ -9,6 +9,28 @@ class OrganizationArchive
     private const MAX_IMAGE = 16777216;
     private const TYPES = ['image/png' => 'png', 'image/jpeg' => 'jpg', 'image/gif' => 'gif', 'image/webp' => 'webp', 'image/avif' => 'avif'];
 
+    /** Resolve public image storage, including a shared img or img/upload symlink. */
+    public static function localImageFile(string $path, string $root): ?string
+    {
+        if (!str_starts_with($path, '/img/') || str_contains($path, "\0")
+            || str_contains($path, '\\') || str_contains(rawurldecode($path), '..')) {
+            return null;
+        }
+        // Trust only the configured image/upload roots, not arbitrary child symlinks.
+        $storage = str_starts_with($path, '/img/upload/') ? '/img/upload' : '/img';
+        $imageRoot = realpath($root . $storage);
+        $file = realpath($root . $path);
+        if ($imageRoot === false || $file === false || !is_file($file) || !is_readable($file)) {
+            return null;
+        }
+        $prefix = rtrim(str_replace('\\', '/', $imageRoot), '/') . '/';
+        $normalizedFile = str_replace('\\', '/', $file);
+        $insideStorage = DIRECTORY_SEPARATOR === '\\'
+            ? strncasecmp($normalizedFile, $prefix, strlen($prefix)) === 0
+            : str_starts_with($normalizedFile, $prefix);
+        return $insideStorage ? $file : null;
+    }
+
     public static function create(array $payload, string $destination): array
     {
         $root = realpath((string)($_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__, 2)));
@@ -19,9 +41,8 @@ class OrganizationArchive
         self::media($payload, function (string $path) use ($root, &$assets, &$warnings, &$total): string {
             if ($path === '') { return ''; }
             // No remote fetches, application endpoints or files outside the public image directory.
-            $file = str_starts_with($path, '/img/') && !str_contains($path, "\0") ? realpath($root.$path) : false;
-            $imageRoot = realpath($root.'/img');
-            if (!$file || !$imageRoot || !str_starts_with(str_replace('\\', '/', $file), str_replace('\\', '/', $imageRoot).'/') || !is_file($file)) {
+            $file = self::localImageFile($path, $root);
+            if ($file === null) {
                 $warnings[] = 'Image non incluse : '.$path;
                 return '';
             }

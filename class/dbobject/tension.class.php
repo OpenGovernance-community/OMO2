@@ -115,7 +115,7 @@ class Tension extends DbObject
             return 0;
         }
 
-        return (int)$holon->get('IDorganization');
+        return $holon->resolveOrganizationId();
     }
 
     public static function canCreateInOrganizationContext(int $organizationId, ?int $requestedHolonId, int $userId): bool
@@ -124,20 +124,70 @@ class Tension extends DbObject
         $requestedHolonId = $requestedHolonId !== null ? (int)$requestedHolonId : 0;
         $userId = (int)$userId;
 
-        if ($organizationId <= 0 || $userId <= 0) {
+        if ($organizationId <= 0 || $userId <= 0
+            || !function_exists('commonUserHasOrganizationAccess')
+            || !\commonUserHasOrganizationAccess($userId, $organizationId)) {
             return false;
         }
 
+        $organization = new Organization();
+        if (!$organization->load($organizationId)) {
+            return false;
+        }
+        $rootHolon = $organization->getEnabledStructuralRootHolon();
+        if (!$rootHolon instanceof Holon) {
+            return false;
+        }
+        $holon = $rootHolon;
         if ($requestedHolonId > 0) {
             $holon = new Holon();
-            if (!$holon->load($requestedHolonId) || (int)$holon->get('IDorganization') !== $organizationId) {
+            if (!$holon->load($requestedHolonId)) {
                 return false;
             }
         }
 
-        return function_exists('commonUserHasOrganizationAccess')
-            ? \commonUserHasOrganizationAccess($userId, $organizationId)
-            : false;
+        return self::isCreationTarget($holon, $organizationId, (int)$rootHolon->getId())
+            && $holon->isAllowed('CAN_CREATE_TENSION', false, $userId);
+    }
+
+    protected static function isCreationTarget(Holon $holon, int $organizationId, int $rootHolonId): bool
+    {
+        return $holon->resolveOrganizationId() === $organizationId
+            && (int)$holon->get('IDholon_org') === $rootHolonId
+            && (bool)$holon->get('active')
+            && (bool)$holon->get('visible')
+            && !$holon->get('archived_at')
+            && !$holon->isTemplateNode($rootHolonId)
+            && ((int)$holon->getId() === $rootHolonId || in_array((int)$holon->get('IDtypeholon'), [1, 2], true));
+    }
+
+    public static function loadCreationTargets(int $organizationId, int $userId): ArrayHolon
+    {
+        $targets = new ArrayHolon();
+        $organization = new Organization();
+        if ($userId <= 0 || !function_exists('commonUserHasOrganizationAccess')
+            || !\commonUserHasOrganizationAccess($userId, $organizationId)
+            || !$organization->load($organizationId)) {
+            return $targets;
+        }
+        $rootHolon = $organization->getEnabledStructuralRootHolon();
+        if (!$rootHolon instanceof Holon) {
+            return $targets;
+        }
+
+        $candidates = new ArrayHolon();
+        $candidates->loadVisibilityTargetsForOrganization($organizationId);
+        $candidates->append($rootHolon);
+        $seen = [];
+        foreach ($candidates as $holon) {
+            $id = (int)$holon->getId();
+            if (!isset($seen[$id]) && self::isCreationTarget($holon, $organizationId, (int)$rootHolon->getId())
+                && $holon->isAllowed('CAN_CREATE_TENSION', false, $userId)) {
+                $targets->append($holon);
+                $seen[$id] = true;
+            }
+        }
+        return $targets;
     }
 
     public function createInOrganizationContext(int $organizationId, ?int $holonId, int $userId, array $values = [])

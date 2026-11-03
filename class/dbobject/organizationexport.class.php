@@ -246,6 +246,7 @@ class OrganizationExport
             $records[] = [
                 'sourceId' => $userId,
                 'email' => (string)$membership->getScopedEmail(),
+                'roleplayCharacter' => $user->isRoleplayCharacter(),
                 'firstname' => (string)$user->get('firstname'),
                 'lastname' => (string)$user->get('lastname'),
                 'username' => (string)$membership->getScopedUsername(),

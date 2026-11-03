@@ -207,7 +207,7 @@ class OrganizationalMaturityInvitation extends DbObject
         $url = appBuildAbsoluteUrl('/survey/?invitation=' . rawurlencode((string)$this->get('token')));
         $message = \commonRenderMailLayout(['brand_name' => $name, 'brand_color' => (string)$organization->get('color'), 'logo_url' => \commonBuildAbsoluteAssetUrl((string)$organization->get('logo')), 'banner_url' => \commonBuildAbsoluteAssetUrl((string)$organization->get('banner')), 'heading' => 'Partagez votre perception de ' . $name, 'intro_html' => '<p style="margin:0; color:#475569; line-height:1.7;">Votre regard aidera cette organisation a mieux comprendre sa maturite et ses ambitions.</p>', 'body_html' => '<p style="margin:0; color:#475569; line-height:1.7;">Le questionnaire prend environ dix minutes. Vous pourrez revenir sur vos reponses avec ce meme lien.</p>', 'button_label' => 'Evaluer l organisation', 'button_url' => $url]);
         $from = trim((string)($GLOBALS['mailUser'] ?? '')); if ($from === '') $from = 'noreply@' . (preg_replace('/:\d+$/', '', \commonGetRootHost() ?: 'localhost'));
-        return \myHTMLMail([$from, $name], (string)$this->get('email'), 'Votre perception de ' . $name, $message);
+        return \myHTMLMail([$from, $name], (string)$this->get('email'), 'Votre perception de ' . $name, $message, organizationId: (int)$organization->getId());
     }
 
     public function sendPublicAccessCodeEmail($publicAccessUrl)
@@ -246,7 +246,7 @@ class OrganizationalMaturityInvitation extends DbObject
         if ($from === '') {
             $from = 'noreply@' . (preg_replace('/:\d+$/', '', \commonGetRootHost() ?: 'localhost'));
         }
-        if (!\myHTMLMail([$from, $name], (string)$this->get('email'), 'Votre accès à l évaluation de ' . $name, $message)) {
+        if (!\myHTMLMail([$from, $name], (string)$this->get('email'), 'Votre accès à l évaluation de ' . $name, $message, organizationId: (int)$organization->getId())) {
             $this->clearPublicAccessCode();
             return false;
         }

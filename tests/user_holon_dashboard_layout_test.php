@@ -5,6 +5,7 @@ require_once dirname(__DIR__) . '/class/dbobject/dbobject.class.php';
 require_once dirname(__DIR__) . '/class/dbobject/holon.class.php';
 require_once dirname(__DIR__) . '/class/dbobject/organization.class.php';
 require_once dirname(__DIR__) . '/class/dbobject/videoembedhelper.class.php';
+require_once dirname(__DIR__) . '/class/dbobject/propertyformat.class.php';
 require_once dirname(__DIR__) . '/class/dbobject/userholon.class.php';
 require_once dirname(__DIR__) . '/class/dbobject/applicationsetting.class.php';
 require_once dirname(__DIR__) . '/omo/api/dashboard/modules/registry.php';
@@ -91,6 +92,30 @@ assertDashboardLayout(
     UserHolon::normalizeDashboardModuleSettings('video', array('video' => 'https://example.com/video'))['video'] === '',
     'An unsupported dashboard video URL must not be persisted.'
 );
+
+$htmlLayout = UserHolon::normalizeDashboardLayout([
+    ['id' => 'intro', 'type' => 'html', 'row' => 0, 'column' => 0, 'rowSpan' => 2, 'columnSpan' => 1,
+        'settings' => ['html' => '<h2>Bienvenue</h2><p><strong>Texte</strong> et <a href="https://example.com">lien</a></p><ul><li>Une information</li></ul>']],
+    ['id' => 'unsafe', 'type' => 'html', 'row' => 0, 'column' => 1, 'rowSpan' => 1, 'columnSpan' => 1,
+        'settings' => ['html' => '<script>alert(1)</script><p onclick="alert(2)">Texte <a href="javascript:alert(3)">lien</a></p><iframe src="https://example.com"></iframe>']],
+]);
+assertDashboardLayout(count($htmlLayout) === 2, 'Several independent HTML modules must be supported.');
+assertDashboardLayout($htmlLayout[0]['rowSpan'] === 2, 'An HTML module must retain its configured size.');
+$formattedHtml = $htmlLayout[0]['settings']['html'];
+assertDashboardLayout(str_contains($formattedHtml, '<h2>Bienvenue</h2>') && str_contains($formattedHtml, '<strong>Texte</strong>') && str_contains($formattedHtml, '<ul>') && str_contains($formattedHtml, 'https://example.com'), 'Rich text formatting and safe links must survive layout normalization.');
+assertDashboardLayout(array_keys($htmlLayout[0]['settings']) === ['html'], 'HTML modules must not inherit application scope settings.');
+assertDashboardLayout(!preg_match('/script|onclick|iframe/i', $htmlLayout[1]['settings']['html']), 'Executable HTML must be removed before persistence.');
+assertDashboardLayout(UserHolon::normalizeDashboardModuleSettings('html', ['html' => '<p><br></p>']) === ['html' => ''], 'Empty editor markup must become an empty HTML module.');
+assertDashboardLayout(UserHolon::normalizeDashboardModuleSettings('html', ['html' => ['invalid']]) === ['html' => ''], 'Invalid HTML payloads must not cause a conversion warning.');
+$htmlMembership = new UserHolon();
+$htmlMembership->set('parameters', json_encode([UserHolon::DASHBOARD_LAYOUT_PARAMETER => $htmlLayout]));
+assertDashboardLayout($htmlMembership->getDashboardLayout() === $htmlLayout, 'HTML module settings must round-trip through dashboard preferences.');
+$dashboardModuleSettings = ['html' => '<p onclick="alert(1)">Safe <strong>content</strong></p><script>alert(2)</script>'];
+include dirname(__DIR__) . '/omo/api/dashboard/modules/data/html.php';
+ob_start();
+include dirname(__DIR__) . '/omo/api/dashboard/modules/html.php';
+$renderedHtml = (string)ob_get_clean();
+assertDashboardLayout(str_contains($renderedHtml, '<strong>content</strong>') && !preg_match('/onclick|<script\b/i', $renderedHtml), 'The HTML loader and template must also sanitize previously stored content.');
 
 $layoutPriorityFixtures = array(
     'temporary' => array(array('id' => 'temporary')),
