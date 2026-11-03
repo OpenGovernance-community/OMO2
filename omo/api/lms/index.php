@@ -11,7 +11,6 @@ $sourceLang = [
     'lms.index.title.catalog_brand' => ['text' => 'Tutoriels OMO', 'context' => 'Page title used in the basic LMS catalog mode.'],
     'lms.index.title.catalog' => ['text' => 'Tutoriels de prise en main', 'context' => 'Main page title used in the basic LMS catalog mode.'],
     'lms.index.title.training' => ['text' => 'Parcours de formation', 'context' => 'Main page title used in the standard LMS organization mode.'],
-    'lms.index.title.embed_catalog' => ['text' => 'Parcours de prise en main', 'context' => 'Subtitle shown in embedded LMS catalog mode.'],
     'lms.index.card.action.delete' => ['text' => 'Supprimer', 'context' => 'Menu action used to delete an owned parcours or pack.'],
     'lms.index.card.action.detach' => ['text' => 'Détacher', 'context' => 'Menu action used to detach a shared parcours or pack from the current organization.'],
     'lms.index.card.archived' => ['text' => 'Retiré du partage - conservé pour les utilisateurs existants.', 'context' => 'Label on a retired parcours which remains available to existing learners and organizations.'],
@@ -148,12 +147,6 @@ if (!$isEmbedded) {
 }
 ?>
 <div class="content<?php echo $isEmbedded ? ' lms-index-content--embed' : ''; ?>">
-<?php if ($isEmbedded): ?>
-<div class="lms-index-embed-header">
-    <h1><?php echo htmlspecialchars($isBasicCatalogMode ? lmsIndexT('lms.index.title.catalog_brand') : $org['name']); ?></h1>
-    <p><?php echo htmlspecialchars($isBasicCatalogMode ? lmsIndexT('lms.index.title.embed_catalog') : lmsIndexT('lms.index.title.training')); ?></p>
-</div>
-<?php endif; ?>
 <?php if (!$isEmbedded && !$isBasicCatalogMode): ?>
 <div class="org-banner" style="background-color: <?php echo htmlspecialchars($org['color']); ?>">
 

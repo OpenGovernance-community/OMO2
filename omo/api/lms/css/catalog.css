@@ -371,22 +371,6 @@ body.lms-embed-mode {
     padding-top: 20px;
 }
 
-.lms-index-embed-header {
-    max-width: 960px;
-    margin: 0 auto 24px;
-}
-
-.lms-index-embed-header h1 {
-    margin: 0 0 8px;
-    text-align: left;
-}
-
-.lms-index-embed-header p {
-    margin: 0;
-    color: var(--text-light);
-    line-height: 1.5;
-}
-
 @media (max-width: 720px) {
     .card-create-footer {
         flex-direction: column;
