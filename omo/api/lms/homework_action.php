@@ -63,7 +63,7 @@ $result = \dbObject\UserHomework::markDone((int)$accessContext['userId'], $missi
 
 if (empty($result['status'])) {
 	http_response_code(500);
-	echo isset($result['text']) ? $result['text'] : "Save error";
+	echo isset($result['text']) ? $result['text'] : commonLmsUiT('save_error');
 	exit;
 }
 

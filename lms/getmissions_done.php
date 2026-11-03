@@ -1,4 +1,5 @@
 <?php
+require_once dirname(__DIR__) . '/common/lms/ui-translations.php';
 define('BASE_PATH', dirname(__DIR__));
 require_once BASE_PATH . '/shared_functions.php';
 require_once BASE_PATH . '/common/auth.php';
@@ -35,7 +36,7 @@ ob_start();
 $currentBranch = null;
 
 foreach ($missions as $m) {
-	$branch = $m['branch'] ?: 'Tronc commun';
+	$branch = $m['branch'] ?: commonLmsUiT('common_branch');
 
 	if ($branch !== $currentBranch) {
 		if ($currentBranch !== null) {
@@ -55,9 +56,9 @@ foreach ($missions as $m) {
 
 	$meta = '';
 	if ($isAnonymousViewer) {
-		$meta = 'Enregistre localement';
+		$meta = commonLmsUiT('saved_locally');
 	} elseif (!empty($m['done'])) {
-		$meta = 'Fait le ' . htmlspecialchars((string)$m['done']);
+		$meta = htmlspecialchars(commonLmsUiT('done_on', ['date' => (string)$m['done']]), ENT_QUOTES, 'UTF-8');
 	}
 	echo "<div class='card' onclick='viewMission(" . (int)$m['id'] . ")'>";
 	echo "<div class='card-content'>";
@@ -66,7 +67,7 @@ foreach ($missions as $m) {
 	echo "<span class='card-meta'>" . $meta . "</span>";
 	echo "<div class='card-footer'>";
 	commonLmsRenderContentIndicators($contentIndicators[(int)$m['id']] ?? []);
-	echo "<button type='button' class='open-btn' onclick='event.stopPropagation(); viewMission(" . (int)$m['id'] . ")'>Ouvrir</button>";
+	echo "<button type='button' class='open-btn' onclick='event.stopPropagation(); viewMission(" . (int)$m['id'] . ")'>" . htmlspecialchars(commonLmsUiT('open'), ENT_QUOTES, 'UTF-8') . "</button>";
 	echo "</div>";
 	echo "</div>";
 	echo "</div>";

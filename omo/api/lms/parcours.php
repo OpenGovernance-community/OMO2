@@ -23,8 +23,8 @@ if (empty($accessContext['exists'])) {
 if (empty($accessContext['canView'])) {
 	http_response_code(403);
 	echo !empty($accessContext['blockedByPrerequisites'])
-		? 'Prerequis non remplis'
-		: 'Acces refuse';
+		? commonLmsUiT('prerequisites_unmet')
+		: commonLmsUiT('access_denied');
 	exit;
 }
 
@@ -93,7 +93,7 @@ $headerTextColor = $headerColor !== '' ? commonAvatarResolveTextColor($headerCol
 ?>
 
 <!DOCTYPE html>
-<html>
+<html lang="<?= htmlspecialchars(translationBundleResolveRequestLocale('lang'), ENT_QUOTES, 'UTF-8') ?>">
 <head>
 	<title><?php echo htmlspecialchars($parcours['title']); ?></title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">

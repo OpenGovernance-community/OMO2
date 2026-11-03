@@ -1,4 +1,5 @@
 <?php
+require_once dirname(__DIR__) . '/common/lms/ui-translations.php';
 define('BASE_PATH', dirname(__DIR__));
 require_once BASE_PATH . '/shared_functions.php';
 require_once BASE_PATH . '/common/auth.php';
@@ -57,7 +58,7 @@ ob_start();
 $currentBranch = null;
 
 foreach ($missions as $m) {
-	$branch = $m['branch'] ?: 'Tronc commun';
+	$branch = $m['branch'] ?: commonLmsUiT('common_branch');
 
 	if ($branch !== $currentBranch) {
 		if ($currentBranch !== null) {
@@ -67,7 +68,7 @@ foreach ($missions as $m) {
 		$branchId = 'branch_' . md5($branch);
 
 		echo "<div class='branch' data-branch-id='$branchId'>";
-		if ($branch !== 'Tronc commun') {
+		if ($branch !== commonLmsUiT('common_branch')) {
 			echo "<div class='branch-header' onclick=\"toggleBranch('$branchId')\">";
 			echo "<h2>" . htmlspecialchars($branch) . "</h2>";
 			echo "</div>";
@@ -83,7 +84,7 @@ foreach ($missions as $m) {
 	echo "<p>" . htmlspecialchars($m['resume']) . "</p>";
 	echo "<div class='card-footer'>";
 	commonLmsRenderContentIndicators($contentIndicators[(int)$m['id']] ?? []);
-	echo "<button type='button' class='open-btn' onclick='event.stopPropagation(); viewMission(" . (int)$m['id'] . ")'>Ouvrir</button>";
+	echo "<button type='button' class='open-btn' onclick='event.stopPropagation(); viewMission(" . (int)$m['id'] . ")'>" . htmlspecialchars(commonLmsUiT('open'), ENT_QUOTES, 'UTF-8') . "</button>";
 	echo "</div>";
 	echo "</div>";
 	echo "</div>";

@@ -7,6 +7,26 @@ commonRestoreRememberedUser();
 include 'inc/org.php';
 require_once __DIR__ . '/inc/access.php';
 require_once BASE_PATH . '/common/lms/content-indicators.php';
+require_once BASE_PATH . '/common/lms/ui-translations.php';
+
+$sourceLang = [
+    'title' => ['text' => 'Parcours de formation', 'context' => 'Public tutorial catalog title.'],
+    'login_intro' => ['text' => 'Connectez-vous pour accéder aux parcours de cette organisation.', 'context' => 'Login page introduction for a restricted tutorial catalog.'],
+    'public_notice' => ['text' => 'Une partie des tutoriels est accessible publiquement.', 'context' => 'Public catalog access notice.'],
+    'restricted_notice' => ['one' => 'Connectez-vous pour accéder à un autre parcours réservé aux membres de l’organisation.', 'other' => 'Connectez-vous pour accéder aux {count} autres parcours réservés aux membres de l’organisation.', 'context' => 'Number of additional tutorials available to signed-in members.'],
+    'save_notice' => ['text' => 'Connectez-vous pour enregistrer votre progression et retrouver vos parcours sur votre profil.', 'context' => 'Public catalog login invitation.'],
+    'admin_notice' => ['text' => 'Mode administrateur de l’organisation actif.', 'context' => 'Catalog administrator preview notice.'],
+    'admin_hint' => ['text' => 'Les cartes grisées restent masquées dans la vue habituelle des membres de l’organisation.', 'context' => 'Explanation of hidden tutorial preview cards.'],
+    'completed_title' => ['text' => 'Parcours terminés', 'context' => 'Completed tutorial catalog section.'],
+    'completed_hint' => ['text' => 'Retrouvez ici les parcours déjà terminés à 100 %.', 'context' => 'Completed tutorial catalog introduction.'],
+];
+$lang = loadTranslationBundle('lms_public_catalog', translationBundleResolveRequestLocale('lang'), $sourceLang);
+function lmsPublicCatalogT(string $key, array $variables = []): string
+{
+    global $lang, $sourceLang;
+    return t($key, $variables, $lang, $sourceLang);
+}
+
 
 $isEmbedded = !empty($_GET['embed']);
 $user_id = (int)($_SESSION['currentUser'] ?? 0);
@@ -32,22 +52,22 @@ $contentIndicators = \dbObject\Parcours::fetchContentIndicators(array_column($pa
 if ($user_id <= 0 && !$isGuestAllowed && count($parcours) === 0) {
     $loginReturnTo = lmsBuildLocalPath('/lms/', $isEmbedded ? ['embed' => 1] : []);
     commonRenderMagicLoginPage([
-        'title' => $org['name'] . ' - LMS',
-        'appName' => 'LMS',
-        'intro' => 'Connectez-vous pour accéder aux parcours de cette organisation.',
+        'title' => $org['name'] . ' - ' . commonLmsUiT('tutoriels'),
+        'appName' => commonLmsUiT('tutoriels'),
+        'intro' => lmsPublicCatalogT('login_intro'),
         'returnTo' => $loginReturnTo,
         'topbar' => [
             'appKey' => 'lms',
-            'appLabel' => 'LMS',
+            'appLabel' => commonLmsUiT('tutoriels'),
             'organization' => $org,
-            'brandLabel' => (string)($org['name'] ?? 'LMS'),
+            'brandLabel' => (string)($org['name'] ?? commonLmsUiT('tutoriels')),
             'profile' => [
                 'enabled' => false,
             ],
             'search' => [
                 'enabled' => false,
             ],
-            'helpLabel' => 'Aide',
+            'helpLabel' => commonLmsUiT('aide'),
         ],
     ]);
     exit;
@@ -76,7 +96,7 @@ $showLoginDrawerButton = $user_id <= 0;
 $loginDrawerReturnTo = lmsBuildLocalPath('/lms/', $isEmbedded ? ['embed' => 1] : []);
 ?>
 <!DOCTYPE html>
-<html>
+<html lang="<?= htmlspecialchars(translationBundleResolveRequestLocale('lang'), ENT_QUOTES, 'UTF-8') ?>">
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($org['name']); ?></title>
@@ -315,7 +335,7 @@ $loginDrawerReturnTo = lmsBuildLocalPath('/lms/', $isEmbedded ? ['embed' => 1] :
 <?php if ($isEmbedded): ?>
 <div class="lms-index-embed-header">
     <h1><?php echo htmlspecialchars($org['name']); ?></h1>
-    <p>Parcours de formation</p>
+    <p><?= htmlspecialchars(lmsPublicCatalogT('title'), ENT_QUOTES, 'UTF-8') ?></p>
 </div>
 <?php endif; ?>
 
@@ -327,7 +347,7 @@ $loginDrawerReturnTo = lmsBuildLocalPath('/lms/', $isEmbedded ? ['embed' => 1] :
     <div class="banner-content">
         <?php if (!empty($org['logo'])): ?>
             <div class="logo-wrapper">
-                <img src="<?php echo htmlspecialchars($org['logo']); ?>" alt="logo">
+                <img src="<?php echo htmlspecialchars($org['logo']); ?>" alt="">
             </div>
         <?php endif; ?>
         <h1><?php echo htmlspecialchars($org['name']); ?></h1>
@@ -335,23 +355,23 @@ $loginDrawerReturnTo = lmsBuildLocalPath('/lms/', $isEmbedded ? ['embed' => 1] :
 </div>
 <?php endif; ?>
 
-<h1>Parcours de formation</h1>
+<h1><?= htmlspecialchars(lmsPublicCatalogT('title'), ENT_QUOTES, 'UTF-8') ?></h1>
 
 <?php if ($showPublicCatalog): ?>
 <div class="lms-access-note">
-    <strong>Une partie du LMS est accessible publiquement.</strong>
+    <strong><?= htmlspecialchars(lmsPublicCatalogT('public_notice'), ENT_QUOTES, 'UTF-8') ?></strong>
     <?php if ($hiddenParcoursCount > 0): ?>
-        Connectez-vous pour accéder aux <?php echo (int)$hiddenParcoursCount; ?> autre<?php echo $hiddenParcoursCount > 1 ? 's' : ''; ?> parcours réservés aux membres de l’organisation.
+        <?= htmlspecialchars(lmsPublicCatalogT('restricted_notice', ['count' => $hiddenParcoursCount]), ENT_QUOTES, 'UTF-8') ?>
     <?php else: ?>
-        Connectez-vous pour enregistrer votre avancement et retrouver vos parcours sur votre profil.
+        <?= htmlspecialchars(lmsPublicCatalogT('save_notice'), ENT_QUOTES, 'UTF-8') ?>
     <?php endif; ?>
 </div>
 <?php endif; ?>
 
 <?php if ($showAdminPreviewCards): ?>
 <div class="lms-access-note">
-    <strong>Mode admin d organisation actif.</strong>
-    Les cartes grisees restent masquees pour les membres de l organisation dans leur vue normale.
+    <strong><?= htmlspecialchars(lmsPublicCatalogT('admin_notice'), ENT_QUOTES, 'UTF-8') ?></strong>
+    <?= htmlspecialchars(lmsPublicCatalogT('admin_hint'), ENT_QUOTES, 'UTF-8') ?>
 </div>
 <?php endif; ?>
 
@@ -378,7 +398,7 @@ $loginDrawerReturnTo = lmsBuildLocalPath('/lms/', $isEmbedded ? ['embed' => 1] :
                     <div class="card-footer">
                         <div class="progress-circle" data-percent="<?php echo (int)$percent; ?>"></div>
                         <button class="open-btn" type="button" <?php echo $isPreviewOnly ? 'disabled' : ''; ?>>
-                            <?php echo $isPreviewOnly ? htmlspecialchars(lmsParcoursPreviewLabel($p)) : 'Ouvrir'; ?>
+                            <?php echo $isPreviewOnly ? htmlspecialchars(lmsParcoursPreviewLabel($p)) : htmlspecialchars(commonLmsUiT('open'), ENT_QUOTES, 'UTF-8'); ?>
                         </button>
                     </div>
                 </div>
@@ -390,8 +410,8 @@ $loginDrawerReturnTo = lmsBuildLocalPath('/lms/', $isEmbedded ? ['embed' => 1] :
     <section class="lms-parcours-section" id="lms-parcours-section-completed" <?php echo count($completedParcours) === 0 ? 'hidden' : ''; ?>>
         <div class="lms-parcours-separator">
             <div class="lms-parcours-section__intro">
-                <h2>Parcours termines</h2>
-                <p>Retrouvez ici les parcours deja completes a 100%.</p>
+                <h2><?= htmlspecialchars(lmsPublicCatalogT('completed_title'), ENT_QUOTES, 'UTF-8') ?></h2>
+                <p><?= htmlspecialchars(lmsPublicCatalogT('completed_hint'), ENT_QUOTES, 'UTF-8') ?></p>
             </div>
         </div>
         <div class="container" id="lms-parcours-completed-grid">
@@ -415,7 +435,7 @@ $loginDrawerReturnTo = lmsBuildLocalPath('/lms/', $isEmbedded ? ['embed' => 1] :
                     <div class="card-footer">
                         <div class="progress-circle" data-percent="<?php echo (int)$percent; ?>"></div>
                         <button class="open-btn" type="button" <?php echo $isPreviewOnly ? 'disabled' : ''; ?>>
-                            <?php echo $isPreviewOnly ? htmlspecialchars(lmsParcoursPreviewLabel($p)) : 'Ouvrir'; ?>
+                            <?php echo $isPreviewOnly ? htmlspecialchars(lmsParcoursPreviewLabel($p)) : htmlspecialchars(commonLmsUiT('open'), ENT_QUOTES, 'UTF-8'); ?>
                         </button>
                     </div>
                 </div>

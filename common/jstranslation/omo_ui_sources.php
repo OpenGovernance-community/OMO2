@@ -215,7 +215,7 @@ function omoUiJsSourceLang(): array
         'impossible_d_ajouter_ce_parcours_au_pack' => ['text' => 'Impossible d’ajouter ce parcours au pack.', 'context' => 'JavaScript interface text in omo/api/lms/catalog.js'],
         'impossible_de_reordonner_les_parcours_du_pack' => ['text' => 'Impossible de réordonner les parcours du pack.', 'context' => 'JavaScript interface text in omo/api/lms/catalog.js'],
         'mettre_a_jour_le_devoir' => ['text' => 'Mettre à jour le devoir', 'context' => 'JavaScript interface text in omo/api/lms/catalog.js'],
-        'impossible_de_charger_les_scripts_du_drawer' => ['text' => 'Impossible de charger les scripts du drawer.', 'context' => 'JavaScript interface text in omo/api/lms/inc/drawer.js'],
+        'impossible_de_charger_les_scripts_du_drawer' => ['text' => 'Impossible de charger le panneau latéral.', 'context' => 'JavaScript interface text in omo/api/lms/inc/drawer.js'],
         'absent_du_fichier' => ['text' => 'Absent du fichier', 'context' => 'JavaScript interface text in omo/api/organizations/create_import_popup.js'],
         'propriete_2' => ['text' => 'Propriété', 'context' => 'JavaScript interface text in omo/api/organizations/create_import_popup.js'],
         'impossible_d_initialiser_l_organisation' => ['text' => 'Impossible d\'initialiser l\'organisation.', 'context' => 'JavaScript interface text in omo/api/organization_setup_panel.js'],

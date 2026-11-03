@@ -1,4 +1,5 @@
 <?php
+require_once dirname(__DIR__, 2) . '/common/lms/ui-translations.php';
 require_once dirname(__DIR__, 2) . '/common/topbar.php';
 $currentUserId = (int)commonGetCurrentUserId();
 $showLoginDrawerButton = !empty($showLoginDrawerButton) && $currentUserId <= 0;
@@ -6,7 +7,6 @@ $loginDrawerReturnTo = isset($loginDrawerReturnTo)
     ? commonNormalizeLocalPath($loginDrawerReturnTo, '/lms/')
     : commonNormalizeLocalPath($_SERVER['REQUEST_URI'] ?? '/lms/', '/lms/');
 ?>
-<script src="/shared_functions.js"></script>
 <script>
 sharedApplyDocumentTheme({
     preference: <?php echo $currentUserId > 0 ? 'undefined' : "'system'"; ?>
@@ -15,44 +15,44 @@ sharedApplyDocumentTheme({
 <?php
 commonRenderTopbar([
     'appKey' => 'lms',
-    'appLabel' => 'LMS',
+    'appLabel' => commonLmsUiT('tutoriels'),
     'organization' => isset($org) ? $org : null,
     'logoutReturnTo' => lmsBuildLocalPath('/lms/'),
     'search' => [
         'enabled' => true,
-        'placeholder' => 'Rechercher un parcours ou une mission',
-        'buttonLabel' => 'Recherche',
+        'placeholder' => commonLmsUiT('rechercher_un_parcours_ou_une_mission'),
+        'buttonLabel' => commonLmsUiT('search'),
         'callback' => 'lmsHandleTopbarSearch',
     ],
     'profile' => [
         'enabled' => $currentUserId > 0,
-        'buttonLabel' => 'Profil',
-        'editTitle' => 'Votre profil',
+        'buttonLabel' => commonLmsUiT('profile'),
+        'editTitle' => commonLmsUiT('your_profile'),
         'editUrl' => '/popup/profil.php',
         'editMode' => 'fetch',
     ],
-    'helpLabel' => 'Aide',
+    'helpLabel' => commonLmsUiT('aide'),
     'helpItems' => [
         [
             'key' => 'faq',
             'label' => 'FAQ',
-            'description' => 'Accès aux questions les plus courantes, avec moteur de recherche pour trouver facilement la réponse à ses questions.',
-            'title' => 'FAQ LMS',
-            'html' => '<div class="common-help-list"><div class="common-help-card"><h4>FAQ</h4><p>Cette zone pourra accueillir les questions fréquentes du LMS. Pour l’instant, elle sert de point d’entrée commun.</p></div></div>',
+            'description' => commonLmsUiT('acces_aux_questions_les_plus_courantes_avec_moteur_de_recherche_pour_trouver_facilement_la'),
+            'title' => commonLmsUiT('faq_lms'),
+            'html' => ('<div class="common-help-list"><div class="common-help-card"><h4>' . htmlspecialchars(commonLmsUiT('faq'), ENT_QUOTES, 'UTF-8') . '</h4><p>' . htmlspecialchars(commonLmsUiT('cette_zone_pourra_accueillir_les_questions_frequentes_du_lms_pour_l_instant_elle_sert_de_p'), ENT_QUOTES, 'UTF-8') . '</p></div></div>'),
         ],
         [
             'key' => 'tour',
-            'label' => 'Visite guidée',
-            'description' => 'Tour des fonctions visibles à l’écran avec explication pour chaque bouton et chaque possibilité.',
-            'title' => 'Visite guidée',
-            'html' => '<div class="common-help-list"><div class="common-help-card"><h4>Visite guidée</h4><p>La visite guidée du LMS pourra être branchée ici application par application.</p></div></div>',
+            'label' => commonLmsUiT('visite_guidee'),
+            'description' => commonLmsUiT('tour_des_fonctions_visibles_a_l_ecran_avec_explication_pour_chaque_bouton_et_chaque_possib'),
+            'title' => commonLmsUiT('visite_guidee'),
+            'html' => ('<div class="common-help-list"><div class="common-help-card"><h4>' . htmlspecialchars(commonLmsUiT('visite_guidee'), ENT_QUOTES, 'UTF-8') . '</h4><p>' . htmlspecialchars(commonLmsUiT('la_visite_guidee_du_lms_pourra_etre_branchee_ici_application_par_application'), ENT_QUOTES, 'UTF-8') . '</p></div></div>'),
         ],
         [
             'key' => 'tutorials',
-            'label' => 'Tutoriels',
-            'description' => 'Des formations ciblées pour monter en compétences dans l’utilisation du logiciel.',
-            'title' => 'Tutoriels',
-            'html' => '<div class="common-help-list"><div class="common-help-card"><h4>Tutoriels</h4><p>Cette section pourra ensuite lister des tutoriels vidéo, des guides pas à pas ou des supports de formation.</p></div></div>',
+            'label' => commonLmsUiT('tutoriels'),
+            'description' => commonLmsUiT('des_formations_ciblees_pour_monter_en_competences_dans_l_utilisation_du_logiciel'),
+            'title' => commonLmsUiT('tutoriels'),
+            'html' => ('<div class="common-help-list"><div class="common-help-card"><h4>' . htmlspecialchars(commonLmsUiT('tutoriels'), ENT_QUOTES, 'UTF-8') . '</h4><p>' . htmlspecialchars(commonLmsUiT('cette_section_pourra_ensuite_lister_des_tutoriels_video_des_guides_pas_a_pas_ou_des_suppor'), ENT_QUOTES, 'UTF-8') . '</p></div></div>'),
         ],
     ],
 ]);
@@ -102,13 +102,13 @@ function lmsResetLoginDrawerAppearance() {
 function lmsOpenLoginDrawer(returnTo) {
     const target = returnTo || <?php echo json_encode($loginDrawerReturnTo, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
     if (typeof window.commonTopbarOpenDrawer !== 'function') {
-        window.location.href = '/lms/login_drawer.php?return_to=' + encodeURIComponent(target);
+        window.location.href = <?= json_encode(lmsBuildLocalPath('/lms/login_drawer.php'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?> + '&return_to=' + encodeURIComponent(target);
         return;
     }
 
     window.commonTopbarOpenDrawer(
-        'Connexion',
-        '/lms/login_drawer.php?return_to=' + encodeURIComponent(target),
+        <?= json_encode(commonLmsUiT('login'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>,
+        <?= json_encode(lmsBuildLocalPath('/lms/login_drawer.php'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?> + '&return_to=' + encodeURIComponent(target),
         'fetch'
     );
 
@@ -126,7 +126,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const wrap = document.createElement('div');
     wrap.className = 'common-topbar__menu-wrap';
-    wrap.innerHTML = '<button type="button" class="common-topbar__action common-topbar__action--square" data-lms-login-button><span class="common-topbar__action-label">Login</span></button>';
+    wrap.innerHTML = '<button type="button" class="common-topbar__action common-topbar__action--square" data-lms-login-button><span class="common-topbar__action-label"></span></button>';
+    wrap.querySelector('.common-topbar__action-label').textContent = <?= json_encode(commonLmsUiT('login'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     actions.appendChild(wrap);
 
     const button = wrap.querySelector('[data-lms-login-button]');

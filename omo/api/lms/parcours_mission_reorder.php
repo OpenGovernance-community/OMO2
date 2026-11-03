@@ -56,7 +56,7 @@ if (!is_array($result) || empty($result['status'])) {
         'success' => false,
         'message' => is_array($result) && !empty($result['message'])
             ? (string)$result['message']
-            : 'Impossible de reordonner les missions.',
+            : commonLmsUiT('reorder_missions_error'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }

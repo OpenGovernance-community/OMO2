@@ -1,4 +1,5 @@
 <?php
+require_once dirname(__DIR__, 2) . '/common/lms/ui-translations.php';
 require_once dirname(__DIR__, 2) . '/common/lms/content-indicators.php';
 $isPackParcours = $parcoursRef instanceof \dbObject\Parcours && $parcoursRef->isPack();
 $showAdminPreviewCards = lmsCurrentUserHasExplicitOrganizationAdminMode((int)$org['id']);
@@ -27,18 +28,18 @@ $contentIndicators = \dbObject\Parcours::fetchContentIndicators(array_column($pa
 <?php if ($isPackParcours): ?>
 <div class="lms-pack-children">
     <div class="lms-pack-children__intro">
-        <h2>Parcours du pack</h2>
+        <h2><?= htmlspecialchars(commonLmsUiT('pack_title'), ENT_QUOTES, 'UTF-8') ?></h2>
         <p>
             <?php if ($showAdminPreviewCards): ?>
-                Les cartes grisees correspondent aux parcours encore masques dans la vue normale des membres.
+                <?= htmlspecialchars(commonLmsUiT('pack_preview_hint'), ENT_QUOTES, 'UTF-8') ?>
             <?php else: ?>
-                Seuls les parcours compatibles avec les applications actives dans cette organisation sont affiches.
+                <?= htmlspecialchars(commonLmsUiT('pack_visible_hint'), ENT_QUOTES, 'UTF-8') ?>
             <?php endif; ?>
         </p>
     </div>
 
     <?php if (count($packChildren) === 0): ?>
-        <div class="lms-pack-children__empty">Aucun parcours visible n est actuellement disponible dans ce pack.</div>
+        <div class="lms-pack-children__empty"><?= htmlspecialchars(commonLmsUiT('pack_empty'), ENT_QUOTES, 'UTF-8') ?></div>
     <?php else: ?>
         <div class="missions lms-pack-children__grid">
             <?php foreach ($packChildren as $childParcours): ?>
@@ -56,9 +57,9 @@ $contentIndicators = \dbObject\Parcours::fetchContentIndicators(array_column($pa
                             <p><?php echo htmlspecialchars((string)$childParcours['description']); ?></p>
                         <?php endif; ?>
                         <div class="card-footer">
-                            <span class="card-meta"><?php echo $isPreviewOnly ? htmlspecialchars(lmsParcoursPreviewLabel($childParcours)) : $percent . '% termine'; ?></span>
+                            <span class="card-meta"><?php echo $isPreviewOnly ? htmlspecialchars(lmsParcoursPreviewLabel($childParcours)) : htmlspecialchars(commonLmsUiT('percent_completed', ['percent' => $percent]), ENT_QUOTES, 'UTF-8'); ?></span>
                             <button type="button" class="open-btn" onclick="<?php echo $isPreviewOnly ? 'return false;' : 'event.stopPropagation(); goToPackChildParcours(' . (int)($childParcours['id'] ?? 0) . ')'; ?>" <?php echo $isPreviewOnly ? 'disabled' : ''; ?>>
-                                <?php echo $isPreviewOnly ? 'Masque' : 'Ouvrir'; ?>
+                                <?php echo $isPreviewOnly ? htmlspecialchars(commonLmsUiT('hidden'), ENT_QUOTES, 'UTF-8') : htmlspecialchars(commonLmsUiT('open'), ENT_QUOTES, 'UTF-8'); ?>
                             </button>
                         </div>
                     </div>
@@ -69,9 +70,9 @@ $contentIndicators = \dbObject\Parcours::fetchContentIndicators(array_column($pa
 </div>
 <?php else: ?>
 <div class="view-switch">
-    <button onclick="setView('todo')" id="btnTodo" class="active">Mes missions</button>
-    <button onclick="setView('done')" id="btnDone">Terminees</button>
-    <button onclick="setView('next')" id="btnNext">A venir</button>
+    <button onclick="setView('todo')" id="btnTodo" class="active"><?= htmlspecialchars(commonLmsUiT('missions_todo'), ENT_QUOTES, 'UTF-8') ?></button>
+    <button onclick="setView('done')" id="btnDone"><?= htmlspecialchars(commonLmsUiT('missions_done'), ENT_QUOTES, 'UTF-8') ?></button>
+    <button onclick="setView('next')" id="btnNext"><?= htmlspecialchars(commonLmsUiT('missions_next'), ENT_QUOTES, 'UTF-8') ?></button>
 </div>
 <div class="progress-container">
     <div class="progress-bar" id="progressBar"></div>

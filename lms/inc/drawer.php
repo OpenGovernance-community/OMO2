@@ -1,3 +1,4 @@
+<?php require_once dirname(__DIR__, 2) . '/common/lms/ui-translations.php'; ?>
 <style>
 /* Overlay */
 #overlay {
@@ -58,8 +59,8 @@ body.lms-drawer-open {
     <div id="drawer-content"></div>
     <div id="quiz-zone"></div>
     <div id="drawer-footer">
-        <button onclick="closeDrawer()">Close</button>
-        <button id="doneBtn">Done</button>
+        <button onclick="closeDrawer()"><?= htmlspecialchars(commonLmsUiT('fermer'), ENT_QUOTES, 'UTF-8') ?></button>
+        <button id="doneBtn"><?= htmlspecialchars(commonLmsUiT('termine'), ENT_QUOTES, 'UTF-8') ?></button>
     </div>
 </div>
 <script>

@@ -1,4 +1,5 @@
 <?php
+require_once dirname(__DIR__) . '/common/lms/ui-translations.php';
 define('BASE_PATH', dirname(__DIR__));
 require_once BASE_PATH . '/shared_functions.php';
 require_once BASE_PATH . '/common/auth.php';
@@ -16,7 +17,7 @@ $canTrackProgress = lmsCanTrackProgress($accessContext);
 
 if (empty($accessContext['exists'])) {
 	http_response_code(404);
-	echo 'Parcours introuvable';
+	echo commonLmsUiT('parcours_introuvable_2');
 	exit;
 }
 
@@ -27,28 +28,28 @@ if (empty($accessContext['canView'])) {
 	));
 	if ($user_id <= 0) {
 		commonRenderMagicLoginPage([
-			'title' => $org['name'] . ' - LMS',
-			'appName' => 'LMS',
-			'intro' => 'Connectez-vous pour accéder à ce parcours.',
+			'title' => $org['name'] . ' - ' . commonLmsUiT('tutoriels'),
+			'appName' => commonLmsUiT('tutoriels'),
+			'intro' => commonLmsUiT('login_parcours'),
 			'returnTo' => $loginReturnTo,
 		]);
 	}
 
 	http_response_code(403);
-	echo 'Accès refusé';
+	echo commonLmsUiT('access_denied');
 	exit;
 }
 
 $parcoursRef = new \dbObject\Parcours();
 $parcours = [
-	'title' => 'Parcours introuvable',
+	'title' => commonLmsUiT('parcours_introuvable_2'),
 	'description' => '',
 ];
 
 if ($parcoursRef->load($parcours_id)) {
 	if ($parcoursRef->isPack()) {
 		http_response_code(404);
-		echo 'Parcours introuvable';
+		echo commonLmsUiT('parcours_introuvable_2');
 		exit;
 	}
 
@@ -77,7 +78,7 @@ $organizationColor = commonGetOrganizationExplicitColor($org);
 ?>
 
 <!DOCTYPE html>
-<html>
+<html lang="<?= htmlspecialchars(translationBundleResolveRequestLocale('lang'), ENT_QUOTES, 'UTF-8') ?>">
 <head>
 	<title><?php echo htmlspecialchars($parcours['title']); ?></title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">

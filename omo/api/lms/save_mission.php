@@ -79,7 +79,7 @@ if (!is_array($saveResult) || empty($saveResult['status'])) {
         'success' => false,
         'message' => is_array($saveResult) && !empty($saveResult['text'])
             ? (string)$saveResult['text']
-            : 'Impossible de mettre a jour cette mission.',
+            : commonLmsUiT('update_mission_error'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -91,7 +91,7 @@ if (!is_array($linkSaveResult) || empty($linkSaveResult['status'])) {
         'success' => false,
         'message' => is_array($linkSaveResult) && !empty($linkSaveResult['text'])
             ? (string)$linkSaveResult['text']
-            : 'Impossible de mettre a jour le groupe de cette mission.',
+            : commonLmsUiT('update_mission_group_error'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }

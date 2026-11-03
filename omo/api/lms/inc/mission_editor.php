@@ -32,8 +32,8 @@ if (!function_exists('lmsRenderMissionHomeworkManager')) {
             'lms.mission_editor.homeworks.move_aria' => ['text' => 'Déplacer le devoir', 'context' => 'Accessible label used on homework drag handles.'],
             'lms.mission_editor.homeworks.field_title' => ['text' => 'Titre', 'context' => 'Label of the homework title field.'],
             'lms.mission_editor.homeworks.field_detail' => ['text' => 'Détail', 'context' => 'Label of the homework detail field.'],
-            'lms.mission_editor.homeworks.field_only_admin' => ['text' => 'Demander ce devoir uniquement aux admins de l’organisation', 'context' => 'Label of the admin-only homework checkbox.'],
-            'lms.mission_editor.homeworks.badge_only_admin' => ['text' => 'Admins uniquement', 'context' => 'Badge shown on homework cards restricted to organization admins.'],
+            'lms.mission_editor.homeworks.field_only_admin' => ['text' => 'Demander ce devoir uniquement aux administrateurs de l’organisation', 'context' => 'Label of the admin-only homework checkbox.'],
+            'lms.mission_editor.homeworks.badge_only_admin' => ['text' => 'Administrateurs uniquement', 'context' => 'Badge shown on homework cards restricted to organization admins.'],
             'lms.mission_editor.homeworks.submit' => ['text' => 'Créer le devoir', 'context' => 'Submit button used to create or save a homework.'],
             'lms.mission_editor.homeworks.update' => ['text' => 'Mettre à jour le devoir', 'context' => 'Submit button used when editing a homework.'],
             'lms.mission_editor.questions.title' => ['text' => 'Questions', 'context' => 'Section title for mission validation questions.'],
@@ -48,7 +48,7 @@ if (!function_exists('lmsRenderMissionHomeworkManager')) {
             'lms.mission_editor.questions.add_choice' => ['text' => 'Ajouter un choix', 'context' => 'Button used to append a new answer choice row.'],
             'lms.mission_editor.questions.submit' => ['text' => 'Créer la question', 'context' => 'Submit button used to create or save a question.'],
             'lms.mission_editor.questions.choice_count' => ['text' => '{count} choix', 'context' => 'Metadata badge used to show how many choices a question has.'],
-            'lms.mission_editor.questions.correct_count' => ['text' => '{count} bonne(s) réponse(s)', 'context' => 'Metadata badge used to show how many correct choices a question has.'],
+            'lms.mission_editor.questions.correct_count' => ['one' => '{count} bonne réponse', 'other' => '{count} bonnes réponses', 'context' => 'Metadata badge used to show how many correct choices a question has.'],
         ];
     }
 

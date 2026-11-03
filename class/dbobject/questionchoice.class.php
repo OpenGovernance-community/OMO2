@@ -3,6 +3,15 @@
 
 	class QuestionChoice extends DbObject
 	{
+        protected static function uiMessageSourceLang(): array
+        {
+            return [
+                'question_invalide' => ['text' => 'Question invalide.', 'context' => 'Tutorial data validation and action feedback.'],
+                'impossible_de_reinitialiser_les_choix_de_cette_question' => ['text' => 'Impossible de réinitialiser les choix de cette question.', 'context' => 'Tutorial data validation and action feedback.'],
+                'impossible_d_enregistrer_un_choix_de_reponse' => ['text' => 'Impossible d’enregistrer un choix de réponse.', 'context' => 'Tutorial data validation and action feedback.'],
+            ];
+        }
+
 		public static function tableName()
 		{
 			return 'question_choice';
@@ -51,7 +60,7 @@
 			if ($questionId <= 0) {
 				return array(
 					'status' => false,
-					'message' => 'Question invalide.',
+					'message' => self::uiMessage('question_invalide'),
 				);
 			}
 
@@ -62,7 +71,7 @@
 			if (!$deleteResult) {
 				return array(
 					'status' => false,
-					'message' => 'Impossible de reinitialiser les choix de cette question.',
+					'message' => self::uiMessage('impossible_de_reinitialiser_les_choix_de_cette_question'),
 				);
 			}
 
@@ -83,7 +92,7 @@
 						'status' => false,
 						'message' => is_array($saveResult) && !empty($saveResult['text'])
 							? (string)$saveResult['text']
-							: 'Impossible d enregistrer un choix de reponse.',
+							: self::uiMessage('impossible_d_enregistrer_un_choix_de_reponse'),
 					);
 				}
 			}

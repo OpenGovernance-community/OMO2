@@ -207,7 +207,7 @@ window.commonPageScripts["/omo/api/lms/getMissionDetail.js"] = function (pageCon
 		if (!allHomeworksDone) {
 			quizZone.innerHTML = `
 				<div class="quiz-info">
-					${escapeHtml(formatMissionText(lmsMissionText.remaining || '', { count: remainingHomeworks, suffix: remainingHomeworks > 1 ? 's' : '' }))}
+					${escapeHtml(formatMissionText(remainingHomeworks === 1 ? lmsMissionText.remainingOne : lmsMissionText.remaining, { count: remainingHomeworks }))}
 				</div>
 			`;
 			return;
@@ -216,7 +216,7 @@ window.commonPageScripts["/omo/api/lms/getMissionDetail.js"] = function (pageCon
 		if (quizCount > 0) {
 			quizZone.innerHTML = `
 				<div class="quiz-info">
-					${escapeHtml(formatMissionText(lmsMissionText.quizInfo || '', { count: quizCount, suffix: quizCount > 1 ? 's' : '' }))}
+					${escapeHtml(formatMissionText(quizCount === 1 ? lmsMissionText.quizInfoOne : lmsMissionText.quizInfo, { count: quizCount }))}
 				</div>
 			`;
 			return;

@@ -1,4 +1,5 @@
 <?php
+require_once dirname(__DIR__) . '/common/lms/ui-translations.php';
 define('BASE_PATH', dirname(__DIR__));
 require_once BASE_PATH . '/shared_functions.php';
 require_once BASE_PATH . '/common/auth.php';
@@ -18,25 +19,25 @@ $isOrganizationAdmin = !empty($accessContext['isLoggedIn'])
 
 if (empty($accessContext['exists'])) {
 	http_response_code(404);
-	echo "Unknown parcours";
+	echo commonLmsUiT('parcours_inconnu');
 	exit;
 }
 
 if (empty($accessContext['canView'])) {
 	http_response_code(!empty($accessContext['isLoggedIn']) ? 403 : 401);
-	echo "Unauthorized";
+	echo commonLmsUiT('acces_non_autorise');
 	exit;
 }
 
 if ($mission_id <= 0 || $homework_id <= 0 || $parcours_id <= 0) {
 	http_response_code(400);
-	echo "Invalid homework request";
+	echo commonLmsUiT('demande_de_devoir_invalide');
 	exit;
 }
 
 if (!lmsCanTrackProgress($accessContext)) {
 	http_response_code(401);
-	echo "Login required";
+	echo commonLmsUiT('login_required');
 	exit;
 }
 
@@ -46,14 +47,14 @@ if (!$parcoursMission->load([
 	['IDmission', $mission_id],
 ])) {
 	http_response_code(400);
-	echo "Mission not found in parcours";
+	echo commonLmsUiT('mission_introuvable_dans_ce_parcours');
 	exit;
 }
 
 if (!\dbObject\MissionHomework::existsForMission($mission_id, $homework_id)
 	|| !in_array($homework_id, \dbObject\Mission::fetchHomeworkIdsForMission($mission_id, $isOrganizationAdmin), true)) {
 	http_response_code(400);
-	echo "Homework not found in mission";
+	echo commonLmsUiT('devoir_introuvable_dans_cette_mission');
 	exit;
 }
 
@@ -66,7 +67,7 @@ $result = \dbObject\UserHomework::markDone((int)$accessContext['userId'], $missi
 
 if (empty($result['status'])) {
 	http_response_code(500);
-	echo isset($result['text']) ? $result['text'] : "Save error";
+	echo isset($result['text']) ? $result['text'] : commonLmsUiT('save_error');
 	exit;
 }
 

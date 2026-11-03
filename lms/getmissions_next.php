@@ -1,4 +1,5 @@
 <?php
+require_once dirname(__DIR__) . '/common/lms/ui-translations.php';
 define('BASE_PATH', dirname(__DIR__));
 require_once BASE_PATH . '/shared_functions.php';
 require_once BASE_PATH . '/common/auth.php';
@@ -34,7 +35,7 @@ ob_start();
 $currentBranch = null;
 
 foreach ($missions as $m) {
-	$branch = $m['branch'] ?: 'Tronc commun';
+	$branch = $m['branch'] ?: commonLmsUiT('common_branch');
 
 	if ($branch !== $currentBranch) {
 		if ($currentBranch !== null) {
@@ -56,10 +57,10 @@ foreach ($missions as $m) {
 	echo "<div class='card-content'>";
 	echo "<h3>" . htmlspecialchars($m['title']) . "</h3>";
 	echo "<p>" . htmlspecialchars($m['resume']) . "</p>";
-	echo "<span class='card-meta'>Verrouillee</span>";
+	echo "<span class='card-meta'>" . htmlspecialchars(commonLmsUiT('verrouillee'), ENT_QUOTES, 'UTF-8') . "</span>";
 	echo "<div class='card-footer'>";
 	commonLmsRenderContentIndicators($contentIndicators[(int)$m['id']] ?? []);
-	echo "<button type='button' disabled>Verrouille</button>";
+	echo "<button type='button' disabled>" . htmlspecialchars(commonLmsUiT('verrouille'), ENT_QUOTES, 'UTF-8') . "</button>";
 	echo "</div>";
 	echo "</div>";
 	echo "</div>";

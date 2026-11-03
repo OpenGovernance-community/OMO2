@@ -141,7 +141,7 @@ if (!is_array($saveResult) || empty($saveResult['status'])) {
         'success' => false,
             'message' => is_array($saveResult) && !empty($saveResult['text'])
                 ? (string)$saveResult['text']
-            : ($isEditMode ? 'Impossible de mettre a jour cette question.' : 'Impossible de creer cette question.'),
+            : ($isEditMode ? commonLmsUiT('update_question_error') : commonLmsUiT('create_question_error')),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -153,7 +153,7 @@ if (!is_array($choicesResult) || empty($choicesResult['status'])) {
         'success' => false,
         'message' => is_array($choicesResult) && !empty($choicesResult['message'])
             ? (string)$choicesResult['message']
-            : 'Impossible d enregistrer les choix de cette question.',
+            : commonLmsUiT('save_choices_error'),
         'id' => (int)$question->getId(),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
@@ -167,7 +167,7 @@ if (!$isEditMode) {
             'success' => false,
             'message' => is_array($attachResult) && !empty($attachResult['message'])
                 ? (string)$attachResult['message']
-                : 'La question a ete creee mais pas liee a la mission.',
+                : commonLmsUiT('attach_created_question_error'),
             'id' => (int)$question->getId(),
         ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
@@ -177,6 +177,6 @@ if (!$isEditMode) {
 echo json_encode(array(
     'status' => true,
     'success' => true,
-    'message' => $isEditMode ? 'Question mise a jour.' : 'Question creee.',
+    'message' => $isEditMode ? commonLmsUiT('question_updated') : commonLmsUiT('question_created'),
     'id' => (int)$question->getId(),
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

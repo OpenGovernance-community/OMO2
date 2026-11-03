@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- Tutoriels / français et traductions (2026-11-03) : relecture des catalogues publics et OMO, des parcours, missions, devoirs, quiz, formulaires et réglages vidéo. Accents, apostrophes, ponctuation et pluriels corrigés ; boutons anglais et messages non traduisibles raccordés aux traductions partagées. Langue conservée dans la navigation et les appels des tutoriels ; suppression du double chargement du script partagé sur les pages publiques.
+
 - PV / synchronisation en arriere-plan (2026-11-03) : suspension des verifications serveur lorsque l onglet est masque, la fenetre perd le focus ou le PV est replie dans OMO. Verification immediate au retour, sans perdre les modifications locales ni multiplier les appels lors des evenements de reprise.
 
 - Tutoriels / titre du catalogue (2026-11-03) : suppression de l entete en double dans le catalogue integre. Le nom de l organisation figure dans le titre du drawer OMO, sous la forme Tutoriels suivi du nom ; le grand titre centre du catalogue est conserve.

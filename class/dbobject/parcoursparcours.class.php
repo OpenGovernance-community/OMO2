@@ -3,6 +3,21 @@
 
 	class ParcoursParcours extends DbObject
 	{
+        protected static function uiMessageSourceLang(): array
+        {
+            return [
+                'pack_ou_parcours_invalide' => ['text' => 'Pack ou parcours invalide.', 'context' => 'Tutorial data validation and action feedback.'],
+                'le_lien_demande_n_est_pas_autorise' => ['text' => 'Le lien demandé n’est pas autorisé.', 'context' => 'Tutorial data validation and action feedback.'],
+                'impossible_d_ajouter_ce_parcours_au_pack' => ['text' => 'Impossible d’ajouter ce parcours au pack.', 'context' => 'Tutorial data validation and action feedback.'],
+                'pack_invalide' => ['text' => 'Pack invalide.', 'context' => 'Tutorial data validation and action feedback.'],
+                'impossible_de_charger_les_parcours_du_pack' => ['text' => 'Impossible de charger les parcours du pack.', 'context' => 'Tutorial data validation and action feedback.'],
+                'la_liste_des_parcours_a_reordonner_est_incomplete' => ['text' => 'La liste des parcours à réordonner est incomplète.', 'context' => 'Tutorial data validation and action feedback.'],
+                'impossible_de_reordonner_les_parcours_du_pack' => ['text' => 'Impossible de réordonner les parcours du pack.', 'context' => 'Tutorial data validation and action feedback.'],
+                'impossible_de_retirer_ce_parcours_du_pack' => ['text' => 'Impossible de retirer ce parcours du pack.', 'context' => 'Tutorial data validation and action feedback.'],
+                'impossible_de_nettoyer_les_anciens_liens_de_ce_parcours' => ['text' => 'Impossible de nettoyer les anciens liens de ce parcours.', 'context' => 'Tutorial data validation and action feedback.'],
+            ];
+        }
+
 		public static function tableName()
 		{
 			return 'parcours_parcours';
@@ -72,7 +87,7 @@
 			if ($parentParcoursId <= 0 || $childParcoursId <= 0 || $parentParcoursId === $childParcoursId) {
 				return [
 					'status' => false,
-					'message' => 'Pack ou parcours invalide.',
+					'message' => self::uiMessage('pack_ou_parcours_invalide'),
 				];
 			}
 
@@ -88,7 +103,7 @@
 			) {
 				return [
 					'status' => false,
-					'message' => 'Le lien demande n est pas autorise.',
+					'message' => self::uiMessage('le_lien_demande_n_est_pas_autorise'),
 				];
 			}
 
@@ -123,7 +138,7 @@
 					'status' => false,
 					'message' => is_array($saveResult) && !empty($saveResult['text'])
 						? (string)$saveResult['text']
-						: 'Impossible d ajouter ce parcours au pack.',
+						: self::uiMessage('impossible_d_ajouter_ce_parcours_au_pack'),
 				];
 			}
 
@@ -140,7 +155,7 @@
 			if ($parentParcoursId <= 0) {
 				return [
 					'status' => false,
-					'message' => 'Pack invalide.',
+					'message' => self::uiMessage('pack_invalide'),
 				];
 			}
 
@@ -162,7 +177,7 @@
 			if (!is_array($currentRows)) {
 				return [
 					'status' => false,
-					'message' => 'Impossible de charger les parcours du pack.',
+					'message' => self::uiMessage('impossible_de_charger_les_parcours_du_pack'),
 				];
 			}
 
@@ -181,7 +196,7 @@
 			if ($comparisonChildIds !== $currentChildIds) {
 				return [
 					'status' => false,
-					'message' => 'La liste des parcours a reordonner est incomplete.',
+					'message' => self::uiMessage('la_liste_des_parcours_a_reordonner_est_incomplete'),
 				];
 			}
 
@@ -200,7 +215,7 @@
 				if (!$result) {
 					return [
 						'status' => false,
-						'message' => 'Impossible de reordonner les parcours du pack.',
+						'message' => self::uiMessage('impossible_de_reordonner_les_parcours_du_pack'),
 					];
 				}
 			}
@@ -217,7 +232,7 @@
 			if ($parentParcoursId <= 0 || $childParcoursId <= 0) {
 				return [
 					'status' => false,
-					'message' => 'Pack ou parcours invalide.',
+					'message' => self::uiMessage('pack_ou_parcours_invalide'),
 				];
 			}
 
@@ -233,7 +248,7 @@
 			if ($result === false) {
 				return [
 					'status' => false,
-					'message' => 'Impossible de retirer ce parcours du pack.',
+					'message' => self::uiMessage('impossible_de_retirer_ce_parcours_du_pack'),
 				];
 			}
 
@@ -243,7 +258,7 @@
 					'status' => false,
 					'message' => is_array($cleanupResult) && !empty($cleanupResult['message'])
 						? (string)$cleanupResult['message']
-						: 'Impossible de nettoyer les anciens liens de ce parcours.',
+						: self::uiMessage('impossible_de_nettoyer_les_anciens_liens_de_ce_parcours'),
 				];
 			}
 

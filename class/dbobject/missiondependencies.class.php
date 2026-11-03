@@ -3,6 +3,17 @@
 
 	class MissionDependencies extends DbObject
 	{
+        protected static function uiMessageSourceLang(): array
+        {
+            return [
+                'la_table_des_dependances_de_mission_est_absente' => ['text' => 'La table des dépendances de mission est absente.', 'context' => 'Tutorial data validation and action feedback.'],
+                'dependance_de_mission_invalide' => ['text' => 'Dépendance de mission invalide.', 'context' => 'Tutorial data validation and action feedback.'],
+                'ce_prerequis_creerait_une_boucle_entre_missions' => ['text' => 'Ce prérequis créerait une boucle entre missions.', 'context' => 'Tutorial data validation and action feedback.'],
+                'impossible_d_ajouter_ce_prerequis_de_mission' => ['text' => 'Impossible d’ajouter ce prérequis de mission.', 'context' => 'Tutorial data validation and action feedback.'],
+                'impossible_de_retirer_ce_prerequis_de_mission' => ['text' => 'Impossible de retirer ce prérequis de mission.', 'context' => 'Tutorial data validation and action feedback.'],
+            ];
+        }
+
 		public static function tableName()
 		{
 			return 'mission_dependencies';
@@ -117,14 +128,14 @@
 			if (!self::hasDependencyTable()) {
 				return [
 					'status' => false,
-					'message' => 'La table des dependances de mission est absente.',
+					'message' => self::uiMessage('la_table_des_dependances_de_mission_est_absente'),
 				];
 			}
 
 			if ($parcoursId <= 0 || $parentMissionId <= 0 || $childMissionId <= 0 || $parentMissionId === $childMissionId) {
 				return [
 					'status' => false,
-					'message' => 'Dependance de mission invalide.',
+					'message' => self::uiMessage('dependance_de_mission_invalide'),
 				];
 			}
 
@@ -132,7 +143,7 @@
 			if ($createsLoop) {
 				return [
 					'status' => false,
-					'message' => 'Ce prerequis creerait une boucle entre missions.',
+					'message' => self::uiMessage('ce_prerequis_creerait_une_boucle_entre_missions'),
 				];
 			}
 
@@ -156,7 +167,7 @@
 					'status' => false,
 					'message' => is_array($saveResult) && !empty($saveResult['text'])
 						? (string)$saveResult['text']
-						: 'Impossible d ajouter ce prerequis de mission.',
+						: self::uiMessage('impossible_d_ajouter_ce_prerequis_de_mission'),
 				];
 			}
 
@@ -172,7 +183,7 @@
 			if (!self::hasDependencyTable()) {
 				return [
 					'status' => false,
-					'message' => 'La table des dependances de mission est absente.',
+					'message' => self::uiMessage('la_table_des_dependances_de_mission_est_absente'),
 				];
 			}
 
@@ -190,7 +201,7 @@
 			if ($result === false) {
 				return [
 					'status' => false,
-					'message' => 'Impossible de retirer ce prerequis de mission.',
+					'message' => self::uiMessage('impossible_de_retirer_ce_prerequis_de_mission'),
 				];
 			}
 

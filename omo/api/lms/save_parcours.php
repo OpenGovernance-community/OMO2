@@ -113,7 +113,7 @@ if (!is_array($saveResult) || empty($saveResult['status'])) {
         'success' => false,
         'message' => is_array($saveResult) && !empty($saveResult['text'])
             ? (string)$saveResult['text']
-            : ($isEditMode ? 'Impossible de mettre a jour ce parcours.' : 'Impossible de creer ce parcours.'),
+            : ($isEditMode ? commonLmsUiT('update_parcours_error') : commonLmsUiT('create_parcours_error')),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -134,7 +134,7 @@ if (!$isEditMode) {
             'success' => false,
             'message' => is_array($attachResult) && !empty($attachResult['message'])
                 ? (string)$attachResult['message']
-                : 'Le parcours a ete cree mais pas rattache a l organisation.',
+                : commonLmsUiT('attach_created_parcours_error'),
         ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
     }
@@ -143,6 +143,6 @@ if (!$isEditMode) {
 echo json_encode(array(
     'status' => true,
     'success' => true,
-    'message' => $isEditMode ? 'Parcours mis a jour.' : 'Parcours cree.',
+    'message' => $isEditMode ? commonLmsUiT('parcours_updated') : commonLmsUiT('parcours_created'),
     'id' => (int)$parcours->getId(),
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

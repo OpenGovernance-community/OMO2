@@ -1,9 +1,11 @@
 <?php
+require_once dirname(__DIR__) . '/common/lms/ui-translations.php';
 define('BASE_PATH', dirname(__DIR__));
 require_once BASE_PATH . '/shared_functions.php';
 require_once BASE_PATH . '/common/auth.php';
 require_once BASE_PATH . '/common/translation_bundles.php';
 require_once BASE_PATH . '/common/lms/quiz.php';
+require_once BASE_PATH . '/common/lms/mission-translations.php';
 
 commonRestoreRememberedUser();
 include __DIR__ . '/inc/org.php';
@@ -20,7 +22,7 @@ $isOrganizationAdmin = !empty($accessContext['isLoggedIn'])
 
 if (empty($accessContext['exists']) || empty($accessContext['canView'])) {
 	http_response_code(empty($accessContext['isLoggedIn']) ? 401 : 403);
-	echo "Accès refusé";
+	echo commonLmsUiT('access_denied');
 	exit;
 }
 
@@ -30,7 +32,7 @@ if (!$parcoursMission->load([
 	['IDmission', $mission_id],
 ])) {
 	http_response_code(404);
-	echo "Mission introuvable";
+	echo htmlspecialchars(commonLmsMissionT('lms.mission_detail.error.not_found'), ENT_QUOTES, 'UTF-8');
 	exit;
 }
 
@@ -345,16 +347,10 @@ if ($m) {
 	echo "</div>";
 	echo "<div data-quiz-count='$quizCount' data-homework-count='" . count($homeworks) . "' id='quiz-info'></div>";
 } else {
-	echo "Mission introuvable";
+	echo htmlspecialchars(commonLmsMissionT('lms.mission_detail.error.not_found'), ENT_QUOTES, 'UTF-8');
 }
 ?>
-<?php
-$quizSourceLang = [
-    'check_answer_error' => ['text' => 'Impossible de verifier cette reponse. Reessayez.', 'context' => 'Quiz answer verification failure notification.'],
-    'scroll_to_end' => ['text' => "Faites defiler le contenu jusqu'en bas pour marquer cette mission comme lue.", 'context' => 'Instruction shown while mission read confirmation is locked until the end of the content.'],
-];
-$quizLang = loadTranslationBundle('lms_quiz', translationBundleResolveRequestLocale('lang'), $quizSourceLang);
-?>
+
 <script src="<?= commonAssetUrl('/common/lms/quiz.js') ?>"></script>
 <script src="<?= commonAssetUrl('/common/lms/read-progress.js') ?>"></script>
 <?= commonPageScriptTags('/lms/mission-detail.js', [
@@ -362,8 +358,8 @@ $quizLang = loadTranslationBundle('lms_quiz', translationBundleResolveRequestLoc
     'checkAnswerUrl' => lmsBuildLocalPath('/lms/checkAnswer.php'),
     'questionsUrl' => lmsBuildLocalPath('/lms/getMissionQuestions.php', ['parcours_id' => $parcours_id]),
     'actionUrl' => lmsBuildLocalPath('/lms/action.php'),
-    'checkAnswerError' => t('check_answer_error', [], $quizLang, $quizSourceLang),
-    'scrollToEnd' => t('scroll_to_end', [], $quizLang, $quizSourceLang),
+    'homeworkActionUrl' => lmsBuildLocalPath('/lms/homework_action.php'),
+    'lmsMissionText' => commonLmsMissionTexts(),
     'lmsMissionId' => (int)$mission_id,
     'lmsMissionViewerCanTrack' => ($canTrackProgress),
     'lmsMissionViewerIsAnonymous' => ($isAnonymousViewer),

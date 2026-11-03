@@ -3,6 +3,18 @@
 
 	class MissionHomework extends DbObject
 	{
+        protected static function uiMessageSourceLang(): array
+        {
+            return [
+                'mission_ou_devoir_invalide' => ['text' => 'Mission ou devoir invalide.', 'context' => 'Tutorial data validation and action feedback.'],
+                'impossible_d_ajouter_ce_devoir_a_la_mission' => ['text' => 'Impossible d’ajouter ce devoir à la mission.', 'context' => 'Tutorial data validation and action feedback.'],
+                'mission_invalide' => ['text' => 'Mission invalide.', 'context' => 'Tutorial data validation and action feedback.'],
+                'impossible_de_charger_les_devoirs_de_la_mission' => ['text' => 'Impossible de charger les devoirs de la mission.', 'context' => 'Tutorial data validation and action feedback.'],
+                'la_liste_des_devoirs_a_reordonner_est_incomplete' => ['text' => 'La liste des devoirs à réordonner est incomplète.', 'context' => 'Tutorial data validation and action feedback.'],
+                'impossible_de_reordonner_les_devoirs_de_la_mission' => ['text' => 'Impossible de réordonner les devoirs de la mission.', 'context' => 'Tutorial data validation and action feedback.'],
+            ];
+        }
+
 		public static function tableName()
 		{
 			return 'mission_homework';
@@ -71,7 +83,7 @@
 			if ($missionId <= 0 || $homeworkId <= 0) {
 				return array(
 					'status' => false,
-					'message' => 'Mission ou devoir invalide.',
+					'message' => self::uiMessage('mission_ou_devoir_invalide'),
 				);
 			}
 
@@ -106,7 +118,7 @@
 					'status' => false,
 					'message' => is_array($saveResult) && !empty($saveResult['text'])
 						? (string)$saveResult['text']
-						: 'Impossible d ajouter ce devoir a la mission.',
+						: self::uiMessage('impossible_d_ajouter_ce_devoir_a_la_mission'),
 				);
 			}
 
@@ -123,7 +135,7 @@
 			if ($missionId <= 0) {
 				return array(
 					'status' => false,
-					'message' => 'Mission invalide.',
+					'message' => self::uiMessage('mission_invalide'),
 				);
 			}
 
@@ -145,7 +157,7 @@
 			if (!is_array($currentRows)) {
 				return array(
 					'status' => false,
-					'message' => 'Impossible de charger les devoirs de la mission.',
+					'message' => self::uiMessage('impossible_de_charger_les_devoirs_de_la_mission'),
 				);
 			}
 
@@ -164,7 +176,7 @@
 			if ($comparisonHomeworkIds !== $currentHomeworkIds) {
 				return array(
 					'status' => false,
-					'message' => 'La liste des devoirs a reordonner est incomplete.',
+					'message' => self::uiMessage('la_liste_des_devoirs_a_reordonner_est_incomplete'),
 				);
 			}
 
@@ -183,7 +195,7 @@
 				if (!$result) {
 					return array(
 						'status' => false,
-						'message' => 'Impossible de reordonner les devoirs de la mission.',
+						'message' => self::uiMessage('impossible_de_reordonner_les_devoirs_de_la_mission'),
 					);
 				}
 			}

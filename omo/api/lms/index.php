@@ -13,21 +13,21 @@ $sourceLang = [
     'lms.index.title.training' => ['text' => 'Parcours de formation', 'context' => 'Main page title used in the standard LMS organization mode.'],
     'lms.index.card.action.delete' => ['text' => 'Supprimer', 'context' => 'Menu action used to delete an owned parcours or pack.'],
     'lms.index.card.action.detach' => ['text' => 'Détacher', 'context' => 'Menu action used to detach a shared parcours or pack from the current organization.'],
-    'lms.index.card.archived' => ['text' => 'Retiré du partage - conservé pour les utilisateurs existants.', 'context' => 'Label on a retired parcours which remains available to existing learners and organizations.'],
+    'lms.index.card.archived' => ['text' => 'Retiré du partage ; conservé pour les utilisateurs existants.', 'context' => 'Label on a retired parcours which remains available to existing learners and organizations.'],
     'lms.index.card.action.edit' => ['text' => 'Éditer', 'context' => 'Menu action used to open the editor of a parcours or pack.'],
     'lms.index.card.visibility_hidden' => ['text' => 'Actuellement masqué pour les membres standard.', 'context' => 'Note shown on hidden parcours cards.'],
     'lms.index.card.open' => ['text' => 'Ouvrir', 'context' => 'Button label used to open a parcours.'],
     'lms.index.card.hidden' => ['text' => 'Masqué', 'context' => 'Button label used on hidden parcours cards.'],
     'lms.index.create.kicker' => ['text' => 'Parcours', 'context' => 'Small overline shown on the create parcours card.'],
     'lms.index.create.title' => ['text' => 'Ajouter un parcours', 'context' => 'Title shown on the create parcours card.'],
-    'lms.index.create.description' => ['text' => 'Créer un nouveau parcours ou importer un parcours déjà partagé comme public ou basic.', 'context' => 'Description shown on the create parcours card.'],
-    'lms.index.create.helper' => ['text' => 'Les deux actions s’ouvrent directement dans le drawer.', 'context' => 'Helper text shown on the create parcours card.'],
+    'lms.index.create.description' => ['text' => 'Créez un nouveau parcours ou importez un parcours public ou de prise en main.', 'context' => 'Description shown on the create parcours card.'],
+    'lms.index.create.helper' => ['text' => 'Les formulaires s’ouvrent dans le panneau latéral.', 'context' => 'Helper text shown on the create parcours card.'],
     'lms.index.create.import' => ['text' => 'Importer', 'context' => 'Button label used to import an existing parcours.'],
     'lms.index.create.new' => ['text' => 'Nouveau', 'context' => 'Button label used to create a new parcours.'],
     'lms.index.section.completed' => ['text' => 'Parcours terminés', 'context' => 'Section title listing completed parcours.'],
     'lms.index.section.packs' => ['text' => 'Packs de parcours', 'context' => 'Section title listing parcours packs.'],
     'lms.index.pack.kicker' => ['text' => 'Pack', 'context' => 'Small overline shown on pack cards.'],
-    'lms.index.section.completed_intro' => ['text' => 'Retrouvez ici les parcours déjà complétés à 100 %.', 'context' => 'Intro text shown above the completed parcours section.'],
+    'lms.index.section.completed_intro' => ['text' => 'Retrouvez ici les parcours déjà terminés à 100 %.', 'context' => 'Intro text shown above the completed parcours section.'],
     'lms.index.section.packs_intro' => ['text' => 'Ces packs regroupent plusieurs parcours. Les parcours liés à des applications désactivées y restent automatiquement masqués.', 'context' => 'Intro text shown above the parcours packs section.'],
     'lms.index.alert.required_title' => ['text' => 'Le titre est obligatoire.', 'context' => 'Alert shown when a title is required before submitting a form.'],
     'lms.index.alert.required_resume' => ['text' => 'Le résumé est obligatoire.', 'context' => 'Alert shown when a summary is required before submitting a mission form.'],
@@ -57,7 +57,8 @@ $sourceLang = [
     'lms.index.form.update_question' => ['text' => 'Mettre à jour la question', 'context' => 'Submit button label used when editing a mission question.'],
     'lms.index.form.create_question' => ['text' => 'Créer la question', 'context' => 'Submit button label used when creating a mission question.'],
     'lms.index.delete.preview_failed' => ['text' => 'Impossible de préparer la suppression de ce parcours.', 'context' => 'Alert shown when the parcours deletion preview cannot be loaded.'],
-    'lms.index.delete.confirm_named' => ['text' => 'Supprimer le parcours "{title}" ?', 'context' => 'Fallback confirmation message used before deleting a named parcours.'],
+    'lms.index.delete.heading' => ['text' => 'Parcours : « {title} »', 'context' => 'Heading identifying the tutorial in its deletion confirmation dialog.'],
+    'lms.index.delete.confirm_named' => ['text' => 'Supprimer le parcours « {title} » ?', 'context' => 'Fallback confirmation message used before deleting a named parcours.'],
     'lms.index.delete.confirm_generic' => ['text' => 'Supprimer ce parcours ?', 'context' => 'Fallback confirmation message used before deleting a parcours without title.'],
     'lms.index.delete.failed' => ['text' => 'Impossible de supprimer ce parcours.', 'context' => 'Alert shown when parcours deletion fails.'],
     'lms.index.delete.success' => ['text' => 'Parcours supprimé.', 'context' => 'Success alert shown after deleting a parcours.'],
@@ -112,7 +113,7 @@ foreach ($parcours as $parcoursItem) {
 }
 ?>
 <!DOCTYPE html>
-<html>
+<html lang="<?= htmlspecialchars(translationBundleResolveRequestLocale('lang'), ENT_QUOTES, 'UTF-8') ?>">
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($isBasicCatalogMode ? lmsIndexT('lms.index.title.catalog_brand') : $org['name']); ?></title>
@@ -446,6 +447,7 @@ if (!$isEmbedded) {
     'removePrerequisiteError' => lmsIndexT('lms.index.alert.remove_prerequisite'),
     'removePrerequisiteConfirm' => lmsIndexT('lms.index.confirm.remove_prerequisite'),
     'deletePreviewError' => lmsIndexT('lms.index.delete.preview_failed'),
+    'deleteHeading' => lmsIndexT('lms.index.delete.heading'),
     'deleteConfirmNamed' => lmsIndexT('lms.index.delete.confirm_named'),
     'deleteConfirmGeneric' => lmsIndexT('lms.index.delete.confirm_generic'),
     'deleteFailed' => lmsIndexT('lms.index.delete.failed'),

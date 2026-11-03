@@ -33,7 +33,7 @@ ob_start();
 $currentBranch = null;
 
 foreach ($missions as $m) {
-	$branch = $m['branch'] ?: 'Tronc commun';
+	$branch = $m['branch'] ?: commonLmsUiT('common_branch');
 
 	if ($branch !== $currentBranch) {
 		if ($currentBranch !== null) {

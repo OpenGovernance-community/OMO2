@@ -19,10 +19,10 @@ async function run({ create = false, edit = false, remove = false, manageable = 
         window: {
             omoLmsCatalogConfig: {
                 canCreateParcours: create, canEditParcours: edit, canDeleteParcours: remove,
-                lmsIndexText: {}, lmsParcoursDeletePreviewPath: '/preview', lmsParcoursDeletePath: '/delete'
+                lmsIndexText: {deleteHeading: 'Parcours : « {title} »'}, lmsParcoursDeletePreviewPath: '/preview', lmsParcoursDeletePath: '/delete'
             },
             confirm: text => { confirmations.push(text); return confirm; },
-            alert() {},
+            omoNotify() {},
             location: { reload: () => { reloaded = true; } }
         },
         fetch: async (url, options) => {
@@ -40,6 +40,7 @@ async function run({ create = false, edit = false, remove = false, manageable = 
     assert.deepEqual(deleteOnly.requests, [['/preview', '42'], ['/delete', '42']], 'Delete alone must work without create/edit');
     assert.equal(deleteOnly.reloaded, true);
     assert.match(deleteOnly.confirmations[0], /Utilise\.\n\nConserver/);
+    assert.match(deleteOnly.confirmations[0], /^Parcours : « Test »\n\n/, 'Confirmation headings use translated text and French punctuation');
     assert.deepEqual((await run({ create: true, manageable: false })).requests, [], 'Create cannot delete an owned card');
     assert.deepEqual((await run({ edit: true })).requests, [], 'Edit cannot delete');
     assert.deepEqual((await run({ remove: true, manageable: false })).requests, [], 'Archived cards cannot be deleted');
