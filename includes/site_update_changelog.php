@@ -73,7 +73,7 @@ function siteUpdateAdminGetChangelog(array $context, string $from, string $to): 
     if ($from === $to) { return ['entries' => [], 'description' => '', 'fallback' => false]; }
     $url = siteUpdateAdminRunCommand(['git', 'remote', 'get-url', $context['remote']], $context['repoRoot'], $exitCode);
     $repository = $exitCode === 0 ? siteUpdateChangelogRepository($url) : null;
-    $cachePath = siteUpdateAdminEnsureRuntimeDir() . '/changelog-' . hash('sha256', 'v2' . $from . $to . $repository) . '.json';
+    $cachePath = siteUpdateAdminEnsureRuntimeDir() . '/changelog-' . hash('sha256', 'v3' . $from . $to . $repository) . '.json';
     if (is_file($cachePath) && filemtime($cachePath) > time() - 300) {
         $cached = json_decode((string)file_get_contents($cachePath), true);
         if (is_array($cached) && isset($cached['entries'], $cached['description'], $cached['fallback'])) { return $cached; }

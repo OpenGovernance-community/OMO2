@@ -254,20 +254,6 @@ function initLmsDrawerContent() {
     initParcoursPackManager();
 }
 
-async function refreshMissionEditor(parcoursId, missionId) {
-    if (parcoursId <= 0 || missionId <= 0) {
-        return;
-    }
-
-    const drawerContent = document.getElementById('drawer-content');
-    const currentScrollTop = drawerContent ? drawerContent.scrollTop : 0;
-    await openDrawerFromUrl(buildMissionEditUrl(parcoursId, missionId), {
-        simpleMode: true,
-        scrollTop: currentScrollTop
-    });
-    initLmsDrawerContent();
-}
-
 function lmsInitAdminEditHtmlFields(scopeElement) {
     if (typeof window.adminEditInitHtmlFields === 'function') {
         try {
@@ -1021,6 +1007,28 @@ function toggleMissionDependencyItemMenu(event, requiredMissionId) {
     }
 }
 
+function refreshMissionDependencyManager(manager, html, errorMessage) {
+    if (!manager.isConnected) {
+        return;
+    }
+
+    const template = document.createElement('template');
+    template.innerHTML = String(html || '').trim();
+    const replacement = template.content.querySelector('[data-lms-mission-dependency-manager]');
+    if (!replacement || replacement.dataset.missionId !== manager.dataset.missionId
+        || replacement.dataset.parcoursId !== manager.dataset.parcoursId) {
+        throw new Error(errorMessage);
+    }
+
+    const drawerContent = document.getElementById('drawer-content');
+    const scrollTop = drawerContent ? drawerContent.scrollTop : 0;
+    manager.replaceWith(replacement);
+    initMissionDependencyManager();
+    if (drawerContent) {
+        drawerContent.scrollTop = scrollTop;
+    }
+}
+
 function initMissionDependencyManager() {
     const drawerContent = document.getElementById('drawer-content');
     const manager = drawerContent ? drawerContent.querySelector('[data-lms-mission-dependency-manager]') : null;
@@ -1030,6 +1038,7 @@ function initMissionDependencyManager() {
     }
 
     manager.dataset.lmsMissionDependencyManagerBound = '1';
+    let isUpdatingDependencies = false;
     const parcoursId = Number(manager.getAttribute('data-parcours-id') || 0);
     const missionId = Number(manager.getAttribute('data-mission-id') || 0);
     const picker = manager.querySelector('[data-lms-mission-dependency-picker]');
@@ -1095,7 +1104,7 @@ function initMissionDependencyManager() {
             event.stopPropagation();
 
             const requiredMissionId = Number(button.getAttribute('data-required-mission-id') || 0);
-            if (parcoursId <= 0 || missionId <= 0 || requiredMissionId <= 0) {
+            if (isUpdatingDependencies || parcoursId <= 0 || missionId <= 0 || requiredMissionId <= 0) {
                 return;
             }
 
@@ -1104,6 +1113,7 @@ function initMissionDependencyManager() {
             }
 
             closeAllMissionItemMenus();
+            isUpdatingDependencies = true;
             button.disabled = true;
 
             try {
@@ -1123,10 +1133,11 @@ function initMissionDependencyManager() {
                     throw new Error(payload && payload.message ? payload.message : lmsIndexText.removePrerequisiteError);
                 }
 
-                await refreshMissionEditor(parcoursId, missionId);
+                refreshMissionDependencyManager(manager, payload.dependenciesHtml, lmsIndexText.removePrerequisiteError);
             } catch (error) {
                 window.omoNotify(error && error.message ? error.message : lmsIndexText.removePrerequisiteError, 'error');
             } finally {
+                isUpdatingDependencies = false;
                 button.disabled = false;
             }
         });
@@ -1159,10 +1170,11 @@ function initMissionDependencyManager() {
     manager.querySelectorAll('[data-lms-add-mission-dependency-id]').forEach((button) => {
         button.addEventListener('click', async function () {
             const requiredMissionId = Number(button.getAttribute('data-lms-add-mission-dependency-id') || 0);
-            if (parcoursId <= 0 || missionId <= 0 || requiredMissionId <= 0) {
+            if (isUpdatingDependencies || parcoursId <= 0 || missionId <= 0 || requiredMissionId <= 0) {
                 return;
             }
 
+            isUpdatingDependencies = true;
             button.disabled = true;
             try {
                 const formData = new FormData();
@@ -1181,10 +1193,11 @@ function initMissionDependencyManager() {
                     throw new Error(payload && payload.message ? payload.message : lmsIndexText.addPrerequisiteError);
                 }
 
-                await refreshMissionEditor(parcoursId, missionId);
+                refreshMissionDependencyManager(manager, payload.dependenciesHtml, lmsIndexText.addPrerequisiteError);
             } catch (error) {
                 window.omoNotify(error && error.message ? error.message : lmsIndexText.addPrerequisiteError, 'error');
             } finally {
+                isUpdatingDependencies = false;
                 button.disabled = false;
             }
         });

@@ -68,6 +68,20 @@
     white-space: nowrap;
 }
 
+.common-topbar--visible-brand .common-topbar__left {
+    flex: 1 1 auto;
+}
+
+.common-topbar--visible-brand .common-topbar__brand-link--logo {
+    flex: 0 0 auto;
+}
+
+.common-topbar--visible-brand .common-topbar__brand-name {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .common-topbar__search-input {
     flex: 1;
     min-width: 0;
@@ -1365,6 +1379,10 @@ html[data-theme] .common-help-card p {
 
     .common-topbar__brand-name {
         display: none;
+    }
+
+    .common-topbar--visible-brand .common-topbar__brand-link--name {
+        display: inline-flex;
     }
 
     .common-topbar__action--square {

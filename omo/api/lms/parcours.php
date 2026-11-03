@@ -46,6 +46,14 @@ $headerColor = $organizationColor;
 $ownerOrganization = new \dbObject\Organization();
 if ($ownerOrganization->load($parcoursRef->getOwnerOrganizationId())) {
 	$headerColor = commonGetOrganizationExplicitColor(['color' => $ownerOrganization->get('color')]);
+	if ($user_id <= 0) {
+		$lmsTopbarBrand = [
+			'brandLabel' => (string)$ownerOrganization->get('name'),
+			'brandLogo' => (string)$ownerOrganization->get('logo'),
+			'brandAlt' => (string)$ownerOrganization->get('name'),
+			'showBrandLabelOnMobile' => true,
+		];
+	}
 }
 require_once dirname(__DIR__, 3) . '/common/avatar.php';
 $headerTextColor = $headerColor !== '' ? commonAvatarResolveTextColor($headerColor) : '#ffffff';

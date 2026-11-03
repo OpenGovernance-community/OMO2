@@ -167,6 +167,8 @@
 		public const STRUCTURE_DISPLAY_SETTINGS_PARAMETER = 'structureDisplay';
 		public const CALENDAR_SETTINGS_PARAMETER = 'calendar';
 		public const DEFAULT_CALENDAR_SETTINGS = ['dayStart' => '09:00', 'dayEnd' => '17:00'];
+		public const TUTORIAL_SETTINGS_PARAMETER = 'tutorials';
+		public const DEFAULT_TUTORIAL_SETTINGS = ['customVideoLayout' => false, 'videoMask' => '/omo/api/lms/branding-client.png'];
 		protected $lastDeleteError = '';
 		protected static $omo1ImportJournal = null;
 
@@ -456,6 +458,41 @@
 		public function getTransferConfigurationParameters(): array
 		{
 			return array_intersect_key($this->getLexiconParameters(), array_flip(OrganizationTransferConfiguration::ORGANIZATION_KEYS));
+		}
+
+		public static function validateTutorialSettings(array $settings): array
+		{
+			$custom = filter_var($settings['customVideoLayout'] ?? false, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+			$mask = $settings['videoMask'] ?? self::DEFAULT_TUTORIAL_SETTINGS['videoMask'];
+			if ($custom === null || !is_string($mask)) {
+				throw new \InvalidArgumentException('Invalid tutorial video settings.');
+			}
+			$mask = trim($mask);
+			if ($mask === '') $mask = self::DEFAULT_TUTORIAL_SETTINGS['videoMask'];
+			$isLocal = str_starts_with($mask, '/') && !str_starts_with($mask, '//') && !str_contains($mask, '..');
+			$isHttps = filter_var($mask, FILTER_VALIDATE_URL) && strtolower((string)parse_url($mask, PHP_URL_SCHEME)) === 'https';
+			if (strlen($mask) > 2048 || preg_match('/[\x00-\x20\\\\]/', $mask) || (!$isLocal && !$isHttps)) {
+				throw new \InvalidArgumentException('Invalid tutorial video mask URL.');
+			}
+			return ['customVideoLayout' => $custom, 'videoMask' => $mask];
+		}
+
+		public function getTutorialSettings(): array
+		{
+			$settings = $this->getLexiconParameters()[self::TUTORIAL_SETTINGS_PARAMETER] ?? [];
+			try {
+				return is_array($settings) ? self::validateTutorialSettings($settings) : self::DEFAULT_TUTORIAL_SETTINGS;
+			} catch (\InvalidArgumentException $exception) {
+				return self::DEFAULT_TUTORIAL_SETTINGS;
+			}
+		}
+
+		public function setTutorialSettings(array $settings): void
+		{
+			$settings = self::validateTutorialSettings($settings);
+			$parameters = $this->getLexiconParameters();
+			$parameters[self::TUTORIAL_SETTINGS_PARAMETER] = $settings;
+			$this->setParametersArray($parameters);
 		}
 
 		public static function validateCalendarSettings(array $settings): array

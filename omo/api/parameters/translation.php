@@ -11,6 +11,8 @@ function omoParametersIndexSourceLang()
     }
 
     $sourceLang = [
+        'parameters.index.card.tutorials.title' => ['text' => 'Tutoriels', 'context' => 'Organization tutorial settings card title.'],
+        'parameters.index.card.tutorials.description' => ['text' => "Choisir le lecteur video habituel ou le layout personnalise avec masque et couleurs de l'organisation.", 'context' => 'Organization tutorial video settings card description.'],
         'parameters.index.card.calendar.title' => ['text' => 'Calendrier', 'context' => 'Organization calendar settings card title.'],
         'parameters.index.card.calendar.description' => ['text' => 'Définir les heures de début et de fin de journée utilisées en absence d’horaires personnels actifs.', 'context' => 'Organization calendar settings card description.'],
         'parameters.index.card.security.title' => ['text' => 'Sécurité', 'context' => 'Organization security settings card title.'],

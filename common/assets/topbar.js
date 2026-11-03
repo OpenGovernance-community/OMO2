@@ -307,6 +307,11 @@
                     enhanceScrollablePanel(container);
                     if (container.id === 'commonTopbarModalBody') {
                         syncModalPanelPreferredWidth(container);
+                        var titleSource = container.querySelector('[data-topbar-modal-title]');
+                        var titleNode = document.getElementById('commonTopbarModalTitle');
+                        if (titleSource && titleNode) {
+                            titleNode.textContent = titleSource.getAttribute('data-topbar-modal-title');
+                        }
                     }
                 });
             })

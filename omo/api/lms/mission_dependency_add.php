@@ -5,6 +5,7 @@ require_once __DIR__ . '/bootstrap.php';
 commonRestoreRememberedUser();
 include __DIR__ . '/inc/org.php';
 require_once __DIR__ . '/inc/access.php';
+require_once __DIR__ . '/inc/mission_editor.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -74,4 +75,5 @@ echo json_encode([
     'status' => true,
     'success' => true,
     'message' => omoLmsUiT('prerequis_ajoute'),
+    'dependenciesHtml' => lmsRenderMissionDependencyManager($parcoursId, $missionId),
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

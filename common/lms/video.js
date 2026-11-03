@@ -48,6 +48,7 @@ function initVideoPlayer() {
     if (!iframe) return null;
 
     const videoPortal = document.querySelector('.video-portal');
+    const videoLabels = videoPortal ? videoPortal.dataset : {};
     const playBtn = document.getElementById('playBtn');
     const volumeBtn = document.getElementById('volumeBtn');
     const volumeSlider = document.getElementById('volumeSlider');
@@ -59,6 +60,15 @@ function initVideoPlayer() {
     const disableVideoControls = () => {
         if (controls) {
             controls.style.display = 'none';
+        }
+        if (iframe.getAttribute('data-video-control-mode') === 'custom') {
+            const mask = videoPortal && videoPortal.querySelector('.branding-overlay');
+            if (mask) mask.remove();
+            const nativeSrc = iframe.getAttribute('data-native-video-src');
+            if (nativeSrc) {
+                iframe.setAttribute('data-video-control-mode', 'native');
+                iframe.setAttribute('src', nativeSrc);
+            }
         }
     };
 
@@ -135,7 +145,7 @@ function initVideoPlayer() {
         }
 
         if (volumeBtn) {
-            volumeBtn.textContent = safeVolume <= 0 ? "Muet" : "Son";
+            volumeBtn.textContent = safeVolume <= 0 ? (videoLabels.labelMuted || "Muet") : (videoLabels.labelSound || "Son");
         }
 
         storeLmsVideoVolume(safeVolume);
@@ -166,11 +176,11 @@ function initVideoPlayer() {
     player.getPaused()
         .then(paused => {
             isPaused = !!paused;
-            playBtn.textContent = isPaused ? "Lire" : "Pause";
+            playBtn.textContent = isPaused ? (videoLabels.labelPlay || "Lire") : (videoLabels.labelPause || "Pause");
         })
         .catch(() => {
             isPaused = true;
-            playBtn.textContent = "Lire";
+            playBtn.textContent = videoLabels.labelPlay || "Lire";
         });
 
     playBtn.addEventListener('click', () => {
@@ -232,12 +242,12 @@ function initVideoPlayer() {
 
     player.on('play', () => {
         isPaused = false;
-        playBtn.textContent = "Pause";
+        playBtn.textContent = videoLabels.labelPause || "Pause";
     });
 
     player.on('pause', () => {
         isPaused = true;
-        playBtn.textContent = "Lire";
+        playBtn.textContent = videoLabels.labelPlay || "Lire";
     });
 
     progressvideo.addEventListener('click', e => {

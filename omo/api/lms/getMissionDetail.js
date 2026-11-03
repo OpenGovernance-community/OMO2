@@ -2,6 +2,7 @@ window.commonPageScripts = window.commonPageScripts || {};
 window.commonPageScripts["/omo/api/lms/getMissionDetail.js"] = function (pageConfig, pageScript) {
 (() => {
 	const lmsMissionText = pageConfig.lmsMissionText;
+	const notify = window.omoNotify || window.commonNotify;
 
 	function formatMissionText(template, replace) {
 		let output = String(template || '');
@@ -19,6 +20,7 @@ window.commonPageScripts["/omo/api/lms/getMissionDetail.js"] = function (pageCon
 	let currentIndex = 0;
 	let currentMission = null;
 	let quizMode = false;
+	let isCheckingAnswer = false;
 	const lmsMissionId = pageConfig.lmsMissionId;
 	const lmsMissionViewerCanTrack = pageConfig.lmsMissionViewerCanTrack;
 	const lmsMissionViewerIsAnonymous = pageConfig.lmsMissionViewerIsAnonymous;
@@ -253,7 +255,7 @@ window.commonPageScripts["/omo/api/lms/getMissionDetail.js"] = function (pageCon
 			updateMissionValidationState();
 		})
 		.catch(() => {
-			window.omoNotify(String(lmsMissionText.alertSaveHomework || ''), 'error');
+			notify(String(lmsMissionText.alertSaveHomework || ''), 'error');
 		});
 	}
 
@@ -269,9 +271,13 @@ window.commonPageScripts["/omo/api/lms/getMissionDetail.js"] = function (pageCon
 				parcours_id: parcoursId
 			}
 		))
-			.then(res => res.json())
+			.then(res => {
+				if (!res.ok) throw new Error('quiz_load_failed');
+				return res.json();
+			})
 			.then(data => {
-				if (!data || data.length === 0) {
+				if (!Array.isArray(data)) throw new Error('invalid_quiz');
+				if (data.length === 0) {
 					completeMission();
 					return;
 				}
@@ -284,7 +290,7 @@ window.commonPageScripts["/omo/api/lms/getMissionDetail.js"] = function (pageCon
 			.catch(() => {
 				quizMode = false;
 				updateMissionValidationState();
-				window.omoNotify(String(lmsMissionText.alertLoadQuiz || ''), 'error');
+				notify(String(lmsMissionText.alertLoadQuiz || ''), 'error');
 			});
 	}
 
@@ -332,41 +338,47 @@ window.commonPageScripts["/omo/api/lms/getMissionDetail.js"] = function (pageCon
 		}
 	}
 
-	function submitAnswer() {
-		let inputs = document.querySelectorAll('input[name="qcm"]:checked');
-		let selected = Array.from(inputs).map(i => i.value);
-
-		if (selected.length === 0) {
-			window.omoNotify(String(lmsMissionText.quizSelectAnswer || ''), 'warning');
-			return;
-		}
-
-		fetch('checkAnswer.php', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ choices: selected })
-		})
-		.then(res => res.json())
-		.then(data => {
-			if (data.correct) {
-				currentIndex++;
-
-				if (currentIndex >= currentQuestions.length) {
-					completeMission();
-				} else {
-					showQuestion();
-				}
-			} else {
-				window.omoNotify(String(lmsMissionText.quizWrongAnswer || ''), 'warning');
-			}
-		});
-	}
+	async function submitAnswer() {
+        if (isCheckingAnswer || !currentQuestions[currentIndex]) return;
+        const selected = Array.from(document.querySelectorAll('input[name="qcm"]:checked')).map(input => input.value);
+        if (selected.length === 0) {
+            notify(String(lmsMissionText.quizSelectAnswer || ''), 'warning');
+            return;
+        }
+        const doneBtn = document.getElementById('doneBtn');
+        isCheckingAnswer = true;
+        doneBtn.disabled = true;
+        let advanced = false;
+        try {
+            const response = await fetch(pageConfig.checkAnswerUrl, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({choices: selected, question_id: currentQuestions[currentIndex].id, mission_id: currentMission || lmsMissionId, parcours_id: parcoursId})
+            });
+            if (!response.ok) throw new Error('answer_check_failed');
+            const data = await response.json();
+            if (typeof data.correct !== 'boolean') throw new Error('invalid_answer_result');
+            if (data.correct) {
+                advanced = true;
+                currentIndex++;
+                if (currentIndex >= currentQuestions.length) completeMission();
+                else showQuestion();
+            } else {
+                notify(String(lmsMissionText.quizWrongAnswer || ''), 'warning');
+            }
+        } catch (error) {
+            notify(String(lmsMissionText.alertCheckAnswer || ''), 'error');
+        } finally {
+            isCheckingAnswer = false;
+            if (!advanced && doneBtn.isConnected) doneBtn.disabled = false;
+        }
+    }
 
 	function completeMission() {
 		const missionId = currentMission || lmsMissionId || currentMissionId;
 
 		if (!missionId) {
-			window.omoNotify(String(lmsMissionText.notFound || ''), 'error');
+			notify(String(lmsMissionText.notFound || ''), 'error');
 			return;
 		}
 
@@ -393,7 +405,7 @@ window.commonPageScripts["/omo/api/lms/getMissionDetail.js"] = function (pageCon
 		.catch(() => {
 			quizMode = false;
 			updateMissionValidationState();
-			window.omoNotify(String(lmsMissionText.alertValidateMission || ''), 'error');
+			notify(String(lmsMissionText.alertValidateMission || ''), 'error');
 		});
 	}
 

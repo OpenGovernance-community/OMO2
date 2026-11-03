@@ -13,7 +13,8 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
             const page = await browser.newPage({viewport: {width, height: 850}});
             const errors = [];
             page.on('pageerror', error => errors.push(error.message));
-            await page.route('https://omo.test/**', route => route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({
+            await page.route('https://omo.test/news', route => route.fulfill({status: 200, contentType: 'text/html', body: read('tmp/site-update-news-rendered.html')}));
+            await page.route('https://omo.test/**', route => route.request().url() === 'https://omo.test/news' ? route.fallback() : route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({
                 status: true, supported: true, available: true, behindCount: 8,
                 message: '8 updates available', changelogTitle: 'Modifications de la mise a jour',
                 changelogHtml: '<section class="generic-section"><h2>Bug fixes</h2><ul><li>New features</li></ul></section>'
@@ -24,6 +25,7 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
                 + '<div class="common-topbar-modal__panel"><div class="common-topbar-modal__header"><h3 id="commonTopbarModalTitle"></h3>'
                 + '<button data-topbar-modal-close>Close</button></div><div id="commonTopbarModalBody" class="common-topbar-modal__body"></div></div></div></body></html>');
             await page.addStyleTag({content: read('common/assets/components.css') + read('common/assets/topbar.css')});
+            await page.addScriptTag({content: read('common/assets/components.js')});
             await page.addScriptTag({content: read('common/assets/topbar.js')});
             await page.addScriptTag({content: read('omo/assets/js/site-update.js')});
             await page.evaluate(() => window.omoInitSiteUpdateCheck({enabled: true, statusUrl: '/status', runUrl: '/run'}));
@@ -39,6 +41,14 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
             await page.screenshot({path: path.join(root, `tmp/site-update-popup-${width}.png`)});
             await page.locator('#commonTopbarModal [data-topbar-modal-close]').last().click();
             assert.equal(await page.locator('#commonTopbarModal').getAttribute('hidden'), '');
+            await page.evaluate(() => {
+                window.commonTopbarOpenModal('', '/news', 'fetch');
+            });
+            await page.waitForFunction(() => document.getElementById('commonTopbarModalTitle').textContent === 'Nouveautes du site - 03.11.2026');
+            assert.equal(await page.locator('#commonTopbarModalBody li').count(), 2);
+            assert.equal(await page.locator('#commonTopbarModalBody h2').count(), 1);
+            assert(!(await page.locator('#commonTopbarModalBody').innerText()).includes('Nouveautes du site - 03.11.2026'));
+            await page.screenshot({path: path.join(root, `tmp/site-update-news-clean-${width}.png`)});
             assert.deepEqual(errors, []);
             await page.close();
         }

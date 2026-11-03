@@ -9,6 +9,7 @@ window.commonPageScripts["/lms/mission-detail.js"] = function (pageConfig, pageS
 	let currentIndex = 0;
 	let currentMission = null;
 	let quizMode = false;
+	let isCheckingAnswer = false;
 	const lmsMissionId = pageConfig.lmsMissionId;
 	const lmsMissionViewerCanTrack = pageConfig.lmsMissionViewerCanTrack;
 	const lmsMissionViewerIsAnonymous = pageConfig.lmsMissionViewerIsAnonymous;
@@ -250,10 +251,14 @@ window.commonPageScripts["/lms/mission-detail.js"] = function (pageConfig, pageS
 		quizMode = true;
 		renderHomeworkList();
 
-		fetch(`getMissionQuestions.php?mission_id=${missionId}`)
-			.then(res => res.json())
+		fetch(pageConfig.questionsUrl + '&mission_id=' + encodeURIComponent(missionId) + '&parcours_id=' + encodeURIComponent(parcoursId))
+			.then(res => {
+				if (!res.ok) throw new Error('quiz_load_failed');
+				return res.json();
+			})
 			.then(data => {
-				if (!data || data.length === 0) {
+				if (!Array.isArray(data)) throw new Error('invalid_quiz');
+				if (data.length === 0) {
 					completeMission();
 					return;
 				}
@@ -314,35 +319,41 @@ window.commonPageScripts["/lms/mission-detail.js"] = function (pageConfig, pageS
 		}
 	}
 
-	function submitAnswer() {
-		let inputs = document.querySelectorAll('input[name="qcm"]:checked');
-		let selected = Array.from(inputs).map(i => i.value);
-
-		if (selected.length === 0) {
-			(typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, 'Veuillez sélectionner une réponse.', 'error');
-			return;
-		}
-
-		fetch('checkAnswer.php', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ choices: selected })
-		})
-		.then(res => res.json())
-		.then(data => {
-			if (data.correct) {
-				currentIndex++;
-
-				if (currentIndex >= currentQuestions.length) {
-					completeMission();
-				} else {
-					showQuestion();
-				}
-			} else {
-				(typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, 'Mauvaise réponse.', 'error');
-			}
-		});
-	}
+	async function submitAnswer() {
+        if (isCheckingAnswer || !currentQuestions[currentIndex]) return;
+        const selected = Array.from(document.querySelectorAll('input[name="qcm"]:checked')).map(input => input.value);
+        if (selected.length === 0) {
+            (typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window,'Veuillez selectionner une reponse.', 'warning');
+            return;
+        }
+        const doneBtn = document.getElementById('doneBtn');
+        isCheckingAnswer = true;
+        doneBtn.disabled = true;
+        let advanced = false;
+        try {
+            const response = await fetch(pageConfig.checkAnswerUrl, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({choices: selected, question_id: currentQuestions[currentIndex].id, mission_id: currentMission || lmsMissionId, parcours_id: parcoursId})
+            });
+            if (!response.ok) throw new Error('answer_check_failed');
+            const data = await response.json();
+            if (typeof data.correct !== 'boolean') throw new Error('invalid_answer_result');
+            if (data.correct) {
+                advanced = true;
+                currentIndex++;
+                if (currentIndex >= currentQuestions.length) completeMission();
+                else showQuestion();
+            } else {
+                (typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window,'Mauvaise reponse.', 'warning');
+            }
+        } catch (error) {
+            (typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window,pageConfig.checkAnswerError, 'error');
+        } finally {
+            isCheckingAnswer = false;
+            if (!advanced && doneBtn.isConnected) doneBtn.disabled = false;
+        }
+    }
 
 	function completeMission() {
 		const missionId = currentMission || lmsMissionId || currentMissionId;
@@ -354,7 +365,7 @@ window.commonPageScripts["/lms/mission-detail.js"] = function (pageConfig, pageS
 
 		const doneHomeworkIds = getHomeworkDoneIds();
 
-		fetch('action.php', {
+		fetch(pageConfig.actionUrl, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
 			body: `mission_id=${encodeURIComponent(missionId)}&parcours_id=${encodeURIComponent(parcoursId)}&done_homework_ids=${encodeURIComponent(doneHomeworkIds.join(','))}`
