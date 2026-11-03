@@ -57,6 +57,23 @@ foreach ($catalogItems ?: [] as $catalogItem) {
 	$catalogUrl = lmsBuildLocalPath('/', ['embed' => $isEmbedded ? 1 : null, 'done_parcours_ids' => $completedParcoursIds ? implode(',', $completedParcoursIds) : null]);
 	break;
 }
+$packUrl = '';
+$parentPackId = (int)($_GET['pack_id'] ?? 0);
+if ($parentPackId > 0 && !$parcoursRef->isPack()) {
+	$parentPack = new \dbObject\Parcours();
+	$packLink = new \dbObject\ParcoursParcours();
+	if ($parentPack->load($parentPackId) && $parentPack->isPack()
+		&& $packLink->load([['IDparcours_parent', $parentPackId], ['IDparcours_child', $parcours_id]])) {
+		$packAccess = lmsGetParcoursAccessContext((int)$org['id'], $parentPackId, $user_id);
+		if (!empty($packAccess['canView'])) {
+			$packUrl = lmsBuildLocalPath('/parcours.php', [
+				'idp' => $parentPackId,
+				'embed' => $isEmbedded ? 1 : null,
+				'done_parcours_ids' => $completedParcoursIds ? implode(',', $completedParcoursIds) : null,
+			]);
+		}
+	}
+}
 $organizationColor = commonGetOrganizationExplicitColor($org);
 $headerColor = $organizationColor;
 $ownerOrganization = new \dbObject\Organization();
@@ -107,7 +124,7 @@ $headerTextColor = $headerColor !== '' ? commonAvatarResolveTextColor($headerCol
 <?php if (!$isEmbedded): ?>
 <?php include 'inc/menu.php'; ?>
 <header class="org-banner org-banner--compact" style="background-color: <?= htmlspecialchars($headerColor !== '' ? $headerColor : 'var(--primary)', ENT_QUOTES, 'UTF-8') ?>; color: <?= htmlspecialchars($headerTextColor, ENT_QUOTES, 'UTF-8') ?>">
-<?php commonLmsRenderCatalogBackLink($catalogUrl); ?>
+<?php commonLmsRenderCatalogBackLink($catalogUrl, $packUrl); ?>
 <h1><?php echo htmlspecialchars($parcours['title']); ?></h1>
 <?php if ($parcours['description'] !== ''): ?>
 <p><?php echo htmlspecialchars($parcours['description']); ?></p>

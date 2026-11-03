@@ -63,12 +63,10 @@ foreach ($missions as $m) {
 	echo "<div class='card-content'>";
 	echo "<h3>" . htmlspecialchars($m['title']) . "</h3>";
 	echo "<p>" . htmlspecialchars($m['resume']) . "</p>";
-	echo "<div class='card-footer'>";
 	echo "<span class='card-meta'>" . $meta . "</span>";
-	echo "<div class='generic-action-row generic-action-row--nowrap'>";
+	echo "<div class='card-footer'>";
 	commonLmsRenderContentIndicators($contentIndicators[(int)$m['id']] ?? []);
 	echo "<button type='button' class='open-btn' onclick='event.stopPropagation(); viewMission(" . (int)$m['id'] . ")'>Ouvrir</button>";
-	echo "</div>";
 	echo "</div>";
 	echo "</div>";
 	echo "</div>";

@@ -40,7 +40,7 @@ $contentIndicators = \dbObject\Parcours::fetchContentIndicators(array_column($pa
 <div class="content lms-parcours-content<?php echo $isEmbedded ? ' lms-parcours-content--embed' : ''; ?>">
 <?php if ($isEmbedded): ?>
     <div class="lms-parcours-embed-header">
-        <?php commonLmsRenderCatalogBackLink($catalogUrl ?? ''); ?>
+        <?php commonLmsRenderCatalogBackLink($catalogUrl ?? '', $packUrl ?? ''); ?>
         <h1><?php echo htmlspecialchars($parcours['title']); ?></h1>
         <?php if ($parcours['description'] !== ''): ?>
             <p><?php echo htmlspecialchars($parcours['description']); ?></p>

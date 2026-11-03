@@ -55,12 +55,10 @@ foreach ($missions as $m) {
 	echo "<div class='card-content'>";
 	echo "<h3>" . htmlspecialchars($m['title']) . "</h3>";
 	echo "<p>" . htmlspecialchars($m['resume']) . "</p>";
-	echo "<div class='card-footer'>";
 	echo ('<span class=\'card-meta\'>' . htmlspecialchars(omoLmsUiT('verrouillee'), ENT_QUOTES, 'UTF-8') . '</span>');
-	echo "<div class='generic-action-row generic-action-row--nowrap'>";
+	echo "<div class='card-footer'>";
 	commonLmsRenderContentIndicators($contentIndicators[(int)$m['id']] ?? []);
 	echo ('<button type=\'button\' disabled>' . htmlspecialchars(omoLmsUiT('verrouille'), ENT_QUOTES, 'UTF-8') . '</button>');
-	echo "</div>";
 	echo "</div>";
 	echo "</div>";
 	echo "</div>";

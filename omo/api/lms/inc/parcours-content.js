@@ -43,6 +43,7 @@ function goToPackChildParcours(parcoursId) {
         window.lmsParcoursPageConfig.text,
         {
             idp: parcoursId,
+            pack_id: window.lmsParcoursPageConfig.parcoursId,
             embed: window.lmsParcoursPageConfig.embed,
             done_parcours_ids: (function () {
                 if (typeof getAnonymousCompletedParcoursIds !== 'function') {
