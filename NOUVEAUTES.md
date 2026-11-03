@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- PV / synchronisation en arriere-plan (2026-11-03) : suspension des verifications serveur lorsque l onglet est masque, la fenetre perd le focus ou le PV est replie dans OMO. Verification immediate au retour, sans perdre les modifications locales ni multiplier les appels lors des evenements de reprise.
+
 - Tutoriels / titre du catalogue (2026-11-03) : suppression de l entete en double dans le catalogue integre. Le nom de l organisation figure dans le titre du drawer OMO, sous la forme Tutoriels suivi du nom ; le grand titre centre du catalogue est conserve.
 
 - Tutoriels / retour au pack (2026-11-03) : un parcours ouvert depuis un pack affiche Retour au catalogue puis Retour au pack, sans soulignement sur les deux liens. Le lien conserve le contexte public ou organisation et le mode integre ; il apparait uniquement pour un pack lie au parcours et accessible.
