@@ -5,6 +5,7 @@ require_once __DIR__ . '/bootstrap.php';
 commonRestoreRememberedUser();
 include __DIR__ . '/inc/org.php';
 require_once __DIR__ . '/inc/access.php';
+require_once dirname(__DIR__, 3) . '/common/lms/content-indicators.php';
 
 $parcours_id = (int)($_GET['parcours_id'] ?? 0);
 $accessContext = lmsGetParcoursAccessContext((int)$org['id'], $parcours_id);
@@ -25,6 +26,7 @@ $missions = lmsIsAnonymousViewer($accessContext)
 	? \dbObject\Mission::fetchLockedForMissionIds($parcours_id, lmsGetAnonymousDoneMissionIds())
 	: \dbObject\Mission::fetchLockedForUserParcours((int)$accessContext['userId'], $parcours_id);
 $missions = is_array($missions) ? $missions : [];
+$contentIndicators = \dbObject\Mission::fetchContentIndicators(array_column($missions, 'id'));
 
 ob_start();
 
@@ -55,7 +57,10 @@ foreach ($missions as $m) {
 	echo "<p>" . htmlspecialchars($m['resume']) . "</p>";
 	echo "<div class='card-footer'>";
 	echo ('<span class=\'card-meta\'>' . htmlspecialchars(omoLmsUiT('verrouillee'), ENT_QUOTES, 'UTF-8') . '</span>');
+	echo "<div class='generic-action-row generic-action-row--nowrap'>";
+	commonLmsRenderContentIndicators($contentIndicators[(int)$m['id']] ?? []);
 	echo ('<button type=\'button\' disabled>' . htmlspecialchars(omoLmsUiT('verrouille'), ENT_QUOTES, 'UTF-8') . '</button>');
+	echo "</div>";
 	echo "</div>";
 	echo "</div>";
 	echo "</div>";

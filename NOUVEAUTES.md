@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- Tutoriels / icones des missions (2026-11-03) : indicateurs video, devoirs et quiz sur les missions disponibles, terminees et verrouillees. Sur les parcours et les packs, icones blanches en bas a gauche de l image, avec un bandeau compact si aucune image n est definie.
+
 - Tutoriels / contenu des parcours (2026-11-03) : icones video, devoirs et quiz a cote du bouton Ouvrir dans les catalogues et les packs. Noir si le contenu est present, gris tres clair sinon, avec une infobulle descriptive. Les packs regroupent le contenu de leurs parcours.
 
 - Tutoriels / retour au catalogue (2026-11-03) : lien Retour au catalogue au-dessus du titre du parcours, sur les pages publiques et dans les iframes. Le contexte public ou organisation, le mode integre et les prerequis termines sont conserves ; le lien est masque en l absence de catalogue accessible.

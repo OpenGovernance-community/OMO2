@@ -222,11 +222,7 @@ if (!$isEmbedded) {
             </div>
         </div>
     <?php endif; ?>
-    <?php if (!empty($p['image'])): ?>
-        <div class="card-image">
-            <img src="<?php echo htmlspecialchars($p['image']); ?>" alt="">
-        </div>
-    <?php endif; ?>
+    <?php commonLmsRenderParcoursCover($p, $contentIndicators[(int)$p['id']] ?? []); ?>
 
     <div class="card-content">
         <h3><?php echo htmlspecialchars($p['title']); ?></h3>
@@ -238,10 +234,7 @@ if (!$isEmbedded) {
 
         <div class="card-footer">
             <div class="progress-circle" data-percent="<?php echo (int)$percent; ?>"></div>
-            <div class="generic-action-row generic-action-row--nowrap">
-                <?php commonLmsRenderContentIndicators($contentIndicators[(int)$p['id']] ?? []); ?>
-                <button class="open-btn"<?php echo $isVisibleParcours ? '' : ' type="button" disabled'; ?>><?php echo htmlspecialchars($isVisibleParcours ? lmsIndexT('lms.index.card.open') : lmsIndexT('lms.index.card.hidden')); ?></button>
-            </div>
+            <button class="open-btn"<?php echo $isVisibleParcours ? '' : ' type="button" disabled'; ?>><?php echo htmlspecialchars($isVisibleParcours ? lmsIndexT('lms.index.card.open') : lmsIndexT('lms.index.card.hidden')); ?></button>
         </div>
     </div>
 </div>
@@ -328,11 +321,7 @@ if (!$isEmbedded) {
                 </div>
             </div>
         <?php endif; ?>
-        <?php if (!empty($p['image'])): ?>
-            <div class="card-image">
-                <img src="<?php echo htmlspecialchars($p['image']); ?>" alt="">
-            </div>
-        <?php endif; ?>
+        <?php commonLmsRenderParcoursCover($p, $contentIndicators[(int)$p['id']] ?? []); ?>
 
         <div class="card-content">
             <h3><?php echo htmlspecialchars($p['title']); ?></h3>
@@ -344,10 +333,7 @@ if (!$isEmbedded) {
 
             <div class="card-footer">
                 <div class="progress-circle" data-percent="<?php echo (int)$percent; ?>"></div>
-                <div class="generic-action-row generic-action-row--nowrap">
-                    <?php commonLmsRenderContentIndicators($contentIndicators[(int)$p['id']] ?? []); ?>
-                    <button class="open-btn"<?php echo $isVisibleParcours ? '' : ' type="button" disabled'; ?>><?php echo htmlspecialchars($isVisibleParcours ? lmsIndexT('lms.index.card.open') : lmsIndexT('lms.index.card.hidden')); ?></button>
-                </div>
+                <button class="open-btn"<?php echo $isVisibleParcours ? '' : ' type="button" disabled'; ?>><?php echo htmlspecialchars($isVisibleParcours ? lmsIndexT('lms.index.card.open') : lmsIndexT('lms.index.card.hidden')); ?></button>
             </div>
         </div>
     </div>
@@ -407,11 +393,7 @@ if (!$isEmbedded) {
                 </div>
             </div>
         <?php endif; ?>
-        <?php if (!empty($p['image'])): ?>
-            <div class="card-image">
-                <img src="<?php echo htmlspecialchars($p['image']); ?>" alt="">
-            </div>
-        <?php endif; ?>
+        <?php commonLmsRenderParcoursCover($p, $contentIndicators[(int)$p['id']] ?? []); ?>
 
         <div class="card-content">
             <div class="card-create-kicker"><?php echo htmlspecialchars(lmsIndexT('lms.index.pack.kicker')); ?></div>
@@ -424,10 +406,7 @@ if (!$isEmbedded) {
 
             <div class="card-footer">
                 <div class="progress-circle" data-percent="<?php echo (int)$percent; ?>"></div>
-                <div class="generic-action-row generic-action-row--nowrap">
-                    <?php commonLmsRenderContentIndicators($contentIndicators[(int)$p['id']] ?? []); ?>
-                    <button class="open-btn"<?php echo $isVisibleParcours ? '' : ' type="button" disabled'; ?>><?php echo htmlspecialchars($isVisibleParcours ? lmsIndexT('lms.index.card.open') : lmsIndexT('lms.index.card.hidden')); ?></button>
-                </div>
+                <button class="open-btn"<?php echo $isVisibleParcours ? '' : ' type="button" disabled'; ?>><?php echo htmlspecialchars($isVisibleParcours ? lmsIndexT('lms.index.card.open') : lmsIndexT('lms.index.card.hidden')); ?></button>
             </div>
         </div>
     </div>

@@ -73,6 +73,29 @@
 			return self::tableExists('mission_homework');
 		}
 
+		public static function fetchContentIndicators(array $missionIds): array
+		{
+			$missionIds = array_values(array_unique(array_filter(array_map('intval', $missionIds), static fn($id) => $id > 0)));
+			if (!$missionIds) return [];
+			$homeworkSql = self::hasMissionHomeworkTable()
+				? 'EXISTS (SELECT 1 FROM mission_homework mh INNER JOIN homework h ON h.id = mh.IDhomework WHERE mh.IDmission = m.id)'
+				: '0';
+			$quizSql = self::hasMissionQuestionTable()
+				? 'EXISTS (SELECT 1 FROM mission_question mq INNER JOIN question q ON q.id = mq.IDquestion WHERE mq.IDmission = m.id)'
+				: '0';
+			// Only normalized positive integers are included in this bulk query.
+			$rows = self::fetchAll(
+				"SELECT m.id, TRIM(COALESCE(m.video, '')) <> '' AS has_video,
+					$homeworkSql AS has_homework, $quizSql AS has_quiz
+				FROM mission m WHERE m.id IN (" . implode(',', $missionIds) . ")"
+			);
+			$indicators = [];
+			foreach ($rows ?: [] as $row) {
+				$indicators[(int)$row['id']] = ['video' => (bool)$row['has_video'], 'homework' => (bool)$row['has_homework'], 'quiz' => (bool)$row['has_quiz']];
+			}
+			return $indicators;
+		}
+
 		public function getQuizCount() {
 			if (!self::hasMissionQuestionTable()) {
 				return 0;

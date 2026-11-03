@@ -6,6 +6,7 @@ require_once BASE_PATH . '/common/auth.php';
 commonRestoreRememberedUser();
 include __DIR__ . '/inc/org.php';
 require_once __DIR__ . '/inc/access.php';
+require_once BASE_PATH . '/common/lms/content-indicators.php';
 
 $parcours_id = (int)($_GET['parcours_id'] ?? 0);
 $accessContext = lmsGetParcoursAccessContext((int)$org['id'], $parcours_id);
@@ -27,6 +28,7 @@ $missions = $isAnonymousViewer
 	? \dbObject\Mission::fetchDoneForMissionIds($parcours_id, lmsGetAnonymousDoneMissionIds())
 	: \dbObject\Mission::fetchDoneForUserParcours((int)$accessContext['userId'], $parcours_id);
 $missions = is_array($missions) ? $missions : [];
+$contentIndicators = \dbObject\Mission::fetchContentIndicators(array_column($missions, 'id'));
 
 ob_start();
 
@@ -63,7 +65,10 @@ foreach ($missions as $m) {
 	echo "<p>" . htmlspecialchars($m['resume']) . "</p>";
 	echo "<div class='card-footer'>";
 	echo "<span class='card-meta'>" . $meta . "</span>";
+	echo "<div class='generic-action-row generic-action-row--nowrap'>";
+	commonLmsRenderContentIndicators($contentIndicators[(int)$m['id']] ?? []);
 	echo "<button type='button' class='open-btn' onclick='event.stopPropagation(); viewMission(" . (int)$m['id'] . ")'>Ouvrir</button>";
+	echo "</div>";
 	echo "</div>";
 	echo "</div>";
 	echo "</div>";

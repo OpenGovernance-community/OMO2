@@ -23,3 +23,37 @@
 .lms-content-indicators__item.is-present img {
     opacity: 1;
 }
+
+.lms-content-indicators--inverse .lms-content-indicators__item img {
+    filter: brightness(0) invert(1);
+    opacity: 0.28;
+}
+
+.lms-content-indicators--inverse .lms-content-indicators__item.is-present img {
+    opacity: 1;
+}
+
+.lms-parcours-cover {
+    position: relative;
+}
+
+.lms-parcours-cover::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(transparent 30%, rgba(0, 0, 0, 0.7));
+    pointer-events: none;
+}
+
+.lms-parcours-cover > .lms-content-indicators {
+    position: absolute;
+    bottom: 10px;
+    left: 12px;
+    z-index: 1;
+}
+
+.card-image.lms-parcours-cover--empty {
+    aspect-ratio: auto;
+    min-height: 48px;
+    background: var(--primary, var(--color-primary, #004663));
+}

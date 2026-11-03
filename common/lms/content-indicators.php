@@ -1,7 +1,7 @@
 <?php
 require_once dirname(__DIR__) . '/translation_bundles.php';
 
-function commonLmsRenderContentIndicators(array $indicators): void
+function commonLmsRenderContentIndicators(array $indicators, bool $inverse = false): void
 {
     static $lang = null;
     $sourceLang = [
@@ -14,7 +14,7 @@ function commonLmsRenderContentIndicators(array $indicators): void
     ];
     $lang ??= loadTranslationBundle('lms_content_indicators', translationBundleResolveRequestLocale('lang'), $sourceLang);
     ?>
-    <span class="lms-content-indicators">
+    <span class="lms-content-indicators<?= $inverse ? ' lms-content-indicators--inverse' : '' ?>">
         <?php foreach (['video', 'homework', 'quiz'] as $feature):
             $present = !empty($indicators[$feature]);
             $label = t($feature . ($present ? '.present' : '.absent'), [], $lang, $sourceLang);
@@ -24,5 +24,18 @@ function commonLmsRenderContentIndicators(array $indicators): void
             </span>
         <?php endforeach; ?>
     </span>
+    <?php
+}
+
+function commonLmsRenderParcoursCover(array $parcours, array $indicators): void
+{
+    $image = trim((string)($parcours['image'] ?? ''));
+    ?>
+    <div class="card-image lms-parcours-cover<?= $image === '' ? ' lms-parcours-cover--empty' : '' ?>">
+        <?php if ($image !== ''): ?>
+            <img src="<?= htmlspecialchars($image, ENT_QUOTES, 'UTF-8') ?>" alt="">
+        <?php endif; ?>
+        <?php commonLmsRenderContentIndicators($indicators, true); ?>
+    </div>
     <?php
 }

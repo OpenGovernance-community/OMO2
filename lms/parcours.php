@@ -86,6 +86,7 @@ $organizationColor = commonGetOrganizationExplicitColor($org);
 	<?php require BASE_PATH . '/common/lms/notifications.php'; ?>
 	<link rel="stylesheet" href="/lms/css/std.css">
 	<link rel="stylesheet" href="<?= commonAssetUrl('/common/lms/navigation.css') ?>">
+	<link rel="stylesheet" href="<?= commonAssetUrl('/common/lms/content-indicators.css') ?>">
 	<script src="<?= commonAssetUrl('/common/assets/components.js') ?>"></script>
 	<script src="/shared_functions.js"></script>
 	<script>

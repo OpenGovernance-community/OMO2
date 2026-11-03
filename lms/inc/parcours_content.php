@@ -13,9 +13,6 @@ $packChildren = $isPackParcours
     : [];
 $contentIndicators = \dbObject\Parcours::fetchContentIndicators(array_column($packChildren, 'id'));
 ?>
-<?php if ($isPackParcours): ?>
-<link rel="stylesheet" href="<?= commonAssetUrl('/common/lms/content-indicators.css') ?>">
-<?php endif; ?>
 <div class="content lms-parcours-content<?php echo $isEmbedded ? ' lms-parcours-content--embed' : ''; ?>">
 <?php if ($isEmbedded): ?>
     <div class="lms-parcours-embed-header">
@@ -52,6 +49,7 @@ $contentIndicators = \dbObject\Parcours::fetchContentIndicators(array_column($pa
                 $isPreviewOnly = $showAdminPreviewCards && lmsParcoursIsPreviewOnly($childParcours);
                 ?>
                 <div class="card<?php echo $isPreviewOnly ? ' is-preview-only' : ''; ?>" onclick="<?php echo $isPreviewOnly ? 'return false;' : 'goToPackChildParcours(' . (int)($childParcours['id'] ?? 0) . ')'; ?>">
+                    <?php commonLmsRenderParcoursCover($childParcours, $contentIndicators[(int)$childParcours['id']] ?? []); ?>
                     <div class="card-content">
                         <h3><?php echo htmlspecialchars((string)($childParcours['title'] ?? '')); ?></h3>
                         <?php if (trim((string)($childParcours['description'] ?? '')) !== ''): ?>
@@ -59,12 +57,9 @@ $contentIndicators = \dbObject\Parcours::fetchContentIndicators(array_column($pa
                         <?php endif; ?>
                         <div class="card-footer">
                             <span class="card-meta"><?php echo $isPreviewOnly ? htmlspecialchars(lmsParcoursPreviewLabel($childParcours)) : $percent . '% termine'; ?></span>
-                            <div class="generic-action-row generic-action-row--nowrap">
-                                <?php commonLmsRenderContentIndicators($contentIndicators[(int)$childParcours['id']] ?? []); ?>
-                                <button type="button" class="open-btn" onclick="<?php echo $isPreviewOnly ? 'return false;' : 'event.stopPropagation(); goToPackChildParcours(' . (int)($childParcours['id'] ?? 0) . ')'; ?>" <?php echo $isPreviewOnly ? 'disabled' : ''; ?>>
-                                    <?php echo $isPreviewOnly ? 'Masque' : 'Ouvrir'; ?>
-                                </button>
-                            </div>
+                            <button type="button" class="open-btn" onclick="<?php echo $isPreviewOnly ? 'return false;' : 'event.stopPropagation(); goToPackChildParcours(' . (int)($childParcours['id'] ?? 0) . ')'; ?>" <?php echo $isPreviewOnly ? 'disabled' : ''; ?>>
+                                <?php echo $isPreviewOnly ? 'Masque' : 'Ouvrir'; ?>
+                            </button>
                         </div>
                     </div>
                 </div>

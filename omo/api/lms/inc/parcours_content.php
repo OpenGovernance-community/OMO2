@@ -36,7 +36,6 @@ $contentIndicators = \dbObject\Parcours::fetchContentIndicators(array_column($pa
 ?>
 <?php if ($isPackParcours): ?>
 <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/lms/css/parcours-content.css') ?>">
-<link rel="stylesheet" href="<?= commonAssetUrl('/common/lms/content-indicators.css') ?>">
 <?php endif; ?>
 <div class="content lms-parcours-content<?php echo $isEmbedded ? ' lms-parcours-content--embed' : ''; ?>">
 <?php if ($isEmbedded): ?>
@@ -68,11 +67,7 @@ $contentIndicators = \dbObject\Parcours::fetchContentIndicators(array_column($pa
                 $isVisibleParcours = !empty($childParcours['isvisible']);
                 ?>
                 <div class="card<?php echo !$isVisibleParcours ? ' card--visibility-hidden' : ''; ?>" onclick="<?php echo $isVisibleParcours ? 'goToPackChildParcours(' . (int)($childParcours['id'] ?? 0) . ')' : ''; ?>">
-                    <?php if (!empty($childParcours['image'])): ?>
-                        <div class="card-image">
-                            <img src="<?php echo htmlspecialchars((string)$childParcours['image']); ?>" alt="">
-                        </div>
-                    <?php endif; ?>
+                    <?php commonLmsRenderParcoursCover($childParcours, $contentIndicators[(int)$childParcours['id']] ?? []); ?>
 
                     <div class="card-content">
                         <h3><?php echo htmlspecialchars((string)($childParcours['title'] ?? '')); ?></h3>
@@ -82,10 +77,7 @@ $contentIndicators = \dbObject\Parcours::fetchContentIndicators(array_column($pa
                         <?php endif; ?>
                         <div class="card-footer">
                             <div class="progress-circle" data-percent="<?php echo (int)$percent; ?>"></div>
-                            <div class="generic-action-row generic-action-row--nowrap">
-                                <?php commonLmsRenderContentIndicators($contentIndicators[(int)$childParcours['id']] ?? []); ?>
-                                <button type="button" class="open-btn" <?php echo $isVisibleParcours ? 'onclick="event.stopPropagation(); goToPackChildParcours(' . (int)($childParcours['id'] ?? 0) . ')"' : 'disabled'; ?>><?php echo htmlspecialchars($isVisibleParcours ? lmsParcoursContentT('lms.parcours_content.pack.open') : lmsParcoursContentT('lms.parcours_content.pack.hidden')); ?></button>
-                            </div>
+                            <button type="button" class="open-btn" <?php echo $isVisibleParcours ? 'onclick="event.stopPropagation(); goToPackChildParcours(' . (int)($childParcours['id'] ?? 0) . ')"' : 'disabled'; ?>><?php echo htmlspecialchars($isVisibleParcours ? lmsParcoursContentT('lms.parcours_content.pack.open') : lmsParcoursContentT('lms.parcours_content.pack.hidden')); ?></button>
                         </div>
                     </div>
                 </div>

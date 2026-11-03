@@ -101,6 +101,7 @@ $headerTextColor = $headerColor !== '' ? commonAvatarResolveTextColor($headerCol
 
 	<link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/lms/css/parcours.css') ?>">
 	<link rel="stylesheet" href="<?= commonAssetUrl('/common/lms/navigation.css') ?>">
+	<link rel="stylesheet" href="<?= commonAssetUrl('/common/lms/content-indicators.css') ?>">
 </head>
 <body class="<?php echo $isEmbedded ? 'lms-embed-mode' : ''; ?>">
 <?php if (!$isEmbedded): ?>

@@ -38,6 +38,19 @@ try {
         'IDmission' => $items['quiz_mission']->getId(), 'IDquestion' => $items['question']->getId(),
     ]);
 
+    $missionIds = [];
+    foreach (['empty', 'video', 'homework', 'quiz'] as $kind) {
+        $missionIds[$kind] = (int)$items[$kind . '_mission']->getId();
+    }
+    $missionIndicators = \dbObject\Mission::fetchContentIndicators([...array_values($missionIds), 0, -1, $missionIds['video']]);
+    mcpCheck(count($missionIndicators) === 4, 'Mission IDs must be unique and positive');
+    foreach ($missionIds as $kind => $id) {
+        foreach (['video', 'homework', 'quiz'] as $feature) {
+            mcpCheck($missionIndicators[$id][$feature] === ($kind === $feature), $kind . ': incorrect mission ' . $feature . ' indicator');
+        }
+    }
+    mcpCheck(\dbObject\Mission::fetchContentIndicators([]) === [], 'Empty mission input');
+
     $indicators = \dbObject\Parcours::fetchContentIndicators([...array_values($ids), $ids['video'], 0, -1]);
     mcpCheck(count($indicators) === count($ids), 'Duplicate and invalid IDs must be excluded');
     foreach ($ids as $kind => $id) {
@@ -50,12 +63,20 @@ try {
     // Removing the mission link must clear the indicator even if the question still exists.
     $items['question_link']->delete();
     mcpCheck(!\dbObject\Parcours::fetchContentIndicators([$ids['quiz']])[$ids['quiz']]['quiz'], 'Removed quiz link must clear its indicator');
+    mcpCheck(!\dbObject\Mission::fetchContentIndicators([$missionIds['quiz']])[$missionIds['quiz']]['quiz'], 'Removed quiz link must clear the mission indicator');
     $items['question_link'] = mcpFixture(\dbObject\MissionQuestion::class, [
         'IDmission' => $items['quiz_mission']->getId(), 'IDquestion' => $items['question']->getId(),
     ]);
     if (in_array('--browser', $argv, true)) {
         mcpCheck(parse_url(omoMcpPublicUrl(), PHP_URL_HOST) === 'localtest.me', 'Local browser fixture only');
-        echo json_encode(['origin' => omoMcpIssuer(), 'oid' => (int)$items['org']->getId(), 'ids' => $ids,
+        $items['video']->set('image', '/img/logo-OGC.png');
+        mcpCheck(!empty($items['video']->save()['status']), 'Course with a cover image');
+        foreach ($missionIds as $kind => $id) {
+            $items[$kind . '_done'] = mcpFixture(\dbObject\UserMission::class, [
+                'IDuser' => $items['user']->getId(), 'IDparcours' => $ids[$kind], 'IDmission' => $id, 'done' => new DateTime(),
+            ]);
+        }
+        echo json_encode(['origin' => omoMcpIssuer(), 'oid' => (int)$items['org']->getId(), 'ids' => $ids, 'missionIds' => $missionIds,
             'email' => $items['user']->get('email'), 'password' => $items['password']]) . "\n";
         fflush(STDOUT);
         session_write_close();

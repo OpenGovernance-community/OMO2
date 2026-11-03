@@ -371,22 +371,15 @@ $loginDrawerReturnTo = lmsBuildLocalPath('/lms/', $isEmbedded ? ['embed' => 1] :
                 data-preview-only="<?php echo $isPreviewOnly ? '1' : '0'; ?>"
                 onclick="<?php echo $isPreviewOnly ? 'return false;' : 'goToParcours(' . (int)$p['id'] . ')'; ?>"
             >
-                <?php if (!empty($p['image'])): ?>
-                <div class="card-image">
-                    <img src="<?php echo htmlspecialchars($p['image']); ?>" alt="">
-                </div>
-                <?php endif; ?>
+                <?php commonLmsRenderParcoursCover($p, $contentIndicators[(int)$p['id']] ?? []); ?>
                 <div class="card-content">
                     <h3><?php echo htmlspecialchars((string)$p['title']); ?></h3>
                     <div><?php echo htmlspecialchars((string)$p['description']); ?></div>
                     <div class="card-footer">
                         <div class="progress-circle" data-percent="<?php echo (int)$percent; ?>"></div>
-                        <div class="generic-action-row generic-action-row--nowrap">
-                            <?php commonLmsRenderContentIndicators($contentIndicators[(int)$p['id']] ?? []); ?>
-                            <button class="open-btn" type="button" <?php echo $isPreviewOnly ? 'disabled' : ''; ?>>
-                                <?php echo $isPreviewOnly ? htmlspecialchars(lmsParcoursPreviewLabel($p)) : 'Ouvrir'; ?>
-                            </button>
-                        </div>
+                        <button class="open-btn" type="button" <?php echo $isPreviewOnly ? 'disabled' : ''; ?>>
+                            <?php echo $isPreviewOnly ? htmlspecialchars(lmsParcoursPreviewLabel($p)) : 'Ouvrir'; ?>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -415,22 +408,15 @@ $loginDrawerReturnTo = lmsBuildLocalPath('/lms/', $isEmbedded ? ['embed' => 1] :
                 data-preview-only="<?php echo $isPreviewOnly ? '1' : '0'; ?>"
                 onclick="<?php echo $isPreviewOnly ? 'return false;' : 'goToParcours(' . (int)$p['id'] . ')'; ?>"
             >
-                <?php if (!empty($p['image'])): ?>
-                <div class="card-image">
-                    <img src="<?php echo htmlspecialchars($p['image']); ?>" alt="">
-                </div>
-                <?php endif; ?>
+                <?php commonLmsRenderParcoursCover($p, $contentIndicators[(int)$p['id']] ?? []); ?>
                 <div class="card-content">
                     <h3><?php echo htmlspecialchars((string)$p['title']); ?></h3>
                     <div><?php echo htmlspecialchars((string)$p['description']); ?></div>
                     <div class="card-footer">
                         <div class="progress-circle" data-percent="<?php echo (int)$percent; ?>"></div>
-                        <div class="generic-action-row generic-action-row--nowrap">
-                            <?php commonLmsRenderContentIndicators($contentIndicators[(int)$p['id']] ?? []); ?>
-                            <button class="open-btn" type="button" <?php echo $isPreviewOnly ? 'disabled' : ''; ?>>
-                                <?php echo $isPreviewOnly ? htmlspecialchars(lmsParcoursPreviewLabel($p)) : 'Ouvrir'; ?>
-                            </button>
-                        </div>
+                        <button class="open-btn" type="button" <?php echo $isPreviewOnly ? 'disabled' : ''; ?>>
+                            <?php echo $isPreviewOnly ? htmlspecialchars(lmsParcoursPreviewLabel($p)) : 'Ouvrir'; ?>
+                        </button>
                     </div>
                 </div>
             </div>
