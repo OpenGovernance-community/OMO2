@@ -26,6 +26,24 @@ updateCheck(str_contains($html, '<strong>important</strong>') && !str_contains($
 $hostileTitle = siteUpdateNewsRender(siteUpdateChangelogMarkdown([['title' => '<img src=x onerror=alert(1)> [bad](javascript:alert(1))', 'description' => '', 'number' => 2]]));
 updateCheck(!str_contains($hostileTitle, '<img') && !str_contains($hostileTitle, '<a'), 'Titles must remain literal text');
 
+$tutorialNote = 'Tutoriels publics (2026-11-03) : styles des missions isoles.';
+$syncNote = 'Synchronisation / nouveautes (2026-11-03) : nouvelles notifications.';
+$repeatedNotes = "## Journal des nouveautes\n\n- $tutorialNote\n- $syncNote\n\n"
+    . "## Descriptions GitHub et historique Git\n\n## Update tutoriel public access and MAJ (#530)\n\n"
+    . "$tutorialNote\n\n- $syncNote\n\n## Update tutoriel public access and MAJ\n";
+$cleanHtml = siteUpdateNewsRender($repeatedNotes);
+updateCheck(substr_count($cleanHtml, $tutorialNote) === 1 && substr_count($cleanHtml, $syncNote) === 1, 'Journal and PR notes appear only once in saved news');
+updateCheck(substr_count($cleanHtml, '<li>') === 2, 'Both notes retain their list markers');
+updateCheck(!str_contains($cleanHtml, 'Update tutoriel') && !str_contains($cleanHtml, 'Descriptions GitHub'), 'Remove headings whose descriptions were redundant');
+$additionalHtml = siteUpdateNewsRender($repeatedNotes . "\n\n## Other correction (#531)\n\nIndependent fix.\n");
+updateCheck(str_contains($additionalHtml, 'Other correction') && str_contains($additionalHtml, 'Independent fix.'), 'Keep information absent from the journal');
+$listHtml = siteUpdateNewsRender("## Release (#530)\n\n$tutorialNote\n\n- $syncNote\n\n## Release\n");
+updateCheck(substr_count($listHtml, '<li>') === 2 && substr_count($listHtml, '<h2>') === 1, 'Repair a copied journal list and remove the bare commit title');
+$linksHtml = siteUpdateNewsRender("- [Documentation](https://example.test/one)\n\n- [Documentation](https://example.test/two)");
+updateCheck(substr_count($linksHtml, '<li>') === 2, 'Different link destinations are distinct information');
+$nestedHtml = siteUpdateNewsRender("## Details\n\n- Main note\n  - Nested note\n\n```text\nPreserved code\n```");
+updateCheck(substr_count($nestedHtml, '<li>') === 2 && str_contains($nestedHtml, 'Preserved code'), 'Preserve nested lists and code content');
+
 $fixture = sys_get_temp_dir() . '/site-update-git-' . bin2hex(random_bytes(8));
 mkdir($fixture, 0700);
 $git = static function (array $arguments) use ($fixture): string {
@@ -101,4 +119,28 @@ try {
 }
 $missing = new SiteUpdateNews();
 updateCheck(!$missing->load([['revision', $failureRevision]]), 'No published news after notification failure');
+
+// Exercise the actual popup endpoint with a legacy, already stored description.
+$displayNews = new SiteUpdateNews();
+$displayNews->set('revision', str_repeat('d', 40));
+$displayNews->set('previous_revision', $to);
+$displayNews->set('title', 'Nouveautes du site - 03.11.2026');
+$displayNews->set('description', $repeatedNotes);
+updateCheck(!empty($displayNews->save()['status']), 'Create legacy display fixture');
+$viewer = new User();
+updateCheck($viewer->load($users['real']), 'Load popup viewer');
+if (session_status() === PHP_SESSION_ACTIVE) { session_write_close(); }
+$previousSession = $_SESSION;
+$previousGet = $_GET;
+$_SESSION = ['currentUser' => $users['real'], 'auth_security_version' => (int)$viewer->get('security_version')];
+$_GET = ['id' => $displayNews->getId()];
+ob_start();
+require dirname(__DIR__) . '/omo/api/notifications/site_update_news.php';
+$popupHtml = ob_get_clean();
+$_SESSION = $previousSession;
+$_GET = $previousGet;
+updateCheck(str_contains($popupHtml, 'data-topbar-modal-title="Nouveautes du site - 03.11.2026"'), 'Provide the title to the popup header');
+updateCheck(!str_contains(strip_tags($popupHtml), 'Nouveautes du site - 03.11.2026'), 'No repeated news title inside the body');
+updateCheck(substr_count($popupHtml, $tutorialNote) === 1 && substr_count($popupHtml, '<li>') === 2, 'Existing news endpoint uses the shared cleanup');
+file_put_contents(dirname(__DIR__) . '/tmp/site-update-news-rendered.html', $popupHtml);
 echo "site_update_news_test: OK\n";

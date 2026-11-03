@@ -93,15 +93,17 @@
 			);
 		}
 
-		public static function isSelectionCorrect($selected) {
+		public static function isSelectionCorrect($selected, $questionId = null) {
 			if (!is_array($selected) || count($selected)===0) {
 				return false;
 			}
 
-			$questionId = self::fetchValue(
-				"SELECT IDquestion FROM question_choice WHERE id = :choice_id",
-				['choice_id' => (int)$selected[0]]
-			);
+			if ($questionId === null) {
+				$questionId = self::fetchValue(
+					"SELECT IDquestion FROM question_choice WHERE id = :choice_id",
+					['choice_id' => (int)$selected[0]]
+				);
+			}
 
 			if (!$questionId) {
 				return false;

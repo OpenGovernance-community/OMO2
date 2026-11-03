@@ -86,6 +86,7 @@ if (!function_exists('omoApiCanUsePublicBasicLmsAccess')) {
             '/omo/api/lms/action.php',
             '/omo/api/lms/homework_action.php',
             '/omo/api/lms/getMissionQuestions.php',
+            '/omo/api/lms/checkAnswer.php',
         ];
 
         return in_array($requestPath, $allowedPaths, true)

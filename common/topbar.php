@@ -251,6 +251,7 @@ function commonRenderTopbar(array $options = [])
         'brandLogoHref' => (string)($options['brandLogoHref'] ?? ($options['brandHref'] ?? $brandHref)),
         'brandLabelHref' => (string)($options['brandLabelHref'] ?? ($options['brandHref'] ?? $brandHref)),
         'brandLabel' => $brandLabel,
+        'showBrandLabelOnMobile' => !empty($options['showBrandLabelOnMobile']),
         'logoutPath' => (string)($options['logoutPath'] ?? '/common/logout.php'),
         'logoutReturnTo' => commonNormalizeLocalPath($options['logoutReturnTo'] ?? ($_SERVER['REQUEST_URI'] ?? '/'), '/'),
         'search' => [
@@ -467,7 +468,7 @@ function commonRenderTopbar(array $options = [])
         $assetsLoaded = true;
     }
     ?>
-<header class="topbar common-topbar" data-app-key="<?= htmlspecialchars($config['appKey']) ?>">
+<header class="topbar common-topbar<?= $config['showBrandLabelOnMobile'] ? ' common-topbar--visible-brand' : '' ?>" data-app-key="<?= htmlspecialchars($config['appKey']) ?>">
     <div class="common-topbar__left">
         <a
             href="<?= htmlspecialchars($config['brandLogoHref']) ?>"

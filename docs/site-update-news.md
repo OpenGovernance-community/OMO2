@@ -9,6 +9,11 @@ Les ajouts de `NOUVEAUTES.md` entre ces memes revisions sont presentes en premie
 pour disposer d explications utiles meme quand le merge ne comporte aucun descriptif.
 Si GitHub est indisponible, limite les requetes ou ne fournit pas de description,
 les messages Git servent de secours. Aucune synthese automatique n invente de contenu.
+Le rendu partage retire les paragraphes et puces repetes entre ces sources, ainsi
+que les titres devenus vides. Les informations complementaires restent visibles.
+Ce nettoyage s applique aussi aux news deja enregistrees, sans modifier leur contenu
+stocke ni recreer de notifications. Le titre de la news figure uniquement dans
+l entete de la popup.
 
 Pour un depot prive, renseigner `SITE_UPDATE_GITHUB_TOKEN` dans Admin du serveur
 ou dans `.env`, avec un acces en lecture aux pull requests du depot suivi.

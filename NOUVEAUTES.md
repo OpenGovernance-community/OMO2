@@ -1,6 +1,14 @@
 # Journal des nouveautés
 
-- Tutoriels publics (2026-11-03) : styles des missions isoles du reste de la page, entete compacte aux couleurs de l organisation proprietaire et pourcentage visible a cote de la barre de progression.
+- Tutoriels / quiz publics (2026-11-03) : validation des reponses sans connexion avec conservation du contexte public, controle du lien entre parcours, mission et question, et progression finale memorisee sur cet appareil. Les erreurs de verification permettent de reessayer sans perdre la reponse selectionnee.
+
+- Tutoriels / prerequis de mission (2026-11-03) : ajout et retrait d un prerequis avec mise a jour du seul bloc concerne ; les champs non enregistres, les editeurs HTML et les autres blocs du formulaire restent conserves.
+
+- Tutoriels / options video (2026-11-03) : nouvelle carte Tutoriels dans les parametres d organisation. Lecteur natif par defaut ; layout Vimeo personnalise activable avec masque configurable et commandes aux couleurs de l organisation. Reglages du proprietaire pour les liens publics et retour au lecteur natif si les commandes personnalisees ne sont pas disponibles.
+
+- Synchronisation / affichage des news (2026-11-03) : suppression des modifications et titres repetes entre journal, descriptions GitHub et commits, y compris dans les news deja enregistrees. Retablissement des puces des entrees de journal copiees dans les descriptions et titre de news conserve uniquement dans l entete de la popup.
+
+- Tutoriels publics (2026-11-03) : styles des missions isoles du reste de la page, entete compacte aux couleurs de l organisation proprietaire et pourcentage visible a cote de la barre de progression. Pour les visiteurs deconnectes, logo et nom de l organisation proprietaire dans la topbar, y compris sur mobile.
 
 - Synchronisation / nouveautes (2026-11-03) : capsule ? pour consulter les descriptions des pull requests GitHub, les ajouts du journal des nouveautes et les messages Git des modifications a installer. Apres installation et migrations reussies, publication automatique d une news et notification personnelle pour chaque compte actif reel ; ouverture en popup et protection contre les doublons lors des reprises, y compris au premier deploiement.
 

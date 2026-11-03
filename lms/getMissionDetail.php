@@ -2,6 +2,7 @@
 define('BASE_PATH', dirname(__DIR__));
 require_once BASE_PATH . '/shared_functions.php';
 require_once BASE_PATH . '/common/auth.php';
+require_once BASE_PATH . '/common/translation_bundles.php';
 
 commonRestoreRememberedUser();
 include __DIR__ . '/inc/org.php';
@@ -53,38 +54,18 @@ if ($mission->load($mission_id)) {
 	);
 }
 
-function vimeoEmbedUrl($url) {
-	$url = trim((string)$url);
-
-	if ($url === '') {
-		return null;
-	}
-
-	if (preg_match('#videos/(\d+)/([a-zA-Z0-9]+)#', $url, $matches)) {
-		$videoId = $matches[1];
-		$hash = $matches[2];
-
-		return "https://player.vimeo.com/video/$videoId?h=$hash";
-	}
-
-	if (preg_match('#vimeo\.com/(?:video/)?(\d+)(?:$|[?/])#', $url, $matches)) {
-		$videoId = $matches[1];
-
-		return "https://player.vimeo.com/video/$videoId";
-	}
-
-	return null;
-}
-
 $homeworksJson = json_encode($homeworks, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 if ($homeworksJson === false) {
 	$homeworksJson = '[]';
 }
 
-echo "<div>";
+echo "<div class=\"lms-mission-detail\">";
 
 if ($m) {
-	$embedVideoUrl = vimeoEmbedUrl($m['video']);
+	$parcoursRef = new \dbObject\Parcours();
+	$parcoursRef->load($parcours_id);
+	$videoPresentation = $parcoursRef->getVideoPresentationForOrganization((int)$org['id']);
+	require_once BASE_PATH . '/common/lms/video.php';
 
 	echo "<h2>" . htmlspecialchars($m['title']) . "</h2>";
 	echo "<p><em>" . htmlspecialchars($m['resume']) . "</em></p>";
@@ -354,211 +335,10 @@ if ($m) {
 	  }
 	</style>
 <?php
-	if ($embedVideoUrl) {
 ?>
-	<style>
-		body {
-			font-family: Arial, sans-serif;
-			margin: 0;
-			padding: 20px;
-		}
-
-		* {
-			box-sizing: border-box;
-		}
-
-		.video-portal {
-			--video-aspect-ratio: 16 / 9;
-			--video-ratio-number: 1.7777778;
-			position: relative;
-			width: min(100%, 960px, calc(50dvh * var(--video-ratio-number)));
-			font-family: sans-serif;
-			overflow: hidden;
-			margin: auto;
-		}
-
-		.video-inner {
-			position: relative;
-			aspect-ratio: var(--video-aspect-ratio);
-		}
-
-		.video-inner iframe {
-			position: absolute;
-			width: 100%;
-			height: 100%;
-			top: 0;
-			left: 0;
-		}
-
-		.branding-overlay {
-			position: absolute;
-			inset: 0;
-			pointer-events: none;
-			background: url("/lms/branding-client.png") center/contain no-repeat;
-		}
-
-		.video-portal {
-			position: relative;
-			max-width: 960px;
-			font-family: sans-serif;
-			overflow: hidden;
-		}
-
-		.custom-controls {
-			position: absolute;
-			left: 0;
-			bottom: 0;
-			width: 100%;
-			padding: 12px;
-			background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
-			display: flex;
-			align-items: center;
-			gap: 10px;
-			opacity: 0;
-			transform: translateY(10px);
-			transition: opacity 0.25s ease, transform 0.25s ease;
-		}
-
-		.video-portal:hover .custom-controls {
-			opacity: 1;
-			transform: translateY(0);
-		}
-
-		.custom-controls button {
-			border: none;
-			padding: 5px 10px;
-			cursor: pointer;
-		}
-
-		.volume-controls {
-			display: flex;
-			align-items: center;
-			gap: 8px;
-			margin-left: 12px;
-		}
-
-		.volume-controls input[type="range"] {
-			width: 96px;
-			cursor: pointer;
-		}
-
-		.progressvideo {
-			flex: 1;
-			height: 6px;
-			background: #444;
-			cursor: pointer;
-			position: relative;
-		}
-
-		.progressvideo-bar {
-			height: 100%;
-			width: 0%;
-			background: #fff;
-		}
-
-		@media (max-width: 640px) {
-			.video-portal {
-				width: min(100%, calc(42dvh * var(--video-ratio-number)));
-			}
-
-			.video-portal .custom-controls {
-				position: static;
-				width: auto;
-				opacity: 1;
-				transform: none;
-				padding: 8px 10px;
-				gap: 8px;
-				flex-wrap: wrap;
-				align-items: center;
-				background: color-mix(in srgb, var(--bg-card, #111827) 88%, #000);
-				border-top: 1px solid color-mix(in srgb, var(--border-color, #374151) 55%, transparent);
-			}
-
-			.video-portal .custom-controls button {
-				padding: 6px 10px;
-				min-width: 0;
-				min-height: 34px;
-				border-radius: 999px;
-				font-size: 0.9rem;
-			}
-
-			.video-portal #playBtn,
-			.video-portal #volumeBtn {
-				flex: 0 0 auto;
-			}
-
-			.video-portal .progressvideo {
-				order: 10;
-				flex: 1 0 100%;
-				height: 6px;
-			}
-
-			.video-portal #time {
-				font-size: 0.82rem;
-				opacity: 0.9;
-			}
-
-			.video-portal .volume-controls {
-				margin-left: auto;
-				gap: 6px;
-				flex: 0 1 auto;
-			}
-
-			.video-portal .volume-controls input[type="range"] {
-				width: 78px;
-			}
-		}
-
-		@media (max-width: 420px) {
-			.video-portal .custom-controls {
-				padding: 7px 8px;
-				gap: 6px;
-			}
-
-			.video-portal .custom-controls button {
-				padding: 5px 8px;
-				min-height: 32px;
-				font-size: 0.85rem;
-			}
-
-			.video-portal .volume-controls input[type="range"] {
-				width: 64px;
-			}
-		}
-	</style>
-
-	<div class="video-portal">
-		<div class="video-inner">
-			<iframe
-				id="vimeoPlayer"
-				src="<?php echo htmlspecialchars($embedVideoUrl . (strpos($embedVideoUrl, '?') === false ? '?' : '&') . 'controls=0', ENT_QUOTES, 'UTF-8'); ?>"
-				frameborder="0"
-				allow="autoplay; fullscreen; picture-in-picture"
-				allowfullscreen>
-			</iframe>
-		</div>
-
-		<div class="branding-overlay"></div>
-
-		<div class="custom-controls">
-			<button id="playBtn">Lire</button>
-			<div class="progressvideo">
-				<div class="progressvideo-bar"></div>
-			</div>
-			<span id="time">0:00</span>
-			<div class="volume-controls">
-				<button id="volumeBtn" type="button">Son</button>
-				<input id="volumeSlider" type="range" min="0" max="100" step="1" value="100" aria-label="Volume">
-			</div>
-		</div>
-	</div>
-
+    <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/lms/css/mission-detail.css') ?>">
 <?php
-	} elseif ($m['video']) {
-?>
-	<p>La video de cette mission n'est pas disponible pour le moment.</p>
-<?php
-	}
+    commonLmsRenderMissionVideo($m['video'], $videoPresentation, $m['title']);
 	echo $m['html'];
 	echo "<div id='homework-section'></div>";
 	echo "</div>";
@@ -567,7 +347,15 @@ if ($m) {
 	echo "Mission introuvable";
 }
 ?>
+<?php
+$quizSourceLang = ['check_answer_error' => ['text' => 'Impossible de verifier cette reponse. Reessayez.', 'context' => 'Quiz answer verification failure notification.']];
+$quizLang = loadTranslationBundle('lms_quiz', translationBundleResolveRequestLocale('lang'), $quizSourceLang);
+?>
 <?= commonPageScriptTags('/lms/mission-detail.js', [
+    'checkAnswerUrl' => lmsBuildLocalPath('/lms/checkAnswer.php'),
+    'questionsUrl' => lmsBuildLocalPath('/lms/getMissionQuestions.php', ['parcours_id' => $parcours_id]),
+    'actionUrl' => lmsBuildLocalPath('/lms/action.php'),
+    'checkAnswerError' => t('check_answer_error', [], $quizLang, $quizSourceLang),
     'lmsMissionId' => (int)$mission_id,
     'lmsMissionViewerCanTrack' => ($canTrackProgress),
     'lmsMissionViewerIsAnonymous' => ($isAnonymousViewer),

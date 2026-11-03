@@ -5,7 +5,7 @@ namespace dbObject;
 class OrganizationTransferConfiguration
 {
     public const ORGANIZATION_KEYS = [
-        'lexicon', Organization::STRUCTURE_DISPLAY_SETTINGS_PARAMETER,
+        'lexicon', Organization::STRUCTURE_DISPLAY_SETTINGS_PARAMETER, Organization::TUTORIAL_SETTINGS_PARAMETER,
         UserHolon::APPLICATION_VIEW_TEMPLATE_DEFAULTS_PARAMETER,
         UserHolon::APPLICATION_VIEW_ORGANIZATION_DEFAULTS_PARAMETER,
         UserHolon::APPLICATION_VIEW_BASE_TYPE_DEFAULTS_PARAMETER,

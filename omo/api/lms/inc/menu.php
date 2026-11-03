@@ -9,7 +9,7 @@ sharedApplyDocumentTheme({
 });
 </script>
 <?php
-commonRenderTopbar([
+commonRenderTopbar(array_merge([
     'appKey' => 'lms',
     'appLabel' => 'LMS',
     'organization' => isset($org) ? $org : null,
@@ -51,7 +51,7 @@ commonRenderTopbar([
             'html' => ('<div class="common-help-list"><div class="common-help-card"><h4>' . htmlspecialchars(omoLmsUiT('tutoriels'), ENT_QUOTES, 'UTF-8') . '</h4><p>' . htmlspecialchars(omoLmsUiT('cette_section_pourra_ensuite_lister_des_tutoriels_video_des_guides_pas_a_pas_ou_des_suppor'), ENT_QUOTES, 'UTF-8') . '</p></div></div>'),
         ],
     ],
-]);
+], $lmsTopbarBrand ?? []));
 ?>
 <script>
 function lmsHandleTopbarSearch(query) {

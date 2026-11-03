@@ -3,7 +3,7 @@ namespace dbObject;
 
 class VideoEmbedHelper
 {
-    public static function getEmbedData($value)
+    public static function getEmbedData($value, bool $customLayout = false)
     {
         $url = self::extractCandidateUrl($value);
         if ($url === '') {
@@ -18,8 +18,8 @@ class VideoEmbedHelper
         if ($vimeoEmbedUrl !== '') {
             return [
                 'provider' => 'vimeo',
-                'embedUrl' => $vimeoEmbedUrl,
-                'controlMode' => 'custom',
+                'embedUrl' => $customLayout ? $vimeoEmbedUrl . (str_contains($vimeoEmbedUrl, '?') ? '&' : '?') . 'controls=0&title=0&byline=0&portrait=0' : $vimeoEmbedUrl,
+                'controlMode' => $customLayout ? 'custom' : 'native',
             ];
         }
 

@@ -23,6 +23,78 @@ function siteUpdateNewsT(string $key, array $variables = []): string
 
 function siteUpdateNewsRender(string $description): string
 {
+    // PR descriptions sometimes copy a journal entry without its first list marker.
+    $description = preg_replace('/^(?![-+*#>\s])([^\n]+\(\d{4}-\d{2}-\d{2}\)\s*:[^\n]*)$/m', '- $1', $description);
+    $html = \dbObject\PropertyFormat::formattedTextToHtml($description, 'markdown');
     return '<div class="generic-section generic-rich-text">'
-        . \dbObject\PropertyFormat::formattedTextToHtml($description, 'markdown') . '</div>';
+        . siteUpdateNewsDeduplicateHtml($html) . '</div>';
+}
+
+/** Clean the shared display, including immutable news saved by older versions. */
+function siteUpdateNewsDeduplicateHtml(string $html): string
+{
+    $document = new \DOMDocument('1.0', 'UTF-8');
+    $previousErrors = libxml_use_internal_errors(true);
+    try {
+        $document->loadHTML('<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>' . $html . '</body></html>', LIBXML_NONET);
+    } finally {
+        libxml_clear_errors();
+        libxml_use_internal_errors($previousErrors);
+    }
+    $root = $document->getElementsByTagName('body')->item(0);
+    if (!$root) { return $html; }
+    $textKey = static fn(string $text): string => trim((string)preg_replace('/[\s\p{Z}]+/u', ' ', $text));
+    $contentKey = static function (\DOMElement $node) use ($textKey): string {
+        $references = [];
+        foreach ($node->getElementsByTagName('a') as $link) { $references[] = $link->getAttribute('href'); }
+        foreach ($node->getElementsByTagName('img') as $image) { $references[] = 'image:' . $image->getAttribute('src'); }
+        return $textKey($node->textContent) . ($references ? "\n" . implode("\n", $references) : '');
+    };
+    $sections = [['heading' => null, 'body' => [], 'key' => '']];
+    foreach (iterator_to_array($root->childNodes) as $node) {
+        if ($node instanceof \DOMElement && preg_match('/^h[1-6]$/', $node->tagName)) {
+            $key = $textKey((string)preg_replace('/\s*\(#\d+\)\s*$/', '', $node->textContent));
+            $sections[] = ['heading' => $node, 'body' => [], 'key' => $key];
+        } elseif ($node instanceof \DOMElement || trim($node->textContent) !== '') {
+            $sections[array_key_last($sections)]['body'][] = $node;
+        }
+    }
+    $describedTitles = [];
+    foreach ($sections as $section) {
+        if ($section['body']) { $describedTitles[$section['key']] = true; }
+    }
+    $seenContent = [];
+    $seenTitles = [];
+    $result = '';
+    foreach ($sections as $section) {
+        $body = '';
+        foreach ($section['body'] as $node) {
+            if (!($node instanceof \DOMElement)) {
+                $body .= $document->saveHTML($node);
+                continue;
+            }
+            if (in_array($node->tagName, ['ul', 'ol'], true)) {
+                foreach (iterator_to_array($node->childNodes) as $item) {
+                    if (!($item instanceof \DOMElement) || $item->tagName !== 'li') { continue; }
+                    $key = $contentKey($item);
+                    if (isset($seenContent[$key])) { $node->removeChild($item); }
+                    else { $seenContent[$key] = true; }
+                }
+                if ($node->getElementsByTagName('li')->length === 0) { continue; }
+            } elseif ($node->tagName === 'p') {
+                $key = $contentKey($node);
+                if (isset($seenContent[$key])) { continue; }
+                $seenContent[$key] = true;
+            }
+            $body .= $document->saveHTML($node);
+        }
+        $heading = $section['heading'];
+        $key = $section['key'];
+        $redundant = $body === '' && ($section['body'] || isset($seenTitles[$key])
+            || isset($describedTitles[$key]) || $key === siteUpdateNewsT('history'));
+        if ($heading) { $seenTitles[$key] = true; }
+        if ($redundant) { continue; }
+        $result .= ($heading ? $document->saveHTML($heading) : '') . $body;
+    }
+    return $result;
 }

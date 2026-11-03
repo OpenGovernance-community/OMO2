@@ -292,9 +292,9 @@
 	position: absolute;
 	inset: 0;
 	pointer-events: none;
-	background-position: center;
-	background-size: contain;
-	background-repeat: no-repeat;
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
 }
 
 
@@ -313,7 +313,8 @@
 	transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
-.lms-mission-detail .video-portal:hover .custom-controls {
+.lms-mission-detail .video-portal:hover .custom-controls,
+.lms-mission-detail .video-portal:focus-within .custom-controls {
 	opacity: 1;
 	transform: translateY(0);
 }
@@ -322,6 +323,8 @@
 	border: none;
 	padding: 5px 10px;
 	cursor: pointer;
+	background: var(--primary, #004663);
+	color: var(--param-video-control-text, #ffffff);
 }
 
 .lms-mission-detail .volume-controls {
@@ -334,6 +337,7 @@
 .lms-mission-detail .volume-controls input[type="range"] {
 	width: 96px;
 	cursor: pointer;
+	accent-color: var(--primary, #004663);
 }
 
 .lms-mission-detail .progressvideo {
@@ -347,7 +351,7 @@
 .lms-mission-detail .progressvideo-bar {
 	height: 100%;
 	width: 0%;
-	background: #fff;
+	background: var(--primary, #004663);
 }
 
 @media (max-width: 640px) {

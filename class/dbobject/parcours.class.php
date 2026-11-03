@@ -468,6 +468,15 @@
 			return $ownerOrganizationId;
 		}
 
+		public function getVideoPresentationForOrganization(int $organizationId = 0): array
+		{
+			$organization = new Organization();
+			if (!$organization->load($organizationId > 0 ? $organizationId : $this->getOwnerOrganizationId())) {
+				return Organization::DEFAULT_TUTORIAL_SETTINGS + ['color' => ''];
+			}
+			return $organization->getTutorialSettings() + ['color' => (string)$organization->get('color')];
+		}
+
 		public function isOwnedByOrganization($organizationId)
 		{
 			return $this->getOwnerOrganizationId() === (int)$organizationId;

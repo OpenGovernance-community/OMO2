@@ -19,6 +19,6 @@ if ((int)($_GET['id'] ?? 0) <= 0 || !$news->load((int)$_GET['id'])) {
     exit;
 }
 commonReleaseReadOnlySession();
-echo '<article class="generic-section"><h2 class="generic-card-title">'
-    . htmlspecialchars((string)$news->get('title'), ENT_QUOTES, 'UTF-8') . '</h2>'
+echo '<article class="generic-section" data-topbar-modal-title="'
+    . htmlspecialchars((string)$news->get('title'), ENT_QUOTES, 'UTF-8') . '">'
     . siteUpdateNewsRender((string)$news->get('description')) . '</article>';
