@@ -2,7 +2,7 @@
 
 - Tutoriels / titre du catalogue (2026-11-03) : suppression de l entete en double dans le catalogue integre. Le nom de l organisation figure dans le titre du drawer OMO, sous la forme Tutoriels suivi du nom ; le grand titre centre du catalogue est conserve.
 
-- Tutoriels / retour au pack (2026-11-03) : un parcours ouvert depuis un pack affiche Retour au catalogue puis Retour au pack. Le lien conserve le contexte public ou organisation et le mode integre ; il apparait uniquement pour un pack lie au parcours et accessible.
+- Tutoriels / retour au pack (2026-11-03) : un parcours ouvert depuis un pack affiche Retour au catalogue puis Retour au pack, sans soulignement sur les deux liens. Le lien conserve le contexte public ou organisation et le mode integre ; il apparait uniquement pour un pack lie au parcours et accessible.
 
 - Tutoriels / icones des missions (2026-11-03) : indicateurs video, devoirs et quiz alignes a gauche du pied des cartes de missions disponibles, terminees et verrouillees, avec le bouton a droite. Sur les parcours et les packs, icones blanches en bas a gauche de l image, avec un bandeau compact si aucune image n est definie.
 

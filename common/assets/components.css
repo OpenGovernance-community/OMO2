@@ -1529,6 +1529,10 @@ html[data-theme="dark"] .black-icon,
     text-underline-offset: 3px;
 }
 
+.generic-action-button--link-plain {
+    text-decoration: none;
+}
+
 /* Discreet text actions on metadata rows, without link decoration. */
 .generic-action-button--inline {
     min-height: 24px;
