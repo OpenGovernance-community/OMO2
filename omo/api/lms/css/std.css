@@ -58,3 +58,21 @@ button:disabled {
     text-align: center;
     overflow: hidden;
 }
+
+.org-banner--compact {
+    padding: 18px 20px;
+    text-align: left;
+}
+
+.org-banner--compact h1 {
+    margin: 0;
+    font-size: clamp(1.25rem, 2.5vw, 1.75rem);
+    line-height: 1.25;
+    color: inherit;
+}
+
+.org-banner--compact p {
+    margin: 6px 0 0;
+    line-height: 1.4;
+    color: inherit;
+}

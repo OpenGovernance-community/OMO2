@@ -5,7 +5,7 @@
     inset: 0;
     background: rgba(0,0,0,0.4);
     display: none;
-    z-index: 1000;
+    z-index: 1320;
 }
 
 html.lms-drawer-open,
@@ -24,7 +24,7 @@ body.lms-drawer-open {
     background: var(--bg-card);
     box-shadow: -3px 0 10px rgba(0,0,0,0.2);
     transition: right 0.3s ease;
-    z-index: 1001;
+    z-index: 1321;
 
     display: flex;
     flex-direction: column;

@@ -141,6 +141,12 @@ function serverEnvAdminGetEditableSections()
                     'label' => serverEnvAdminT('parameters.server_env.field.GITHUB_BUGREPORT_USER_AGENT.label', 'User-Agent GitHub'),
                     'type' => 'text',
                 ],
+                [
+                    'key' => 'SITE_UPDATE_GITHUB_TOKEN',
+                    'label' => serverEnvAdminT('parameters.server_env.field.SITE_UPDATE_GITHUB_TOKEN.label', 'Token GitHub pour les descriptions des mises a jour'),
+                    'type' => 'password',
+                    'secret' => true,
+                ],
             ],
         ],
         'patreon' => [

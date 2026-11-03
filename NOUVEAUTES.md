@@ -1,5 +1,9 @@
 # Journal des nouveautés
 
+- Tutoriels publics (2026-11-03) : styles des missions isoles du reste de la page, entete compacte aux couleurs de l organisation proprietaire et pourcentage visible a cote de la barre de progression.
+
+- Synchronisation / nouveautes (2026-11-03) : capsule ? pour consulter les descriptions des pull requests GitHub, les ajouts du journal des nouveautes et les messages Git des modifications a installer. Apres installation et migrations reussies, publication automatique d une news et notification personnelle pour chaque compte actif reel ; ouverture en popup et protection contre les doublons lors des reprises, y compris au premier deploiement.
+
 - Profils / presentations (2026-11-02) : presentations generales et propres aux organisations en HTML simple, avec Summernote via adminEdit et affichage mis en forme dans les fiches membres. Les anciens textes conservent leurs retours a la ligne ; contenu HTML nettoye et notes CardDAV conservees en texte lisible.
 
 - Import / jeu de role (2026-11-02) : membres importes comme personnages actifs et distincts des comptes reels, avec adresses affichees suffixees par .invalid, sans invitation ni connexion directe. Les e-mails des personnages sont rediriges vers les administrateurs reels de leur organisation, y compris dans les traitements differes. Les statuts admin du fichier sont ignores et la personne qui importe devient administrateur, meme si elle ne figure pas dans le fichier.

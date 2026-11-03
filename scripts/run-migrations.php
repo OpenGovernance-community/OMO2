@@ -119,6 +119,19 @@ try {
     $sqlDir = $options['sqlDir'];
     $databaseNames = $options['databaseNames'];
 
+    // This file is reloaded after Git reset, even when an older updater launched it.
+    // Load the application before emitting progress so CLI session startup stays clean.
+    $updateState = [];
+    if (realpath($sqlDir) === realpath(dirname(__DIR__) . '/sql')
+        && in_array((string)$GLOBALS['dbName'], $databaseNames, true)) {
+        require_once dirname(__DIR__) . '/includes/site_update_admin.php';
+        $candidateState = siteUpdateAdminReadState();
+        if (($candidateState['status'] ?? '') === 'running' && !empty($candidateState['requiresCompletion'])) {
+            require_once dirname(__DIR__) . '/shared_functions.php';
+            $updateState = $candidateState;
+        }
+    }
+
     foreach ($databaseNames as $databaseName) {
         echo "Base : {$databaseName}\n";
 
@@ -136,6 +149,12 @@ try {
 
         runSqlMigrations($pdo, $sqlDir);
         echo "  - Terminé.\n";
+    }
+
+    // Publish for the application database only after every migration succeeded.
+    if ($updateState !== []) {
+        $newsId = siteUpdateAdminPublishInstalledNews($updateState);
+        if ($newsId > 0) { echo '  - News de mise a jour : ' . $newsId . PHP_EOL; }
     }
 
     exit(0);

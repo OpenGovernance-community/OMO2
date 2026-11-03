@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/site_update_changelog.php';
 
 function siteUpdateAdminGetRepoRoot()
 {
@@ -894,6 +895,8 @@ function siteUpdateAdminCheckVersionStatus()
     $remoteSummary = siteUpdateAdminGetCommitSummary($context, $remoteCommit);
     $behindCount = siteUpdateAdminGetBehindCount($context, $context['localCommit'], $remoteCommit);
     $localChangesPayload = siteUpdateAdminBuildLocalChangesPayload($context, $context['localCommit'], $remoteCommit);
+    $changelog = !empty($state['requiresCompletion']) && isset($state['changelog'])
+        ? $state['changelog'] : siteUpdateAdminGetChangelog($context, $context['localCommit'], $remoteCommit);
 
     return array_merge(array(
         'status' => true,
@@ -901,6 +904,8 @@ function siteUpdateAdminCheckVersionStatus()
         'updating' => false,
         'available' => $remoteCommit !== $context['localCommit'],
         'requiresCompletion' => !empty($state['requiresCompletion']),
+        'changelogHtml' => siteUpdateAdminChangelogHtml($changelog),
+        'changelogTitle' => siteUpdateNewsT('changes'),
         'branch' => (string)$context['branch'],
         'tracking' => (string)$context['tracking'],
         'behindCount' => $behindCount,
@@ -914,6 +919,24 @@ function siteUpdateAdminCheckVersionStatus()
             ? siteUpdateAdminBuildAvailableMessage($behindCount, $remoteSummary)
             : 'Le site est deja a jour.',
     ), $localChangesPayload);
+}
+
+/** Also used by the freshly installed migration runner when the caller is an older updater. */
+function siteUpdateAdminPublishInstalledNews(array $state): int
+{
+    $from = (string)($state['newsFrom'] ?? $state['localCommit'] ?? '');
+    $to = (string)($state['remoteCommit'] ?? '');
+    if (empty($state['requiresCompletion']) || $from === '' || $to === '' || $from === $to) { return 0; }
+    $context = siteUpdateAdminGetGitContext();
+    if (empty($context['supported']) || $context['localCommit'] !== $to) {
+        throw new RuntimeException('La version installee ne correspond pas aux nouveautes a publier.');
+    }
+    $changelog = (array)($state['changelog'] ?? siteUpdateAdminGetChangelog($context, $from, $to));
+    if (empty($changelog['description'])) { throw new RuntimeException('Impossible de publier une news sans description.'); }
+    $news = \dbObject\SiteUpdateNews::publish($from, $to,
+        siteUpdateNewsT('title', ['date' => (new DateTimeImmutable('now', new DateTimeZone('Europe/Zurich')))->format('d.m.Y')]),
+        $changelog['description']);
+    return (int)$news->getId();
 }
 
 function siteUpdateAdminRunUpdate($actorUserId, $force = false, $completeOnly = false)
@@ -946,6 +969,12 @@ function siteUpdateAdminRunUpdate($actorUserId, $force = false, $completeOnly = 
         $localSummary = siteUpdateAdminGetCommitSummary($context, $localCommit);
         $remoteSummary = siteUpdateAdminGetCommitSummary($context, $remoteCommit);
         $behindCount = siteUpdateAdminGetBehindCount($context, $localCommit, $remoteCommit);
+        $newsFrom = $completeOnly ? (string)($previousState['newsFrom'] ?? $previousState['localCommit'] ?? $localCommit) : $localCommit;
+        $changelog = $completeOnly ? (array)($previousState['changelog'] ?? siteUpdateAdminGetChangelog($context, $newsFrom, $remoteCommit))
+            : siteUpdateAdminGetChangelog($context, $localCommit, $remoteCommit);
+        if ($completeOnly && ($previousState['remoteCommit'] ?? $localCommit) !== $localCommit) {
+            throw new RuntimeException('La version installee a change depuis la mise a jour interrompue.');
+        }
         $remoteFiles = $completeOnly ? array() : siteUpdateAdminGetRemoteFiles($context, $remoteCommit);
         $localChangesPayload = $completeOnly ? array() : siteUpdateAdminBuildLocalChangesPayload($context, $localCommit, $remoteCommit, $remoteFiles);
 
@@ -989,6 +1018,8 @@ function siteUpdateAdminRunUpdate($actorUserId, $force = false, $completeOnly = 
             'status' => 'running',
             'message' => 'Mise a jour en cours.',
             'requiresCompletion' => (bool)$completeOnly,
+            'newsFrom' => $newsFrom,
+            'changelog' => $changelog,
             'backup' => $backup,
             'startedAt' => gmdate('c'),
             'userId' => $actorUserId,
@@ -1039,6 +1070,8 @@ function siteUpdateAdminRunUpdate($actorUserId, $force = false, $completeOnly = 
         siteUpdateAdminWriteState(array(
             'status' => 'running',
             'message' => 'Synchronisation du code terminee. Installation des dependances en cours.',
+            'newsFrom' => $newsFrom,
+            'changelog' => $changelog,
             'requiresCompletion' => true,
             'backup' => $backup,
             'startedAt' => gmdate('c'),
@@ -1066,6 +1099,8 @@ function siteUpdateAdminRunUpdate($actorUserId, $force = false, $completeOnly = 
         siteUpdateAdminWriteState(array(
             'status' => 'running',
             'message' => 'Installation des dependances terminee. Application des migrations en cours.',
+            'newsFrom' => $newsFrom,
+            'changelog' => $changelog,
             'requiresCompletion' => true,
             'backup' => $backup,
             'startedAt' => gmdate('c'),
@@ -1100,11 +1135,13 @@ function siteUpdateAdminRunUpdate($actorUserId, $force = false, $completeOnly = 
         }
 
         $updatedSummary = siteUpdateAdminGetCommitSummary($context, trim((string)$updatedLocalCommit));
+        $newsId = siteUpdateAdminPublishInstalledNews(siteUpdateAdminReadState());
         $completed = true;
 
         return array(
             'status' => true,
             'updated' => true,
+            'newsId' => $newsId,
             'message' => 'La mise a jour du site est terminee.'
                 . ($backup['backupPath'] !== '' ? ' Sauvegarde locale : ' . $backup['backupPath'] . '.' : '')
                 . ($backup['identicalFileCount'] > 0 ? ' ' . $backup['identicalFileCount'] . ' fichiers identiques non sauvegardes.' : ''),
