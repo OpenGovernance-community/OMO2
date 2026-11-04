@@ -105,7 +105,7 @@ if (!$isEditMode && $modelOrganizationId > 0) {
         die(htmlspecialchars(t('organization.error.model', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8'));
     }
 
-    foreach (array('color', 'latlong', 'interface_level', 'description', 'url') as $field) {
+    foreach (array('color', 'latlong', 'interface_level') as $field) {
         $organization->set($field, $modelOrganization->get($field));
     }
     $organization->set('name', '');

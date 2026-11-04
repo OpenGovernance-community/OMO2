@@ -8653,7 +8653,9 @@
 				'pv' => false,
 			);
 			$payload = \dbObject\OrganizationExport::build($model, $selectedModules);
-			// New organizations start with their own visual identity, without shared model files.
+			// New organizations start with their own public information and visual identity.
+			$payload['organization']['description'] = null;
+			$payload['organization']['url'] = null;
 			$payload['organization']['logo'] = null;
 			$payload['organization']['banner'] = null;
 			array_walk_recursive($payload['holons'], static function (&$value, $key) {

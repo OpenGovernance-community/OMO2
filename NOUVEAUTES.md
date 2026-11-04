@@ -1,5 +1,9 @@
 # Journal des nouveautés
 
+- Organisations / informations publiques depuis un modele (2026-11-04) : description et URL laissees vides dans le formulaire et lors de la creation, pour renseigner les informations propres a la nouvelle organisation sur la carte. Les valeurs saisies manuellement sont conservees.
+
+- Carte publique / radar de maturite (2026-11-04) : retrait de l avertissement rouge sur la couronne 5 dans la popup publique afin de ne pas orienter les personnes avant leur participation au questionnaire.
+
 - Carte publique / superposition (2026-11-04) : couches, points et commandes Leaflet confines au panneau de la carte pour que l entete et le menu restent visibles et cliquables au defilement, y compris sur mobile.
 
 - Accueil OMO2 / carte des organisations (2026-11-04) : retrait du titre et de la description repetes au-dessus de la carte. La carte occupe toute la largeur du panneau, sous le titre Des collectifs en action deja present.
