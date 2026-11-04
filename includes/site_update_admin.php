@@ -932,6 +932,8 @@ function siteUpdateAdminPublishInstalledNews(array $state): int
         throw new RuntimeException('La version installee ne correspond pas aux nouveautes a publier.');
     }
     $changelog = (array)($state['changelog'] ?? siteUpdateAdminGetChangelog($context, $from, $to));
+    $changelog = array_merge($changelog, siteUpdateAdminRecoverNewsContent($context, $from, $to,
+        (string)($changelog['description'] ?? ''), (string)($changelog['journal'] ?? '')));
     if (empty($changelog['description'])) { throw new RuntimeException('Impossible de publier une news sans description.'); }
     $news = \dbObject\SiteUpdateNews::publish($from, $to,
         siteUpdateNewsT('title', ['date' => (new DateTimeImmutable('now', new DateTimeZone('Europe/Zurich')))->format('d.m.Y')]),

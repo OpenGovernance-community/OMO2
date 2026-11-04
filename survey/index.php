@@ -470,6 +470,7 @@ $surveyConfig = [
     </dialog>
 
     <dialog class="survey-omo-dialog survey-invite-dialog" id="surveyInviteDialog" aria-labelledby="surveyInviteDialogTitle">
+        <div class="common-notifications" id="surveyInviteNotifications" aria-live="polite" aria-atomic="false"></div>
         <div class="survey-omo-dialog__surface">
             <header class="survey-omo-dialog__header">
                 <div>

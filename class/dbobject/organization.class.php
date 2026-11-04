@@ -328,7 +328,7 @@
 		{
 			$publicFields = array_values(array_intersect(
 				static::publicReadableFields(),
-				array('id', 'name', 'shortname', 'domain', 'logo', 'banner', 'color', 'latlong')
+				array('id', 'name', 'description', 'url', 'shortname', 'domain', 'logo', 'banner', 'color', 'latlong')
 			));
 			if (count($publicFields) === 0) {
 				return array();
@@ -367,9 +367,16 @@
 					continue;
 				}
 
+				$description = trim(preg_replace('/\s+/u', ' ', (string)$organization->get('description')) ?? '');
+				if (mb_strlen($description, 'UTF-8') > 240) {
+					$description = rtrim(mb_substr($description, 0, 237, 'UTF-8')) . '...';
+				}
+				$url = trim((string)$organization->get('url'));
 				$result[] = array(
 					'id' => $organizationId,
 					'name' => trim((string)$organization->get('name')),
+					'description' => $description,
+					'url' => self::isValidInformationUrl($url) ? $url : '',
 					'logo' => trim((string)$organization->get('logo')),
 					'color' => trim((string)$organization->get('color')),
 					'latlong' => array(
@@ -385,10 +392,11 @@
 		/**
 		 * Returns public organization branding ordered by the latest activity in
 		 * each organization. History is preferred, with member sign-in activity
-		 * used as a fallback. This keeps the homepage query close to its table.
+		 * used as a fallback. An optional cutoff excludes missing or old activity.
 		 */
-		public static function fetchPublicLogoRowsByLastConnection(): array
+		public static function fetchPublicLogoRowsByLastConnection(?\DateTimeInterface $activeSince = null): array
 		{
+			$params = $activeSince === null ? array() : array('active_since' => $activeSince->format('Y-m-d H:i:s'));
 			$rows = self::fetchAll(
 				"SELECT
 					o.id,
@@ -410,12 +418,14 @@
 					GROUP BY IDorganization
 				) member_activity ON member_activity.IDorganization = o.id
 				WHERE o.logo IS NOT NULL
-					AND TRIM(o.logo) <> ''
+					AND TRIM(o.logo) <> ''" . ($activeSince === null ? '' : "
+				HAVING last_activity >= :active_since") . "
 				ORDER BY
 					last_activity IS NULL ASC,
 					last_activity DESC,
 					o.name ASC,
-					o.id ASC"
+					o.id ASC",
+				$params
 			);
 
 			if (!is_array($rows)) {

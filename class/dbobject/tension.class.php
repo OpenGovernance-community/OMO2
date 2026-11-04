@@ -190,6 +190,30 @@ class Tension extends DbObject
         return $targets;
     }
 
+    public function canDeleteInOrganizationContext(int $organizationId, int $userId): bool
+    {
+        return $organizationId > 0 && $userId > 0 && (int)$this->getId() > 0
+            && (int)$this->get('IDorganization') === $organizationId
+            && (bool)$this->get('active')
+            && function_exists('commonUserHasOrganizationAccess')
+            && \commonUserHasOrganizationAccess($userId, $organizationId)
+            && ((int)$this->get('IDuser') === $userId
+                || (function_exists('commonUserHasAdminOverride') && \commonUserHasAdminOverride($userId, $organizationId)));
+    }
+
+    public function deleteInOrganizationContext(int $organizationId, int $userId): bool
+    {
+        if (!$this->canDeleteInOrganizationContext($organizationId, $userId)) {
+            return false;
+        }
+
+        // Keep references from meeting minutes intact when removing a tension from active lists.
+        $this->set('active', 0);
+        $this->set('datemodification', date('Y-m-d H:i:s'));
+        $result = parent::save();
+        return is_array($result) && !empty($result['status']);
+    }
+
     public function createInOrganizationContext(int $organizationId, ?int $holonId, int $userId, array $values = [])
     {
         $organizationId = (int)$organizationId;

@@ -84,6 +84,7 @@
 		<!-- Bootstrap (for html editor) Summernote-->
 		<link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" rel="stylesheet">
 		<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.bundle.min.js"></script>
+<link rel="stylesheet" href="/common/assets/homepage-map.css?v=20261104-popup-details">
 <?php if ($homepageLeafletMapsEnabled): ?>
 <?php commonRenderLeafletAssets(); ?>
 <?php endif; ?>
@@ -290,81 +291,6 @@
   font-weight: bold;
 }
 
-.home-organization-map {
-  display: grid;
-  gap: 1.2rem;
-  padding: 1.4rem;
-  border-radius: 16px;
-  border: 1px solid rgba(9, 49, 71, 0.16);
-  background: linear-gradient(180deg, rgba(247, 251, 255, 0.98), rgba(236, 244, 252, 0.92));
-  box-shadow: 0 18px 36px rgba(8, 35, 52, 0.12);
-}
-
-.home-organization-map__header h2,
-.home-organization-map__header p {
-  margin: 0;
-}
-
-.home-organization-map__header {
-  display: grid;
-  gap: 0.55rem;
-}
-
-.home-organization-map__header p {
-  color: #3f5364;
-  line-height: 1.55;
-}
-
-.home-organization-map__canvas {
-  min-height: 420px;
-  border-radius: 14px;
-  overflow: hidden;
-  border: 1px solid rgba(9, 49, 71, 0.12);
-  background:
-    radial-gradient(circle at top left, rgba(26, 130, 163, 0.12), transparent 32%),
-    linear-gradient(180deg, rgba(224, 242, 254, 0.95), rgba(255, 255, 255, 0.98));
-}
-
-.home-organization-map__empty {
-  padding: 1rem 1.1rem;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.74);
-  border: 1px dashed rgba(11, 110, 122, 0.28);
-  color: #355267;
-}
-
-.home-organization-map__popup {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  min-width: 180px;
-}
-
-.home-organization-map__popup strong {
-  color: #123247;
-}
-
-.home-organization-map__popup-logo,
-.home-organization-map__popup-placeholder {
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
-  flex: 0 0 42px;
-}
-
-.home-organization-map__popup-logo {
-  object-fit: cover;
-  background: #e5eef6;
-}
-
-.home-organization-map__popup-placeholder {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-weight: bold;
-  background: linear-gradient(135deg, #0b6e7a, #1a82a3);
-}
 
 .intro_txt {
 position:relative; 
