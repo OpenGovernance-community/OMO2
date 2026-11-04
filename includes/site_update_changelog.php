@@ -69,8 +69,8 @@ function siteUpdateChangelogContent(array $entries, string $journal): array
         }
     }
     return $presentations
-        ? ['description' => implode("\n\n---\n\n", $presentations), 'journal' => $journal]
-        : ['description' => $journal !== '' ? $journal : siteUpdateNewsT('empty'), 'journal' => ''];
+        ? ['description' => implode("\n\n---\n\n", $presentations), 'journal' => $journal, 'hasPreparedDescription' => true]
+        : ['description' => $journal !== '' ? $journal : siteUpdateNewsT('empty'), 'journal' => '', 'hasPreparedDescription' => false];
 }
 
 function siteUpdateChangelogPreparedDescription(array $entry, ?array $pull = null): string
@@ -132,7 +132,7 @@ function siteUpdateAdminGetChangelog(array $context, string $from, string $to): 
     if ($from === $to) { return ['entries' => [], 'description' => '', 'fallback' => false]; }
     $url = siteUpdateAdminRunCommand(['git', 'remote', 'get-url', $context['remote']], $context['repoRoot'], $exitCode);
     $repository = $exitCode === 0 ? siteUpdateChangelogRepository($url) : null;
-    $cachePath = siteUpdateAdminEnsureRuntimeDir() . '/changelog-' . hash('sha256', 'v5' . $from . $to . $repository) . '.json';
+    $cachePath = siteUpdateAdminEnsureRuntimeDir() . '/changelog-' . hash('sha256', 'v6' . $from . $to . $repository) . '.json';
     if (is_file($cachePath) && filemtime($cachePath) > time() - 300) {
         $cached = json_decode((string)file_get_contents($cachePath), true);
         if (is_array($cached) && isset($cached['entries'], $cached['description'], $cached['fallback'])) { return $cached; }

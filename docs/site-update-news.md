@@ -40,7 +40,11 @@ Le depot est determine depuis le remote Git, sans redirection des credentials.
 
 Apres Composer et les migrations reussis, une news conserve les descriptions de
 la version installee. Une notification interne personnelle est creee pour chaque
-compte actif reel, y compris la personne qui installe la version. Les personnages
+compte actif reel uniquement si un texte de presentation a ete prepare dans le
+merge ou la pull request, y compris lorsque le journal technique est vide. Sans
+presentation preparee (texte vide ou compose uniquement de commentaires Markdown),
+la news conserve le journal mais aucune notification n est creee. Une reprise ne
+notifie pas retroactivement une news deja publiee silencieusement. Les personnages
 et comptes historiques sont exclus. Aucun e-mail, Telegram ou push n est envoye.
 Les descriptions ainsi publiees sont visibles par tous les comptes connectes du site.
 

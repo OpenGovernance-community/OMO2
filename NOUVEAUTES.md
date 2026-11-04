@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- Synchronisation / notifications des versions (2026-11-04) : notification uniquement lorsqu un texte de presentation a ete prepare dans le merge ou la pull request. Les mises a jour avec seulement le journal technique conservent leur news sans notifier les utilisateurs ; une reprise ne cree pas de notification tardive.
+
 - Organisations / creation depuis un modele (2026-11-04) : logo, banniere et icones des holons laisses vides pour eviter de partager les fichiers du modele. Le formulaire permet toujours de choisir de nouvelles images ; les imports d archives conservent leurs images.
 
 - Carte publique / presentation (2026-11-04) : texte de description des organisations plus petit dans les bulles. Fond blanc pour la popup du radar, y compris son entete et le contenu du graphique.
