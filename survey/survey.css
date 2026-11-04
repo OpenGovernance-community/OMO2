@@ -3136,6 +3136,13 @@ html.survey-organization-chart-page,
     gap: 6px;
 }
 
+.survey-organization-chart__participation {
+    margin: 0;
+    text-align: center;
+    font-size: 0.85rem;
+    color: #587084;
+}
+
 @media (max-width: 700px) {
     .survey-organization-chart .survey-radar {
         grid-template-columns: 1fr;

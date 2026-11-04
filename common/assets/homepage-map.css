@@ -28,6 +28,8 @@
 }
 
 .home-organization-map__canvas {
+  /* Keep Leaflet panes and controls within the map's own stacking context. */
+  isolation: isolate;
   min-height: 420px;
   border-radius: 14px;
   overflow: hidden;

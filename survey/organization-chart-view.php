@@ -27,6 +27,12 @@ if (!isset($questions, $organization, $pageLang, $pageSourceLang, $surveyLang, $
         </header>
         <?php if (count($questions) === 10): ?>
             <div class="survey-radar" id="surveyPublicRadar" role="img" aria-label="<?= $escape(t('survey.public.radar_title', [], $surveyLang, $surveySourceLang)) ?>"></div>
+            <p class="survey-organization-chart__participation"><?= $escape(t(
+                $activeMembers > 0 ? 'survey.organization.participation_summary' : 'survey.organization.participation_count',
+                ['count' => $participatedMembers, 'percent' => $participationPercent],
+                $pageLang,
+                $pageSourceLang
+            )) ?></p>
             <p class="survey-radar-risk"><span aria-hidden="true"></span><?= $escape(t('survey.results.radar_risk', [], $surveyLang, $surveySourceLang)) ?></p>
         <?php else: ?>
             <p><?= $escape(t('survey.organization.empty', [], $pageLang, $pageSourceLang)) ?></p>
