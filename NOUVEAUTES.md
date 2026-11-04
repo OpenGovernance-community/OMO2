@@ -1,5 +1,13 @@
 # Journal des nouveautés
 
+- Carte publique / presentation (2026-11-04) : texte de description des organisations plus petit dans les bulles. Fond blanc pour la popup du radar, y compris son entete et le contenu du graphique.
+
+- Carte publique / regroupement des organisations (2026-11-04) : points proches regroupes dans un cercle indiquant leur nombre. Clic pour zoomer sur la zone ; les organisations au meme emplacement peuvent se deployer pour rester accessibles individuellement. Comportement partage par index.php et index2.php, avec les bulles existantes.
+
+- Carte publique / fermeture de la popup (2026-11-04) : bouton rond avec croix utilisant le composant et les styles partages des popups OMO, avec libelle accessible et infobulle Fermer.
+
+- Carte publique / maturite organisationnelle (2026-11-04) : titre Maturite organisationnelle et moyennes Etat actuel vers Ambition dans les bulles des organisations ayant des evaluations terminees. Valeurs sans /5 pour ne pas presenter le niveau 5 comme un objectif. Clic sur les notes pour ouvrir le radar collectif et sa legende dans une popup, avec le calcul et le graphique existants du questionnaire ; brouillons exclus, aucune note affichee sans resultat complet. Vue compacte avec legende Aujourd hui / Demain a droite du titre, sans phrase explicative et radar reduit pour tenir dans la popup sur ordinateur.
+
 - Survey / notifications des invitations (2026-11-04) : messages de succes et d erreur affiches dans la couche de la popup, au-dessus du fond floute, en conservant leur position en haut de l ecran et leur fermeture automatique.
 
 - Carte publique / organisations (2026-11-04) : bulles enrichies avec une description limitee a 240 caracteres, suivie de ... si tronquee, et l URL du site lorsqu elle est renseignee. Lien ouvert dans un nouvel onglet ; affichage partage par index.php et index2.php.

@@ -91,15 +91,19 @@ class OrganizationalMaturityAssessment extends DbObject
         $assessment = new self(); $assessment->loadFromArray($row); $assessment->setId((int)$row['id']); return $assessment;
     }
 
-    public static function getOrganizationAggregate($organizationId)
+    private static function fetchOrganizationPrincipleRows(array $organizationIds): array
     {
-        $organizationId = (int)$organizationId;
-        if ($organizationId <= 0) {
-            return ['principles' => [], 'commonGround' => ['today' => [], 'tomorrow' => []], 'participatedMembers' => 0, 'activeMembers' => 0];
+        $organizationIds = array_values(array_unique(array_filter(array_map('intval', $organizationIds), static fn ($id) => $id > 0)));
+        if ($organizationIds === []) return [];
+        $params = [];
+        $placeholders = [];
+        foreach ($organizationIds as $index => $id) {
+            $key = 'organization_' . $index;
+            $placeholders[] = ':' . $key;
+            $params[$key] = $id;
         }
-
-        $principleRows = self::fetchAll(
-            'SELECT r.principle_number,
+        $rows = self::fetchAll(
+            'SELECT a.IDorganization, r.principle_number,
                     COUNT(*) AS response_count,
                     AVG(r.affinity_score) AS affinity_average,
                     STDDEV_POP(r.affinity_score) AS affinity_stddev,
@@ -118,12 +122,44 @@ class OrganizationalMaturityAssessment extends DbObject
                     SUM(CASE WHEN r.affinity_score >= 4 THEN 1 ELSE 0 END) AS affinity_high_count
              FROM organizational_maturity_assessment_response r
              INNER JOIN organizational_maturity_assessment a ON a.id = r.IDassessment
-             WHERE a.IDorganization = :organization_id
+             WHERE a.IDorganization IN (' . implode(', ', $placeholders) . ')
                AND a.completed_at IS NOT NULL
-             GROUP BY r.principle_number
-             ORDER BY r.principle_number ASC',
-            ['organization_id' => $organizationId]
+             GROUP BY a.IDorganization, r.principle_number
+             ORDER BY a.IDorganization, r.principle_number ASC',
+            $params
         );
+        return is_array($rows) ? $rows : [];
+    }
+
+    /** Average the ten principle means, using the same completed responses as the report. */
+    public static function getOrganizationScoreSummaries(array $organizationIds): array
+    {
+        $groups = [];
+        foreach (self::fetchOrganizationPrincipleRows($organizationIds) as $row) {
+            $number = (int)$row['principle_number'];
+            if ($number >= 1 && $number <= 10 && (int)$row['response_count'] > 0) {
+                $groups[(int)$row['IDorganization']][$number] = $row;
+            }
+        }
+        $summaries = [];
+        foreach ($groups as $id => $principles) {
+            if (count($principles) !== 10) continue;
+            $summaries[$id] = [
+                'todayAverage' => round(array_sum(array_column($principles, 'today_average')) / 10, 2),
+                'tomorrowAverage' => round(array_sum(array_column($principles, 'tomorrow_average')) / 10, 2),
+            ];
+        }
+        return $summaries;
+    }
+
+    public static function getOrganizationAggregate($organizationId)
+    {
+        $organizationId = (int)$organizationId;
+        if ($organizationId <= 0) {
+            return ['principles' => [], 'commonGround' => ['today' => [], 'tomorrow' => []], 'participatedMembers' => 0, 'activeMembers' => 0];
+        }
+
+        $principleRows = self::fetchOrganizationPrincipleRows([$organizationId]);
 
         $participationRow = self::fetchRow(
             'SELECT COUNT(DISTINCT uo.IDuser) AS active_members,

@@ -3093,3 +3093,55 @@ input:focus-visible + label {
         -webkit-print-color-adjust: exact;
     }
 }
+
+/* Compact organization radar embedded from the public map. */
+html.survey-organization-chart-page,
+.survey-organization-chart-page body {
+    background: #fff;
+}
+
+.survey-organization-chart {
+    --param-page-shell-width: 960px;
+    --param-page-shell-gutter: 16px;
+    --param-page-shell-padding-top: 16px;
+    --param-page-shell-padding-bottom: 16px;
+    display: grid;
+    gap: 12px;
+}
+
+.survey-organization-chart__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.survey-organization-chart__header .survey-radar-controls {
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    flex-shrink: 0;
+}
+
+.survey-organization-chart .survey-radar {
+    grid-template-columns: minmax(0, 1.2fr) minmax(260px, 1fr);
+    gap: 18px;
+}
+
+.survey-organization-chart .survey-radar__svg {
+    max-height: min(62vh, 440px);
+}
+
+.survey-organization-chart .survey-radar-key {
+    grid-template-columns: 1fr;
+    gap: 6px;
+}
+
+@media (max-width: 700px) {
+    .survey-organization-chart .survey-radar {
+        grid-template-columns: 1fr;
+    }
+
+    .survey-organization-chart .survey-radar__svg {
+        max-height: min(42vh, 300px);
+    }
+}

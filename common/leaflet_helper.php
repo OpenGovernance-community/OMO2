@@ -62,3 +62,20 @@ if (!function_exists('commonRenderLeafletAssets')) {
         <?php
     }
 }
+
+if (!function_exists('commonRenderLeafletMarkerClusterAssets')) {
+    function commonRenderLeafletMarkerClusterAssets()
+    {
+        static $rendered = false;
+        if ($rendered) {
+            return;
+        }
+        $rendered = true;
+        commonRenderLeafletAssets();
+        // Version 1.5.3 supports the Leaflet 1.9 global scripts used by the site.
+        ?>
+        <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" crossorigin="">
+        <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin=""></script>
+        <?php
+    }
+}

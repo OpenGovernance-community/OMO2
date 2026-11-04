@@ -240,8 +240,9 @@ $canonicalUrl = '/index2.php';
     <link rel="icon" type="image/jpeg" href="/img/omo-iceberg.jpg?v=20260914" sizes="1254x1254">
     <link rel="stylesheet" href="/assets/omo2-home.css?v=20261104-map-button-compact">
     <?php if ($omo2OrganizationMapRows !== array()): ?>
-    <link rel="stylesheet" href="/common/assets/homepage-map.css?v=20261104-popup-details">
-    <?php commonRenderLeafletAssets(); ?>
+    <link rel="stylesheet" href="<?= commonAssetUrl('/common/assets/topbar.css') ?>">
+    <link rel="stylesheet" href="/common/assets/homepage-map.css?v=20261104-white-popup">
+    <?php commonRenderLeafletMarkerClusterAssets(); ?>
     <?php endif; ?>
     <script type="application/ld+json">
     {"@context":"https://schema.org","@type":"SoftwareApplication","name":"OpenMyOrganization","applicationCategory":"BusinessApplication","operatingSystem":"Web","description":"<?= $e($t('home.meta.description')) ?>","url":"<?= $e($canonicalUrl) ?>"}

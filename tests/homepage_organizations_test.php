@@ -4,7 +4,7 @@ if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 $_SERVER['DOCUMENT_ROOT'] = dirname(__DIR__);
 require_once dirname(__DIR__) . '/shared_functions.php';
 
-use dbObject\{DbObject, Organization, History, User, UserOrganization};
+use dbObject\{DbObject, Organization, History, User, UserOrganization, OrganizationalMaturityAssessment, OrganizationalMaturityAssessmentResponse};
 
 function homepageOrganizationCheck(bool $ok, string $message): void
 {
@@ -65,8 +65,35 @@ try {
     homepageOrganizationCheck(in_array((int)$organizations['unknown']->getId(), $unfilteredIds, true), 'Unfiltered callers must retain organizations without activity');
     homepageOrganizationCheck(in_array((int)$organizations['old']->getId(), $unfilteredIds, true), 'Unfiltered callers must retain old organizations');
 
+    foreach ([
+        ['recent', true, 1, 3], ['recent', true, 4, 5], ['recent', false, 5, 1],
+        ['connection', true, 2, 5], ['boundary', false, 5, 5], [null, true, 5, 1],
+    ] as [$case, $completed, $today, $tomorrow]) {
+        $assessment = homepageOrganizationFixture(OrganizationalMaturityAssessment::class, [
+            'IDorganization' => $case === null ? null : $organizations[$case]->getId(),
+            'public_token' => bin2hex(random_bytes(8)), 'private_token_hash' => hash('sha256', random_bytes(32)),
+            'completed_at' => $completed ? new DateTimeImmutable('now', new DateTimeZone('UTC')) : null,
+        ]);
+        for ($principle = 1; $principle <= 10; $principle++) {
+            homepageOrganizationFixture(OrganizationalMaturityAssessmentResponse::class, [
+                'IDassessment' => $assessment->getId(), 'principle_number' => $principle, 'affinity_score' => 3,
+                'today_score' => $case === 'recent' && $completed && $principle === 1 ? $today + 1 : $today,
+                'tomorrow_score' => $tomorrow,
+            ]);
+        }
+    }
+    $summaries = OrganizationalMaturityAssessment::getOrganizationScoreSummaries(array_map(static fn ($organization) => (int)$organization->getId(), $organizations));
+    $expectedSummary = ['todayAverage' => 2.6, 'tomorrowAverage' => 4.0];
+    homepageOrganizationCheck($summaries[$organizations['recent']->getId()] === $expectedSummary, 'Scores must average all ten principles and completed assessments, excluding drafts and unassociated responses');
+    homepageOrganizationCheck($summaries[$organizations['connection']->getId()] === ['todayAverage' => 2.0, 'tomorrowAverage' => 5.0], 'Organizations must have separate averages');
+    homepageOrganizationCheck(!isset($summaries[$organizations['boundary']->getId()]) && !isset($summaries[$organizations['unknown']->getId()]), 'Draft-only and unevaluated organizations must have no score');
+    $aggregate = OrganizationalMaturityAssessment::getOrganizationAggregate($organizations['recent']->getId());
+    homepageOrganizationCheck(count($aggregate['principles']) === 10 && $aggregate['principles'][1]['todayAverage'] === 3.5 && $aggregate['principles'][2]['todayAverage'] === 2.5, 'Existing radar must retain its per-principle means');
+    homepageOrganizationCheck(OrganizationalMaturityAssessment::getOrganizationScoreSummaries([]) === [], 'Empty batches must return no scores');
+
     $publicMapRows = array_column(Organization::fetchPublicMapRows(), null, 'id');
     $recentMapRow = $publicMapRows[$organizations['recent']->getId()];
+    homepageOrganizationCheck($recentMapRow['maturity'] === $expectedSummary && $publicMapRows[$organizations['boundary']->getId()]['maturity'] === null, 'Map rows must expose only aggregate scores when available');
     homepageOrganizationCheck(mb_strlen($recentMapRow['description'], 'UTF-8') <= 240 && str_ends_with($recentMapRow['description'], '...'), 'Long map descriptions must be limited to 240 characters with an ellipsis');
     homepageOrganizationCheck($recentMapRow['url'] === 'https://example.org/about?a=1&b=2', 'Map data must retain the organization website');
     homepageOrganizationCheck($publicMapRows[$organizations['connection']->getId()]['description'] === 'Court texte <test>', 'Short descriptions must keep their text without an ellipsis and normalize whitespace');
@@ -86,7 +113,15 @@ try {
         homepageOrganizationCheck(in_array((int)$organizations['recent']->getId(), $mapIds, true), 'Active geolocated organizations must appear on map');
         homepageOrganizationCheck(!in_array((int)$organizations['old']->getId(), $mapIds, true), 'Old organizations must not appear on map');
     }
-    echo "homepage_organizations_test: OK (activity cutoff, boundary, connection fallback, ordering, rendering and map data)\n";
+    $_GET = ['id' => (int)$organizations['recent']->getId(), 'chart' => '1'];
+    ob_start();
+    require dirname(__DIR__) . '/survey/organization.php';
+    $chartHtml = (string)ob_get_clean();
+    homepageOrganizationCheck(str_contains($chartHtml, 'id="surveyPublicRadar"') && !str_contains($chartHtml, 'data-group-radar-index'), 'Compact view must reuse the public radar without loading the full organization report');
+    preg_match('/window\.SURVEY_PUBLIC_RESULT = (.*);/', $chartHtml, $chartMatch);
+    $chartQuestions = json_decode($chartMatch[1] ?? '', true, 512, JSON_THROW_ON_ERROR);
+    homepageOrganizationCheck(count($chartQuestions) === 10 && $chartQuestions[0]['today'] === 3.5 && (float)$chartQuestions[0]['tomorrow'] === 4.0, 'Popup chart must display the existing organization aggregate');
+    echo "homepage_organizations_test: OK (activity, map details, maturity means, organization isolation, drafts and compact radar)\n";
 } finally {
     if ($pdo->inTransaction()) $pdo->rollBack();
 }

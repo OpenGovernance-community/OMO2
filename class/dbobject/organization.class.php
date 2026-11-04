@@ -386,6 +386,10 @@
 				);
 			}
 
+			$maturitySummaries = OrganizationalMaturityAssessment::getOrganizationScoreSummaries(array_column($result, 'id'));
+			foreach ($result as $index => $row) {
+				$result[$index]['maturity'] = $maturitySummaries[$row['id']] ?? null;
+			}
 			return $result;
 		}
 
