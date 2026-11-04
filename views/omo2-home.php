@@ -51,8 +51,6 @@ $sourceLang = [
     'home.organizations.kicker' => ['text' => 'Des collectifs en action', 'context' => 'Organization logo list eyebrow.'],
     'home.organizations.map.show' => ['text' => 'Voir la carte', 'context' => 'Button to show the geographic distribution of active organizations.'],
     'home.organizations.map.hide' => ['text' => 'Masquer la carte', 'context' => 'Button to hide the organization map.'],
-    'home.organizations.map.title' => ['text' => 'Les organisations actives ce dernier mois', 'context' => 'Heading for the public map of active organizations.'],
-    'home.organizations.map.body' => ['text' => 'Retrouvez sur la carte les collectifs qui ont renseigne leur localisation.', 'context' => 'Explanation of which active organizations appear on the map.'],
     'home.cap.structure.title' => ['text' => 'Clarifier sans rigidifier.', 'context' => 'Structure capability subheading.'],
     'home.cap.structure.body' => ['text' => 'Qui porte quoi, et dans quel but ? Rendez visibles les équipes, les rôles et leurs responsabilités. Votre structure peut évoluer avec la vie du collectif.', 'context' => 'Structure capability body.'],
     'home.cap.share.title' => ['text' => 'Le bon contexte pour agir.', 'context' => 'Sharing capability subheading.'],
@@ -241,7 +239,7 @@ $canonicalUrl = '/index2.php';
     <link rel="stylesheet" href="/assets/omo2-home.css?v=20261104-map-button-compact">
     <?php if ($omo2OrganizationMapRows !== array()): ?>
     <link rel="stylesheet" href="<?= commonAssetUrl('/common/assets/topbar.css') ?>">
-    <link rel="stylesheet" href="/common/assets/homepage-map.css?v=20261104-white-popup">
+    <link rel="stylesheet" href="/common/assets/homepage-map.css?v=20261104-map-stacking">
     <?php commonRenderLeafletMarkerClusterAssets(); ?>
     <?php endif; ?>
     <script type="application/ld+json">
@@ -336,13 +334,7 @@ $canonicalUrl = '/index2.php';
                 <button class="omo2-button omo2-button--compact" id="omo2OrganizationMapToggle" type="button" aria-expanded="false" aria-controls="omo2OrganizationMapPanel" data-label-show="<?= $e($t('home.organizations.map.show')) ?>" data-label-hide="<?= $e($t('home.organizations.map.hide')) ?>"><?= $e($t('home.organizations.map.show')) ?></button>
             </div>
             <div class="omo2-shell omo2-organizations__map" id="omo2OrganizationMapPanel" hidden>
-                <section class="home-organization-map" aria-labelledby="organization-map-title">
-                    <div class="home-organization-map__header">
-                        <h2 id="organization-map-title"><?= $e($t('home.organizations.map.title')) ?></h2>
-                        <p><?= $e($t('home.organizations.map.body')) ?></p>
-                    </div>
-                    <div id="homepageOrganizationMap" class="home-organization-map__canvas" role="region" aria-label="<?= $e($t('home.organizations.map.title')) ?>"></div>
-                </section>
+                <div id="homepageOrganizationMap" class="home-organization-map__canvas" role="region" aria-labelledby="organizations-title"></div>
             </div>
             <?php endif; ?>
         </section>

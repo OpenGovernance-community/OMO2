@@ -65,12 +65,21 @@ try {
     homepageOrganizationCheck(in_array((int)$organizations['unknown']->getId(), $unfilteredIds, true), 'Unfiltered callers must retain organizations without activity');
     homepageOrganizationCheck(in_array((int)$organizations['old']->getId(), $unfilteredIds, true), 'Unfiltered callers must retain old organizations');
 
+    $draftMember = homepageOrganizationFixture(User::class, [
+        'firstname' => 'Draft participant', 'email' => 'homepage-draft-' . bin2hex(random_bytes(6)) . '@example.invalid', 'active' => 1,
+    ]);
+    foreach ([$user, $draftMember] as $member) {
+        homepageOrganizationFixture(UserOrganization::class, [
+            'IDorganization' => $organizations['recent']->getId(), 'IDuser' => $member->getId(), 'active' => 1,
+        ]);
+    }
     foreach ([
         ['recent', true, 1, 3], ['recent', true, 4, 5], ['recent', false, 5, 1],
         ['connection', true, 2, 5], ['boundary', false, 5, 5], [null, true, 5, 1],
     ] as [$case, $completed, $today, $tomorrow]) {
         $assessment = homepageOrganizationFixture(OrganizationalMaturityAssessment::class, [
             'IDorganization' => $case === null ? null : $organizations[$case]->getId(),
+            'IDuser' => $case === 'recent' ? ($completed ? $user->getId() : $draftMember->getId()) : null,
             'public_token' => bin2hex(random_bytes(8)), 'private_token_hash' => hash('sha256', random_bytes(32)),
             'completed_at' => $completed ? new DateTimeImmutable('now', new DateTimeZone('UTC')) : null,
         ]);
@@ -88,6 +97,7 @@ try {
     homepageOrganizationCheck($summaries[$organizations['connection']->getId()] === ['todayAverage' => 2.0, 'tomorrowAverage' => 5.0], 'Organizations must have separate averages');
     homepageOrganizationCheck(!isset($summaries[$organizations['boundary']->getId()]) && !isset($summaries[$organizations['unknown']->getId()]), 'Draft-only and unevaluated organizations must have no score');
     $aggregate = OrganizationalMaturityAssessment::getOrganizationAggregate($organizations['recent']->getId());
+    homepageOrganizationCheck($aggregate['participatedMembers'] === 1 && $aggregate['activeMembers'] === 2, 'Participation must count distinct members with completed assessments, without counting repeat evaluations or draft-only members');
     homepageOrganizationCheck(count($aggregate['principles']) === 10 && $aggregate['principles'][1]['todayAverage'] === 3.5 && $aggregate['principles'][2]['todayAverage'] === 2.5, 'Existing radar must retain its per-principle means');
     homepageOrganizationCheck(OrganizationalMaturityAssessment::getOrganizationScoreSummaries([]) === [], 'Empty batches must return no scores');
 
@@ -117,6 +127,8 @@ try {
     ob_start();
     require dirname(__DIR__) . '/survey/organization.php';
     $chartHtml = (string)ob_get_clean();
+    homepageOrganizationCheck(str_contains($chartHtml, '1 personne (50 % des membres)'), 'Compact chart must show the distinct participant count and member percentage with the correct singular');
+    homepageOrganizationCheck(strpos($chartHtml, 'class="survey-organization-chart__participation"') > strpos($chartHtml, 'id="surveyPublicRadar"') && strpos($chartHtml, 'class="survey-organization-chart__participation"') < strpos($chartHtml, 'class="survey-radar-risk"'), 'Participation must be below the radar and above the risk warning');
     homepageOrganizationCheck(str_contains($chartHtml, 'id="surveyPublicRadar"') && !str_contains($chartHtml, 'data-group-radar-index'), 'Compact view must reuse the public radar without loading the full organization report');
     preg_match('/window\.SURVEY_PUBLIC_RESULT = (.*);/', $chartHtml, $chartMatch);
     $chartQuestions = json_decode($chartMatch[1] ?? '', true, 512, JSON_THROW_ON_ERROR);

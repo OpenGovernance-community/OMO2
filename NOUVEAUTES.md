@@ -1,5 +1,11 @@
 # Journal des nouveautés
 
+- Carte publique / superposition (2026-11-04) : couches, points et commandes Leaflet confines au panneau de la carte pour que l entete et le menu restent visibles et cliquables au defilement, y compris sur mobile.
+
+- Accueil OMO2 / carte des organisations (2026-11-04) : retrait du titre et de la description repetes au-dessus de la carte. La carte occupe toute la largeur du panneau, sous le titre Des collectifs en action deja present.
+
+- Carte publique / participation a la maturite (2026-11-04) : nombre de membres distincts ayant termine une evaluation et pourcentage des membres actifs affiches sous le radar, avant l avertissement sur la couronne 5. Calcul de participation existant reutilise, sans compter plusieurs fois une personne ; pourcentage omis en l absence de membres.
+
 - Synchronisation / notifications des versions (2026-11-04) : notification uniquement lorsqu un texte de presentation a ete prepare dans le merge ou la pull request. Les mises a jour avec seulement le journal technique conservent leur news sans notifier les utilisateurs ; une reprise ne cree pas de notification tardive.
 
 - Organisations / creation depuis un modele (2026-11-04) : logo, banniere et icones des holons laisses vides pour eviter de partager les fichiers du modele. Le formulaire permet toujours de choisir de nouvelles images ; les imports d archives conservent leurs images.

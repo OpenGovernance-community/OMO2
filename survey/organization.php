@@ -62,6 +62,16 @@ $pageSourceLang = [
     'survey.organization.summary' => ['text' => 'Les aspirations les plus marquées concernent {themes}.', 'context' => 'Dynamic aggregate summary below the radar.'],
     'survey.organization.participation' => ['text' => 'Participation des membres', 'context' => 'Participation statistic label.'],
     'survey.organization.participants' => ['text' => 'Membres participants', 'context' => 'Participant count statistic label.'],
+    'survey.organization.participation_summary' => [
+        'one' => '{count} personne ({percent} % des membres)',
+        'other' => '{count} personnes ({percent} % des membres)',
+        'context' => 'Number of distinct active members with a completed assessment and their share of all active organization members, below the embedded radar.',
+    ],
+    'survey.organization.participation_count' => [
+        'one' => '{count} personne',
+        'other' => '{count} personnes',
+        'context' => 'Participant count below the embedded radar when the organization has no active members to calculate a percentage.',
+    ],
     'survey.organization.evaluations' => ['text' => 'Évaluations enregistrées', 'context' => 'Evaluation count statistic label.'],
     'survey.organization.current' => ['text' => 'Aujourd’hui', 'context' => 'Current situation label in organization report cards.'],
     'survey.organization.desired' => ['text' => 'Demain', 'context' => 'Desired situation label in organization report cards.'],
@@ -127,6 +137,9 @@ foreach ($surveyQuestionDefinitions as $questionDefinition) {
         'responseCount' => (int)$scores['responseCount'],
     ];
 }
+$activeMembers = (int)$aggregate['activeMembers'];
+$participatedMembers = (int)$aggregate['participatedMembers'];
+$participationPercent = $activeMembers > 0 ? (int)round(($participatedMembers / $activeMembers) * 100) : 0;
 if (isset($_GET['chart']) && (string)$_GET['chart'] === '1') {
     require __DIR__ . '/organization-chart-view.php';
     return;
@@ -187,9 +200,6 @@ if (!preg_match('/^#[0-9a-f]{3,8}$/i', $organizationColor)) {
 }
 $logoUrl = commonBuildAbsoluteAssetUrl((string)$organization->get('logo'));
 $bannerUrl = commonBuildAbsoluteAssetUrl((string)$organization->get('banner'));
-$activeMembers = (int)$aggregate['activeMembers'];
-$participatedMembers = (int)$aggregate['participatedMembers'];
-$participationPercent = $activeMembers > 0 ? (int)round(($participatedMembers / $activeMembers) * 100) : 0;
 $summaryQuestions = $questions;
 usort($summaryQuestions, static function (array $first, array $second): int {
     $firstGap = (float)$first['tomorrow'] - (float)$first['today'];
