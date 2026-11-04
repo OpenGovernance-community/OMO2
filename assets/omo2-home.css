@@ -51,6 +51,7 @@ h3 { font-size: clamp(1.45rem, 2vw, 2rem); }
 .omo2-button:focus-visible, .omo2-text-link:focus-visible, a:focus-visible, button:focus-visible { outline: 3px solid var(--omo2-sky); outline-offset: 4px; }
 .omo2-button--small { min-height: 42px; padding-inline: 17px; background: transparent; border-color: rgba(255,255,255,.68); box-shadow: none; }
 .omo2-button--small:hover { background: #fff; color: var(--omo2-deep); }
+.omo2-button--compact { min-height: 30px; padding: 5px 14px; font-size: .8rem; }
 .omo2-button--light { background: #fff; color: var(--omo2-deep); }
 .omo2-button--ghost-light { border-color: rgba(255,255,255,.52); background: transparent; color: #fff; box-shadow: none; }
 .omo2-button--ghost-light:hover { background: rgba(255,255,255,.1); }
@@ -112,6 +113,8 @@ h3 { font-size: clamp(1.45rem, 2vw, 2rem); }
 .omo2-section.omo2-section--organizations { overflow: hidden; padding: 0; background: #fff; }
 .omo2-organizations__heading { margin-bottom: 0; text-align: center; }
 .omo2-organizations__heading .omo2-eyebrow { justify-content: center; margin: 0; }
+.omo2-organizations__actions { padding-block: 4px 12px; text-align: center; }
+.omo2-organizations__map { margin-block: 24px; }
 .omo2-org-marquee { width: 100%; overflow: hidden; }
 .omo2-org-marquee__track { display: flex; width: max-content; }
 .omo2-org-marquee:not(.is-looping) .omo2-org-marquee__track { margin-inline: auto; }

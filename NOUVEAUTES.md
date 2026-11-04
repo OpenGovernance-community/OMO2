@@ -1,5 +1,27 @@
 # Journal des nouveautés
 
+- Synchronisation / notifications des versions (2026-11-04) : notification uniquement lorsqu un texte de presentation a ete prepare dans le merge ou la pull request. Les mises a jour avec seulement le journal technique conservent leur news sans notifier les utilisateurs ; une reprise ne cree pas de notification tardive.
+
+- Organisations / creation depuis un modele (2026-11-04) : logo, banniere et icones des holons laisses vides pour eviter de partager les fichiers du modele. Le formulaire permet toujours de choisir de nouvelles images ; les imports d archives conservent leurs images.
+
+- Carte publique / presentation (2026-11-04) : texte de description des organisations plus petit dans les bulles. Fond blanc pour la popup du radar, y compris son entete et le contenu du graphique.
+
+- Carte publique / regroupement des organisations (2026-11-04) : points proches regroupes dans un cercle indiquant leur nombre. Clic pour zoomer sur la zone ; les organisations au meme emplacement peuvent se deployer pour rester accessibles individuellement. Comportement partage par index.php et index2.php, avec les bulles existantes.
+
+- Carte publique / fermeture de la popup (2026-11-04) : bouton rond avec croix utilisant le composant et les styles partages des popups OMO, avec libelle accessible et infobulle Fermer.
+
+- Carte publique / maturite organisationnelle (2026-11-04) : titre Maturite organisationnelle et moyennes Etat actuel vers Ambition dans les bulles des organisations ayant des evaluations terminees. Valeurs sans /5 pour ne pas presenter le niveau 5 comme un objectif. Clic sur les notes pour ouvrir le radar collectif et sa legende dans une popup, avec le calcul et le graphique existants du questionnaire ; brouillons exclus, aucune note affichee sans resultat complet. Vue compacte avec legende Aujourd hui / Demain a droite du titre, sans phrase explicative et radar reduit pour tenir dans la popup sur ordinateur.
+
+- Survey / notifications des invitations (2026-11-04) : messages de succes et d erreur affiches dans la couche de la popup, au-dessus du fond floute, en conservant leur position en haut de l ecran et leur fermeture automatique.
+
+- Carte publique / organisations (2026-11-04) : bulles enrichies avec une description limitee a 240 caracteres, suivie de ... si tronquee, et l URL du site lorsqu elle est renseignee. Lien ouvert dans un nouvel onglet ; affichage partage par index.php et index2.php.
+
+- Accueil OMO2 / organisations (2026-11-04) : defilement limite aux organisations actives ces 30 derniers jours selon le calcul d activite existant. Bouton Voir la carte pour afficher leur repartition geographique lorsqu une localisation est renseignee ; carte et styles partages avec index.php. Bouton bleu compact centre sous le defilement des logos, avec une hauteur et un padding vertical reduits.
+
+- OMO / popup des tensions (2026-11-04) : entete compacte et onglets pour creer une tension ou consulter celles de l organisation. Progression d enregistrement dans le bouton, liste actualisee apres sauvegarde et suppression depuis le menu de chaque ligne, reservee a l auteur ou au mode administrateur ; les liens des PV sont conserves.
+
+- Synchronisation / textes des merges (2026-11-03) : lecture des presentations preparees dans le message du commit de merge, meme avec un titre personnalise sans numero de pull request ou une description GitHub vide. Reprise du texte local pour les news anciennes ne contenant que le journal, sans modifier les notifications ; les simples titres automatiques restent exclus.
+
 - Tutoriels / français et traductions (2026-11-03) : relecture des catalogues publics et OMO, des parcours, missions, devoirs, quiz, formulaires et réglages vidéo. Accents, apostrophes, ponctuation et pluriels corrigés ; boutons anglais et messages non traduisibles raccordés aux traductions partagées. Langue conservée dans la navigation et les appels des tutoriels ; suppression du double chargement du script partagé sur les pages publiques.
 
 - PV / synchronisation en arriere-plan (2026-11-03) : suspension des verifications serveur lorsque l onglet est masque, la fenetre perd le focus ou le PV est replie dans OMO. Verification immediate au retour, sans perdre les modifications locales ni multiplier les appels lors des evenements de reprise.

@@ -71,6 +71,7 @@
         saveClose: document.getElementById('surveySaveClose'),
         inviteAction: document.getElementById('surveyInviteAction'),
         inviteDialog: document.getElementById('surveyInviteDialog'),
+        inviteNotifications: document.getElementById('surveyInviteNotifications'),
         inviteDialogEyebrow: document.getElementById('surveyInviteDialogEyebrow'),
         inviteDialogTitle: document.getElementById('surveyInviteDialogTitle'),
         inviteContent: document.getElementById('surveyInviteContent'),
@@ -1157,7 +1158,7 @@
                         linkBox.hidden = false;
                         feedback.hidden = true;
                     }).catch(function () {
-                        window.commonNotify(labels.inviteError, 'error');
+                        window.commonNotify(labels.inviteError, 'error', { container: elements.inviteNotifications });
                     }).finally(function () {
                         generate.disabled = false;
                         generate.textContent = labels.invitePublicGenerate;
@@ -1202,9 +1203,9 @@
                 body: JSON.stringify({ organizationId: Number(organization.id), holonIds: values('[data-invite-holons]'), userIds: values('[data-invite-members]'), emails: emails })
             }).then(function (response) { return response.json().catch(function () { return { status: false }; }); }).then(function (result) {
                 if (!result || result.status !== true) { throw new Error('invite_failed'); }
-                window.commonNotify(interpolate(labels.inviteSent, { count: Array.isArray(result.emails) ? result.emails.length : 0 }), 'success');
+                window.commonNotify(interpolate(labels.inviteSent, { count: Array.isArray(result.emails) ? result.emails.length : 0 }), 'success', { container: elements.inviteNotifications });
             }).catch(function (error) {
-                window.commonNotify(labels.inviteError, 'error');
+                window.commonNotify(labels.inviteError, 'error', { container: elements.inviteNotifications });
             }).finally(function () {
                 submit.disabled = false;
                 submit.textContent = labels.inviteSend;

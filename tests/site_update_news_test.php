@@ -15,11 +15,13 @@ updateCheck(PHP_VERSION_ID >= 80500, 'Use PHP 8.5.');
 updateCheck(siteUpdateChangelogRepository('https://github.com/OpenGovernance-community/OMO2.git') === 'OpenGovernance-community/OMO2', 'HTTPS remote');
 updateCheck(siteUpdateChangelogRepository('git@github.com:owner/repo.git') === 'owner/repo', 'SSH remote');
 updateCheck(siteUpdateChangelogRepository('https://github.com.evil.test/owner/repo') === null, 'Reject other API hosts');
-$records = str_repeat('a', 40) . "\0Merge pull request #529 from owner/Beta\0Feature description\0"
-    . str_repeat('b', 40) . "\0Correct a bug (#530)\0Bug details\0";
+$mergeParents = str_repeat('0', 40) . ' ' . str_repeat('1', 40);
+$records = str_repeat('a', 40) . "\0Merge pull request #529 from owner/Beta\0Feature description\0" . $mergeParents . "\0"
+    . str_repeat('b', 40) . "\0Correct a bug (#530)\0Bug details\0" . str_repeat('2', 40) . "\0";
 $entries = siteUpdateChangelogParseGit($records);
 updateCheck(count($entries) === 2 && $entries[0]['number'] === 529 && $entries[1]['number'] === 530, 'Merge and squash parsing');
 updateCheck($entries[0]['description'] === 'Feature description', 'Preserve descriptions');
+updateCheck(count($entries[0]['parents']) === 2 && count($entries[1]['parents']) === 1, 'Identify real merges independently of their subject');
 updateCheck(siteUpdateChangelogParseJournal("--- a/NOUVEAUTES.md\n+++ b/NOUVEAUTES.md\n@@ -1 +1 @@\n-old note\n+- New note\n unchanged") === '- New note', 'Journal contains only added lines');
 $html = siteUpdateNewsRender("## Corrections\n\n- Fix **important**\n\n<script>alert(1)</script>\n\n[bad](javascript:alert(1))");
 updateCheck(str_contains($html, '<strong>important</strong>') && !str_contains($html, '<script') && !str_contains($html, 'href="javascript:'), 'Safe Markdown rendering');
@@ -28,19 +30,31 @@ $syncNote = 'Synchronisation / nouveautes (2026-11-03) : nouvelles notifications
 $journalNotes = "- $tutorialNote\n- $syncNote";
 $preparedMarkdown = "## Une belle presentation\n\n**Bienvenue** dans cette version.\n\n"
     . "Un paragraphe volontairement repete.\n\nUn paragraphe volontairement repete.\n\n- Une nouveaute expliquee simplement.\n";
+$customMerge = ['title' => 'Tutoriels : une navigation plus simple', 'description' => $preparedMarkdown,
+    'parents' => explode(' ', $mergeParents), 'number' => 0];
+updateCheck(siteUpdateChangelogPreparedDescription($customMerge) === trim($preparedMarkdown), 'Read a customized merge body without a PR number or API access');
+updateCheck(siteUpdateChangelogPreparedDescription($customMerge, ['title' => 'Beta', 'body' => null]) === trim($preparedMarkdown), 'PR 532 regression: empty PR description does not hide the prepared merge body');
+updateCheck(siteUpdateChangelogPreparedDescription($customMerge, ['title' => 'Beta', 'body' => 'Older PR description']) === trim($preparedMarkdown), 'The final customized merge message takes priority');
+$automaticMerge = array_merge($customMerge, ['title' => 'Merge pull request #532 from owner/Beta', 'description' => 'Beta']);
+updateCheck(siteUpdateChangelogPreparedDescription($automaticMerge, ['title' => 'Beta', 'body' => null]) === '', 'An automatic PR-title-only merge is not a presentation');
+updateCheck(siteUpdateChangelogPreparedDescription($automaticMerge, ['title' => 'Beta', 'body' => $preparedMarkdown]) === trim($preparedMarkdown), 'Read the PR description when the merge message is automatic');
+updateCheck(siteUpdateChangelogPreparedDescription(array_merge($automaticMerge, ['description' => $preparedMarkdown])) === trim($preparedMarkdown), 'Recognize prepared Markdown with a standard merge title even offline');
+updateCheck(siteUpdateChangelogPreparedDescription(array_merge($customMerge, ['parents' => [str_repeat('0', 40)]])) === '', 'Ordinary commit bodies stay excluded');
 $preparedEntries = [['title' => 'Technical merge subject', 'description' => 'Technical Git body', 'preparedDescription' => $preparedMarkdown]];
 $content = siteUpdateChangelogContent($preparedEntries, $journalNotes);
 updateCheck($content['description'] === trim($preparedMarkdown) && $content['journal'] === $journalNotes, 'Keep prepared Markdown and journal separate');
+updateCheck($content['hasPreparedDescription'] === true, 'Prepared text enables notifications');
 $preparedHtml = siteUpdateAdminChangelogHtml($content);
 updateCheck(str_contains($preparedHtml, '<strong>Bienvenue</strong>') && substr_count($preparedHtml, 'Un paragraphe volontairement repete.') === 2, 'Preserve authored formatting and intentional repetitions');
 updateCheck(str_contains($preparedHtml, '<details class="generic-accordion generic-help-text">') && !str_contains($preparedHtml, '<details open'), 'Journal is compact and collapsed by default');
 updateCheck(strpos($preparedHtml, 'Bienvenue') < strpos($preparedHtml, '<details'), 'Prepared introduction comes first');
 updateCheck(!str_contains($preparedHtml, 'Technical merge') && !str_contains($preparedHtml, 'Technical Git body'), 'Do not display merge metadata');
 $fallback = siteUpdateChangelogContent([['title' => 'Merge pull request #530', 'description' => 'Not editorial']], $journalNotes);
-updateCheck($fallback === ['description' => $journalNotes, 'journal' => ''], 'Journal replaces a missing PR body');
+updateCheck($fallback === ['description' => $journalNotes, 'journal' => '', 'hasPreparedDescription' => false], 'Journal replaces a missing PR body without enabling notifications');
 updateCheck(!str_contains(siteUpdateAdminChangelogHtml($fallback), '<details'), 'Fallback journal is expanded directly');
 updateCheck(siteUpdateChangelogContent([['preparedDescription' => '<!-- template comment -->']], $journalNotes) === $fallback, 'Comment-only PR bodies are not prepared presentations');
-updateCheck(siteUpdateChangelogContent($preparedEntries, '')['journal'] === '', 'Prepared text works without a journal');
+$withoutJournal = siteUpdateChangelogContent($preparedEntries, '');
+updateCheck($withoutJournal['journal'] === '' && $withoutJournal['hasPreparedDescription'] === true, 'Prepared text enables notifications even without a journal');
 updateCheck(siteUpdateChangelogContent([], '')['description'] === siteUpdateNewsT('empty'), 'No technical fallback when no source has notes');
 $legacyDescription = "## Journal des nouveautes\n\n$journalNotes\n\n"
     . "## Descriptions GitHub et historique Git\n\n## Update tutoriel public access and MAJ (#530)\n\n"
@@ -49,9 +63,9 @@ $legacyContent = siteUpdateNewsLegacyContent($legacyDescription);
 updateCheck($legacyContent['description'] === trim($preparedMarkdown) && $legacyContent['journal'] === $journalNotes, 'Existing saved news use prepared text first');
 updateCheck(str_contains(siteUpdateNewsRender($legacyDescription), '<details class="generic-accordion generic-help-text">'), 'Legacy saved news also use the collapsed journal');
 $legacyFallback = "## Journal des nouveautes\n\n$journalNotes\n\n## Descriptions GitHub et historique Git\n\n## Update (#530)\n\nUpdate\n\n## Update\n";
-updateCheck(siteUpdateNewsLegacyContent($legacyFallback) === $fallback, 'Existing merge-title-only news show the journal');
+updateCheck(siteUpdateNewsLegacyContent($legacyFallback) === ['description' => $journalNotes, 'journal' => ''], 'Existing merge-title-only news show the journal');
 $legacyGitFallback = "## Journal des nouveautes\n\n$journalNotes\n\n## Descriptions GitHub et historique Git\n\n## Merge pull request #530 from owner/Beta (#530)\n\nA technical merge description\n";
-updateCheck(siteUpdateNewsLegacyContent($legacyGitFallback) === $fallback, 'Unresolved legacy merge messages are not prepared presentations');
+updateCheck(siteUpdateNewsLegacyContent($legacyGitFallback) === ['description' => $journalNotes, 'journal' => ''], 'Unresolved legacy merge messages are not prepared presentations');
 $linksHtml = siteUpdateNewsRender("- [Documentation](https://example.test/one)\n\n- [Documentation](https://example.test/two)");
 updateCheck(substr_count($linksHtml, '<li>') === 2, 'Different link destinations are distinct information');
 $nestedHtml = siteUpdateNewsRender("## Details\n\n- Main note\n  - Nested note\n\n```text\nPreserved code\n```");
@@ -84,7 +98,7 @@ try {
     $git(['add', 'NOUVEAUTES.md']);
     $git(['commit', '--quiet', '-m', 'Internal feature (#999)', '-m', 'Internal technical details']);
     $git(['checkout', '--quiet', $deliveryBranch]);
-    $git(['merge', '--quiet', '--no-ff', 'internal-feature', '-m', 'Merge pull request #529 from owner/Beta', '-m', "Bug fixes\n\nNew features"]);
+    $git(['merge', '--quiet', '--no-ff', 'internal-feature', '-m', 'Merge pull request #529 from owner/Beta', '-m', 'Automatic PR title']);
     $git(['commit', '--quiet', '--allow-empty', '-m', 'Direct correction', '-m', 'Preserved details']);
     $toGit = $git(['rev-parse', 'HEAD']);
     $context = ['repoRoot' => $fixture, 'remote' => 'origin'];
@@ -94,8 +108,26 @@ try {
     updateCheck(!str_contains($changelog['description'], 'Bug fixes') && !str_contains($changelog['description'], 'Preserved details'), 'Git metadata never replaces the journal');
     updateCheck(!str_contains($changelog['description'], 'Already installed'), 'Exclude installed changes');
     updateCheck(str_contains($changelog['description'], '- New feature for users'), 'Include new release notes');
+    updateCheck($changelog['hasPreparedDescription'] === false, 'A technical-only update stays silent');
     updateCheck(siteUpdateAdminGetChangelog($context, $fromGit, $toGit) === $changelog, 'Cached description');
     updateCheck(siteUpdateAdminGetChangelog($context, $toGit, $toGit)['entries'] === [], 'No changes for same revision');
+    $git(['checkout', '--quiet', '-b', 'next-delivery']);
+    file_put_contents($fixture . '/NOUVEAUTES.md', "# Journal\n\n- Latest technical note\n\n- New feature for users\n");
+    $git(['add', 'NOUVEAUTES.md']);
+    $git(['commit', '--quiet', '-m', 'Internal implementation detail']);
+    $git(['checkout', '--quiet', $deliveryBranch]);
+    $git(['merge', '--quiet', '--no-ff', 'next-delivery', '-m', 'Tutoriels : une navigation plus simple', '-m', $preparedMarkdown]);
+    $customRevision = $git(['rev-parse', 'HEAD']);
+    $customChangelog = siteUpdateAdminGetChangelog($context, $toGit, $customRevision);
+    updateCheck($customChangelog['description'] === trim($preparedMarkdown) && $customChangelog['journal'] === '- Latest technical note', 'Real customized merge reads the prepared body without GitHub');
+    updateCheck($customChangelog['hasPreparedDescription'] === true, 'A customized merge enables notifications');
+    updateCheck($customChangelog['entries'][0]['number'] === 0 && count($customChangelog['entries']) === 1, 'No numbered subject or implementation commits are needed');
+    $recovered = siteUpdateAdminRecoverNewsContent($context, $toGit, $customRevision, '- Latest technical note', '');
+    updateCheck($recovered['description'] === trim($preparedMarkdown) && $recovered['journal'] === '- Latest technical note', 'Recover an already published journal-only news from immutable Git history');
+    updateCheck(siteUpdateAdminRecoverNewsContent($context, $toGit, $customRevision, 'Existing editorial snapshot', '') ===
+        ['description' => 'Existing editorial snapshot', 'journal' => ''], 'Never replace an existing editorial snapshot');
+    updateCheck(siteUpdateAdminRecoverNewsContent($context, $toGit, $customRevision, 'Prepared snapshot', 'Archived journal') ===
+        ['description' => 'Prepared snapshot', 'journal' => 'Archived journal'], 'Keep already separated snapshots untouched');
 } finally { $removeFixture($fixture); }
 
 // All writes below are confined to temporary tables on this PDO connection.
@@ -128,6 +160,21 @@ $again = SiteUpdateNews::publish($from, $to, 'Retry', 'Different content');
 updateCheck($again->getId() === $news->getId() && count(Notification::getInboxForUser($users['real'], 123)) === 1, 'No duplicate on retry');
 updateCheck($again->get('description') === "## Changes\n\nBug fixed", 'Published snapshot remains immutable');
 updateCheck($again->get('journal') === $journalNotes, 'Retry preserves the stored journal');
+
+$silentRevision = str_repeat('e', 40);
+$silent = SiteUpdateNews::publish($to, $silentRevision, 'Minor technical update',
+    $fallback['description'], $fallback['journal'], $fallback['hasPreparedDescription']);
+updateCheck((int)$silent->getId() > 0 && $silent->get('description') === $journalNotes, 'Silent updates still publish their technical news');
+updateCheck(count(Notification::getInboxForUser($users['real'], 123)) === 1, 'No notification for a journal-only update');
+$silentRetry = SiteUpdateNews::publish($to, $silentRevision, 'Retry', 'Now with some text', '', true);
+updateCheck($silentRetry->getId() === $silent->getId() && count(Notification::getInboxForUser($users['real'], 123)) === 1, 'Retry does not notify an already silent news');
+$emptyContent = siteUpdateChangelogContent([], '');
+SiteUpdateNews::publish($to, str_repeat('f', 40), 'No release notes',
+    $emptyContent['description'], $emptyContent['journal'], $emptyContent['hasPreparedDescription']);
+updateCheck(count(Notification::getInboxForUser($users['real'], 123)) === 1, 'No notification without any prepared text or journal');
+SiteUpdateNews::publish($to, str_repeat('9', 40), 'Prepared release without journal',
+    $withoutJournal['description'], $withoutJournal['journal'], $withoutJournal['hasPreparedDescription']);
+updateCheck(count(Notification::getInboxForUser($users['real'], 123)) === 2, 'Prepared text alone still notifies');
 
 // Force a notification collision after the news insert: the whole publish must roll back.
 $failureRevision = str_repeat('c', 40);

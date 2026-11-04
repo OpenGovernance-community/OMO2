@@ -92,7 +92,6 @@ if ($organizationId <= 0 || !$organization->load($organizationId)) {
 }
 
 $aggregate = \dbObject\OrganizationalMaturityAssessment::getOrganizationAggregate($organizationId);
-$profileAnalysis = \dbObject\OrganizationalMaturityAssessment::getOrganizationProfileAnalysis($organizationId);
 $questions = [];
 foreach ($surveyQuestionDefinitions as $questionDefinition) {
     $number = (int)$questionDefinition['number'];
@@ -128,6 +127,11 @@ foreach ($surveyQuestionDefinitions as $questionDefinition) {
         'responseCount' => (int)$scores['responseCount'],
     ];
 }
+if (isset($_GET['chart']) && (string)$_GET['chart'] === '1') {
+    require __DIR__ . '/organization-chart-view.php';
+    return;
+}
+$profileAnalysis = \dbObject\OrganizationalMaturityAssessment::getOrganizationProfileAnalysis($organizationId);
 $questionsByNumber = [];
 foreach ($questions as $question) {
     $questionsByNumber[(int)$question['number']] = $question;

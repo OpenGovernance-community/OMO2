@@ -7,13 +7,17 @@ lues depuis GitHub, pour les merges classiques et les commits squash portant
 les PR imbriquees dans un merge. Les descriptions sont mises en cache cinq minutes
 hors de la racine publique.
 
-Le texte Markdown prepare dans la description GitHub est la presentation principale.
+Le texte prepare dans le message personnalise du commit de merge est prioritaire,
+meme si son titre ne contient plus de numero de PR. La detection utilise les parents
+Git du commit. A defaut, la description GitHub sert de presentation ; un simple
+titre automatique de PR dans le corps du merge reste exclu. Un message de merge
+avec du Markdown structure reste disponible meme si GitHub est inaccessible.
 Sa mise en page et ses repetitions intentionnelles sont conservees, avec le nettoyage
 HTML commun pour la securite. Les titres et messages techniques des commits ne sont
 jamais ajoutes. Plusieurs presentations de livraisons sont separees par un trait.
 Les ajouts de `NOUVEAUTES.md` de la meme plage sont proposes en dessous, en petit,
 dans un accordeon ferme par defaut. Si aucune presentation n est preparee ou que
-GitHub est inaccessible, le journal est affiche directement. Sans aucune de ces
+GitHub est inaccessible et aucun texte local n est prepare, le journal est affiche directement. Sans aucune de ces
 sources, un message indique qu aucune description n est disponible.
 
 La presentation et le journal optionnel sont stockes separement ; la migration
@@ -22,6 +26,13 @@ contenant les sections concatenees connues sont relues dans ce nouvel ordre sans
 modifier leur stockage ni recreer de notifications. Le titre de la news figure
 uniquement dans l entete de la popup.
 
+Les news journal-seul publiees par l ancien extracteur peuvent recuperer le texte
+du merge depuis leur plage Git exacte lors de l affichage. Cette reprise est locale,
+sans appel GitHub, sans reecriture en base et sans nouvelle notification. Elle ne
+s applique que si le contenu stocke correspond exactement aux ajouts du journal ;
+une presentation deja enregistree reste inchangee. Le depot et ces revisions doivent
+encore etre accessibles sur le serveur.
+
 Pour un depot prive, renseigner `SITE_UPDATE_GITHUB_TOKEN` dans Admin du serveur
 ou dans `.env`, avec un acces en lecture aux pull requests du depot suivi.
 Le token des signalements GitHub est utilise en secours s il existe.
@@ -29,7 +40,11 @@ Le depot est determine depuis le remote Git, sans redirection des credentials.
 
 Apres Composer et les migrations reussis, une news conserve les descriptions de
 la version installee. Une notification interne personnelle est creee pour chaque
-compte actif reel, y compris la personne qui installe la version. Les personnages
+compte actif reel uniquement si un texte de presentation a ete prepare dans le
+merge ou la pull request, y compris lorsque le journal technique est vide. Sans
+presentation preparee (texte vide ou compose uniquement de commentaires Markdown),
+la news conserve le journal mais aucune notification n est creee. Une reprise ne
+notifie pas retroactivement une news deja publiee silencieusement. Les personnages
 et comptes historiques sont exclus. Aucun e-mail, Telegram ou push n est envoye.
 Les descriptions ainsi publiees sont visibles par tous les comptes connectes du site.
 

@@ -19,6 +19,12 @@ if ((int)($_GET['id'] ?? 0) <= 0 || !$news->load((int)$_GET['id'])) {
     exit;
 }
 commonReleaseReadOnlySession();
+$content = ['description' => (string)$news->get('description'), 'journal' => (string)$news->get('journal')];
+if ($content['journal'] === '') {
+    require_once dirname(__DIR__, 3) . '/includes/site_update_admin.php';
+    $content = siteUpdateAdminRecoverNewsContent(['repoRoot' => siteUpdateAdminGetRepoRoot()],
+        (string)$news->get('previous_revision'), (string)$news->get('revision'), $content['description'], $content['journal']);
+}
 echo '<article class="generic-section" data-topbar-modal-title="'
     . htmlspecialchars((string)$news->get('title'), ENT_QUOTES, 'UTF-8') . '">'
-    . siteUpdateNewsRender((string)$news->get('description'), (string)$news->get('journal')) . '</article>';
+    . siteUpdateNewsRender($content['description'], $content['journal']) . '</article>';

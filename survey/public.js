@@ -122,10 +122,11 @@
             var key = element('ol', 'survey-radar-key survey-public-radar-key');
             questions.forEach(function (question) {
                 var item = element('li');
-                var link = document.createElement('a');
+                var link = document.createElement(list ? 'a' : 'div');
 
                 link.className = 'survey-radar-key__link';
-                link.href = '#surveyPublicPrinciple' + question.number;
+                if (list) link.href = '#surveyPublicPrinciple' + question.number;
+                else link.tabIndex = 0;
                 link.appendChild(element('strong', '', question.title));
                 link.addEventListener('mouseenter', function () {
                     highlightPrinciple(question.number);
@@ -292,9 +293,9 @@
         list.replaceChildren(fragment);
     }
 
-    if (questions.length === 10 && radar && list) {
+    if (questions.length === 10 && radar) {
         renderRadar();
-        renderList();
+        if (list) renderList();
         window.SurveyPublicRadar = {
             setQuestions: setRadarQuestions
         };

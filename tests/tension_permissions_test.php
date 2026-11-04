@@ -101,7 +101,19 @@ try {
     tensionExpect($organization->saveEditorPermissions((int)$template->getId(), []), 'Remove the final template assignment.');
     tensionExpect($can((int)$other->getId()) && $can(null)
         && Tension::canCreateInOrganizationContext($oid, (int)$source->getId(), $unassignedUid), 'Removing the last assignment must restore default access for all members.');
-    echo "tension_permissions_test: OK (default access, first and last assignment, editors, scopes, template inheritance, creation, rollback)\n";
+    tensionExpect($tension->canDeleteInOrganizationContext($oid, $uid), 'The author can remove their tension.');
+    tensionExpect(!$tension->canDeleteInOrganizationContext($oid, $unassignedUid), 'Another member cannot remove someone else s tension.');
+    tensionExpect(!$tension->deleteInOrganizationContext((int)$foreign->getId(), $uid)
+        && !$tension->deleteInOrganizationContext($oid, 0)
+        && !$tension->deleteInOrganizationContext($oid, $unassignedUid), 'Wrong organization, anonymous and unauthorized removals must fail.');
+    tensionExpect($tension->deleteInOrganizationContext($oid, $uid), 'Authorized removal must succeed.');
+    $removed = new Tension();
+    tensionExpect($removed->load($tension->getId()) && !(bool)$removed->get('active'), 'Removal must preserve the record for meeting minute references.');
+    $activeTensions = new \dbObject\ArrayTension();
+    $activeTensions->loadForOrganization($oid);
+    tensionExpect(!in_array((int)$tension->getId(), array_map(static fn($item): int => (int)$item->getId(), iterator_to_array($activeTensions)), true), 'Removed tensions must disappear from active organization lists.');
+    tensionExpect(!$removed->deleteInOrganizationContext($oid, $uid), 'Already removed tensions cannot be removed again.');
+    echo "tension_permissions_test: OK (creation scopes, author-only removal, organization isolation, retained references, active lists, rollback)\n";
 } finally {
     if ($pdo->inTransaction()) { $pdo->rollBack(); }
     DbObject::$preload = [];

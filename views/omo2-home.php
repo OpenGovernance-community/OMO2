@@ -16,6 +16,7 @@ spl_autoload_register(static function (string $class): void {
 });
 
 require_once dirname(__DIR__) . '/common/translation_bundles.php';
+require_once dirname(__DIR__) . '/common/leaflet_helper.php';
 
 $sourceLang = [
     'home.meta.title' => ['text' => 'OpenMyOrganization - Mieux s’organiser pour mieux coopérer', 'context' => 'Browser title for the public OMO2 homepage.'],
@@ -48,6 +49,10 @@ $sourceLang = [
     'home.capabilities.kicker' => ['text' => 'Quatre façons de mieux coopérer', 'context' => 'Capabilities section eyebrow.'],
     'home.capabilities.title' => ['text' => 'Tout ce qui vous aide à avancer ensemble.', 'context' => 'Capabilities section heading.'],
     'home.organizations.kicker' => ['text' => 'Des collectifs en action', 'context' => 'Organization logo list eyebrow.'],
+    'home.organizations.map.show' => ['text' => 'Voir la carte', 'context' => 'Button to show the geographic distribution of active organizations.'],
+    'home.organizations.map.hide' => ['text' => 'Masquer la carte', 'context' => 'Button to hide the organization map.'],
+    'home.organizations.map.title' => ['text' => 'Les organisations actives ce dernier mois', 'context' => 'Heading for the public map of active organizations.'],
+    'home.organizations.map.body' => ['text' => 'Retrouvez sur la carte les collectifs qui ont renseigne leur localisation.', 'context' => 'Explanation of which active organizations appear on the map.'],
     'home.cap.structure.title' => ['text' => 'Clarifier sans rigidifier.', 'context' => 'Structure capability subheading.'],
     'home.cap.structure.body' => ['text' => 'Qui porte quoi, et dans quel but ? Rendez visibles les équipes, les rôles et leurs responsabilités. Votre structure peut évoluer avec la vie du collectif.', 'context' => 'Structure capability body.'],
     'home.cap.share.title' => ['text' => 'Le bon contexte pour agir.', 'context' => 'Sharing capability subheading.'],
@@ -185,7 +190,13 @@ $renderInlineMarkdown = static function (string $text) use ($e): string {
 };
 
 $omo2Organizations = class_exists('\\dbObject\\Organization')
-    ? \dbObject\Organization::fetchPublicLogoRowsByLastConnection()
+    ? \dbObject\Organization::fetchPublicLogoRowsByLastConnection(new \DateTimeImmutable('-30 days', new \DateTimeZone('UTC')))
+    : array();
+$omo2ActiveOrganizationIds = array_fill_keys(array_column($omo2Organizations, 'id'), true);
+$omo2OrganizationMapRows = $omo2Organizations !== array() && commonLeafletMapsEnabled()
+    ? array_values(array_filter(\dbObject\Organization::fetchPublicMapRows(), static function (array $row) use ($omo2ActiveOrganizationIds): bool {
+        return isset($omo2ActiveOrganizationIds[$row['id']]);
+    }))
     : array();
 
 $omo2Links = [
@@ -227,7 +238,12 @@ $canonicalUrl = '/index2.php';
     <meta name="twitter:card" content="summary_large_image">
     <meta name="theme-color" content="#05263c">
     <link rel="icon" type="image/jpeg" href="/img/omo-iceberg.jpg?v=20260914" sizes="1254x1254">
-    <link rel="stylesheet" href="/assets/omo2-home.css?v=20260930-meetings-2">
+    <link rel="stylesheet" href="/assets/omo2-home.css?v=20261104-map-button-compact">
+    <?php if ($omo2OrganizationMapRows !== array()): ?>
+    <link rel="stylesheet" href="<?= commonAssetUrl('/common/assets/topbar.css') ?>">
+    <link rel="stylesheet" href="/common/assets/homepage-map.css?v=20261104-white-popup">
+    <?php commonRenderLeafletMarkerClusterAssets(); ?>
+    <?php endif; ?>
     <script type="application/ld+json">
     {"@context":"https://schema.org","@type":"SoftwareApplication","name":"OpenMyOrganization","applicationCategory":"BusinessApplication","operatingSystem":"Web","description":"<?= $e($t('home.meta.description')) ?>","url":"<?= $e($canonicalUrl) ?>"}
     </script>
@@ -315,6 +331,20 @@ $canonicalUrl = '/index2.php';
                     </div>
                 </div>
             </div>
+            <?php if ($omo2OrganizationMapRows !== array()): ?>
+            <div class="omo2-shell omo2-organizations__actions">
+                <button class="omo2-button omo2-button--compact" id="omo2OrganizationMapToggle" type="button" aria-expanded="false" aria-controls="omo2OrganizationMapPanel" data-label-show="<?= $e($t('home.organizations.map.show')) ?>" data-label-hide="<?= $e($t('home.organizations.map.hide')) ?>"><?= $e($t('home.organizations.map.show')) ?></button>
+            </div>
+            <div class="omo2-shell omo2-organizations__map" id="omo2OrganizationMapPanel" hidden>
+                <section class="home-organization-map" aria-labelledby="organization-map-title">
+                    <div class="home-organization-map__header">
+                        <h2 id="organization-map-title"><?= $e($t('home.organizations.map.title')) ?></h2>
+                        <p><?= $e($t('home.organizations.map.body')) ?></p>
+                    </div>
+                    <div id="homepageOrganizationMap" class="home-organization-map__canvas" role="region" aria-label="<?= $e($t('home.organizations.map.title')) ?>"></div>
+                </section>
+            </div>
+            <?php endif; ?>
         </section>
         <?php endif; ?>
 
@@ -454,5 +484,11 @@ $canonicalUrl = '/index2.php';
 
     <footer class="omo2-footer"><div class="omo2-shell"><div class="omo2-footer__top"><a class="omo2-brand omo2-brand--footer" href="#accueil"><img src="/img/omo2/logo-omo.png" width="1081" height="441" alt="OpenMyOrganization"></a><p><?= $e($t('home.footer.tagline')) ?></p></div><div class="omo2-footer__columns"><div><h2><?= $e($t('home.footer.omo')) ?></h2><a href="#accueil"><?= $e($t('home.nav.about')) ?></a><a href="/migration-omo.php"><?= $e($t('home.nav.migration')) ?></a><a href="#fonctionnalites"><?= $e($t('home.nav.capabilities')) ?></a><a href="#maturite"><?= $e($t('home.action.manifesto')) ?></a><a href="<?= $e($omo2Links['source']) ?>" target="_blank" rel="noopener noreferrer"><?= $e($t('home.opensource.title')) ?></a><a href="#communaute"><?= $e($t('home.nav.community')) ?></a></div><div><h2><?= $e($t('home.footer.discover')) ?></h2><a href="#evenement"><?= $e($t('home.event.label')) ?></a><a href="#decouvrir"><?= $e($t('home.video.title')) ?></a><a href="<?= $e($omo2Links['try']) ?>"><?= $e($t('home.action.try')) ?></a><a href="<?= $e($omo2Links['login']) ?>"><?= $e($t('home.action.login')) ?></a></div><div><h2><?= $e($t('home.footer.project')) ?></h2><a href="<?= $e($omo2Links['source']) ?>" target="_blank" rel="noopener noreferrer"><?= $e($t('home.action.source')) ?></a><a href="<?= $e($omo2Links['support']) ?>" target="_blank" rel="noopener noreferrer"><?= $e($t('home.action.support')) ?></a><a href="<?= $e($omo2Links['developer']) ?>"><?= $e($t('home.footer.api')) ?></a><a href="<?= $e($omo2Links['status']) ?>" target="_blank" rel="noopener noreferrer"><?= $e($t('home.footer.status')) ?></a></div><div><h2><?= $e($t('home.footer.legal')) ?></h2><a href="<?= $e($omo2Links['terms']) ?>"><?= $e($t('home.footer.terms')) ?></a><a href="<?= $e($omo2Links['privacy']) ?>"><?= $e($t('home.footer.privacy')) ?></a></div></div><div class="omo2-footer__bottom"><span>© <?= date('Y') ?> OpenMyOrganization</span><span><?= $e($t('home.footer.signature')) ?></span></div></div></footer>
     <script src="/assets/omo2-home.js?v=20260914-organizations-16"></script>
+    <?php if ($omo2OrganizationMapRows !== array()): ?>
+    <?= commonPageScriptTags('/common/assets/homepage-map.js', [
+        'rows' => $omo2OrganizationMapRows,
+        'toggleId' => 'omo2OrganizationMapToggle',
+    ], 'homepageMapConfig') ?>
+    <?php endif; ?>
 </body>
 </html>

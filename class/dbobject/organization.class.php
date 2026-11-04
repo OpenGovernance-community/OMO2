@@ -328,7 +328,7 @@
 		{
 			$publicFields = array_values(array_intersect(
 				static::publicReadableFields(),
-				array('id', 'name', 'shortname', 'domain', 'logo', 'banner', 'color', 'latlong')
+				array('id', 'name', 'description', 'url', 'shortname', 'domain', 'logo', 'banner', 'color', 'latlong')
 			));
 			if (count($publicFields) === 0) {
 				return array();
@@ -367,9 +367,16 @@
 					continue;
 				}
 
+				$description = trim(preg_replace('/\s+/u', ' ', (string)$organization->get('description')) ?? '');
+				if (mb_strlen($description, 'UTF-8') > 240) {
+					$description = rtrim(mb_substr($description, 0, 237, 'UTF-8')) . '...';
+				}
+				$url = trim((string)$organization->get('url'));
 				$result[] = array(
 					'id' => $organizationId,
 					'name' => trim((string)$organization->get('name')),
+					'description' => $description,
+					'url' => self::isValidInformationUrl($url) ? $url : '',
 					'logo' => trim((string)$organization->get('logo')),
 					'color' => trim((string)$organization->get('color')),
 					'latlong' => array(
@@ -379,16 +386,21 @@
 				);
 			}
 
+			$maturitySummaries = OrganizationalMaturityAssessment::getOrganizationScoreSummaries(array_column($result, 'id'));
+			foreach ($result as $index => $row) {
+				$result[$index]['maturity'] = $maturitySummaries[$row['id']] ?? null;
+			}
 			return $result;
 		}
 
 		/**
 		 * Returns public organization branding ordered by the latest activity in
 		 * each organization. History is preferred, with member sign-in activity
-		 * used as a fallback. This keeps the homepage query close to its table.
+		 * used as a fallback. An optional cutoff excludes missing or old activity.
 		 */
-		public static function fetchPublicLogoRowsByLastConnection(): array
+		public static function fetchPublicLogoRowsByLastConnection(?\DateTimeInterface $activeSince = null): array
 		{
+			$params = $activeSince === null ? array() : array('active_since' => $activeSince->format('Y-m-d H:i:s'));
 			$rows = self::fetchAll(
 				"SELECT
 					o.id,
@@ -410,12 +422,14 @@
 					GROUP BY IDorganization
 				) member_activity ON member_activity.IDorganization = o.id
 				WHERE o.logo IS NOT NULL
-					AND TRIM(o.logo) <> ''
+					AND TRIM(o.logo) <> ''" . ($activeSince === null ? '' : "
+				HAVING last_activity >= :active_since") . "
 				ORDER BY
 					last_activity IS NULL ASC,
 					last_activity DESC,
 					o.name ASC,
-					o.id ASC"
+					o.id ASC",
+				$params
 			);
 
 			if (!is_array($rows)) {
@@ -3590,7 +3604,7 @@
 			$rootHolon->set('link', false);
 			$rootHolon->set('color', $sourceTemplate ? ($sourceTemplate->getEffectiveColor() ?: null) : null);
 			$rootHolon->set('color_unassigned', $sourceTemplate ? ($sourceTemplate->getEffectiveUnassignedColor() ?: null) : null);
-			$rootHolon->set('icon', $sourceTemplate ? ($sourceTemplate->getEffectiveIcon() ?: null) : null);
+			$rootHolon->set('icon', null);
 			$rootHolon->set('accesskey', null);
 			$rootHolon->save();
 
@@ -5029,7 +5043,7 @@
 				$targetNode->set('adminmaxoverride', (bool)$sourceNode->get('adminmaxoverride'));
 				$targetNode->set('color', $sourceNode->get('color') ?: null);
 				$targetNode->set('color_unassigned', $sourceNode->get('color_unassigned') ?: null);
-				$targetNode->set('icon', $sourceNode->get('icon') ?: null);
+				$targetNode->set('icon', null);
 				$targetNode->set('accesskey', $sourceNode->get('accesskey') ?: null);
 				OrganizationTransferConfiguration::setHolonDefaults($targetNode, OrganizationTransferConfiguration::holonDefaults($sourceNode));
 				$targetNode->save();
@@ -8639,6 +8653,20 @@
 				'pv' => false,
 			);
 			$payload = \dbObject\OrganizationExport::build($model, $selectedModules);
+			// New organizations start with their own visual identity, without shared model files.
+			$payload['organization']['logo'] = null;
+			$payload['organization']['banner'] = null;
+			array_walk_recursive($payload['holons'], static function (&$value, $key) {
+				if ($key === 'icon') {
+					$value = null;
+				}
+			});
+			// Ignore inherited paths submitted by a creation form opened before this change.
+			foreach (array('logo', 'banner') as $field) {
+				if (isset($definitionOverrides[$field]) && $definitionOverrides[$field] === $model->get($field)) {
+					unset($definitionOverrides[$field]);
+				}
+			}
 			// A model contains definitions, never its temporal observations.
 			foreach ((array)($payload['modules']['indicators']['records'] ?? array()) as $index => $indicator) {
 				$payload['modules']['indicators']['records'][$index]['values'] = array();
@@ -8813,7 +8841,7 @@
 				$targetChild->set('adminmaxoverride', (bool)$sourceChild->get('adminmaxoverride'));
 				$targetChild->set('color', $sourceChild->get('color') ?: null);
 				$targetChild->set('color_unassigned', $sourceChild->get('color_unassigned') ?: null);
-				$targetChild->set('icon', $sourceChild->get('icon') ?: null);
+				$targetChild->set('icon', null);
 				$targetChild->set('accesskey', $sourceChild->get('accesskey') ?: null);
 				$targetChild->save();
 
