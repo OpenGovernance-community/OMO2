@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- Organisations / creation depuis un modele (2026-11-04) : logo, banniere et icones des holons laisses vides pour eviter de partager les fichiers du modele. Le formulaire permet toujours de choisir de nouvelles images ; les imports d archives conservent leurs images.
+
 - Carte publique / presentation (2026-11-04) : texte de description des organisations plus petit dans les bulles. Fond blanc pour la popup du radar, y compris son entete et le contenu du graphique.
 
 - Carte publique / regroupement des organisations (2026-11-04) : points proches regroupes dans un cercle indiquant leur nombre. Clic pour zoomer sur la zone ; les organisations au meme emplacement peuvent se deployer pour rester accessibles individuellement. Comportement partage par index.php et index2.php, avec les bulles existantes.

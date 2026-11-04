@@ -3604,7 +3604,7 @@
 			$rootHolon->set('link', false);
 			$rootHolon->set('color', $sourceTemplate ? ($sourceTemplate->getEffectiveColor() ?: null) : null);
 			$rootHolon->set('color_unassigned', $sourceTemplate ? ($sourceTemplate->getEffectiveUnassignedColor() ?: null) : null);
-			$rootHolon->set('icon', $sourceTemplate ? ($sourceTemplate->getEffectiveIcon() ?: null) : null);
+			$rootHolon->set('icon', null);
 			$rootHolon->set('accesskey', null);
 			$rootHolon->save();
 
@@ -5043,7 +5043,7 @@
 				$targetNode->set('adminmaxoverride', (bool)$sourceNode->get('adminmaxoverride'));
 				$targetNode->set('color', $sourceNode->get('color') ?: null);
 				$targetNode->set('color_unassigned', $sourceNode->get('color_unassigned') ?: null);
-				$targetNode->set('icon', $sourceNode->get('icon') ?: null);
+				$targetNode->set('icon', null);
 				$targetNode->set('accesskey', $sourceNode->get('accesskey') ?: null);
 				OrganizationTransferConfiguration::setHolonDefaults($targetNode, OrganizationTransferConfiguration::holonDefaults($sourceNode));
 				$targetNode->save();
@@ -8653,6 +8653,20 @@
 				'pv' => false,
 			);
 			$payload = \dbObject\OrganizationExport::build($model, $selectedModules);
+			// New organizations start with their own visual identity, without shared model files.
+			$payload['organization']['logo'] = null;
+			$payload['organization']['banner'] = null;
+			array_walk_recursive($payload['holons'], static function (&$value, $key) {
+				if ($key === 'icon') {
+					$value = null;
+				}
+			});
+			// Ignore inherited paths submitted by a creation form opened before this change.
+			foreach (array('logo', 'banner') as $field) {
+				if (isset($definitionOverrides[$field]) && $definitionOverrides[$field] === $model->get($field)) {
+					unset($definitionOverrides[$field]);
+				}
+			}
 			// A model contains definitions, never its temporal observations.
 			foreach ((array)($payload['modules']['indicators']['records'] ?? array()) as $index => $indicator) {
 				$payload['modules']['indicators']['records'][$index]['values'] = array();
@@ -8827,7 +8841,7 @@
 				$targetChild->set('adminmaxoverride', (bool)$sourceChild->get('adminmaxoverride'));
 				$targetChild->set('color', $sourceChild->get('color') ?: null);
 				$targetChild->set('color_unassigned', $sourceChild->get('color_unassigned') ?: null);
-				$targetChild->set('icon', $sourceChild->get('icon') ?: null);
+				$targetChild->set('icon', null);
 				$targetChild->set('accesskey', $sourceChild->get('accesskey') ?: null);
 				$targetChild->save();
 
