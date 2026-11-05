@@ -457,9 +457,8 @@ function omoDecisionsBuildScopeUrl(scope) {
         query.push('cid=' + encodeURIComponent(String(holonId)));
     }
     const normalizedScope = omoDecisionsNormalizeScopePreference(scope);
-    if (normalizedScope !== 'contextual') {
-        query.push('decision_scope=' + encodeURIComponent(normalizedScope));
-    }
+    // Omitting contextual would restore the server default instead of Local.
+    query.push('decision_scope=' + encodeURIComponent(normalizedScope));
     return '/omo/api/decision/index.php?' + query.join('&');
 }
 
@@ -617,7 +616,10 @@ function omoDecisionsInitializeViewFilter() {
     const preferredScope = window.omoApplicationViewPreferencesIsDashboardNavigation?.(root) || Number(payload.openDecisionId || 0) > 0
         ? omoDecisionGetCurrentScope()
         : savedPreferences.scope;
-    if (preferredScope !== omoDecisionGetCurrentScope()) {
+    // The server can reject a saved scope when this space has no children.
+    // Only restore scopes offered by the returned panel to avoid reload loops.
+    if (preferredScope !== omoDecisionGetCurrentScope()
+        && root.querySelector('[data-omo-decision-scope-toggle="' + preferredScope + '"]')) {
         omoDecisionsRefreshScope(preferredScope);
         return true;
     }

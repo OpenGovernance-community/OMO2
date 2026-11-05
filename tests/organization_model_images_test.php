@@ -49,6 +49,7 @@ try {
     $_SESSION['currentUser'] = (int)$actor->getId();
     $sourceModel = modelImagesFixture(Organization::class, [
         'name' => 'Image model', 'isModel' => true, 'logo' => $modelImage, 'banner' => $modelImage,
+        'description' => 'Public model description', 'url' => 'https://example.org/model',
     ]);
     modelImagesFixture(UserOrganization::class, [
         'IDuser' => $actor->getId(), 'IDorganization' => $sourceModel->getId(),
@@ -79,6 +80,7 @@ try {
         $target = $result['organization'];
         $target->load($target->getId(), true);
         modelImagesCheck(!$target->get('logo') && !$target->get('banner'), 'New organization has no inherited logo or banner');
+        modelImagesCheck(!$target->get('description') && !$target->get('url'), 'New organization has no inherited description or URL');
         foreach ([$root, $template, $circle, $instance] as $sourceHolon) {
             $imported = new Holon();
             modelImagesCheck($imported->load($result['holonIdMap'][$sourceHolon->getId()], true), 'Copied holon exists');
@@ -102,16 +104,21 @@ try {
     $result = Organization::importOmo1ExportAsNewOrganization($payload, $selected, $actor->getId(), 'Archive images', [], ['sendMemberInvitationEmails' => false]);
     modelImagesCheck(!empty($result['status']), 'Archive import: ' . ($result['message'] ?? 'failed'));
     modelImagesCheck($result['organization']->get('logo') === $modelImage && $result['organization']->get('banner') === $modelImage, 'Archive organization images are preserved');
+    modelImagesCheck($result['organization']->get('description') === $sourceModel->get('description') && $result['organization']->get('url') === $sourceModel->get('url'), 'Archive description and URL are preserved');
     $imported = new Holon();
     $imported->load($result['holonIdMap'][$instance->getId()], true);
     modelImagesCheck($imported->get('icon') === $modelIcon, 'Archive holon icons are preserved');
 
     // Uploading a new image during model creation must not touch the model file.
     $_POST['imageDataInput_logo'] = 'data:image/png;base64,' . base64_encode($png);
-    $result = Organization::createFromPublicModel($sourceModel->getId(), $actor->getId(), 'Custom visual identity', ['logo' => 'newimage']);
+    $result = Organization::createFromPublicModel($sourceModel->getId(), $actor->getId(), 'Custom visual identity', [
+        'logo' => 'newimage', 'description' => 'New organization description', 'url' => 'https://example.org/new',
+    ]);
     modelImagesCheck(!empty($result['status']), 'Create with custom logo: ' . ($result['message'] ?? 'failed'));
     $customLogo = $result['organization']->get('logo');
     modelImagesCheck($customLogo && $customLogo !== $modelImage && is_file($storage . $customLogo), 'Explicit custom logo is saved separately');
+    $result['organization']->load($result['organization']->getId(), true);
+    modelImagesCheck($result['organization']->get('description') === 'New organization description' && $result['organization']->get('url') === 'https://example.org/new', 'Explicit description and URL are saved');
     modelImagesCheck(file_get_contents($storage . $modelImage) === $png && file_get_contents($storage . $modelIcon) === $png, 'Model files are intact');
 
     $_SERVER['DOCUMENT_ROOT'] = dirname(__DIR__);
@@ -123,11 +130,13 @@ try {
     $dom = new DOMDocument();
     @$dom->loadHTML('<?xml encoding="UTF-8">' . $html);
     $xpath = new DOMXPath($dom);
-    foreach (['logo', 'banner'] as $field) {
+    foreach (['logo', 'banner', 'url'] as $field) {
         modelImagesCheck($xpath->query('//input[@name="' . $field . '"]')->item(0)?->getAttribute('value') === '', 'Creation form starts with an empty ' . $field);
     }
+    modelImagesCheck($xpath->query('//textarea[@name="description"]')->item(0)?->textContent === '', 'Creation form starts with an empty description');
     $sourceModel->load($sourceModel->getId(), true);
     modelImagesCheck($sourceModel->get('logo') === $modelImage && $sourceModel->get('banner') === $modelImage, 'Model references are unchanged');
+    modelImagesCheck($sourceModel->get('description') === 'Public model description' && $sourceModel->get('url') === 'https://example.org/model', 'Model public information is unchanged');
     echo "organization_model_images_test: OK\n";
 } finally {
     DbObject::$_dbh = $originalDbh;

@@ -72,7 +72,7 @@ namespace {
         'connected' => true, 'patron_status' => 'active_patron', 'currently_entitled_amount_cents' => 2500
     ]);
     $GLOBALS['patreonClientSecret'] = 'test-secret';
-    patreonAdminExpect(patreonUserCanUseAi(1) && patreonCanManageOrganizationRouting(1) && githubBugReportUserCanSubmit(1), 'Ordinary connected contributors keep their existing access.');
+    patreonAdminExpect(patreonUserCanUseAi(1) && !patreonCanManageOrganizationRouting(1) && githubBugReportUserCanSubmit(1), 'Personal contributions grant AI and bug reporting, but never organization routing.');
     \dbObject\UserPatreon::$connections[1] = new \dbObject\UserPatreon([
         'connected' => true, 'patron_status' => 'former_patron', 'currently_entitled_amount_cents' => 0
     ]);

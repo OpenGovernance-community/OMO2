@@ -11,13 +11,9 @@
 	$host = preg_replace('/:\d+$/', '', $host);
 	$parts = array_values(array_filter(explode('.', $host)));
 	$subdomain = $parts[0] ?? '';
-	$isLocalhostSubdomain = count($parts) === 2 && ($parts[1] ?? '') === 'localhost';
-	$reservedEnvironmentSubdomains = commonGetConfiguredEnvironmentSubdomains();
 	$organizationSubdomainRoutingEnabled = commonUseOrganizationSubdomains();
-	$isEnvironmentRootHost = count($parts) >= 3
-		&& in_array((string)($parts[count($parts) - 3] ?? ''), $reservedEnvironmentSubdomains, true);
-	$rootPartCount = $isEnvironmentRootHost ? 3 : 2;
-	$hasOrganizationSubdomain = $organizationSubdomainRoutingEnabled && ($isLocalhostSubdomain || count($parts) > $rootPartCount);
+	$rootPartCount = commonGetHostRootPartCount($parts);
+	$hasOrganizationSubdomain = $organizationSubdomainRoutingEnabled && count($parts) > $rootPartCount;
 
 	if (isset($routes[$subdomain])) {
 		require __DIR__ . $routes[$subdomain];
@@ -85,7 +81,8 @@
 		<link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" rel="stylesheet">
 		<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.bundle.min.js"></script>
 <link rel="stylesheet" href="<?= commonAssetUrl('/common/assets/topbar.css') ?>">
-<link rel="stylesheet" href="/common/assets/homepage-map.css?v=20261104-map-stacking">
+<link rel="stylesheet" href="<?= commonAssetUrl('/common/assets/iframe-popup.css') ?>">
+<link rel="stylesheet" href="/common/assets/homepage-map.css?v=20261105-shared-popup">
 <?php if ($homepageLeafletMapsEnabled): ?>
 <?php commonRenderLeafletMarkerClusterAssets(); ?>
 <?php endif; ?>
@@ -697,6 +694,7 @@ padding:15px;
 <?php endif; ?>
 
 </body>
+<script src="<?= commonAssetUrl('/common/assets/iframe-popup.js') ?>"></script>
 <?= commonPageScriptTags('/common/assets/homepage-map.js', [
     'rows' => is_string($homepageOrganizationMapJson) ? json_decode($homepageOrganizationMapJson, true, 512, JSON_THROW_ON_ERROR) : [],
 ], 'homepageMapConfig') ?>

@@ -44,7 +44,7 @@ if ($isEditMode) {
     }
 }
 
-$canManageOrganizationRouting = patreonCanManageOrganizationRouting($currentUserId);
+$canManageOrganizationRouting = patreonCanManageOrganizationRouting($currentUserId, $organizationId);
 if (!$canManageOrganizationRouting) {
     unset($_POST['shortname'], $_POST['domain']);
 }

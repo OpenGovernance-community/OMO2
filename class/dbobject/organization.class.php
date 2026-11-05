@@ -3345,16 +3345,7 @@
 
 			$host = preg_replace('/:\d+$/', '', $host);
 			$parts = array_values(array_filter(explode(".", $host)));
-			$rootPartCount = 0;
-			if (function_exists('commonGetHostRootPartCount')) {
-				$rootPartCount = (int)commonGetHostRootPartCount($parts);
-			} elseif (count($parts) === 2 && ($parts[1] ?? '') === 'localhost') {
-				$rootPartCount = 1;
-			} elseif (count($parts) >= 3 && in_array((string)($parts[count($parts) - 3] ?? ''), commonGetConfiguredEnvironmentSubdomains(), true)) {
-				$rootPartCount = 3;
-			} else {
-				$rootPartCount = min(2, count($parts));
-			}
+			$rootPartCount = commonGetHostRootPartCount($parts);
 
 			$organization = new self();
 			if (count($parts) <= $rootPartCount) {
@@ -8653,7 +8644,9 @@
 				'pv' => false,
 			);
 			$payload = \dbObject\OrganizationExport::build($model, $selectedModules);
-			// New organizations start with their own visual identity, without shared model files.
+			// New organizations start with their own public information and visual identity.
+			$payload['organization']['description'] = null;
+			$payload['organization']['url'] = null;
 			$payload['organization']['logo'] = null;
 			$payload['organization']['banner'] = null;
 			array_walk_recursive($payload['holons'], static function (&$value, $key) {

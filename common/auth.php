@@ -47,27 +47,6 @@ function commonBuildOrganizationEntryPath($organizationId)
     return '/omo/o/' . (int)$organizationId;
 }
 
-function commonGetHostRootPartCount(array $parts)
-{
-    $partCount = count($parts);
-    if ($partCount === 0) {
-        return 0;
-    }
-
-    if ($partCount === 2 && ($parts[1] ?? '') === 'localhost') {
-        return 1;
-    }
-
-    if ($partCount >= 3) {
-        $environmentCandidate = strtolower((string)($parts[$partCount - 3] ?? ''));
-        if (in_array($environmentCandidate, commonGetReservedEnvironmentSubdomains(), true)) {
-            return 3;
-        }
-    }
-
-    return min(2, $partCount);
-}
-
 function commonGetRootHost($host = null)
 {
     $host = is_string($host) && $host !== '' ? strtolower($host) : strtolower((string)($_SERVER['HTTP_HOST'] ?? ''));
@@ -176,6 +155,7 @@ function commonBuildOrganizationAccessLabel($organizationId, $shortname = '', $b
 function commonGetRequestSubdomain($host = null)
 {
     $host = is_string($host) && $host !== '' ? strtolower($host) : commonGetRequestHost();
+    $host = preg_replace('/:\d+$/', '', $host);
     $parts = array_values(array_filter(explode('.', $host)));
     $rootPartCount = commonGetHostRootPartCount($parts);
     if (count($parts) <= $rootPartCount) {

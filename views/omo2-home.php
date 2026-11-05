@@ -105,6 +105,8 @@ $sourceLang = [
     'home.footer.omo' => ['text' => 'OMO', 'context' => 'First footer column heading.'],
     'home.footer.discover' => ['text' => 'Découvrir', 'context' => 'Second footer column heading.'],
     'home.footer.project' => ['text' => 'Projet', 'context' => 'Third footer column heading.'],
+    'home.footer.supporters' => ['text' => 'Ils soutiennent OMO2', 'context' => 'Footer link opening the public Patreon supporter gallery.'],
+    'home.popup.close' => ['text' => 'Fermer', 'context' => 'Accessible label for the public supporter popup close button.'],
     'home.footer.api' => ['text' => 'API Developpeur', 'context' => 'Footer link to the public API developer documentation.'],
     'home.footer.status' => ['text' => 'Disponibilite du service', 'context' => 'Footer link to the public UptimeRobot service availability monitor.'],
     'home.footer.legal' => ['text' => 'Informations légales', 'context' => 'Fourth footer column heading.'],
@@ -237,9 +239,10 @@ $canonicalUrl = '/index2.php';
     <meta name="theme-color" content="#05263c">
     <link rel="icon" type="image/jpeg" href="/img/omo-iceberg.jpg?v=20260914" sizes="1254x1254">
     <link rel="stylesheet" href="/assets/omo2-home.css?v=20261104-map-button-compact">
-    <?php if ($omo2OrganizationMapRows !== array()): ?>
+    <link rel="stylesheet" href="<?= commonAssetUrl('/common/assets/iframe-popup.css') ?>">
     <link rel="stylesheet" href="<?= commonAssetUrl('/common/assets/topbar.css') ?>">
-    <link rel="stylesheet" href="/common/assets/homepage-map.css?v=20261104-map-stacking">
+    <?php if ($omo2OrganizationMapRows !== array()): ?>
+    <link rel="stylesheet" href="/common/assets/homepage-map.css?v=20261105-shared-popup">
     <?php commonRenderLeafletMarkerClusterAssets(); ?>
     <?php endif; ?>
     <script type="application/ld+json">
@@ -474,8 +477,9 @@ $canonicalUrl = '/index2.php';
         </section>
     </main>
 
-    <footer class="omo2-footer"><div class="omo2-shell"><div class="omo2-footer__top"><a class="omo2-brand omo2-brand--footer" href="#accueil"><img src="/img/omo2/logo-omo.png" width="1081" height="441" alt="OpenMyOrganization"></a><p><?= $e($t('home.footer.tagline')) ?></p></div><div class="omo2-footer__columns"><div><h2><?= $e($t('home.footer.omo')) ?></h2><a href="#accueil"><?= $e($t('home.nav.about')) ?></a><a href="/migration-omo.php"><?= $e($t('home.nav.migration')) ?></a><a href="#fonctionnalites"><?= $e($t('home.nav.capabilities')) ?></a><a href="#maturite"><?= $e($t('home.action.manifesto')) ?></a><a href="<?= $e($omo2Links['source']) ?>" target="_blank" rel="noopener noreferrer"><?= $e($t('home.opensource.title')) ?></a><a href="#communaute"><?= $e($t('home.nav.community')) ?></a></div><div><h2><?= $e($t('home.footer.discover')) ?></h2><a href="#evenement"><?= $e($t('home.event.label')) ?></a><a href="#decouvrir"><?= $e($t('home.video.title')) ?></a><a href="<?= $e($omo2Links['try']) ?>"><?= $e($t('home.action.try')) ?></a><a href="<?= $e($omo2Links['login']) ?>"><?= $e($t('home.action.login')) ?></a></div><div><h2><?= $e($t('home.footer.project')) ?></h2><a href="<?= $e($omo2Links['source']) ?>" target="_blank" rel="noopener noreferrer"><?= $e($t('home.action.source')) ?></a><a href="<?= $e($omo2Links['support']) ?>" target="_blank" rel="noopener noreferrer"><?= $e($t('home.action.support')) ?></a><a href="<?= $e($omo2Links['developer']) ?>"><?= $e($t('home.footer.api')) ?></a><a href="<?= $e($omo2Links['status']) ?>" target="_blank" rel="noopener noreferrer"><?= $e($t('home.footer.status')) ?></a></div><div><h2><?= $e($t('home.footer.legal')) ?></h2><a href="<?= $e($omo2Links['terms']) ?>"><?= $e($t('home.footer.terms')) ?></a><a href="<?= $e($omo2Links['privacy']) ?>"><?= $e($t('home.footer.privacy')) ?></a></div></div><div class="omo2-footer__bottom"><span>© <?= date('Y') ?> OpenMyOrganization</span><span><?= $e($t('home.footer.signature')) ?></span></div></div></footer>
-    <script src="/assets/omo2-home.js?v=20260914-organizations-16"></script>
+    <footer class="omo2-footer"><div class="omo2-shell"><div class="omo2-footer__top"><a class="omo2-brand omo2-brand--footer" href="#accueil"><img src="/img/omo2/logo-omo.png" width="1081" height="441" alt="OpenMyOrganization"></a><p><?= $e($t('home.footer.tagline')) ?></p></div><div class="omo2-footer__columns"><div><h2><?= $e($t('home.footer.omo')) ?></h2><a href="#accueil"><?= $e($t('home.nav.about')) ?></a><a href="/migration-omo.php"><?= $e($t('home.nav.migration')) ?></a><a href="#fonctionnalites"><?= $e($t('home.nav.capabilities')) ?></a><a href="#maturite"><?= $e($t('home.action.manifesto')) ?></a><a href="<?= $e($omo2Links['source']) ?>" target="_blank" rel="noopener noreferrer"><?= $e($t('home.opensource.title')) ?></a><a href="#communaute"><?= $e($t('home.nav.community')) ?></a></div><div><h2><?= $e($t('home.footer.discover')) ?></h2><a href="#evenement"><?= $e($t('home.event.label')) ?></a><a href="#decouvrir"><?= $e($t('home.video.title')) ?></a><a href="<?= $e($omo2Links['try']) ?>"><?= $e($t('home.action.try')) ?></a><a href="<?= $e($omo2Links['login']) ?>"><?= $e($t('home.action.login')) ?></a></div><div><h2><?= $e($t('home.footer.project')) ?></h2><a href="<?= $e($omo2Links['source']) ?>" target="_blank" rel="noopener noreferrer"><?= $e($t('home.action.source')) ?></a><a href="<?= $e($omo2Links['support']) ?>" target="_blank" rel="noopener noreferrer"><?= $e($t('home.action.support')) ?></a><a href="/popup/supporters.php" data-omo2-supporters data-close-label="<?= $e($t('home.popup.close')) ?>" aria-haspopup="dialog"><?= $e($t('home.footer.supporters')) ?></a><a href="<?= $e($omo2Links['developer']) ?>"><?= $e($t('home.footer.api')) ?></a><a href="<?= $e($omo2Links['status']) ?>" target="_blank" rel="noopener noreferrer"><?= $e($t('home.footer.status')) ?></a></div><div><h2><?= $e($t('home.footer.legal')) ?></h2><a href="<?= $e($omo2Links['terms']) ?>"><?= $e($t('home.footer.terms')) ?></a><a href="<?= $e($omo2Links['privacy']) ?>"><?= $e($t('home.footer.privacy')) ?></a></div></div><div class="omo2-footer__bottom"><span>© <?= date('Y') ?> OpenMyOrganization</span><span><?= $e($t('home.footer.signature')) ?></span></div></div></footer>
+    <script src="<?= commonAssetUrl('/common/assets/iframe-popup.js') ?>"></script>
+    <script src="<?= commonAssetUrl('/assets/omo2-home.js') ?>"></script>
     <?php if ($omo2OrganizationMapRows !== array()): ?>
     <?= commonPageScriptTags('/common/assets/homepage-map.js', [
         'rows' => $omo2OrganizationMapRows,

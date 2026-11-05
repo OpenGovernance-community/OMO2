@@ -6,9 +6,9 @@ function omoTensionSourceLang(): array
     return [
         'space_hint' => ['text' => 'Choisissez un espace dans lequel vous avez le droit de creer des tensions.', 'context' => 'Tension space assignment picker help.'],
         'no_target' => ['text' => 'Vous ne disposez d aucun espace autorise pour creer une tension.', 'context' => 'Empty state when no tension creation destination is allowed.'],
-        'existing' => ['text' => 'Tensions existantes', 'context' => 'Tab listing all active tensions in the current organization.'],
+        'existing' => ['text' => 'Mes tensions', 'context' => 'Tab listing only the current user s active tensions in the current organization, including in admin mode.'],
         'tabs' => ['text' => 'Gestion des tensions', 'context' => 'Accessible label for tension popup tabs.'],
-        'empty' => ['text' => 'Aucune tension pour le moment dans cette organisation.', 'context' => 'Empty organization tension list.'],
+        'empty' => ['text' => "Vous n'avez pas encore de tension dans cette organisation.", 'context' => 'Empty personal tension list in the current organization.'],
         'loading' => ['text' => 'Chargement des tensions...', 'context' => 'Tension list progress.'],
         'load_failed' => ['text' => 'Impossible de charger les tensions.', 'context' => 'Tension list loading error.'],
         'refresh' => ['text' => 'Actualiser', 'context' => 'Reload the organization tension list.'],

@@ -19,6 +19,9 @@
                 panel.querySelector('[data-patreon-account]').hidden = !data.linked;
                 panel.querySelector('[data-patreon-account] span').textContent = data.account || '';
                 panel.querySelectorAll('[data-patreon-action]').forEach(button => { button.hidden = !data.linked; });
+                panel.dispatchEvent(new CustomEvent('patreon-organization-updated', { bubbles: true, detail: {
+                    organizationId: config.organizationId, canManageOrganizationRouting: data.canManageOrganizationRouting === true
+                } }));
                 notify(config.text.saved, 'success');
             } catch (_) { notify(config.text.error, 'error'); }
             finally { buttons.forEach(button => { button.disabled = false; }); }

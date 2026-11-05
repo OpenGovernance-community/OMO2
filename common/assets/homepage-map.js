@@ -18,53 +18,13 @@ const homepageMapTextsReady = fetch('/common/jstranslation/homepage_map.php?v=20
     if (typeof texts[key] === 'string' && texts[key]) homepageMapTexts[key] = texts[key];
   }))
   .catch(() => {});
-let homepageMaturityDialog = null;
-
 function openHomepageMaturityChart(trigger, organizationRow) {
-  if (!homepageMaturityDialog) {
-    homepageMaturityDialog = document.createElement('dialog');
-    homepageMaturityDialog.className = 'home-organization-map__dialog';
-    homepageMaturityDialog.setAttribute('aria-labelledby', 'homepageMaturityTitle');
-    const header = document.createElement('header');
-    const title = document.createElement('strong');
-    title.id = 'homepageMaturityTitle';
-    const close = document.createElement('button');
-    close.type = 'button';
-    close.className = 'common-topbar-modal__close';
-    const closeIcon = document.createElement('span');
-    closeIcon.textContent = '\u00d7';
-    closeIcon.setAttribute('aria-hidden', 'true');
-    close.append(closeIcon);
-    close.title = homepageMapTexts.close;
-    close.setAttribute('aria-label', homepageMapTexts.close);
-    close.addEventListener('click', () => homepageMaturityDialog.close());
-    header.append(title, close);
-    homepageMaturityDialog.append(header);
-    document.body.append(homepageMaturityDialog);
-    homepageMaturityDialog.addEventListener('click', (event) => {
-      if (event.target !== homepageMaturityDialog) return;
-      const rect = homepageMaturityDialog.getBoundingClientRect();
-      if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) homepageMaturityDialog.close();
-    });
-    homepageMaturityDialog.addEventListener('close', () => {
-      homepageMaturityDialog.querySelector('iframe')?.remove();
-      document.documentElement.classList.remove('homepage-maturity-open');
-    });
-  }
-  const title = homepageMapTexts.maturity + ' - ' + organizationRow.name;
-  homepageMaturityDialog.querySelector('strong').textContent = title;
-  homepageMaturityDialog.querySelector('iframe')?.remove();
-  const frame = document.createElement('iframe');
-  frame.title = title;
-  frame.src = trigger.href;
-  frame.addEventListener('load', () => {
-    frame.contentDocument?.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') homepageMaturityDialog.close();
-    });
+  window.commonOpenIframePopup({
+    url: trigger.href,
+    title: homepageMapTexts.maturity + ' - ' + organizationRow.name,
+    closeLabel: homepageMapTexts.close,
+    trigger
   });
-  homepageMaturityDialog.append(frame);
-  homepageMaturityDialog.showModal();
-  document.documentElement.classList.add('homepage-maturity-open');
 }
 
 async function initHomepageOrganizationMap() {

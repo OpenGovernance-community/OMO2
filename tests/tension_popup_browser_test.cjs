@@ -69,8 +69,9 @@ const {chromium} = require('playwright');
         assert.equal(await page.locator('#omoTensionTitle').inputValue(), '');
         await page.locator('[data-generic-tab-target="omoTensionListPanel"]').click();
         await page.locator('#omoTensionList h3', {hasText: 'New browser tension'}).waitFor();
-        assert.equal(await page.locator('#omoTensionList > article').count(), 3, 'A queued refresh must include the new tension after an older list response.');
-        assert.equal(await page.locator('[data-tension-id="' + config.otherId + '"] [data-omo-tension-menu]').count(), 0, 'Members cannot remove another author s tension.');
+        assert.equal(await page.locator('#omoTensionList > article').count(), 2, 'A queued refresh includes the new tension and only the current author s records.');
+        assert.equal(await page.locator('[data-tension-id="' + config.otherId + '"]').count(), 0, 'Other authors tensions must not be displayed.');
+        assert.equal(await page.locator('[data-generic-tab-target="omoTensionListPanel"]').textContent(), 'Mes tensions');
         const own = page.locator('[data-tension-id="' + config.ownId + '"]');
         assert.equal(await own.locator('script').count(), 0, 'Descriptions render as plain text.');
         await own.locator('[data-omo-tension-menu]').click();
@@ -87,6 +88,10 @@ const {chromium} = require('playwright');
 
         const api = path => config.origin + '/omo/api/' + path;
         const post = data => context.request.post(api('tension_delete.php?oid=' + data.oid), {form: data});
+        const personalListUrl = api('tension_list.php?oid=' + config.oid + '&IDuser=0&includeInactive=1');
+        const personalList = await (await context.request.get(personalListUrl)).json();
+        assert.equal(personalList.items.length, 1, 'The API must filter by the authenticated author and exclude removed tensions.');
+        assert.equal(personalList.items[0].title, 'New browser tension');
         assert.equal((await post({oid: config.oid, id: config.otherId})).status(), 403);
         assert.equal((await context.request.get(api('tension_list.php?oid=' + config.otherOid))).status(), 403);
         assert.equal((await post({oid: config.otherOid, id: config.otherId})).status(), 403);
@@ -97,6 +102,8 @@ const {chromium} = require('playwright');
             form: {organization_id: config.oid, enabled: 1}, headers: {'X-Requested-With': 'XMLHttpRequest'}
         });
         assert.equal((await admin.json()).active, true);
+        const adminList = await (await context.request.get(personalListUrl)).json();
+        assert.deepEqual(adminList.items.map(item => item.id), personalList.items.map(item => item.id), 'Admin mode must keep the list personal.');
         assert.equal((await post({oid: config.oid, id: config.otherId})).status(), 200, 'Admin mode can remove another author s tension.');
         await page.locator('[data-omo-tension-refresh]').click();
         await page.locator('[data-tension-id="' + config.otherId + '"]').waitFor({state: 'detached'});
@@ -114,7 +121,7 @@ const {chromium} = require('playwright');
         await page.setViewportSize({width: 1280, height: 900});
         await page.screenshot({path: 'tmp/tension-popup-form-desktop.png'});
         assert.deepEqual(errors, []);
-        console.log('tension_popup_browser_test: OK (compact layout, tabs, save progress, refresh race, menus, removal, permissions, CSRF, mobile, reopen)');
+        console.log('tension_popup_browser_test: OK (personal list and API including admin mode, tabs, save, removal, permissions, mobile, reopen)');
     } catch (error) {
         if (page && !page.isClosed()) {
             await page.screenshot({path: 'tmp/tension-popup-failure.png'});

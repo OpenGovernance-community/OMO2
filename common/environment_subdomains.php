@@ -72,6 +72,37 @@ function commonGetConfiguredEnvironmentSubdomains()
     return ['dev', 'beta', 'deploy'];
 }
 
+function commonGetHostRootPartCount(array $parts)
+{
+    $partCount = count($parts);
+    if ($partCount === 0) {
+        return 0;
+    }
+
+    $rootPartCount = min(2, $partCount);
+    if ($partCount === 2 && ($parts[1] ?? '') === 'localhost') {
+        $rootPartCount = 1;
+    }
+
+    if ($partCount >= 3) {
+        $environmentCandidate = strtolower((string)($parts[$partCount - 3] ?? ''));
+        if (in_array($environmentCandidate, commonGetConfiguredEnvironmentSubdomains(), true)) {
+            $rootPartCount = 3;
+        }
+    }
+
+    $configuredRoot = strtolower(trim((string)commonReadRuntimeEnvValue('COOKIE_ROOT_HOST', '')));
+    $configuredRoot = preg_replace('/:\d+$/', '', $configuredRoot);
+    $rootParts = array_values(array_filter(explode('.', trim($configuredRoot, '.'))));
+    if ($rootParts !== [] && $partCount >= count($rootParts)
+        && array_map('strtolower', array_slice($parts, -count($rootParts))) === $rootParts) {
+        // A parent cookie scope must not turn a reserved environment into an organization.
+        $rootPartCount = max($rootPartCount, count($rootParts));
+    }
+
+    return $rootPartCount;
+}
+
 function commonUseOrganizationSubdomains()
 {
     return commonReadRuntimeEnvBool('ORGANIZATION_SUBDOMAIN_ROUTING', false);

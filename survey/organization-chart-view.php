@@ -33,7 +33,6 @@ if (!isset($questions, $organization, $pageLang, $pageSourceLang, $surveyLang, $
                 $pageLang,
                 $pageSourceLang
             )) ?></p>
-            <p class="survey-radar-risk"><span aria-hidden="true"></span><?= $escape(t('survey.results.radar_risk', [], $surveyLang, $surveySourceLang)) ?></p>
         <?php else: ?>
             <p><?= $escape(t('survey.organization.empty', [], $pageLang, $pageSourceLang)) ?></p>
         <?php endif; ?>

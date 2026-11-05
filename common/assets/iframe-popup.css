@@ -1,0 +1,26 @@
+.common-iframe-popup-open { overflow: hidden; }
+
+.common-iframe-popup {
+    width: min(1000px, calc(100% - 24px));
+    height: min(840px, calc(100dvh - 24px));
+    max-width: none;
+    max-height: none;
+    padding: 0;
+    border: 1px solid #bdd2e1;
+    border-radius: 14px;
+    background: #fff;
+    color: #123247;
+    font-family: system-ui, sans-serif;
+}
+
+.common-iframe-popup[open] { display: flex; flex-direction: column; }
+.common-iframe-popup::backdrop { background: rgba(3, 26, 42, 0.65); }
+.common-iframe-popup > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 16px;
+    border-block-end: 1px solid #d5e3ed;
+}
+.common-iframe-popup > iframe { width: 100%; flex: 1; min-height: 0; border: 0; }

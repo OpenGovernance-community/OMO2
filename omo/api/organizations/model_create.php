@@ -35,7 +35,8 @@ if ($modelId <= 0) {
     exit;
 }
 
-if (!patreonCanManageOrganizationRouting($userId)) {
+// The new organization has no subscription yet; never inherit the source model's access.
+if (!patreonCanManageOrganizationRouting($userId, 0)) {
     unset($definitionOverrides['shortname'], $definitionOverrides['domain']);
 }
 

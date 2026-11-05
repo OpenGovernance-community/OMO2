@@ -128,7 +128,8 @@ try {
     require dirname(__DIR__) . '/survey/organization.php';
     $chartHtml = (string)ob_get_clean();
     homepageOrganizationCheck(str_contains($chartHtml, '1 personne (50 % des membres)'), 'Compact chart must show the distinct participant count and member percentage with the correct singular');
-    homepageOrganizationCheck(strpos($chartHtml, 'class="survey-organization-chart__participation"') > strpos($chartHtml, 'id="surveyPublicRadar"') && strpos($chartHtml, 'class="survey-organization-chart__participation"') < strpos($chartHtml, 'class="survey-radar-risk"'), 'Participation must be below the radar and above the risk warning');
+    homepageOrganizationCheck(strpos($chartHtml, 'class="survey-organization-chart__participation"') > strpos($chartHtml, 'id="surveyPublicRadar"'), 'Participation must be below the radar');
+    homepageOrganizationCheck(!str_contains($chartHtml, 'class="survey-radar-risk"'), 'Public chart must not display the risk warning');
     homepageOrganizationCheck(str_contains($chartHtml, 'id="surveyPublicRadar"') && !str_contains($chartHtml, 'data-group-radar-index'), 'Compact view must reuse the public radar without loading the full organization report');
     preg_match('/window\.SURVEY_PUBLIC_RESULT = (.*);/', $chartHtml, $chartMatch);
     $chartQuestions = json_decode($chartMatch[1] ?? '', true, 512, JSON_THROW_ON_ERROR);

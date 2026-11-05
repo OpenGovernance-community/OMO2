@@ -6,7 +6,12 @@ mcpCheck(parse_url(omoMcpPublicUrl(), PHP_URL_HOST) === 'localtest.me', 'Local f
 $items = mcpFixtures(false);
 try {
     $uid = (int)$items['user']->getId(); $oid = (int)$items['org']->getId();
-    $items['user']->set('siteadmin', 1); $items['user']->save();
+    $routingOnly = in_array('--routing', $argv, true);
+    $items['user']->set('siteadmin', $routingOnly ? 0 : 1); $items['user']->save();
+    if ($routingOnly) {
+        $items['patreon_subscription']->set('currently_entitled_amount_cents', 30000);
+        $items['patreon_subscription']->save();
+    }
     $items['membership']->setOrganizationAdmin(true); $items['membership']->save();
     $items['org_patreon'] = mcpFixture(\dbObject\OrganizationPatreon::class, ['IDorganization' => $oid,
         'is_connected' => 1, 'refresh_token' => 'fixture-not-a-token', 'patreon_user_id' => (string)random_int(100000000, 999999999),
