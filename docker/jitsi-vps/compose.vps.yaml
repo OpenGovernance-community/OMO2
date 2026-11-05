@@ -1,0 +1,37 @@
+# Overlay for the pinned official docker-compose.yml (Compose >= 2.24.4).
+services:
+  web:
+    ports: !reset []
+    expose:
+      - "8000"
+    mem_limit: 256m
+    networks:
+      meet.jitsi:
+      proxy:
+        aliases:
+          - jitsi-web
+    logging: &bounded-logs
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  prosody:
+    mem_limit: 256m
+    logging: *bounded-logs
+
+  jicofo:
+    ports: !reset []
+    mem_limit: 512m
+    logging: *bounded-logs
+
+  jvb:
+    ports: !override
+      - "${JVB_BIND_ADDRESS:-0.0.0.0}:${JVB_PORT:-10000}:${JVB_PORT:-10000}/udp"
+    mem_limit: 1g
+    logging: *bounded-logs
+
+networks:
+  proxy:
+    external: true
+    name: collabora_collabora

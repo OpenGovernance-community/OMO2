@@ -731,15 +731,16 @@
 			$resolvedType = \dbObject\ObjectVisibility::normalizeVisibilityType($visibilityType);
 			$fallbackType = \dbObject\ObjectVisibility::normalizeVisibilityType($fallbackType);
 			$holonId = $holonId !== null ? (int)$holonId : 0;
+			$unscopedFallbackType = \dbObject\ObjectVisibility::requiresHolonTarget($fallbackType)
+				? \dbObject\ObjectVisibility::TYPE_SELF
+				: $fallbackType;
 
 			if (!\dbObject\ObjectVisibility::requiresHolonTarget($resolvedType)) {
 				return $resolvedType;
 			}
 
 			if ($holonId <= 0) {
-				return \dbObject\ObjectVisibility::requiresHolonTarget($fallbackType)
-					? \dbObject\ObjectVisibility::TYPE_SELF
-					: $fallbackType;
+				return $unscopedFallbackType;
 			}
 
 			$holon = new \dbObject\Holon();
@@ -749,13 +750,20 @@
 				|| !(bool)$holon->get('visible')
 				|| ($organizationId > 0 && (int)$holon->get('IDorganization') > 0 && (int)$holon->get('IDorganization') !== $organizationId)
 			) {
-				return $fallbackType;
+				return $unscopedFallbackType;
 			}
 
 			$holonTypeId = (int)$holon->get('IDtypeholon');
 			$circleId = $holonTypeId === 2
 				? (int)$holon->getId()
 				: (int)$holon->getContainingCircleId(false);
+
+			// A contextual fallback must itself be usable at this destination.
+			if ($fallbackType === \dbObject\ObjectVisibility::TYPE_ROLE && $holonTypeId !== 1) {
+				$fallbackType = $circleId > 0 ? \dbObject\ObjectVisibility::TYPE_CIRCLE : $unscopedFallbackType;
+			} elseif ($fallbackType === \dbObject\ObjectVisibility::TYPE_CIRCLE && $circleId <= 0) {
+				$fallbackType = $unscopedFallbackType;
+			}
 
 			if ($resolvedType === \dbObject\ObjectVisibility::TYPE_ROLE) {
 				if ($holonTypeId === 1) {
@@ -1494,7 +1502,8 @@
 			}
 
 			if ($isCreate) {
-				return $this->normalizeScopeTypeForCurrentContext($fallbackType, $fallbackType);
+				// Creation resolves the final holon (including the parent folder) later.
+				return \dbObject\ObjectVisibility::normalizeVisibilityType($fallbackType);
 			}
 
 			$currentRule = $inputKey === 'edit_visibility_type'

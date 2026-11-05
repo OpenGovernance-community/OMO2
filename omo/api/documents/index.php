@@ -110,6 +110,10 @@ $sourceLang = [
         'text' => 'Vous n’avez pas le droit de création de fichier ici.',
         'context' => 'Feedback shown when files are dragged over a document list or folder where the user cannot create files.',
     ],
+    'documents.upload.storage_missing' => [
+        'text' => 'Configurez un stockage de fichiers dans les parametres Documents pour pouvoir televerser des fichiers.',
+        'context' => 'Feedback shown when file dropping is unavailable because the organization has no document storage.',
+    ],
     'documents.move.drop_root' => [
         'text' => 'Déposez le document pour le déplacer à la racine de cette liste.',
         'context' => 'Feedback shown while a document is dragged over the root document list.',
@@ -1367,7 +1371,9 @@ if (!is_string($documentsPayload)) {
     'folder' => omoDocumentsScopeT('documents.upload.drop_folder'),
     'success' => omoDocumentsScopeT('documents.upload.success'),
     'error' => omoDocumentsScopeT('documents.upload.error'),
-    'forbidden' => omoDocumentsScopeT('documents.upload.forbidden'),
+    'forbidden' => omoDocumentsScopeT($organization->hasDocumentStorage()
+        ? 'documents.upload.forbidden'
+        : 'documents.upload.storage_missing'),
     'root2' => omoDocumentsScopeT('documents.move.drop_root'),
     'folder2' => omoDocumentsScopeT('documents.move.drop_folder'),
     'forbidden2' => omoDocumentsScopeT('documents.move.drop_forbidden'),

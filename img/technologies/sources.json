@@ -1,0 +1,313 @@
+{
+  "anthropic": {
+    "name": "Anthropic",
+    "type": "Simple Icons 15.0.0",
+    "download": "https://cdn.jsdelivr.net/npm/simple-icons@15.0.0/icons/anthropic.svg",
+    "brandSource": "https://www.anthropic.com",
+    "license": "CC0-1.0 (collection)"
+  },
+  "apache": {
+    "name": "Apache HTTP Server",
+    "type": "Simple Icons 15.0.0",
+    "download": "https://cdn.jsdelivr.net/npm/simple-icons@15.0.0/icons/apache.svg",
+    "brandSource": "https://www.apache.org/foundation/press/kit",
+    "license": {
+      "type": "Apache-2.0"
+    }
+  },
+  "bootstrap": {
+    "name": "Bootstrap",
+    "type": "Simple Icons 15.0.0",
+    "download": "https://cdn.jsdelivr.net/npm/simple-icons@15.0.0/icons/bootstrap.svg",
+    "brandSource": "https://getbootstrap.com/docs/5.3/about/brand",
+    "license": {
+      "type": "MIT"
+    }
+  },
+  "caddy": {
+    "name": "Caddy",
+    "type": "Simple Icons 15.0.0",
+    "download": "https://cdn.jsdelivr.net/npm/simple-icons@15.0.0/icons/caddy.svg",
+    "brandSource": "https://caddyserver.com",
+    "license": "CC0-1.0 (collection)"
+  },
+  "cdnjs": {
+    "name": "cdnjs",
+    "type": "OMO2 original category illustration and monogram"
+  },
+  "collabora": {
+    "name": "Collabora Online",
+    "type": "Simple Icons 15.0.0",
+    "download": "https://cdn.jsdelivr.net/npm/simple-icons@15.0.0/icons/collaboraonline.svg",
+    "brandSource": "https://www.collaboraonline.com/branding-guidelines",
+    "license": "CC0-1.0 (collection)"
+  },
+  "commonmark": {
+    "name": "League CommonMark",
+    "type": "OMO2 original category illustration and monogram"
+  },
+  "composer": {
+    "name": "Composer",
+    "type": "Simple Icons 15.0.0",
+    "download": "https://cdn.jsdelivr.net/npm/simple-icons@15.0.0/icons/composer.svg",
+    "brandSource": "https://getcomposer.org",
+    "license": "CC0-1.0 (collection)"
+  },
+  "d3": {
+    "name": "D3.js",
+    "type": "Simple Icons 15.0.0",
+    "download": "https://cdn.jsdelivr.net/npm/simple-icons@15.0.0/icons/d3.svg",
+    "brandSource": "https://github.com/d3/d3-logo/tree/6d9c471aa852033501d00ca63fe73d9f8be82d1d",
+    "license": "CC0-1.0 (collection)"
+  },
+  "docker": {
+    "name": "Docker et Compose",
+    "type": "Simple Icons 15.0.0",
+    "download": "https://cdn.jsdelivr.net/npm/simple-icons@15.0.0/icons/docker.svg",
+    "brandSource": "https://www.docker.com/company/newsroom/media-resources",
+    "license": "CC0-1.0 (collection)"
+  },
+  "dompdf": {
+    "name": "Dompdf",
+    "type": "OMO2 original category illustration and monogram"
+  },
+  "driver": {
+    "name": "Driver.js",
+    "type": "OMO2 original category illustration and monogram"
+  },
+  "ethercalc": {
+    "name": "EtherCalc",
+    "type": "OMO2 original category illustration and monogram"
+  },
+  "etherpad": {
+    "name": "Etherpad",
+    "type": "Project logo",
+    "download": "https://raw.githubusercontent.com/ether/etherpad/develop/src/static/img/brand.svg",
+    "modifications": "Static thumbnail: animation removed and opacity increased for legibility at small sizes."
+  },
+  "github": {
+    "name": "GitHub",
+    "type": "Simple Icons 15.0.0",
+    "download": "https://cdn.jsdelivr.net/npm/simple-icons@15.0.0/icons/github.svg",
+    "brandSource": "https://github.com/logos",
+    "license": "CC0-1.0 (collection)"
+  },
+  "graphicsmagick": {
+    "name": "GraphicsMagick",
+    "type": "OMO2 original category illustration and monogram"
+  },
+  "infomaniak": {
+    "name": "Infomaniak",
+    "type": "Simple Icons 15.0.0",
+    "download": "https://cdn.jsdelivr.net/npm/simple-icons@15.0.0/icons/infomaniak.svg",
+    "brandSource": "https://www.infomaniak.com/en/about/press",
+    "license": "CC0-1.0 (collection)"
+  },
+  "jitsi": {
+    "name": "Jitsi Meet",
+    "type": "Simple Icons 15.0.0",
+    "download": "https://cdn.jsdelivr.net/npm/simple-icons@15.0.0/icons/jitsi.svg",
+    "brandSource": "https://github.com/jitsi/jitsi-meet/blob/767101497c9a52abf8cef7893e8d6e7e4283bbfc/images/watermark.svg",
+    "license": "CC0-1.0 (collection)"
+  },
+  "jquery": {
+    "name": "jQuery",
+    "type": "Simple Icons 15.0.0",
+    "download": "https://cdn.jsdelivr.net/npm/simple-icons@15.0.0/icons/jquery.svg",
+    "brandSource": "https://brand.jquery.org/logos/",
+    "license": "CC0-1.0 (collection)"
+  },
+  "jquery-ui": {
+    "name": "jQuery UI",
+    "type": "Simple Icons 15.0.0",
+    "download": "https://cdn.jsdelivr.net/npm/simple-icons@15.0.0/icons/jquery.svg",
+    "brandSource": "https://brand.jquery.org/logos/",
+    "license": "CC0-1.0 (collection)"
+  },
+  "jsdelivr": {
+    "name": "jsDelivr",
+    "type": "Simple Icons 15.0.0",
+    "download": "https://cdn.jsdelivr.net/npm/simple-icons@15.0.0/icons/jsdelivr.svg",
+    "brandSource": "https://github.com/jsdelivr/www.jsdelivr.com/blob/eff02f3a8879cf7c7296840584e1293fe04e3a76/src/public/img/logo_horizontal.svg",
+    "license": "CC0-1.0 (collection)"
+  },
+  "kdrive": {
+    "name": "kDrive",
+    "type": "Simple Icons 15.0.0",
+    "download": "https://cdn.jsdelivr.net/npm/simple-icons@15.0.0/icons/infomaniak.svg",
+    "brandSource": "https://www.infomaniak.com/en/about/press",
+    "license": "CC0-1.0 (collection)"
+  },
+  "leaflet": {
+    "name": "Leaflet",
+    "type": "Simple Icons 15.0.0",
+    "download": "https://cdn.jsdelivr.net/npm/simple-icons@15.0.0/icons/leaflet.svg",
+    "brandSource": "https://github.com/Leaflet/Leaflet/blob/d843c3b88486713827d7e860b58bdba75bfbd5a2/src/images/logo.svg",
+    "license": "CC0-1.0 (collection)"
+  },
+  "mailpit": {
+    "name": "Mailpit",
+    "type": "OMO2 original category illustration and monogram"
+  },
+  "mariadb": {
+    "name": "MariaDB",
+    "type": "Simple Icons 15.0.0",
+    "download": "https://cdn.jsdelivr.net/npm/simple-icons@15.0.0/icons/mariadb.svg",
+    "brandSource": "https://mariadb.com/about-us/logos/",
+    "license": "CC0-1.0 (collection)"
+  },
+  "markercluster": {
+    "name": "Leaflet.markercluster",
+    "type": "OMO2 original category illustration and monogram"
+  },
+  "mistral": {
+    "name": "Mistral AI",
+    "type": "OMO2 original category illustration and monogram"
+  },
+  "nextcloud": {
+    "name": "Nextcloud",
+    "type": "Simple Icons 15.0.0",
+    "download": "https://cdn.jsdelivr.net/npm/simple-icons@15.0.0/icons/nextcloud.svg",
+    "brandSource": "https://nextcloud.com/press/",
+    "license": "CC0-1.0 (collection)"
+  },
+  "nodejs": {
+    "name": "Node.js",
+    "type": "Simple Icons 15.0.0",
+    "download": "https://cdn.jsdelivr.net/npm/simple-icons@15.0.0/icons/nodedotjs.svg",
+    "brandSource": "https://nodejs.org/en/about/branding",
+    "license": "CC0-1.0 (collection)"
+  },
+  "openai": {
+    "name": "OpenAI",
+    "type": "Simple Icons 15.0.0",
+    "download": "https://cdn.jsdelivr.net/npm/simple-icons@15.0.0/icons/openai.svg",
+    "brandSource": "https://openai.com/brand",
+    "license": "CC0-1.0 (collection)"
+  },
+  "openai-php": {
+    "name": "OpenAI PHP client",
+    "type": "OMO2 original category illustration and monogram"
+  },
+  "openmaptiles": {
+    "name": "OpenMapTiles",
+    "type": "OMO2 original category illustration and monogram"
+  },
+  "openstreetmap": {
+    "name": "OpenStreetMap",
+    "type": "Simple Icons 15.0.0",
+    "download": "https://cdn.jsdelivr.net/npm/simple-icons@15.0.0/icons/openstreetmap.svg",
+    "brandSource": "https://www.openstreetmap.org",
+    "license": "CC0-1.0 (collection)"
+  },
+  "patreon": {
+    "name": "Patreon",
+    "type": "Simple Icons 15.0.0",
+    "download": "https://cdn.jsdelivr.net/npm/simple-icons@15.0.0/icons/patreon.svg",
+    "brandSource": "https://www.patreon.com/brand",
+    "license": "CC0-1.0 (collection)"
+  },
+  "phinx": {
+    "name": "Phinx",
+    "type": "OMO2 original category illustration and monogram"
+  },
+  "php": {
+    "name": "PHP",
+    "type": "Simple Icons 15.0.0",
+    "download": "https://cdn.jsdelivr.net/npm/simple-icons@15.0.0/icons/php.svg",
+    "brandSource": "https://php.net/download-logos.php",
+    "license": {
+      "type": "CC-BY-SA-4.0"
+    }
+  },
+  "phpdotenv": {
+    "name": "phpdotenv",
+    "type": "OMO2 original category illustration and monogram"
+  },
+  "phpmailer": {
+    "name": "PHPMailer",
+    "type": "OMO2 original category illustration and monogram"
+  },
+  "phpmyadmin": {
+    "name": "phpMyAdmin",
+    "type": "Simple Icons 15.0.0",
+    "download": "https://cdn.jsdelivr.net/npm/simple-icons@15.0.0/icons/phpmyadmin.svg",
+    "brandSource": "https://github.com/phpmyadmin/data/blob/b7d3bdb9bb973beff4726541b87d3a4c8a950b4b/brand/phpMyAdmin-Logo-Symbol.svg",
+    "license": "CC0-1.0 (collection)"
+  },
+  "phpqrcode": {
+    "name": "PHP QR Code",
+    "type": "OMO2 original category illustration and monogram"
+  },
+  "phpspreadsheet": {
+    "name": "PhpSpreadsheet",
+    "type": "OMO2 original category illustration and monogram"
+  },
+  "phpword": {
+    "name": "PHPWord",
+    "type": "OMO2 original category illustration and monogram"
+  },
+  "playwright": {
+    "name": "Playwright",
+    "type": "Project logo",
+    "download": "https://playwright.dev/img/playwright-logo.svg"
+  },
+  "rrule": {
+    "name": "php-rrule",
+    "type": "OMO2 original category illustration and monogram"
+  },
+  "spacedeck": {
+    "name": "SpaceDeck",
+    "type": "OMO2 original category illustration and monogram"
+  },
+  "sqlite": {
+    "name": "SQLite",
+    "type": "Simple Icons 15.0.0",
+    "download": "https://cdn.jsdelivr.net/npm/simple-icons@15.0.0/icons/sqlite.svg",
+    "brandSource": "https://github.com/sqlite/sqlite/blob/43e862723ec680542ca6f608f9963c0993dd7324/art/sqlite370.eps",
+    "license": "CC0-1.0 (collection)"
+  },
+  "stadia": {
+    "name": "Stadia Maps",
+    "type": "OMO2 original category illustration and monogram"
+  },
+  "stats-js": {
+    "name": "stats.js",
+    "type": "OMO2 original category illustration and monogram"
+  },
+  "summernote": {
+    "name": "Summernote",
+    "type": "Project organization logo",
+    "source": "https://github.com/summernote",
+    "download": "https://github.com/summernote.png?size=128"
+  },
+  "tcpdf": {
+    "name": "TCPDF",
+    "type": "OMO2 original category illustration and monogram"
+  },
+  "telegram": {
+    "name": "Telegram",
+    "type": "Simple Icons 15.0.0",
+    "download": "https://cdn.jsdelivr.net/npm/simple-icons@15.0.0/icons/telegram.svg",
+    "brandSource": "https://telegram.org/tour/screenshots",
+    "license": "CC0-1.0 (collection)"
+  },
+  "unpkg": {
+    "name": "UNPKG",
+    "type": "Simple Icons 15.0.0",
+    "download": "https://cdn.jsdelivr.net/npm/simple-icons@15.0.0/icons/unpkg.svg",
+    "brandSource": "https://github.com/mjackson/unpkg/blob/af8c8db00fdacd77961ab2a8c3edb45a27d3a6a3/public/favicon.ico",
+    "license": "CC0-1.0 (collection)"
+  },
+  "uptimerobot": {
+    "name": "UptimeRobot",
+    "type": "OMO2 original category illustration and monogram"
+  },
+  "vimeo": {
+    "name": "Vimeo",
+    "type": "Simple Icons 15.0.0",
+    "download": "https://cdn.jsdelivr.net/npm/simple-icons@15.0.0/icons/vimeo.svg",
+    "brandSource": "https://press.vimeo.com/brand-guidelines",
+    "license": "CC0-1.0 (collection)"
+  }
+}

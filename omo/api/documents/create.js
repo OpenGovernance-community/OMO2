@@ -1614,18 +1614,15 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
             },
             cache: 'no-store'
         })
-            .then(function (response) {
-                if (!response.ok) {
-                    throw new Error('save_failed');
-                }
-
-                return response.json();
-            })
-            .then(function (payload) {
-                if (!payload || payload.status !== true) {
+            .then(async function (response) {
+                const payload = await response.json().catch(function () { return null; });
+                if (!response.ok || !payload || payload.status !== true) {
                     throw new Error(payload && payload.message ? payload.message : 'save_failed');
                 }
 
+                return payload;
+            })
+            .then(function (payload) {
                 const savedDocumentId = Number(payload.id || editingDocumentId || 0);
                 if (typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(form);
 

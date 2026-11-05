@@ -6,6 +6,12 @@ Les dates deja indiquees sont conservees. Les dates manquantes sont reconstituee
 
 ## 2026-11-05
 
+- Documents / creation dans une organisation minimale (2026-11-05) : correction de la portee d edition par defaut lorsqu il n existe qu un holon organisation, avec repli sur le proprietaire et conservation des portees cercle et role lorsqu elles sont disponibles. Erreur serveur precise affichee a l enregistrement ; le glisser-deplacer indique le stockage manquant au lieu d un refus de droits.
+
+- Accueil OMO2 / technologies et remerciements (2026-11-05) : nouvelle page publique accessible en popup depuis le footer, avec illustrations carrees locales, liens officiels et code source. Presentation du role des applications collaboratives, bibliotheques, services connectes et outils d hebergement ; inventaire detaille des dependances PHP et de leurs licences depuis composer.lock.
+
+- Visioconference / installation Jitsi VPS (2026-11-05) : installation Docker officielle epinglee, configuration separee des autres services et HTTPS actif sur meet.opengov.tools via Caddy. Compte organisateur, invites et salle d attente disponibles sans integration OMO2 a cette etape ; secrets prives et limites memoire pour le VPS partage. Port UDP 10000 et appel a trois participants simules verifies : audio/video recus et decodes, droits moderateur/participant et admission depuis la salle d attente controles dans Chromium.
+
 - Navigation / logo de l organisation (2026-11-05) : retour a /omo/ sur le meme hote pour les URL personnalisees, sans renvoi au catalogue. Detection de la racine partagee avec le routage et basee sur COOKIE_ROOT_HOST du .env, avec conservation des racines beta, dev et deploy.
 
 - Organisations / identifiant URL et domaine (2026-11-05) : modification reservee a l abonnement Patreon actif de l organisation, selon la verification deja utilisee pour ses fonctions IA, au lieu du soutien personnel de la personne qui edite. Verrouillage actualise apres connexion, synchronisation ou deconnexion ; controle identique a l enregistrement et valeurs existantes conservees sans abonnement.

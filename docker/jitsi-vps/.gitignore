@@ -1,0 +1,6 @@
+.env
+.env.private
+*.credentials
+*.password
+config/
+upstream/
