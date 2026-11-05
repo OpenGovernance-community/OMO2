@@ -1,4 +1,14 @@
 (() => {
+    const supportersLink = document.querySelector('[data-omo2-supporters]');
+    supportersLink?.addEventListener('click', (event) => {
+        if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || typeof window.commonOpenIframePopup !== 'function') return;
+        event.preventDefault();
+        const url = new URL(supportersLink.href);
+        const locale = new URLSearchParams(window.location.search).get('lang');
+        if (locale) url.searchParams.set('lang', locale);
+        window.commonOpenIframePopup({url: url.href, title: supportersLink.textContent.trim(), closeLabel: supportersLink.dataset.closeLabel, trigger: supportersLink});
+    });
+
     const header = document.querySelector('[data-omo2-header]');
     const menuButton = document.querySelector('[data-omo2-menu-button]');
     const navigation = document.querySelector('[data-omo2-navigation]');

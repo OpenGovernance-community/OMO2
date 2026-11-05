@@ -14,7 +14,7 @@ if ($userId <= 0 || $organizationId <= 0 || !commonCurrentUserHasOrganizationAcc
 }
 
 $tensions = new \dbObject\ArrayTension();
-$tensions->loadForOrganization($organizationId);
+$tensions->loadForOrganization($organizationId, false, $userId);
 $items = [];
 foreach ($tensions as $tension) {
     $holon = new \dbObject\Holon();

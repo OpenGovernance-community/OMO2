@@ -35,4 +35,26 @@ class OrganizationPatreon extends UserPatreon
         foreach ($rows ?: [] as $row) { $item = new self(); if ($item->load((int)$row['id'])) $items[] = $item; }
         return $items;
     }
+
+    public static function getSupporterGalleryItems(string $campaignId = ''): array
+    {
+        $items = [];
+        foreach (static::loadSupporterGalleryConnections(4000, $campaignId) as $connection) {
+            $organization = new Organization();
+            if (!$organization->load((int)$connection->get('IDorganization'))) continue;
+            $name = trim((string)$organization->get('name'));
+            $url = trim((string)$organization->get('url'));
+            $description = trim(preg_replace('/\s+/u', ' ', strip_tags((string)$organization->get('description'))) ?? '');
+            if (mb_strlen($description, 'UTF-8') > 240) $description = rtrim(mb_substr($description, 0, 237, 'UTF-8')) . '...';
+            $items[] = [
+                'displayName' => $name,
+                'photoUrl' => trim((string)$organization->get('logo')),
+                'initials' => static::buildContributorInitials($name),
+                'description' => $description,
+                'url' => Organization::isValidInformationUrl($url) ? $url : '',
+                'amountCents' => (int)$connection->get('currently_entitled_amount_cents'),
+            ];
+        }
+        return $items;
+    }
 }

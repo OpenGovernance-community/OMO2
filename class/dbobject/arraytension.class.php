@@ -9,12 +9,12 @@ class ArrayTension extends ArrayDbObject
         return '\dbObject\Tension';
     }
 
-    public function loadForOrganization($organizationId, $includeInactive = false)
+    public function loadForOrganization($organizationId, $includeInactive = false, ?int $authorId = null)
     {
         $organizationId = (int)$organizationId;
         $this->exchangeArray([]);
 
-        if ($organizationId <= 0) {
+        if ($organizationId <= 0 || ($authorId !== null && $authorId <= 0)) {
             return;
         }
 
@@ -23,6 +23,12 @@ class ArrayTension extends ArrayDbObject
             FROM `tension` t
             WHERE t.IDorganization = :organization_id
         ';
+        $params = ['organization_id' => $organizationId];
+
+        if ($authorId !== null) {
+            $query .= ' AND t.IDuser = :author_id';
+            $params['author_id'] = $authorId;
+        }
 
         if (!$includeInactive) {
             $query .= '
@@ -34,9 +40,7 @@ class ArrayTension extends ArrayDbObject
             ORDER BY t.datecreation DESC, t.id DESC
         ';
 
-        $rows = \dbObject\DbObject::fetchAll($query, [
-            'organization_id' => $organizationId,
-        ]);
+        $rows = \dbObject\DbObject::fetchAll($query, $params);
 
         if ($rows === false) {
             return;

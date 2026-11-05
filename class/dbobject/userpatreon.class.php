@@ -371,6 +371,46 @@
 			return $result;
 		}
 
+		/** Only paid, active connections are eligible for the public gallery. */
+		protected static function loadSupporterGalleryConnections(int $minimumCents, string $campaignId): array
+		{
+			if (!static::isStorageAvailable()) return [];
+			$params = ['minimum' => $minimumCents];
+			$query = 'SELECT id FROM `' . static::tableName() . "`
+				WHERE is_connected = 1 AND COALESCE(refresh_token, '') <> ''
+				AND patron_status = 'active_patron' AND currently_entitled_amount_cents >= :minimum";
+			if ($campaignId !== '') {
+				$query .= ' AND campaign_id = :campaign';
+				$params['campaign'] = $campaignId;
+			}
+			$items = [];
+			foreach (static::fetchAll($query, $params) ?: [] as $row) {
+				$connection = new static();
+				if ($connection->load((int)$row['id'])) $items[] = $connection;
+			}
+			return $items;
+		}
+
+		/** Public presentation only: never return emails or OAuth credentials. */
+		public static function getSupporterGalleryItems(string $campaignId = ''): array
+		{
+			$items = [];
+			foreach (static::loadSupporterGalleryConnections(1, $campaignId) as $connection) {
+				$user = new User();
+				if (!$user->load((int)$connection->get('IDuser')) || !(int)$user->get('active')) continue;
+				$name = trim((string)$user->get('firstname') . ' ' . (string)$user->get('lastname'));
+				if ($name === '') $name = trim((string)$user->get('username'));
+				if ($name === '') $name = trim((string)$connection->get('full_name'));
+				$items[] = [
+					'displayName' => $name,
+					'photoUrl' => trim((string)$user->getProfilePhotoUrl()) ?: trim((string)$connection->get('image_url')),
+					'initials' => static::buildContributorInitials($name),
+					'amountCents' => (int)$connection->get('currently_entitled_amount_cents'),
+				];
+			}
+			return $items;
+		}
+
 		public function isConnected()
 		{
 			return (int)$this->get('is_connected') > 0
