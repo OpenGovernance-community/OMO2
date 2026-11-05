@@ -9,8 +9,6 @@ $sourceLang = [
     'intro' => ['text' => 'Merci aux organisations et aux personnes qui font grandir OMO2 et soutiennent un logiciel ouvert, libre et accessible.', 'context' => 'Public supporter gallery introduction.'],
     'organizations' => ['text' => 'Les organisations', 'context' => 'Heading above organization supporter cards.'],
     'people' => ['text' => 'Les personnes', 'context' => 'Heading above individual supporter portraits, below organizations.'],
-    'empty.organizations' => ['text' => 'Les organisations qui soutiennent OMO2 via un abonnement Patreon de 40 euros ou plus apparaitront ici.', 'context' => 'Empty state for organization supporters.'],
-    'empty.people' => ['text' => 'Les personnes ayant un abonnement Patreon actif connecte a OMO2 apparaitront ici.', 'context' => 'Empty state for individual supporters.'],
     'organization' => ['text' => 'Organisation partenaire', 'context' => 'Fallback for a supporter organization without a name.'],
     'person' => ['text' => 'Soutien Patreon', 'context' => 'Fallback for an individual supporter without a public name.'],
     'support' => ['text' => 'Soutenir OMO2 sur Patreon', 'context' => 'Supporter gallery call to action.'],
@@ -65,11 +63,9 @@ $sections = [
         <p><?= $e($t('intro')) ?></p>
     </header>
     <?php foreach ($sections as $type => $groups): ?>
+    <?php if ($groups === []) continue; ?>
     <section class="generic-stack generic-stack--roomy" aria-labelledby="supporters-<?= $e($type) ?>">
         <h2 id="supporters-<?= $e($type) ?>" class="generic-card-title generic-card-title--section"><?= $e($t($type)) ?></h2>
-        <?php if ($groups === []): ?>
-            <p class="generic-soft-panel"><?= $e($t('empty.' . $type)) ?></p>
-        <?php endif; ?>
         <?php foreach ($groups as $tier => $items): ?>
         <div class="generic-stack">
             <?php if ($tier > 0): ?>

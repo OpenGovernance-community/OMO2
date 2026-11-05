@@ -20,8 +20,10 @@ const {chromium} = require(process.argv[2] || 'playwright');
         const dialog = page.locator('dialog.common-iframe-popup');
         await dialog.waitFor({state: 'visible'});
         let frame = page.frameLocator('dialog iframe');
-        await frame.locator('#supporters-organizations').waitFor();
-        assert(await frame.locator('#supporters-people').count());
+        await frame.locator('h1').waitFor();
+        for (const [type, selector] of [['organizations', '.supporters-card'], ['people', '.supporters-person']]) {
+            assert.equal(await frame.locator('#supporters-' + type).count(), await frame.locator(selector).count() > 0 ? 1 : 0, 'Only populated sections are visible');
+        }
         await frame.locator('h1').click();
         await page.keyboard.press('Escape');
         await dialog.waitFor({state: 'hidden'});

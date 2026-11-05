@@ -31,6 +31,8 @@ try {
     $campaign = 'gallery-' . bin2hex(random_bytes(6));
     $GLOBALS['patreonCreatorCampaignId'] = $campaign;
     $_GET['lang'] = 'fr';
+    $html = supportersHtml();
+    supportersCheck(!str_contains($html, 'id="supporters-organizations"') && !str_contains($html, 'id="supporters-people"'), 'Empty supporter sections are hidden');
     $common = ['campaign_id' => $campaign, 'is_connected' => 1, 'refresh_token' => 'gallery-secret-refresh',
         'access_token' => 'gallery-secret-access', 'patron_status' => 'active_patron'];
     $organizations = $people = $users = [];
@@ -41,6 +43,8 @@ try {
         $organizations[] = supportersFixture(OrganizationPatreon::class, $common + [
             'IDorganization' => $organization->getId(), 'currently_entitled_amount_cents' => $amount]);
     }
+    $html = supportersHtml();
+    supportersCheck(str_contains($html, 'id="supporters-organizations"') && !str_contains($html, 'id="supporters-people"'), 'Populated sections remain visible while empty sections are hidden');
     foreach ([1, 399, 400, 799, 800, 1599, 1600, 4000, 8000, 16000, 30000] as $i => $amount) {
         $users[] = $user = supportersFixture(User::class, ['firstname' => $i === 0 ? '<script>hostile</script>' : '',
             'email' => 'gallery-private-' . $campaign . '-' . $i . '@example.invalid', 'active' => 1,

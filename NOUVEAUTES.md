@@ -2,7 +2,7 @@
 
 Les dates deja indiquees sont conservees. Les dates manquantes sont reconstituees a partir de la premiere apparition des entrees dans l historique GitHub, en heure Europe/Zurich ; elles correspondent a leur ajout au journal, pas necessairement a leur mise en production.
 
-- Accueil OMO2 / galerie des soutiens (2026-11-05) : lien dans le footer ouvrant les organisations abonnees a Patreon des 40 euros en cartes, puis les soutiens individuels en portraits ronds. Listes melangees jusqu a 10 entrees, puis regroupees separement par palier Patreon ; abonnements inactifs ou deconnectes exclus. Popup partagee avec les graphiques de la carte publique.
+- Accueil OMO2 / galerie des soutiens (2026-11-05) : lien dans le footer ouvrant les organisations abonnees a Patreon des 40 euros en cartes, puis les soutiens individuels en portraits ronds. Listes melangees jusqu a 10 entrees, puis regroupees separement par palier Patreon ; abonnements inactifs ou deconnectes exclus. Rubriques masquees lorsqu elles ne contiennent aucun soutien. Popup partagee avec les graphiques de la carte publique.
 
 - Journal des nouveautes (2026-11-04) : dates manquantes completees depuis l historique GitHub, avec conservation des dates explicites et des sections historiques. Contenu et ordre des entrees conserves.
 
