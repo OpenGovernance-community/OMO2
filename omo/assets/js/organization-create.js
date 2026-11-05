@@ -52,30 +52,40 @@ window.commonPageScripts["/omo/assets/js/organization-create.js"] = function (pa
             return hint;
         }
 
-        function lockRoutingField(input, hintId) {
+        function applyRoutingFieldRestriction(input, hintId) {
             if (!input) {
                 return;
             }
 
-            input.disabled = true;
-            input.setAttribute('aria-disabled', 'true');
+            input.disabled = !canManageOrganizationRouting;
+            input.setAttribute('aria-disabled', String(!canManageOrganizationRouting));
 
             var field = input.closest('.generic-form-field');
             if (field) {
-                field.classList.add('organization-create-field--locked');
+                field.classList.toggle('organization-create-field--locked', !canManageOrganizationRouting);
             }
 
-            ensureRoutingLockHint(input, hintId);
+            if (canManageOrganizationRouting) {
+                var hint = document.getElementById(hintId);
+                if (hint) hint.remove();
+            } else {
+                ensureRoutingLockHint(input, hintId);
+            }
         }
 
         function applyRoutingRestrictions() {
-            if (canManageOrganizationRouting) {
-                return;
-            }
-
-            lockRoutingField(shortnameInput, 'organization_create_shortname_lock');
-            lockRoutingField(domainInput, 'organization_create_domain_lock');
+            applyRoutingFieldRestriction(shortnameInput, 'organization_create_shortname_lock');
+            applyRoutingFieldRestriction(domainInput, 'organization_create_domain_lock');
         }
+
+        root.addEventListener('patreon-organization-updated', function (event) {
+            if (Number(event.detail.organizationId) !== Number(organizationId)) return;
+            var wasUnchanged = getFormSnapshot() === initialFormSnapshot;
+            canManageOrganizationRouting = event.detail.canManageOrganizationRouting === true;
+            applyRoutingRestrictions();
+            updateShortnameHint();
+            if (wasUnchanged) initialFormSnapshot = getFormSnapshot();
+        });
 
         function getFormSnapshot() {
             var values = [];

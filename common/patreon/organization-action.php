@@ -28,6 +28,7 @@ try {
         default: http_response_code(400); echo '{"status":false}'; exit;
     }
     echo json_encode(['status' => true, 'linked' => $connection && $connection->isConnected(), 'active' => patreonOrganizationCanUseAi($organizationId),
+        'canManageOrganizationRouting' => patreonCanManageOrganizationRouting($userId, $organizationId),
         'account' => $connection && $connection->isConnected() ? ((string)$connection->get('full_name') ?: (string)$connection->get('patreon_user_id')) : '']);
 } catch (Throwable $error) {
     error_log('Organization Patreon action failed: ' . get_class($error));

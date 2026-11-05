@@ -24,17 +24,24 @@ try {
     $orgSaved = $org->save(); mcpCheck(!empty($orgSaved['status']), 'Organization connection saves: ' . json_encode($orgSaved)); $items['org_patreon'] = $org;
     mcpCheck(patreonUserCanUseAi($uid, $oid) && commonAiUserCanUse($uid, null, null, $oid), 'Org pays for ordinary member');
     mcpCheck(!patreonUserCanUseAi($uid) && !patreonUserCanUseAi($uid, $other), 'Org does not authorize personal or other-org usage');
+    mcpCheck(patreonCanManageOrganizationRouting($uid, $oid), 'Organization subscription unlocks routing without a personal contribution');
+    mcpCheck(!patreonCanManageOrganizationRouting($uid, $other) && !patreonCanManageOrganizationRouting($uid) && !patreonCanManageOrganizationRouting(0, $oid), 'Routing requires the target organization and an authenticated editor');
     mcpCheck(count(omoMcpEligibleOrganizations($uid)) === 1, 'MCP consent offers subscribed org');
     foreach ([3999 => false, 4000 => true, 4100 => true] as $amount => $expected) {
         $org->set('currently_entitled_amount_cents', $amount); $org->save();
         mcpCheck(patreonUserCanUseAi($uid, $oid) === $expected, 'Inclusive configured threshold');
+        mcpCheck(patreonCanManageOrganizationRouting($uid, $oid) === $expected, 'Routing reuses the organization threshold');
     }
     $GLOBALS['patreonOrganizationMinimumAmount'] = '42'; mcpCheck(!patreonUserCanUseAi($uid, $oid), 'Environment threshold applied');
     foreach (['invalid', '0', '-40', '9999999999999999999999999999999999999999999'] as $invalid) {
         $GLOBALS['patreonOrganizationMinimumAmount'] = $invalid; mcpCheck(!patreonUserCanUseAi($uid, $oid), 'Invalid threshold fails closed');
     }
     $GLOBALS['patreonOrganizationMinimumAmount'] = '40';
+    $org->set('campaign_id', '88'); $org->save();
+    mcpCheck(!patreonCanManageOrganizationRouting($uid, $oid), 'Unrelated Patreon campaign does not unlock routing');
+    $org->set('campaign_id', '77'); $org->save();
     $org->set('patron_status', 'declined_patron'); $org->save(); mcpCheck(!patreonUserCanUseAi($uid, $oid), 'Declined subscription denied');
+    mcpCheck(!patreonCanManageOrganizationRouting($uid, $oid), 'Declined organization cannot edit routing');
     $org->set('patron_status', 'active_patron'); $org->save();
     $items['membership']->set('active', 0); $items['membership']->save(); mcpCheck(!patreonUserCanUseAi($uid, $oid), 'Removed membership denied');
     $items['membership']->set('active', 1); $items['membership']->save();
@@ -48,6 +55,7 @@ try {
     $GLOBALS['patreonCreatorUserId'] = $identity;
     $org->set('currently_entitled_amount_cents', 0); $org->set('patron_status', null); $org->set('campaign_id', null); $org->save();
     mcpCheck(patreonUserCanUseAi($uid, $oid) && commonAiUserCanUse($uid, null, null, $oid), 'Creator organization needs neither payment nor self-membership on Patreon');
+    mcpCheck(patreonCanManageOrganizationRouting($uid, $oid), 'Verified creator organization retains routing access');
     mcpCheck(!patreonUserCanUseAi($uid) && !patreonUserCanUseAi($uid, $other), 'Creator organization exception remains scoped');
     foreach (['', 'invalid', $identity . '0'] as $invalidCreator) {
         $GLOBALS['patreonCreatorUserId'] = $invalidCreator;
@@ -56,6 +64,7 @@ try {
     $GLOBALS['patreonCreatorUserId'] = $identity;
     $org->set('is_connected', 0); $org->save();
     mcpCheck(!patreonUserCanUseAi($uid, $oid), 'Disconnected creator organization denied');
+    mcpCheck(!patreonCanManageOrganizationRouting($uid, $oid), 'Disconnected organization loses routing access');
     $org->set('is_connected', 1); $org->save();
     $GLOBALS['patreonClientSecret'] = '';
     mcpCheck(!patreonUserCanUseAi($uid, $oid), 'Creator exception still requires configured Patreon');

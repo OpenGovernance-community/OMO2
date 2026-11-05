@@ -27,7 +27,7 @@ $sourceLang = array(
     'organization.error.save' => array('text' => 'Impossible d’enregistrer l’organisation.', 'context' => 'Organization save error.'),
     'organization.error.create' => array('text' => 'Impossible de créer l’organisation.', 'context' => 'Organization create error.'),
     'organization.refresh_prompt' => array('text' => 'Les modifications de l’organisation seront visibles après un rechargement de l’application. Recharger maintenant ?', 'context' => 'Prompt to refresh the application after editing an organization.'),
-    'organization.routing.locked' => array('text' => 'L’identifiant URL et le domaine sont réservés aux associations et aux organisations.', 'context' => 'Restricted organization routing fields guidance.'),
+    'organization.routing.locked' => array('text' => 'Pour modifier ces champs, connectez cette organisation a Patreon avec un abonnement organisation actif. Pour une nouvelle organisation, enregistrez-la avant de connecter Patreon.', 'context' => 'Restricted organization routing fields guidance.'),
     'organization.routing.access_restricted' => array('text' => 'Accès réservé.', 'context' => 'Heading for restricted organization routing fields.'),
     'organization.routing.preview' => array('text' => 'Cet identifiant sera utilisé dans l’URL de base du site :', 'context' => 'Organization URL identifier preview introduction.'),
     'organization.routing.preview_disabled' => array('text' => 'Les sous-domaines d’organisation sont désactivés sur ce serveur. L’accès se fera via une URL de type :', 'context' => 'Short name URL preview without subdomain routing.'),
@@ -130,7 +130,7 @@ $shortnamePreviewPath = '/omo/';
 $organizationSubdomainRoutingEnabled = commonUseOrganizationSubdomains();
 $isFetchRequest = strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest';
 $leafletMapsEnabled = commonLeafletMapsEnabled();
-$canManageOrganizationRouting = patreonCanManageOrganizationRouting($currentUserId);
+$canManageOrganizationRouting = patreonCanManageOrganizationRouting($currentUserId, (int)$organization->getId());
 $organizationRoutingLockedMessage = t('organization.routing.locked', array(), $lang, $sourceLang);
 $organizationInterfaceLevel = $organization->getInterfaceLevel();
 $organizationInterfaceLevels = \dbObject\Organization::interfaceLevelCatalog();

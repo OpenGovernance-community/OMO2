@@ -81,28 +81,15 @@ function patreonSupportUiIsEnabled()
 	return patreonIsConfigured('oauth');
 }
 
-function patreonCanManageOrganizationRouting($userId, $minimumAmountCents = 2000)
+function patreonCanManageOrganizationRouting($userId, int $organizationId = 0)
 {
 	$userId = (int)$userId;
-	$minimumAmountCents = max(0, (int)$minimumAmountCents);
 	if (function_exists('commonUserHasSiteAdminOverride') && commonUserHasSiteAdminOverride($userId)) {
 		return true;
 	}
 
-	if ($userId <= 0 || !class_exists('\\dbObject\\UserPatreon') || !\dbObject\UserPatreon::isStorageAvailable()) {
-		return false;
-	}
-
-	$connection = \dbObject\UserPatreon::findByUserId($userId);
-	if (!($connection instanceof \dbObject\UserPatreon) || !$connection->isConnected()) {
-		return false;
-	}
-
-	if ((string)$connection->get('patron_status') !== 'active_patron') {
-		return false;
-	}
-
-	return (int)$connection->get('currently_entitled_amount_cents') > $minimumAmountCents;
+	// Routing follows the target organization's subscription, never the editor's personal one.
+	return $userId > 0 && $organizationId > 0 && patreonOrganizationCanUseAi($organizationId);
 }
 
 function patreonUserCanUseAi($userId, int $organizationId = 0)
