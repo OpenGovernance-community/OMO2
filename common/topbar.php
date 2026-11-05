@@ -192,6 +192,11 @@ function commonRenderTopbar(array $options = [])
     }
 
     $brandHref = commonBuildUrl('/omo/', $brandRootHost);
+    if (!empty($organizationContext['isValid']) && (int)($organizationContext['id'] ?? 0) > 0
+        && ($organizationContext['routeMode'] ?? '') === 'host'
+        && commonGetRequestSubdomain() !== '') {
+        $brandHref = commonBuildUrl('/omo/');
+    }
     $brandLabel = trim((string)($options['brandLabel'] ?? ($organizationContext['name'] ?? '')));
     $currentLocale = function_exists('translationBundleResolveRequestLocale')
         ? translationBundleResolveRequestLocale('lang')

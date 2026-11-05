@@ -11,13 +11,9 @@
 	$host = preg_replace('/:\d+$/', '', $host);
 	$parts = array_values(array_filter(explode('.', $host)));
 	$subdomain = $parts[0] ?? '';
-	$isLocalhostSubdomain = count($parts) === 2 && ($parts[1] ?? '') === 'localhost';
-	$reservedEnvironmentSubdomains = commonGetConfiguredEnvironmentSubdomains();
 	$organizationSubdomainRoutingEnabled = commonUseOrganizationSubdomains();
-	$isEnvironmentRootHost = count($parts) >= 3
-		&& in_array((string)($parts[count($parts) - 3] ?? ''), $reservedEnvironmentSubdomains, true);
-	$rootPartCount = $isEnvironmentRootHost ? 3 : 2;
-	$hasOrganizationSubdomain = $organizationSubdomainRoutingEnabled && ($isLocalhostSubdomain || count($parts) > $rootPartCount);
+	$rootPartCount = commonGetHostRootPartCount($parts);
+	$hasOrganizationSubdomain = $organizationSubdomainRoutingEnabled && count($parts) > $rootPartCount;
 
 	if (isset($routes[$subdomain])) {
 		require __DIR__ . $routes[$subdomain];

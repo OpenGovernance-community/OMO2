@@ -6,6 +6,8 @@ Les dates deja indiquees sont conservees. Les dates manquantes sont reconstituee
 
 ## 2026-11-05
 
+- Navigation / logo de l organisation (2026-11-05) : retour a /omo/ sur le meme hote pour les URL personnalisees, sans renvoi au catalogue. Detection de la racine partagee avec le routage et basee sur COOKIE_ROOT_HOST du .env, avec conservation des racines beta, dev et deploy.
+
 - Organisations / identifiant URL et domaine (2026-11-05) : modification reservee a l abonnement Patreon actif de l organisation, selon la verification deja utilisee pour ses fonctions IA, au lieu du soutien personnel de la personne qui edite. Verrouillage actualise apres connexion, synchronisation ou deconnexion ; controle identique a l enregistrement et valeurs existantes conservees sans abonnement.
 
 - Journal des nouveautes (2026-11-05) : regroupement des entrees sous des sous-titres par date, de la plus recente a la plus ancienne, avec conservation des dates et du contenu.
