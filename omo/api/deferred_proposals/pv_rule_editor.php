@@ -132,7 +132,7 @@ if ($operation !== DeferredProposal::OPERATION_CREATE && $operationAllowed) {
         $ruleStates[(int)$rule->getId()] = DecisionGovernanceAction::captureRuleState($rule);
     }
 }
-if ($workflow && $selectedRuleId > 0 && isset($ruleStates[$selectedRuleId])) {
+if ($workflow && $proposalId <= 0 && $selectedRuleId > 0 && isset($ruleStates[$selectedRuleId])) {
     $editorState = array_merge($editorState, array_intersect_key($ruleStates[$selectedRuleId], $editorState));
 }
 

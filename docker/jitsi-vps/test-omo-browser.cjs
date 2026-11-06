@@ -20,7 +20,7 @@ const fs = require('node:fs');
                 affiliation:moderator?'owner':'member',lobby_bypass:bypass}}});
         return body + '.' + crypto.createHmac('sha256', secret).update(body).digest('base64url');
     }
-    const browser = await puppeteer.launch({executablePath:'/usr/bin/chromium',headless:true,
+    const browser = await puppeteer.launch({executablePath:process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',headless:true,
         acceptInsecureCerts:process.env.JITSI_TEST_INSECURE === '1',args:['--no-sandbox','--disable-dev-shm-usage',
             '--use-fake-ui-for-media-stream','--use-fake-device-for-media-stream','--autoplay-policy=no-user-gesture-required',
             '--disable-background-timer-throttling','--disable-renderer-backgrounding',
@@ -32,6 +32,14 @@ const fs = require('node:fs');
             const page = await context.newPage();
             page.setDefaultTimeout(45000);
             await page.setViewport({width:1440,height:1000});
+            await page.evaluateOnNewDocument(() => {
+                window.__videoConnections = [];
+                window.RTCPeerConnection = new Proxy(window.RTCPeerConnection, {construct(Target,args,NewTarget) {
+                    const connection = Reflect.construct(Target,args,NewTarget);
+                    window.__videoConnections.push(connection);
+                    return connection;
+                }});
+            });
             await page.goto(origin + '/' + room + (jwt ? '?jwt=' + encodeURIComponent(jwt) : '')
                 + '#config.p2p.enabled=false', {waitUntil:'domcontentloaded'});
             await page.waitForFunction(() => window.APP?.store);
@@ -65,6 +73,15 @@ const fs = require('node:fs');
         console.log('External guest: lobby required, then participant after admission.');
         await joined(member, 'participant');
         for (const [name, jwt] of [['No token', null], ['Wrong room',token('Wrong room',true,true,'another-room')]]) {
+            if (!jwt && process.env.JITSI_TEST_OMO_ORIGIN) {
+                const context = await browser.createBrowserContext();
+                const page = await context.newPage();
+                await page.goto(origin + '/' + room, {waitUntil:'domcontentloaded'});
+                assert.equal(page.url(), process.env.JITSI_TEST_OMO_ORIGIN.replace(/\/$/, '') + '/visio/' + room.slice(4));
+                await context.close();
+                console.log('No token: redirected to OMO invitation, no Jitsi session.');
+                continue;
+            }
             const rejected = await participant(name, jwt);
             await rejected.waitForFunction(() => /authentification|authentication|autorisé|not.allowed|token|jeton/i.test(document.body.innerText)
                 || !!APP.store.getState()['features/base/conference'].error);
@@ -84,7 +101,38 @@ const fs = require('node:fs');
             assert.equal(result.count,2);
             assert.ok(result.remoteTracks >= 2);
         }
-        console.log('Three participants receive remote media tracks; ownership remains unchanged.');
+        async function mediaStats(page) {
+            return page.evaluate(async () => {
+                const result = {videoFrames:0,audioPackets:0,sentBytes:0,bridgeUdp:false};
+                for (const connection of window.__videoConnections) {
+                    if (connection.connectionState !== 'connected') continue;
+                    const stats = await connection.getStats();
+                    for (const item of stats.values()) {
+                        if (item.type === 'inbound-rtp' && item.kind === 'video') result.videoFrames += item.framesDecoded || 0;
+                        if (item.type === 'inbound-rtp' && item.kind === 'audio') result.audioPackets += item.packetsReceived || 0;
+                        if (item.type === 'outbound-rtp') result.sentBytes += item.bytesSent || 0;
+                        if (item.type === 'transport' && item.selectedCandidatePairId) {
+                            const pair = stats.get(item.selectedCandidatePairId);
+                            const remote = pair && stats.get(pair.remoteCandidateId);
+                            if (remote?.protocol === 'udp' && remote.port === 10000) result.bridgeUdp = true;
+                        }
+                    }
+                }
+                return result;
+            });
+        }
+        const pages = [host,member,guest];
+        let samples;
+        for (let attempt=0; attempt<30; attempt++) {
+            samples = await Promise.all(pages.map(mediaStats));
+            if (samples.every(s=>s.videoFrames && s.audioPackets && s.sentBytes && s.bridgeUdp)) break;
+            await new Promise(resolve=>setTimeout(resolve,1000));
+        }
+        assert.ok(samples.every(s=>s.videoFrames && s.audioPackets && s.sentBytes && s.bridgeUdp), 'Three-way audio/video must flow via UDP 10000');
+        await new Promise(resolve=>setTimeout(resolve,2500));
+        const later = await Promise.all(pages.map(mediaStats));
+        assert.ok(later.every((s,i)=>s.videoFrames>samples[i].videoFrames && s.audioPackets>samples[i].audioPackets), 'Media keeps flowing');
+        console.log('Three participants decode audio/video through UDP 10000; ownership remains unchanged.');
     } catch (error) {
         for (const page of await browser.pages()) {
             console.error(await page.evaluate(() => ({text:document.body.innerText.slice(-1800),

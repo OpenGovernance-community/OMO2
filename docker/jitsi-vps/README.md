@@ -26,22 +26,23 @@ Ne pas afficher `docker compose config` sans `--quiet` : il contient les secrets
 Ajouter le contenu de `Caddyfile.snippet` au Caddyfile existant apres sauvegarde,
 valider sa syntaxe et effectuer un rechargement gracieux, sans recreer Caddy.
 
-Commande de gestion :
+Commande de gestion du profil OMO2 actif depuis le 6 novembre 2026 :
 
 ```sh
-docker compose -p jitsi --env-file /opt/jitsi/.env \
-  -f /opt/jitsi/upstream/docker-compose.yml \
-  -f /opt/jitsi/compose.vps.yaml ps
+sudo /opt/jitsi/compose.sh ps
+# Pour recréer les services en conservant le profil d’authentification :
+sudo /opt/jitsi/compose.sh up -d
 ```
 
-## Integration OMO2 preparee
+## Intégration OMO2 active
 
-Voir [OMO-INTEGRATION.md](OMO-INTEGRATION.md) pour la page `/visio/`, les roles
-JWT et la salle d attente. Ce profil est separe et reste inactif jusqu a la
-publication d OMO2. Ne pas ajouter son overlay a la commande ci-dessous avant
-cette etape.
+Voir [OMO-INTEGRATION.md](OMO-INTEGRATION.md) pour la page `/visio/`, les rôles
+JWT et la salle d’attente. Le profil est actif sur le VPS ; son point d’entrée
+est actuellement `https://beta.opengov.tools/visio/`. Utiliser `compose.sh`
+pour conserver les deux fichiers privés et les trois fichiers Compose : la
+commande historique sans profil OMO rétablirait l’ancienne authentification.
 
-## Acces provisoire
+## Ancien accès provisoire (avant la bascule OMO2)
 
 L authentification interne protege l ouverture des reunions. Un compte
 organisateur doit etre cree dans Prosody ; les invites peuvent rejoindre

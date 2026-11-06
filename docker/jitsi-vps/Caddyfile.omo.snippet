@@ -1,14 +1,14 @@
 # Replace only the existing meet block AFTER publishing OMO2 and activating compose.omo.yaml.
-# Adapt the canonical OMO2 origin for another installation.
+# Beta is the current entry point; change this origin when promoting to production.
 meet.opengov.tools {
     @start path /
-    redir @start https://omo2.org/visio/ 302
+    redir @start https://beta.opengov.tools/visio/ 302
 
     @invitation {
         path_regexp invitation ^/omo-([a-f0-9]{32})/?$
         not query jwt=*
     }
-    redir @invitation https://omo2.org/visio/{re.invitation.1} 302
+    redir @invitation https://beta.opengov.tools/visio/{re.invitation.1} 302
 
     reverse_proxy jitsi-web:8000
 }

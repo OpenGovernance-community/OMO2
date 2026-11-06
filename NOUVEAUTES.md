@@ -6,6 +6,10 @@ Les dates deja indiquees sont conservees. Les dates manquantes sont reconstituee
 
 ## 2026-11-06
 
+- PV / edition des propositions de regle (2026-11-06) : la reouverture charge le contenu enregistre de la proposition, sans le remplacer par la regle actuelle. Les nouvelles propositions de modification restent initialisees avec la regle existante.
+
+- Visioconférence / activation sur le VPS (2026-11-06) : passerelle JWT OMO2 activée après publication sur bêta, avec identité et rôle signés, invités en salle d’attente et accueil meet.opengov.tools renvoyé vers beta.opengov.tools/visio/. Sauvegarde de la configuration précédente et commande de gestion conservant le profil OMO ; droits et audio/vidéo à trois participants simulés vérifiés sur le serveur public.
+
 - Scrutins / tests des resumes de gouvernance (2026-11-06) : attentes des tests alignees sur le message francais avec accents. La generation du resume compact et la conservation du texte complet restent inchangees.
 
 - Notifications / connexion personnelle (2026-11-06) : reglages communs aux organisations pour les connexions sur un nouvel appareil ou un navigateur deja identifie, avec choix des canaux OMO, e-mail, navigateur et Telegram si disponibles. Reconnaissance du navigateur pendant un an, conservee apres deconnexion ; restauration automatique par "se souvenir de moi" silencieuse. Migration des empreintes de reconnaissance, sans pouvoir d'authentification.

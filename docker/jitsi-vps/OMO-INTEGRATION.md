@@ -1,5 +1,26 @@
 # Accès Jitsi avec l’identité OMO2
 
+## État du VPS au 6 novembre 2026
+
+La passerelle est activée après publication sur bêta. Jitsi utilise les clés
+préparées dans `omo-integration/jwt.env` et le profil `compose.omo.yaml`.
+L’accueil de `meet.opengov.tools` et les invitations sans jeton reviennent vers
+`https://beta.opengov.tools/visio/`. Le nom de domaine OMO ne détermine pas les
+droits JWT : un autre domaine OMO correctement configuré peut utiliser le même
+Jitsi. Pour promouvoir l’accueil vers la production, changer uniquement
+l’origine de ces deux redirections, après publication et configuration OMO.
+
+Gérer le service avec `sudo /opt/jitsi/compose.sh ps` ou `up -d`, pour toujours
+charger le profil JWT. Les configurations antérieures sont sauvegardées sous
+`/opt/jitsi/backups/` ; le chemin de la sauvegarde de bascule est enregistré dans
+`omo-integration/last-backup`. Le compte organisateur provisoire n’est plus
+utilisé par le profil actif.
+
+Tests navigateur sur le VPS : premier participant sans promotion automatique,
+créateur animateur, invité avant l’animateur retenu à l’extérieur, admission
+depuis le lobby, refus d’un jeton d’une autre salle et décodage audio/vidéo à
+trois participants simulés sur UDP 10000.
+
 La première étape fournit `/visio/` : connexion OMO2 habituelle, création d’une
 salle personnelle et invitation `/visio/<code aléatoire>`. Le créateur est le
 seul animateur. Les autres comptes OMO sont participants ; les invités indiquent
@@ -81,6 +102,8 @@ simulés pour vérifier le participant arrivé avant l’animateur, l’animateu
 l’admission d’un invité et les refus sans jeton ou pour une autre salle.
 `JITSI_TEST_URL` cible uniquement une installation utilisant déjà ce profil JWT ;
 `JITSI_TEST_INSECURE=1` est réservé au certificat local de test.
+`PUPPETEER_EXECUTABLE_PATH` choisit Chrome/Chromium ; `JITSI_TEST_OMO_ORIGIN`
+permet de vérifier aussi la redirection des invitations sans jeton vers OMO.
 
 Documentation primaire : [authentification Docker Jitsi](https://jitsi.github.io/handbook/docs/devops-guide/devops-guide-docker/),
 [API iframe](https://jitsi.github.io/handbook/docs/dev-guide/dev-guide-iframe/),

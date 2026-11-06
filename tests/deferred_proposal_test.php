@@ -274,7 +274,7 @@ assertDeferredProposal(
 assertDeferredProposal(
     strpos($pvRuleEditor, 'DecisionGovernanceAction::captureRuleState') !== false
         && strpos($pvRuleEditor, 'populateFromSelectedRule') !== false
-        && strpos($pvRuleEditor, "['title','intention','description','review_date','expiration_date','scope','IDauthority']") !== false,
+        && strpos($pvRuleEditor, "['title','intention','description','review_date','expiration_date','scope','IDauthority','IDvaleur']") !== false,
     'Selecting a rule for an update proposal must initialise all editable rule fields.'
 );
 assertDeferredProposal(
