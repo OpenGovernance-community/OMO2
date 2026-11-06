@@ -888,6 +888,10 @@ a.generic-correspondence-list__row:focus-visible {
     grid-template-columns: var(--param-form-grid-columns, repeat(3, minmax(0, 1fr)));
 }
 
+.generic-form-grid--two-thirds {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+}
+
 .generic-form-grid--main-aside {
     /* Configurable column ratio, with the shared mobile stacking below. */
     grid-template-columns: var(--param-form-grid-columns, minmax(0, 3fr) minmax(0, 2fr));
@@ -895,6 +899,7 @@ a.generic-correspondence-list__row:focus-visible {
 
 @media (max-width: 480px) {
     .generic-form-grid--pair,
+    .generic-form-grid--two-thirds,
     .generic-form-grid--trio,
     .generic-form-grid--main-aside {
         grid-template-columns: minmax(0, 1fr);

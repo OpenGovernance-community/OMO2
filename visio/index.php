@@ -9,6 +9,20 @@ use dbObject\VideoRoom;
 use dbObject\AuthRateLimit;
 
 $sourceLang = [
+    'audio_muted_on' => ['text' => 'Micro coupe au demarrage', 'context' => 'Meeting list option status'],
+    'audio_muted_off' => ['text' => 'Micro actif au demarrage', 'context' => 'Meeting list option status'],
+    'video_muted_on' => ['text' => 'Camera eteinte au demarrage', 'context' => 'Meeting list option status'],
+    'video_muted_off' => ['text' => 'Camera active au demarrage', 'context' => 'Meeting list option status'],
+    'camera_restricted_on' => ['text' => 'Activation de la camera bloquee', 'context' => 'Meeting list option status'],
+    'camera_restricted_off' => ['text' => 'Activation de la camera autorisee', 'context' => 'Meeting list option status'],
+    'screen_restricted_on' => ['text' => 'Partage ecran sur autorisation individuelle', 'context' => 'Meeting list option status'],
+    'screen_restricted_off' => ['text' => 'Partage ecran libre', 'context' => 'Meeting list option status'],
+    'lobby_on' => ['text' => 'Salle attente activee', 'context' => 'Meeting list option status'],
+    'lobby_off' => ['text' => 'Salle attente desactivee', 'context' => 'Meeting list option status'],
+    'password_on' => ['text' => 'Mot de passe defini', 'context' => 'Meeting list option status'],
+    'password_off' => ['text' => 'Mot de passe indefini', 'context' => 'Meeting list option status'],
+    'delete' => ['text' => 'Supprimer', 'context' => 'Delete owned meeting'],
+    'delete_confirm' => ['text' => 'Supprimer cette reunion et son lien definitivement ?', 'context' => 'Deletion confirmation'],
     'title' => ['text' => 'Visioconférence OMO2', 'context' => 'Standalone video room page title'],
     'intro' => ['text' => 'Créez une réunion vidéo avec votre identité OMO2, puis partagez son lien.', 'context' => 'Video room creation introduction'],
     'login' => ['text' => 'Se connecter avec OMO2', 'context' => 'Video room login action'],
@@ -48,7 +62,7 @@ $sourceLang = [
     'copy' => ['text' => 'Copier le lien', 'context' => 'Copy invitation action'],
     'copied' => ['text' => 'Lien copié.', 'context' => 'Copy invitation success notification'],
     'copy_failed' => ['text' => 'La copie a échoué. Sélectionnez et copiez le lien affiché.', 'context' => 'Copy invitation failure notification'],
-    'join' => ['text' => 'Rejoindre la réunion', 'context' => 'Video guest join action'],
+    'join' => ['text' => 'Rejoindre comme invite', 'context' => 'Video guest join action'],
     'guest_intro' => ['text' => 'Vous pouvez vous connecter avec OMO2 ou demander à rejoindre comme invité. Les invités attendent l’acceptation d’un animateur.', 'context' => 'Video invitation introduction'],
     'loading' => ['text' => 'Chargement de la visioconférence…', 'context' => 'Video iframe loading progress'],
     'ended' => ['text' => 'Vous avez quitté la réunion. Rechargez cette page pour la rejoindre de nouveau.', 'context' => 'Video conference ended persistent state'],
@@ -85,8 +99,12 @@ $editing = isset($_GET['edit']) || ($_POST['action'] ?? '') === 'update';
 $returnTo = '/visio/' . ($code !== '' ? rawurlencode($code) . '?login=1' : '');
 
 if ((!$code || isset($_GET['login'])) && $userId <= 0) {
+    $loginOrganization = commonResolveOrganizationContext(1);
+    if (commonGetRequestSubdomain(commonGetRequestHost()) === '' && commonGetRequestedOrganizationId() <= 0) {
+        $loginOrganization['domain'] = '';
+    }
     commonRenderMagicLoginPage(['title' => $vt('title'), 'appName' => 'OMO2', 'intro' => $vt('login_intro'),
-        'returnTo' => $returnTo, 'organization' => commonResolveOrganizationContext(1), 'layout' => 'public',
+        'returnTo' => $returnTo, 'organization' => $loginOrganization, 'layout' => 'public',
         'headHtml' => commonStylesheetTags('/common/assets/components.css')]);
     exit;
 }
@@ -104,6 +122,11 @@ try {
         if (!is_string($_POST['_csrf'] ?? null) || !hash_equals($csrf, $_POST['_csrf'])) { http_response_code(403); throw new RuntimeException('csrf'); }
         $limit = AuthRateLimit::consume('visio-submit', commonAuthHashIdentifier('visio-ip', commonGetRequestIp()), 30, 300);
         if (empty($limit['allowed'])) { http_response_code(429); throw new RuntimeException('rate'); }
+        if ($room && ($_POST['action'] ?? '') === 'delete') {
+            $room->deleteForCurrentUser();
+            header('Location: /visio/', true, 303);
+            exit;
+        }
         if ($room && ($_POST['action'] ?? '') === 'update') {
             $room->updateForCurrentUser($_POST);
             $_SESSION['visio_saved_room'] = $code;
@@ -182,6 +205,9 @@ if ($access) {
     <?php if ($room): ?>
     <section class="generic-soft-panel generic-soft-panel--stack">
         <h1 class="generic-card-title generic-card-title--display"><?= $escape($room->get('title')) ?></h1>
+        <?php if (!$editing && trim((string)$room->get('description')) !== ''): ?>
+        <p class="visio-description-full"><?= nl2br($escape($room->get('description'))) ?></p>
+        <?php endif; ?>
         <?php if ($editing && $room->isOwner($userId)): ?>
         <p class="generic-description"><?= $escape($vt('owner_note')) ?></p>
         <?php ob_start(); ?>
@@ -204,7 +230,7 @@ if ($access) {
             'buttons' => false, 'bindFormScripts' => false, 'includeComponentAssets' => false,
             'action' => $room->invitationPath() . '?edit=1',
             'sections' => [
-                ['title' => $vt('general'), 'description' => $vt('organization_note'), 'fields' => ['title', 'IDorganization']],
+                ['title' => $vt('general'), 'description' => $vt('organization_note'), 'layout' => 'two-thirds', 'fullWidthFields' => ['description'], 'fields' => ['title', 'IDorganization', 'description']],
                 ['title' => $vt('members'), 'description' => $vt('policy_note'), 'layout' => 'pair', 'fields' => array_values(array_filter(array_keys(VideoRoom::settingDefaults()), static fn($key) => str_starts_with($key, 'member_')))],
                 ['title' => $vt('guests'), 'description' => $vt('policy_note'), 'layout' => 'pair', 'fields' => array_values(array_filter(array_keys(VideoRoom::settingDefaults()), static fn($key) => str_starts_with($key, 'guest_')))],
             ],
@@ -229,12 +255,14 @@ if ($access) {
         </div>
         <?php elseif ($ready && $userId <= 0): ?>
         <p><?= $escape($vt($room->policy()['guest']['lobby'] ? 'guest_intro' : 'guest_direct')) ?></p>
+        <div class="generic-form-actions">
         <a class="generic-action-button" href="<?= $escape($room->invitationPath() . '?login=1') ?>"><?= $escape($vt('login')) ?></a>
         <form method="post" class="generic-form-stack" action="<?= $escape($room->invitationPath()) ?>">
             <input type="hidden" name="_csrf" value="<?= $escape($csrf) ?>">
             <input type="hidden" name="action" value="join">
             <div class="generic-form-actions"><button class="generic-action-button" type="submit"><?= $escape($vt('join')) ?></button></div>
         </form>
+        </div>
         <?php elseif ($room->isOwner($userId)): ?>
         <a class="generic-action-button" href="<?= $escape($room->invitationPath() . '?edit=1') ?>"><?= $escape($vt('edit')) ?></a>
         <?php endif; ?>
@@ -261,7 +289,47 @@ if ($access) {
     <?php if ($rooms): ?>
     <section class="generic-soft-panel generic-soft-panel--stack">
         <h2 class="generic-card-title"><?= $escape($vt('my_rooms')) ?></h2>
-        <ul><?php foreach ($rooms as $owned): ?><li><a href="/visio/<?= $escape($owned['code']) ?>"><?= $escape($owned['title']) ?></a> — <a href="/visio/<?= $escape($owned['code']) ?>?edit=1"><?= $escape($vt('edit')) ?></a></li><?php endforeach; ?></ul>
+        <div class="generic-stack"><?php foreach ($rooms as $owned): ?>
+        <article class="generic-section generic-stack">
+            <div class="visio-heading">
+                <h3 class="generic-card-title"><a href="/visio/<?= $escape($owned['code']) ?>"><?= $escape($owned['title']) ?></a></h3>
+                <?php if (!empty($owned['organization_name'])):
+                    $organizationColor = trim((string)($owned['organization_color'] ?? ''));
+                    if (!preg_match('/\A(?:#[a-fA-F0-9]{3,8}|[a-zA-Z]{1,20})\z/D', $organizationColor)) $organizationColor = '#4f46e5'; ?>
+                <span class="generic-badge generic-badge--compact" style="--param-badge-color: <?= $escape($organizationColor) ?>"><?= $escape($owned['organization_name']) ?></span>
+                <?php endif; ?>
+                <span class="visio-description" title="<?= $escape($owned['description'] ?? '') ?>"><?= $escape($owned['description'] ?? '') ?></span>
+            </div>
+            <div class="visio-room-controls">
+            <div class="visio-policies">
+            <?php foreach (['member' => 'members', 'guest' => 'guests'] as $group => $label): ?>
+                <div class="generic-soft-panel generic-soft-panel--stack">
+                    <h4 class="generic-card-title generic-card-title--small"><?= $escape($vt($label)) ?></h4>
+                    <div class="visio-icons">
+                    <?php foreach (['audio_muted' => 'micro', 'video_muted' => 'camera', 'camera_restricted' => 'camera-blocked', 'screen_restricted' => 'screen', 'lobby' => 'lobby'] as $key => $icon):
+                        $field = $group . '_' . $key;
+                        $active = (bool)($owned[$field] ?? VideoRoom::settingDefaults()[$field]);
+                        $description = $vt($key . ($active ? '_on' : '_off')); ?>
+                        <img class="visio-setting<?= $active ? ' is-active' : '' ?>" src="/visio/icons/<?= $escape($icon) ?>.png" width="20" height="20" alt="<?= $escape($description) ?>" title="<?= $escape($description) ?>">
+                    <?php endforeach; ?>
+                    <?php $passwordDefined = (string)($owned['lobby_password_encrypted'] ?? '') !== '';
+                        $passwordDescription = $vt($passwordDefined ? 'password_on' : 'password_off'); ?>
+                        <img class="visio-setting<?= $passwordDefined ? ' is-active' : '' ?>" src="/visio/icons/lock.png" width="20" height="20" alt="<?= $escape($passwordDescription) ?>" title="<?= $escape($passwordDescription) ?>">
+                    </div>
+                </div>
+            <?php endforeach; ?>
+            </div>
+            <div class="generic-form-actions visio-room-actions">
+                <a class="generic-action-button" href="/visio/<?= $escape($owned['code']) ?>?edit=1"><?= $escape($vt('edit')) ?></a>
+                <form method="post" action="/visio/<?= $escape($owned['code']) ?>" data-visio-delete data-confirm="<?= $escape($vt('delete_confirm')) ?>">
+                    <input type="hidden" name="_csrf" value="<?= $escape($csrf) ?>">
+                    <input type="hidden" name="action" value="delete">
+                    <button class="generic-action-button" type="submit"><?= $escape($vt('delete')) ?></button>
+                </form>
+            </div>
+            </div>
+        </article>
+        <?php endforeach; ?></div>
     </section>
     <?php endif; ?>
     <?php endif; ?>

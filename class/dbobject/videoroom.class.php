@@ -7,14 +7,14 @@ class VideoRoom extends DbObject
     public static function rules()
     {
         return [[['IDuser', 'code', 'title'], 'required'], [['id'], 'integer'], [['id'], 'safe'],
-            [['IDuser', 'IDorganization'], 'fk'], [['code', 'title'], 'string'], [['code'], 'unique'], [['created_at'], 'datetime'],
+            [['IDuser', 'IDorganization'], 'fk'], [['code', 'title', 'description'], 'string'], [['code'], 'unique'], [['created_at'], 'datetime'],
             [array_keys(self::settingDefaults()), 'boolean'], [['settings_version'], 'integer'],
             [['lobby_password_encrypted'], 'string'], [['settings_version', 'lobby_password_encrypted'], 'safe']];
     }
-    public static function attributeLength() { return ['code' => 32, 'title' => 190]; }
+    public static function attributeLength() { return ['code' => 32, 'title' => 190, 'description' => 10000]; }
     public static function attributeLabels()
     {
-        $labels = ['IDuser' => 'Créateur', 'code' => 'Référence', 'title' => 'Nom de la réunion', 'created_at' => 'Création',
+        $labels = ['description' => 'Description', 'IDuser' => 'Créateur', 'code' => 'Référence', 'title' => 'Nom de la réunion', 'created_at' => 'Création',
             'IDorganization' => 'Organisation associée (facultatif)'];
         foreach (['member', 'guest'] as $group) {
             foreach (['audio_muted' => 'Commencer avec le micro coupé', 'video_muted' => 'Commencer avec la caméra éteinte',
@@ -78,6 +78,10 @@ class VideoRoom extends DbObject
             self::fetchRow('SELECT id FROM video_room WHERE id = :id FOR UPDATE', ['id' => $this->getId()]);
             if (!$this->load($this->getId(), true) || !$this->isOwner((int)($_SESSION['currentUser'] ?? 0))) throw new \RuntimeException('forbidden');
             $clean = [];
+            if (array_key_exists('description', $values)) {
+                if (!is_string($values['description']) || !mb_check_encoding($values['description'], 'UTF-8') || mb_strlen($values['description'], 'UTF-8') > 10000) throw new \RuntimeException('invalid_settings');
+                $clean['description'] = trim($values['description']);
+            }
             $password = $values['room_password'] ?? '';
             $removePassword = $values['remove_room_password'] ?? '0';
             if (!is_string($password) || strlen($password) > 72 || !mb_check_encoding($password, 'UTF-8') || preg_match('/[\x00-\x1F\x7F]/', $password)
@@ -145,9 +149,14 @@ class VideoRoom extends DbObject
     {
         $userId = (int)($_SESSION['currentUser'] ?? 0);
         if ($userId <= 0) return [];
-        $rows = self::fetchAll('SELECT code, title, created_at FROM video_room WHERE IDuser = :uid ORDER BY created_at DESC, id DESC LIMIT 20', ['uid' => $userId]);
+        $rows = self::fetchAll('SELECT r.*, o.name AS organization_name, o.color AS organization_color FROM video_room r LEFT JOIN organization o ON o.id = r.IDorganization WHERE r.IDuser = :uid ORDER BY r.created_at DESC, r.id DESC LIMIT 20', ['uid' => $userId]);
         if (!is_array($rows)) throw new \RuntimeException('storage_error');
         return $rows;
+    }
+    public function deleteForCurrentUser(): void
+    {
+        if (!$this->isOwner((int)($_SESSION['currentUser'] ?? 0))) throw new \RuntimeException('forbidden');
+        if (!$this->delete()) throw new \RuntimeException('storage_error');
     }
     public function jitsiRoomName(): string { return 'omo-' . $this->get('code'); }
     public function invitationPath(): string { return '/visio/' . rawurlencode((string)$this->get('code')); }

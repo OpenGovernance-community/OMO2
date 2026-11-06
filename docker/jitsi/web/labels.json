@@ -1,0 +1,15 @@
+{
+  "labels": {
+    "fr": { "lobby": { "backToKnockModeButton": "Je n’ai pas de mot de passe, je vais simplement attendre…" } },
+    "fr-CA": { "lobby": { "backToKnockModeButton": "Je n’ai pas de mot de passe, je vais simplement attendre…" } },
+    "en": { "lobby": { "backToKnockModeButton": "I don’t have a password, I’ll simply wait…" } },
+    "de": { "lobby": { "backToKnockModeButton": "Ich habe kein Passwort, ich warte einfach…" } },
+    "es": { "lobby": { "backToKnockModeButton": "No tengo contraseña, simplemente voy a esperar…" } },
+    "es-US": { "lobby": { "backToKnockModeButton": "No tengo contraseña, simplemente voy a esperar…" } },
+    "it": { "lobby": { "backToKnockModeButton": "Non ho una password, aspetterò semplicemente…" } },
+    "pt": { "lobby": { "backToKnockModeButton": "Não tenho uma palavra-passe, vou simplesmente esperar…" } },
+    "pt-BR": { "lobby": { "backToKnockModeButton": "Não tenho uma senha, vou simplesmente esperar…" } },
+    "nl": { "lobby": { "backToKnockModeButton": "Ik heb geen wachtwoord, ik wacht gewoon…" } },
+    "pl": { "lobby": { "backToKnockModeButton": "Nie mam hasła, po prostu poczekam…" } }
+  }
+}

@@ -3,10 +3,13 @@
 Jitsi est inclus dans le Compose principal. Il utilise les mêmes images
 officielles épinglées et les mêmes droits JWT que le profil OMO2 du VPS.
 Apache fournit HTTPS sur `https://meet.localtest.me` et transmet les WebSockets.
-Le frontal est construit depuis l’image officielle épinglée, avec une seule
-correction du libellé français du lobby dans `web/Dockerfile` : « Je n’ai pas de
-mot de passe, je vais simplement attendre… ». Le bouton revient à la demande
-d’admission. Reconstruire avec `docker compose build jitsi-web` après modification.
+Le frontal est construit depuis l’image officielle épinglée. `web/labels.json`
+clarifie le retour à la demande d’admission via les traductions natives Jitsi :
+« Je n’ai pas de mot de passe, je vais simplement attendre… », traduit dans les
+huit langues OMO et leurs variantes Jitsi. Reconstruire avec
+`docker compose build jitsi-web` après modification.
+Le frontal respecte aussi le paramètre de langue de l’iframe OMO, avant la
+langue par défaut du serveur.
 Les quatre services Jitsi restent séparés ; seul le frontal rejoint le réseau
 de l’application. Aucun compte Jitsi à créer.
 

@@ -3,7 +3,7 @@ services:
   web:
     image: omo-jitsi-web:stable-11248-3-omo1
     build:
-      context: ./web
+      context: "${OMO_JITSI_PLUGIN_DIR:?Set OMO_JITSI_PLUGIN_DIR}/../web"
     environment:
       ENABLE_AUTH: "1"
       AUTH_TYPE: jwt

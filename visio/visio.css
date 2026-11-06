@@ -1,3 +1,25 @@
 /* Only the video viewport needs page-specific geometry; panels and forms are shared. */
 #visio-frame { height: 75dvh; min-height: 25rem; }
 #visio-frame iframe { display: block; border: 0; }
+
+.visio-policies { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .75rem; }
+.visio-icons { display: flex; flex-wrap: wrap; gap: .65rem; }
+.visio-setting { object-fit: contain; opacity: .25; }
+.visio-setting.is-active { opacity: 1; }
+
+@media (max-width: 600px) {
+    .visio-policies { flex-direction: column; }
+}
+
+.visio-heading { display: flex; align-items: center; gap: .65rem; min-width: 0; }
+.visio-heading h3 { flex: 0 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.visio-heading .generic-badge { flex-shrink: 0; }
+.visio-description { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.visio-description-full { white-space: normal; overflow-wrap: anywhere; }
+.visio-room-controls { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.visio-room-actions { margin-left: auto; }
+@media (max-width: 600px) {
+    .visio-room-controls { align-items: stretch; flex-direction: column; }
+    .visio-heading { flex-wrap: wrap; }
+    .visio-description { flex-basis: 100%; }
+}

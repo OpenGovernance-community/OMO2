@@ -4,6 +4,11 @@
     if (!element) return;
     const config = JSON.parse(element.textContent);
     if (config.saved) window.commonNotify(config.messages.saved, 'success');
+    document.querySelectorAll('[data-visio-delete]').forEach(form => {
+        form.addEventListener('submit', event => {
+            if (!window.confirm(form.dataset.confirm)) event.preventDefault();
+        });
+    });
     if (!config.access) return;
     const status = document.getElementById('visio-status');
     document.querySelector('[data-visio-copy]')?.addEventListener('click', async () => {
@@ -22,7 +27,7 @@
             parentNode: document.getElementById('visio-frame'),
             width: '100%', height: '100%', lang: config.language,
             userInfo: config.access.name ? {displayName: config.access.name} : {},
-            configOverwrite: {prejoinConfig: {enabled: true}, disableDeepLinking: true,
+            configOverwrite: {subject: config.title, callDisplayName: config.title, prejoinConfig: {enabled: true}, disableDeepLinking: true,
                 securityUi: {disableLobbyPassword: !config.access.nativePasswordEnabled},
                 hiddenPremeetingButtons: cameraRestricted ? ['camera'] : [],
                 startWithAudioMuted: !!config.access.settings.audio_muted,

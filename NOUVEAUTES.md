@@ -6,7 +6,7 @@ Les dates deja indiquees sont conservees. Les dates manquantes sont reconstituee
 
 ## 2026-11-06
 
-- Visioconférence / libellé du lobby Jitsi (2026-11-06) : l’action de retour à la demande d’admission indique « Je n’ai pas de mot de passe, je vais simplement attendre… », pour éviter de laisser croire qu’aucun mot de passe n’est défini dans la salle. Correction conservée dans l’image du frontal local et du VPS.
+- Visioconférence / libellé du lobby Jitsi (2026-11-06) : l’action de retour à la demande d’admission indique « Je n’ai pas de mot de passe, je vais simplement attendre… », traduit dans les huit langues OMO et leurs variantes Jitsi, pour éviter de laisser croire qu’aucun mot de passe n’est défini dans la salle. Traductions natives conservées dans l’image du frontal local et du VPS.
 
 - Visioconférence / entrée des invités (2026-11-06) : un bouton ouvre la réunion sans demander le nom dans OMO ; le nom est saisi directement dans Jitsi. L’identité des comptes OMO connectés reste préremplie.
 
@@ -5173,3 +5173,17 @@ Les dates deja indiquees sont conservees. Les dates manquantes sont reconstituee
 ## 2026-06 Vue D Ensemble
 
 Le projet a avance sur quatre grands axes: une interface plus coherente, un module `Decisions` beaucoup plus abouti, un meilleur confort sur les pages publiques et partagees, et une base plus solide pour les outils transverses comme l authentification, le calendrier, la FAQ ou la recherche.
+
+- Visio : suppression des reunions par leur proprietaire et reglages par icones dans deux blocs membres et invites.
+
+- Visio : icones compactes, blocs de largeur naturelle empiles sur mobile, cadenas commun aux deux groupes et infobulles explicitant chaque statut.
+
+- Visio : actions alignees aux reglages, capsule organisation coloree et description des salles (apercu tronque dans la liste et texte complet a la connexion). Migration 2026-11-06-06 requise.
+
+- Visio : nom et organisation sur une ligne en proportions 2/3 et 1/3 dans le formulaire, description en dessous sur toute la largeur.
+
+- Visio : connexion OMO2 et acces invite regroupes sur une ligne, avec le libelle Rejoindre comme invite.
+
+- Visio : connexion sur URL de base avec adresse e-mail complete, sans suffixe de domaine de l organisation par defaut.
+
+- Visio : titre de la salle transmis a Jitsi des l ouverture pour remplacer l identifiant technique sur l accueil.

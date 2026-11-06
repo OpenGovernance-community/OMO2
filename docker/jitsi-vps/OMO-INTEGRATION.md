@@ -69,10 +69,13 @@ n’ont rien à saisir. Les droits caméra/écran et le rôle restent identiques
 Le mot de passe est saisi uniquement dans le champ natif du lobby Jitsi.
 Le bouton de saisie est masqué si aucun mot de passe n’est configuré.
 L’action de retour à la demande d’admission indique « Je n’ai pas de mot de
-passe, je vais simplement attendre… ». La correction française est intégrée
-dans le frontal construit depuis l’image officielle épinglée. Copier aussi
-`docker/jitsi/web/Dockerfile` vers `omo-integration/web/Dockerfile` et construire
+passe, je vais simplement attendre… », traduit dans les huit langues OMO et
+leurs variantes Jitsi. Les traductions natives sont chargées depuis le petit
+fichier statique `labels.json` servi par Jitsi. Copier
+`docker/jitsi/web/` vers `omo-integration/web/` et construire
 avec `sudo /opt/jitsi/compose.sh build web` avant de recréer le frontal.
+Le paramètre de langue de l’API iframe est prioritaire sur la langue par
+défaut du serveur, pour conserver celle de l’utilisateur OMO.
 OMO chiffre le mot de passe avec AES-256-GCM, une clé dérivée du secret JWT et
 du nom de salle, puis transmet cette enveloppe dans la politique signée.
 Prosody la déchiffre et initialise le vrai mot de passe de la salle Jitsi.
