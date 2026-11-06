@@ -1,0 +1,3 @@
+/* Only the video viewport needs page-specific geometry; panels and forms are shared. */
+#visio-frame { height: 75dvh; min-height: 25rem; }
+#visio-frame iframe { display: block; border: 0; }

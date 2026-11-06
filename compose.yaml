@@ -1,5 +1,8 @@
 name: openmyorganization
 
+include:
+  - ./docker/jitsi/compose.yaml
+
 services:
   app:
     build:

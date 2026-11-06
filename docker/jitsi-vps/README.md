@@ -34,6 +34,13 @@ docker compose -p jitsi --env-file /opt/jitsi/.env \
   -f /opt/jitsi/compose.vps.yaml ps
 ```
 
+## Integration OMO2 preparee
+
+Voir [OMO-INTEGRATION.md](OMO-INTEGRATION.md) pour la page `/visio/`, les roles
+JWT et la salle d attente. Ce profil est separe et reste inactif jusqu a la
+publication d OMO2. Ne pas ajouter son overlay a la commande ci-dessous avant
+cette etape.
+
 ## Acces provisoire
 
 L authentification interne protege l ouverture des reunions. Un compte

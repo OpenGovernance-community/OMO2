@@ -187,7 +187,7 @@ try {
         $position = (int)$proposal->get('position');
         $summary = (string)$proposal->get('description');
         if ($position === 1) {
-            mcpCheck(str_contains($summary, 'Consultez le detail ci-dessous') && !str_contains($summary, 'Full rule body'),
+            mcpCheck(str_contains($summary, "Consultez le d\u{00E9}tail ci-dessous") && !str_contains($summary, 'Full rule body'),
                 'Real governance save stores a compact generated summary for a long rule');
         } elseif ($position === 7) {
             mcpCheck($summary === '<p>Custom proposal summary</p>', 'A manually supplied description is preserved');

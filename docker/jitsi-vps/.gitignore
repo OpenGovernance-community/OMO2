@@ -1,5 +1,7 @@
 .env
 .env.private
+jwt.env
+omo.env
 *.credentials
 *.password
 config/

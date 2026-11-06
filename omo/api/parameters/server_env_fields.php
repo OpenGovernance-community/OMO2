@@ -4,6 +4,17 @@
 function omoServerEnvAdditionalSections(): array
 {
     return [
+        'visio' => [
+            'title' => 'Visioconférence Jitsi',
+            'intro' => 'Création de réunions sur /visio/ avec l’identité OMO2. Le créateur est animateur, les autres comptes sont participants et les invités passent par la salle d’attente. Activez uniquement après la configuration JWT du serveur Jitsi.',
+            'fields' => [
+                'JITSI_ENABLED' => ['label' => 'Activer la visioconférence OMO2', 'type' => 'boolean'],
+                'JITSI_URL' => ['label' => 'Adresse publique Jitsi', 'type' => 'url', 'help' => 'Origine HTTPS sans chemin, par exemple https://meet.exemple.org. Avec Docker local : https://meet.localtest.me.'],
+                'JITSI_APP_ID' => ['label' => 'Identifiant de l’application JWT', 'help' => 'Identique à JWT_APP_ID sur Jitsi. Valeur habituelle : omo2.'],
+                'JITSI_APP_SECRET' => ['label' => 'Clé de signature JWT', 'type' => 'password', 'secret' => true, 'help' => 'Secret aléatoire d’au moins 32 caractères, identique à JWT_APP_SECRET sur Jitsi. Laissez vide pour conserver la clé actuelle.'],
+                'JITSI_XMPP_DOMAIN' => ['label' => 'Domaine XMPP interne', 'help' => 'Identique à XMPP_DOMAIN sur Jitsi. Valeur habituelle avec Docker : meet.jitsi.'],
+            ],
+        ],
         'hosting' => [
             'title' => 'Adresse et hébergement',
             'intro' => 'Identité publique du site et particularites du réseau. Les exceptions de proxy et d’images ne sont utiles que si votre hébergement ou vos documents les demandent.',

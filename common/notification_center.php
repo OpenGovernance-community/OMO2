@@ -7,6 +7,9 @@ if (!function_exists('notificationCenterT')) {
     {
         static $bundle = null;
         static $sourceLang = [
+            'notification.login.new' => ['text' => 'Connexion sur un nouvel appareil', 'context' => 'Personal notification for a browser not yet recognized for this user.'],
+            'notification.login.known' => ['text' => 'Connexion sur un appareil deja identifie', 'context' => 'Personal notification for an explicit login on a recognized browser.'],
+            'notification.login.body' => ['text' => 'Connexion a votre compte le {date} (Europe/Zurich). Adresse IP : {ip}. Navigateur : {browser}. Si vous ne reconnaissez pas cette connexion, verifiez la securite de votre compte.', 'context' => 'Successful interactive login details; browser information is informational only.'],
             'notification.meeting.preference' => ['text' => 'Nouvelle réservation sur ma page de rendez-vous', 'context' => 'Personal booking notification preference.'],
             'notification.meeting.title' => ['text' => 'Nouveau rendez-vous — {guest}', 'context' => 'Booking notification sent to the calendar owner.'],
             'notification.meeting.body' => ['text' => '{guest} ({email}) a réservé un rendez-vous le {date} à {time}, pour {duration} minutes (Europe/Zurich).', 'context' => 'Confirmed booking summary for the owner.'],
@@ -80,6 +83,8 @@ if (!function_exists('notificationCenterEventCatalog')) {
     function notificationCenterEventCatalog()
     {
         return [
+            'user_login_new_device' => notificationCenterT('notification.login.new'),
+            'user_login_known_device' => notificationCenterT('notification.login.known'),
             'meeting_booking_created' => notificationCenterT('notification.meeting.preference'),
             'document_pv_review_started' => notificationCenterT('notification.pv.review_preference'),
             'document_pv_closed' => notificationCenterT('notification.pv.closed_preference'),
@@ -110,7 +115,7 @@ if (!function_exists('notificationCenterEventGroupCatalog')) {
     function notificationCenterEventGroupCatalog()
     {
         return [
-            'personal' => ['applicationHash' => '', 'eventKeys' => ['meeting_booking_created']],
+            'personal' => ['applicationHash' => '', 'eventKeys' => ['user_login_new_device', 'user_login_known_device', 'meeting_booking_created']],
             'documents' => ['applicationHash' => 'documents', 'eventKeys' => ['document_pv_review_started', 'document_pv_closed']],
             'decisions' => [
                 'applicationHash' => 'decision',
@@ -154,15 +159,13 @@ if (!function_exists('notificationCenterGetActiveEventGroups')) {
     function notificationCenterGetActiveEventGroups($organizationId, $userId)
     {
         $organization = new \dbObject\Organization();
-        if (!$organization->load((int)$organizationId)) {
-            return [];
-        }
+        $hasOrganization = (int)$organizationId > 0 && $organization->load((int)$organizationId);
 
         $eventCatalog = notificationCenterEventCatalog();
         $groups = [];
         foreach (notificationCenterEventGroupCatalog() as $groupKey => $group) {
             $applicationHash = trim((string)($group['applicationHash'] ?? ''));
-            if ($applicationHash !== '' && !$organization->isApplicationEnabled($applicationHash, (int)$userId)) {
+            if ($applicationHash !== '' && (!$hasOrganization || !$organization->isApplicationEnabled($applicationHash, (int)$userId))) {
                 continue;
             }
             $eventKeys = array_values(array_filter(

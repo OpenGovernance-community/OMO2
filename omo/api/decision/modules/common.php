@@ -688,6 +688,21 @@ if (!function_exists('omoDecisionGetProposalLabel')) {
     }
 }
 
+if (!function_exists('omoDecisionSortProposalsChronologically')) {
+    function omoDecisionSortProposalsChronologically(array $proposals): array
+    {
+        usort($proposals, static function (DecisionProposal $left, DecisionProposal $right): int {
+            $leftStart = DecisionProcess::normalizeDateTimeValue($left->get('start_at'));
+            $rightStart = DecisionProcess::normalizeDateTimeValue($right->get('start_at'));
+            if ($leftStart === null || $rightStart === null) {
+                return ($leftStart === null) <=> ($rightStart === null);
+            }
+            return $leftStart <=> $rightStart;
+        });
+        return $proposals;
+    }
+}
+
 if (!function_exists('omoDecisionShuffleProposalsForParticipant')) {
     function omoDecisionShuffleProposalsForParticipant(array $proposals, array $context, $scope = '')
     {

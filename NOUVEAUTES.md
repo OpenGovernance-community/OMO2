@@ -4,6 +4,20 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 Les dates deja indiquees sont conservees. Les dates manquantes sont reconstituees a partir de la premiere apparition des entrees dans l historique GitHub, en heure Europe/Zurich ; elles correspondent a leur ajout au journal, pas necessairement a leur mise en production.
 
+## 2026-11-06
+
+- Scrutins / tests des resumes de gouvernance (2026-11-06) : attentes des tests alignees sur le message francais avec accents. La generation du resume compact et la conservation du texte complet restent inchangees.
+
+- Notifications / connexion personnelle (2026-11-06) : reglages communs aux organisations pour les connexions sur un nouvel appareil ou un navigateur deja identifie, avec choix des canaux OMO, e-mail, navigateur et Telegram si disponibles. Reconnaissance du navigateur pendant un an, conservee apres deconnexion ; restauration automatique par "se souvenir de moi" silencieuse. Migration des empreintes de reconnaissance, sans pouvoir d'authentification.
+
+- Scrutins / ordre des dates (2026-11-06) : en consultation et en vote, les propositions sont affichees par date et heure de debut si le champ date est actif et l'ordre aleatoire desactive. Les propositions sans date viennent a la fin ; l'ordre d'edition et le classement des resultats sont conserves.
+
+- Decisions / journal des e-mails (2026-11-06) : les prochains envois depuis un scrutin apparaissent dans le bouton mail de la topbar, avec le texte personnalise, les destinataires et le resultat individuel. Les liens personnels ajoutes aux messages ne sont pas archives ; conservation et acces prives identiques aux invitations PV, sans reprise des anciens envois.
+
+- Visioconférence / Docker local (2026-11-06) : Jitsi intégré au démarrage Docker sur meet.localtest.me avec HTTPS et WebSockets via Apache. Configuration locale automatique, détection IPv4 pour les médias et clés privées distinctes de la production ; réglages dans la configuration générale du serveur, rubrique Visioconférence Jitsi. Protection de formulaire partagée réutilisée. Création de salles, identités, droits et lobby testés depuis /visio/ avec audio/vidéo réellement reçus à trois participants simulés, sans publication d’OMO2.
+
+- Visioconférence / passerelle OMO2 (2026-11-06) : page /visio/ pour créer une salle avec son identité OMO, lien participant sans jeton et rôle animateur réservé au créateur. Invités en salle d’attente, paramètres Jitsi au niveau serveur, migration des salles et profil JWT séparé à activer sur le VPS après publication OMO2. Accès Jitsi provisoire conservé pendant la préparation.
+
 ## 2026-11-05
 
 - Documents / creation dans une organisation minimale (2026-11-05) : correction de la portee d edition par defaut lorsqu il n existe qu un holon organisation, avec repli sur le proprietaire et conservation des portees cercle et role lorsqu elles sont disponibles. Erreur serveur precise affichee a l enregistrement ; le glisser-deplacer indique le stockage manquant au lieu d un refus de droits.

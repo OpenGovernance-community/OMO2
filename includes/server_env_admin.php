@@ -660,6 +660,14 @@ function serverEnvAdminValidateValues(array $values, ?array $currentValues = nul
 {
     $errors = [];
 
+    if (in_array(strtolower((string)($values['JITSI_ENABLED'] ?? 'false')), ['1', 'true', 'yes', 'on'], true)
+        && (!serverEnvAdminIsValidPublicOrigin((string)($values['JITSI_URL'] ?? ''))
+            || !preg_match('/\A[A-Za-z0-9._-]{1,64}\z/D', (string)($values['JITSI_APP_ID'] ?? ''))
+            || !preg_match('/\A[A-Za-z0-9.-]{1,253}\z/D', (string)($values['JITSI_XMPP_DOMAIN'] ?? ''))
+            || strlen((string)($values['JITSI_APP_SECRET'] ?? '')) < 32)) {
+        $errors[] = serverEnvAdminT('parameters.server_env.error.invalid_jitsi', 'Renseignez une origine HTTPS Jitsi, un identifiant JWT, un domaine XMPP et une clé de signature d’au moins 32 caractères.');
+    }
+
     $provider = ($values['AI_PROVIDER'] ?? '') ?: 'openai';
     $destinationChanged = $currentValues !== null && $provider !== (($currentValues['AI_PROVIDER'] ?? '') ?: 'openai');
     if ($provider === 'openai_compatible') {

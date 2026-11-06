@@ -248,6 +248,9 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
             && $consultationStarted
             && !$evaluationStarted
             && !$resultsMode;
+        if (!$isManageMode && !$resultsMode && !$randomizeProposalOrder && $proposalContent['date']) {
+            $proposalObjects = omoDecisionSortProposalsChronologically($proposalObjects);
+        }
         $liveResultsMode = false;
         $showOwnerIntermediateResults = $isManageMode
             && !empty($context['isOwner'])

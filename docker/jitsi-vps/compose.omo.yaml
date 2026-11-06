@@ -1,0 +1,29 @@
+# Add after compose.vps.yaml only when OMO2 /visio/ and its matching key are deployed.
+services:
+  web:
+    environment:
+      ENABLE_AUTH: "1"
+      AUTH_TYPE: jwt
+      ENABLE_GUESTS: "0"
+      ENABLE_AUTO_LOGIN: "0"
+  prosody:
+    volumes:
+      - "${OMO_JITSI_PLUGIN_DIR:?Set OMO_JITSI_PLUGIN_DIR}/mod_omo_lobby_autostart.lua:/prosody-plugins-custom/mod_omo_lobby_autostart.lua:ro"
+    environment:
+      ENABLE_AUTH: "1"
+      AUTH_TYPE: jwt
+      ENABLE_GUESTS: "0"
+      ENABLE_LOBBY: "1"
+      JWT_APP_ID: "${JWT_APP_ID:?Set JWT_APP_ID}"
+      JWT_APP_SECRET: "${JWT_APP_SECRET:?Set JWT_APP_SECRET}"
+      JWT_ALLOW_EMPTY: "0"
+      JWT_ACCEPTED_ISSUERS: "${JWT_APP_ID}"
+      JWT_ACCEPTED_AUDIENCES: "${JWT_APP_ID}"
+      JWT_ENABLE_DOMAIN_VERIFICATION: "1"
+      XMPP_MUC_MODULES: token_affiliation,token_lobby_bypass,omo_lobby_autostart
+  jicofo:
+    environment:
+      ENABLE_AUTH: "1"
+      AUTH_TYPE: jwt
+      JICOFO_ENABLE_AUTH: "0"
+      ENABLE_AUTO_OWNER: "0"

@@ -133,6 +133,7 @@ function omoServerEnvSourceLang()
         'parameters.server_env.error.invalid_email_field' => ['text' => 'L’adresse e-mail de {label} est invalide.', 'context' => 'Invalid email environment setting.'],
         'parameters.server_env.error.invalid_url_field' => ['text' => 'L’adresse de {label} est invalide.', 'context' => 'Invalid URL environment setting.'],
         'parameters.server_env.error.invalid_public_url' => ['text' => 'L’adresse publique doit être une origine HTTPS sans chemin ni paramètre. HTTP est réservé à localhost et 127.0.0.1.', 'context' => 'Invalid canonical origin used in security email links.'],
+        'parameters.server_env.error.invalid_jitsi' => ['text' => 'Renseignez une origine HTTPS Jitsi, un identifiant JWT, un domaine XMPP et une clé de signature d’au moins 32 caractères.', 'context' => 'Invalid or incomplete enabled Jitsi JWT configuration.'],
         'parameters.server_env.tabs.ai' => ['text' => 'IA', 'context' => 'Server configuration tab for text, translation and audio services.'],
         'parameters.server_env.error.ai_provider_key' => ['text' => 'Saisissez la clé API du fournisseur choisi lorsque vous changez de fournisseur de texte ou d’adresse API.', 'context' => 'Prevent sending an existing secret to a different AI provider or API address.'],
         'parameters.server_env.error.transcription_provider_key' => ['text' => 'Saisissez la clé API du service choisi lorsque vous changez de fournisseur de transcription.', 'context' => 'Prevent sending an existing audio secret to a different provider.'],

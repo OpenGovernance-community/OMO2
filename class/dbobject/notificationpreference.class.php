@@ -42,7 +42,7 @@ class NotificationPreference extends DbObject
     public static function getChannelsFor($userId, $organizationId, $eventKey)
     {
         $defaults = ['in_app' => true, 'push' => false, 'telegram' => false, 'email' => false, 'days' => [], 'lead_time' => ''];
-        if (self::isPersonalEvent($eventKey)) { $defaults['email'] = true; }
+        if ($eventKey === 'meeting_booking_created') { $defaults['email'] = true; }
         if (trim((string)$eventKey) === 'calendar_recurring_occurrence_created') { $defaults['in_app'] = false; }
         if (!self::isStorageAvailable()) {
             return $defaults;
@@ -125,7 +125,7 @@ class NotificationPreference extends DbObject
 
     public static function isPersonalEvent($eventKey): bool
     {
-        return $eventKey === 'meeting_booking_created';
+        return in_array($eventKey, ['meeting_booking_created', 'user_login_new_device', 'user_login_known_device'], true);
     }
 
     private static function findForScope($userId, $organizationId, $eventKey): ?self
