@@ -71,14 +71,19 @@ try {
     });
     mcpCheck($blocked['answer'] === 'Read only' && $step === 2, 'Forbidden model calls are handled safely');
     // Verify each native provider wire format and complete a two-step live read with a fake model.
-    foreach (['openai', 'anthropic', 'mistral', 'openai_compatible'] as $provider) {
+    foreach (['openai', 'anthropic', 'mistral', 'infomaniak', 'openai_compatible'] as $provider) {
         $_ENV['AI_PROVIDER'] = $provider; $_ENV['AI_MODEL'] = 'test-model'; $_ENV['AI_API_KEY'] = 'test-key';
         $_ENV['AI_BASE_URL'] = 'https://example.invalid/v1';
+        $_ENV['AI_INFOMANIAK_PRODUCT_ID'] = '12345';
         $step = 0;
         $request = static function (array $request) use (&$step, $provider): array {
             $step++;
             $payload = $request['payload'];
             mcpCheck($payload['model'] === 'test-model' && !empty($payload['tools']), 'Configured model and tool schemas are preserved');
+            if ($provider === 'infomaniak') {
+                mcpCheck($request['url'] === 'https://api.infomaniak.com/2/ai/12345/openai/v1/chat/completions'
+                    && $payload['stream'] === false && isset($payload['max_completion_tokens']) && !isset($payload['max_tokens']), 'Infomaniak uses v2 JSON and completion token limits');
+            }
             if ($step === 2) {
                 $encoded = json_encode($payload);
                 mcpCheck(str_contains($encoded, 'MCP role') && !str_contains($encoded, 'never-expose-this-key'), 'Only projected readable data reaches the model');
@@ -108,5 +113,5 @@ try {
     }
     $_SESSION['currentUser'] = 0;
     assistantReject(fn () => commonAssistantGrant($oid), 'Anonymous sessions cannot use the assistant');
-    echo "PASS assistant read-only allowlist, identity, organization and hidden-object boundaries, source links and four provider tool loops\n";
+    echo "PASS assistant read-only allowlist, identity, organization and hidden-object boundaries, source links and five provider tool loops\n";
 } finally { $_ENV = $envBefore; $_SESSION = $before; mcpCleanup($items); }

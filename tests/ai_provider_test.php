@@ -36,7 +36,7 @@ function aiProviderExpect(bool $condition, string $message): void
 
 function aiProviderEnv(array $values): void
 {
-    foreach (['AI_PROVIDER', 'AI_BASE_URL', 'AI_API_KEY', 'AI_MODEL', 'AI_TRANSLATION_MODEL', 'TRANSCRIPTION_PROVIDER', 'TRANSCRIPTION_API_KEY', 'TRANSCRIPTION_MODEL', 'OPENAI_API_KEY', 'OPENAI_MODEL', 'OPENAI_TRANSLATION_MODEL', 'OPENAI_TRANSCRIPTION_MODEL', 'OPENAI_AUDIO_TRANSCRIPTION_MODEL'] as $key) {
+    foreach (['AI_PROVIDER', 'AI_BASE_URL', 'AI_API_KEY', 'AI_INFOMANIAK_PRODUCT_ID', 'AI_MODEL', 'AI_TRANSLATION_MODEL', 'TRANSCRIPTION_PROVIDER', 'TRANSCRIPTION_API_KEY', 'TRANSCRIPTION_INFOMANIAK_PRODUCT_ID', 'TRANSCRIPTION_MODEL', 'OPENAI_API_KEY', 'OPENAI_MODEL', 'OPENAI_TRANSLATION_MODEL', 'OPENAI_TRANSCRIPTION_MODEL', 'OPENAI_AUDIO_TRANSCRIPTION_MODEL'] as $key) {
         $_ENV[$key] = $values[$key] ?? '';
     }
     unset($GLOBALS['OpenAI'], $GLOBALS['openAiTranslationModel'], $GLOBALS['openAiTranscriptionModel']);
@@ -150,6 +150,17 @@ $body = json_decode($GLOBALS['aiProviderLastRequest']->options[CURLOPT_POSTFIELD
 aiProviderExpect($body['model'] === 'mistral-translation' && $translated['greeting']['text'] === 'Hello {name}', 'Mistral translations must use their independent model.');
 aiProviderExpect(commonAiGetTranscriptionApiKey() === 'mistral-key' && commonAiGetTranscriptionModel() === 'voxtral-mini-latest', 'Matching Mistral providers may share a key but must ignore legacy OpenAI audio models.');
 
+aiProviderEnv(['AI_PROVIDER' => 'infomaniak', 'AI_API_KEY' => 'infomaniak-key', 'AI_INFOMANIAK_PRODUCT_ID' => '12345', 'AI_MODEL' => 'mistral-hosted', 'AI_BASE_URL' => 'https://ignored.invalid/v1']);
+$GLOBALS['aiProviderResponse'] = '{"choices":[{"message":{"content":"ok"},"finish_reason":"stop"}]}';
+aiProviderExpect(commonAiIsConfigured(), 'Infomaniak with a product, key and model enables AI');
+aiProviderExpect(serverEnvAdminBuildCurrentValues()['AI_TRANSLATION_MODEL'] === '' && commonAiGetModel(true) === 'mistral-hosted', 'Infomaniak keeps the explicit main-model translation choice while resolving it at runtime');
+aiProviderExpect(commonAiRequestText(commonAiGetApiKey(), ['model' => commonAiGetModel(), 'messages' => [['role' => 'user', 'content' => 'Hello']], 'max_tokens' => 100])['status'], 'Infomaniak text decodes through the shared client');
+$request = $GLOBALS['aiProviderLastRequest'];
+$body = json_decode($request->options[CURLOPT_POSTFIELDS], true);
+aiProviderExpect($request->url === 'https://api.infomaniak.com/2/ai/12345/openai/v1/chat/completions' && $body['stream'] === false && $body['max_completion_tokens'] === 100 && !isset($body['max_tokens']), 'Infomaniak builds its own v2 endpoint and disables streaming');
+$_ENV['AI_INFOMANIAK_PRODUCT_ID'] = '';
+aiProviderExpect(!commonAiIsConfigured(), 'Infomaniak without a product cannot enable AI');
+
 foreach (['groq' => ['https://api.groq.com/openai/v1/audio/transcriptions', 'whisper-large-v3-turbo'], 'mistral' => ['https://api.mistral.ai/v1/audio/transcriptions', 'voxtral-mini-latest']] as $provider => [$url, $model]) {
     aiProviderEnv(['AI_PROVIDER' => 'anthropic', 'AI_API_KEY' => 'private-claude-key', 'TRANSCRIPTION_PROVIDER' => $provider, 'OPENAI_API_KEY' => 'private-openai-key', 'OPENAI_TRANSCRIPTION_MODEL' => 'old-openai-model']);
     aiProviderExpect(commonAiGetTranscriptionApiKey() === '' && !commonAiIsTranscriptionConfigured() && commonAiGetTranscriptionModel() === $model, 'New audio providers must never inherit another provider key or legacy audio model.');
@@ -163,6 +174,28 @@ foreach (['groq' => ['https://api.groq.com/openai/v1/audio/transcriptions', 'whi
     $_ENV['TRANSCRIPTION_MODEL'] = 'custom-audio-model';
     aiProviderExpect(commonAiGetTranscriptionModel() === 'custom-audio-model', 'Explicit custom audio models must remain authoritative.');
 }
+
+aiProviderEnv(['AI_PROVIDER' => 'anthropic', 'AI_API_KEY' => 'claude-key', 'AI_INFOMANIAK_PRODUCT_ID' => '999', 'TRANSCRIPTION_PROVIDER' => 'infomaniak', 'TRANSCRIPTION_API_KEY' => 'Bearer separate-infomaniak-key', 'TRANSCRIPTION_INFOMANIAK_PRODUCT_ID' => '456', 'OPENAI_TRANSCRIPTION_MODEL' => 'legacy-audio']);
+aiProviderExpect(commonAiGetTranscriptionModel() === 'whisper' && commonAiIsTranscriptionConfigured(), 'Infomaniak Whisper V3 uses independent audio settings');
+$GLOBALS['aiProviderResponse'] = '{"text":"Bonjour OMO"}';
+$audio = commonOpenAiRequestAudioTranscription(commonAiGetTranscriptionApiKey(), __FILE__, 'audio/wav', 'recording.wav', ['model' => commonAiGetTranscriptionModel(), 'response_format' => 'json', 'prompt' => 'French dictation.']);
+$request = $GLOBALS['aiProviderLastRequest'];
+aiProviderExpect($audio['status'] && $request->url === 'https://api.infomaniak.com/1/ai/456/openai/audio/transcriptions'
+    && $request->options[CURLOPT_POSTFIELDS]['model'] === 'whisper'
+    && in_array('Authorization: Bearer separate-infomaniak-key', $request->options[CURLOPT_HTTPHEADER], true), 'Infomaniak audio sends its own product and normalized key, never the Claude key');
+$_ENV['TRANSCRIPTION_INFOMANIAK_PRODUCT_ID'] = '';
+aiProviderExpect(!commonAiIsTranscriptionConfigured(), 'Another text provider cannot supply the Infomaniak audio product');
+$_ENV['TRANSCRIPTION_INFOMANIAK_PRODUCT_ID'] = '456'; $_ENV['TRANSCRIPTION_API_KEY'] = '';
+aiProviderExpect(!commonAiIsTranscriptionConfigured(), 'Another text provider cannot supply the Infomaniak audio key');
+aiProviderEnv(['AI_PROVIDER' => 'infomaniak', 'AI_API_KEY' => 'shared-infomaniak-key', 'AI_INFOMANIAK_PRODUCT_ID' => '123', 'AI_MODEL' => 'text-model', 'TRANSCRIPTION_PROVIDER' => 'infomaniak']);
+aiProviderExpect(commonAiGetTranscriptionApiKey() === 'shared-infomaniak-key' && commonAiGetTranscriptionInfomaniakProductId() === '123', 'Matching Infomaniak services may share their connection');
+$audioCurrent = serverEnvAdminBuildCurrentValues();
+$changedText = serverEnvAdminMergeSubmittedValues(['AI_PROVIDER' => 'anthropic', 'AI_API_KEY' => 'new-claude-key', 'AI_MODEL' => 'claude-main', 'TRANSCRIPTION_API_KEY' => ''], $audioCurrent);
+aiProviderExpect($changedText['TRANSCRIPTION_API_KEY'] === 'shared-infomaniak-key' && $changedText['TRANSCRIPTION_INFOMANIAK_PRODUCT_ID'] === '123', 'Changing text provider preserves the existing Infomaniak audio connection');
+aiProviderExpect(serverEnvAdminValidateValues($changedText, $audioCurrent, ['AI_API_KEY' => 'new-claude-key']) === [], 'Independent audio remains valid when text changes provider');
+$oldAudio = array_merge($audioCurrent, ['TRANSCRIPTION_PROVIDER' => 'openai', 'TRANSCRIPTION_API_KEY' => 'old-openai-key']);
+$switchAudio = serverEnvAdminMergeSubmittedValues(['TRANSCRIPTION_PROVIDER' => 'infomaniak', 'TRANSCRIPTION_API_KEY' => '', 'TRANSCRIPTION_MODEL' => 'whisper'], $oldAudio);
+aiProviderExpect($switchAudio['TRANSCRIPTION_API_KEY'] === '' && serverEnvAdminValidateValues($switchAudio, $oldAudio) === [], 'Switching audio to Infomaniak uses the matching text key instead of forwarding an old OpenAI audio key');
 
 $current = ['AI_PROVIDER' => 'mistral', 'AI_API_KEY' => 'saved-key', 'AI_MODEL' => 'mistral-small-latest', 'TRANSCRIPTION_PROVIDER' => 'groq', 'TRANSCRIPTION_API_KEY' => 'saved-audio-key'];
 $disabled = array_merge($current, ['AI_PROVIDER' => 'disabled']);

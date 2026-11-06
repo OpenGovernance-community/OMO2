@@ -6,6 +6,16 @@ Les dates deja indiquees sont conservees. Les dates manquantes sont reconstituee
 
 ## 2026-11-06
 
+- IA / transcription Infomaniak (2026-11-06) : service audio Whisper V3 ajoute aux reglages, modele whisper propose automatiquement, Product ID audio facultatif et reprise du token et du produit texte quand les deux services utilisent Infomaniak. Envoi de l audio puis suivi borne de la tache asynchrone et recuperation de son resultat pour les dictees et memos vocaux.
+
+- Reglages serveur / sauvegarde et token Infomaniak (2026-11-06) : fermeture sans fausse alerte de perte de donnees apres sauvegarde reussie ; les modifications ulterieures restent protegees. L actualisation des modeles relit le token Infomaniak dans la configuration enregistree lorsque le champ est vide, sans le renvoyer au navigateur.
+
+- IA / Product ID Infomaniak (2026-11-06) : champ numerique editable pour definir le produit AI Services commun aux modeles de la connexion. L actualisation utilise directement ce produit sans imposer l acces a la liste des produits du compte ; detection et suggestions facultatives si le champ reste vide.
+
+- IA / chargement Infomaniak (2026-11-06) : bouton Actualiser place directement sous le token, utilisable avant toute sauvegarde, avec consigne visible et etat de chargement. Erreurs distinctes pour token refuse, droits insuffisants, delai depasse ou reponse invalide ; expiration du deverrouillage signalee sans effacer le token saisi et validation de sauvegarde sans doublon. Prefixe Bearer accepte, controle du format explicite et token normalise a l enregistrement.
+
+- IA / Infomaniak (2026-11-06) : fournisseur dedie dans les reglages du serveur, chargement des produits accessibles par token et choix des modeles principal et de traduction dans des listes. Produit unique choisi automatiquement, URL construite et choix conserves ; decouverte reservee aux administrateurs avec validation du token et des selections, sans exposer la cle enregistree.
+
 - Visioconférence / libellé du lobby Jitsi (2026-11-06) : l’action de retour à la demande d’admission indique « Je n’ai pas de mot de passe, je vais simplement attendre… », traduit dans les huit langues OMO et leurs variantes Jitsi, pour éviter de laisser croire qu’aucun mot de passe n’est défini dans la salle. Traductions natives conservées dans l’image du frontal local et du VPS.
 
 - Visioconférence / entrée des invités (2026-11-06) : un bouton ouvre la réunion sans demander le nom dans OMO ; le nom est saisi directement dans Jitsi. L’identité des comptes OMO connectés reste préremplie.

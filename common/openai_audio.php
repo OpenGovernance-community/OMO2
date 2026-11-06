@@ -122,9 +122,11 @@ function commonOpenAiRequestAudioTranscription($apiKey, $tmpName, $mimeType, $fi
         return ['status' => false, 'message' => 'Configuration IA indisponible.'];
     }
     $provider = commonAiGetTranscriptionProvider();
+    $deadline = microtime(true) + 110;
     $url = match ($provider) {
         'groq' => 'https://api.groq.com/openai/v1/audio/transcriptions',
         'mistral' => 'https://api.mistral.ai/v1/audio/transcriptions',
+        'infomaniak' => 'https://api.infomaniak.com/1/ai/' . commonAiGetTranscriptionInfomaniakProductId() . '/openai/audio/transcriptions',
         default => 'https://api.openai.com/v1/audio/transcriptions',
     };
     $curl = curl_init($url);
@@ -148,7 +150,7 @@ function commonOpenAiRequestAudioTranscription($apiKey, $tmpName, $mimeType, $fi
         CURLOPT_POST => true,
         CURLOPT_POSTFIELDS => $multipartPayload,
         CURLOPT_CONNECTTIMEOUT => 10,
-        CURLOPT_TIMEOUT => 120,
+        CURLOPT_TIMEOUT => $provider === 'infomaniak' ? 110 : 120,
         CURLOPT_FOLLOWLOCATION => false,
         CURLOPT_HTTPHEADER => array(
             'Authorization: Bearer ' . $apiKey,
@@ -160,6 +162,14 @@ function commonOpenAiRequestAudioTranscription($apiKey, $tmpName, $mimeType, $fi
     $httpCode = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
     $usageResponse = is_string($response) ? json_decode($response, true) : null;
+    if ($provider === 'infomaniak' && $httpCode >= 200 && $httpCode < 300 && is_array($usageResponse) && isset($usageResponse['batch_id'])) {
+        try {
+            $usageResponse = commonInfomaniakWaitForTranscription($usageResponse['batch_id'], $apiKey, commonAiGetTranscriptionInfomaniakProductId(), $deadline);
+        } catch (RuntimeException $error) {
+            $usageResponse = ['error' => ['message' => $error->getMessage()]];
+        }
+        $response = json_encode($usageResponse, JSON_THROW_ON_ERROR);
+    }
     commonAiRecordUsage('model', $provider, (string)($payload['model'] ?? ''), (string)($payload['prompt'] ?? ''),
         is_array($usageResponse) ? (string)($usageResponse['text'] ?? '') : '', is_array($usageResponse) ? $usageResponse : [], $httpCode, (int)filesize($tmpName));
     if ($response === false) {
@@ -201,6 +211,54 @@ function commonOpenAiRequestAudioTranscription($apiKey, $tmpName, $mimeType, $fi
         'text' => $text,
         'http_code' => $httpCode,
     );
+}
+
+/** Poll and download only from the fixed product URL; never follow a URL from an API reply. */
+function commonInfomaniakTranscriptionGet(string $path, string $apiKey, int $timeout): array|string
+{
+    $curl = curl_init('https://api.infomaniak.com' . $path);
+    if ($curl === false) throw new RuntimeException('Impossible de preparer le suivi de transcription Infomaniak.');
+    curl_setopt_array($curl, [CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_CONNECTTIMEOUT => min(5, $timeout), CURLOPT_TIMEOUT => $timeout,
+        CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $apiKey]]);
+    $body = curl_exec($curl);
+    $code = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    if ($body === false || $code < 200 || $code >= 300) {
+        throw new RuntimeException('Impossible de recuperer la transcription Infomaniak (HTTP ' . $code . ').');
+    }
+    $decoded = json_decode($body, true);
+    if (is_array($decoded)) return $decoded;
+    if (str_ends_with($path, '/download')) return $body;
+    throw new RuntimeException('Reponse de suivi Infomaniak invalide.');
+}
+
+function commonInfomaniakWaitForTranscription(string $batchId, string $apiKey, string $productId, float $deadline, ?callable $get = null): array
+{
+    if (!preg_match('/\A[a-zA-Z0-9-]{1,128}\z/D', $batchId)) throw new RuntimeException('Identifiant de transcription Infomaniak invalide.');
+    commonAiGetInfomaniakBaseUrl($productId);
+    $get ??= 'commonInfomaniakTranscriptionGet';
+    $path = '/1/ai/' . $productId . '/results/' . rawurlencode($batchId);
+    while (($remaining = (int)ceil($deadline - microtime(true))) > 0) {
+        $result = $get($path, $apiKey, min(10, $remaining));
+        if (!is_array($result)) throw new RuntimeException('Reponse de suivi Infomaniak invalide.');
+        $status = $result['status'] ?? '';
+        if ($status === 'success') {
+            $data = $result['data'] ?? null;
+            if ($data === null || $data === '') {
+                $remaining = (int)ceil($deadline - microtime(true));
+                if ($remaining < 1) break;
+                $data = $get($path . '/download', $apiKey, min(10, $remaining));
+            }
+            if (is_string($data)) $data = json_decode($data, true) ?? $data;
+            $text = is_array($data) ? trim((string)($data['text'] ?? '')) : (is_string($data) ? trim($data) : '');
+            if ($text === '') throw new RuntimeException('Infomaniak a renvoye une transcription vide.');
+            return ['text' => $text];
+        }
+        if (in_array($status, ['failed', 'cancelled'], true)) throw new RuntimeException('La transcription Infomaniak a echoue ou a ete annulee.');
+        if (!in_array($status, ['pending', 'processing'], true)) throw new RuntimeException('Etat de transcription Infomaniak invalide.');
+        usleep(500000);
+    }
+    throw new RuntimeException('La transcription Infomaniak n est pas terminee dans le delai imparti. Essayez un enregistrement plus court.');
 }
 
 function commonOpenAiTranscribeUploadedAudio(array $uploadedFile, array $options = array())

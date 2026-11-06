@@ -7,7 +7,7 @@ require_once __DIR__ . '/ai_usage.php';
 function commonAiBuildTextRequest(string $apiKey, array $payload): array
 {
     $provider = commonAiGetProvider();
-    if (!in_array($provider, ['openai', 'anthropic', 'mistral', 'openai_compatible'], true)) {
+    if (!in_array($provider, ['openai', 'anthropic', 'mistral', 'infomaniak', 'openai_compatible'], true)) {
         throw new InvalidArgumentException('Fournisseur IA inconnu.');
     }
     $headers = ['Content-Type: application/json'];
@@ -37,9 +37,18 @@ function commonAiBuildTextRequest(string $apiKey, array $payload): array
         $headers[] = 'Authorization: Bearer ' . $apiKey;
         $url = match ($provider) {
             'openai_compatible' => commonAiGetCompatibleBaseUrl() . '/chat/completions',
+            'infomaniak' => commonAiGetInfomaniakBaseUrl() . '/chat/completions',
             'mistral' => 'https://api.mistral.ai/v1/chat/completions',
             default => 'https://api.openai.com/v1/chat/completions',
         };
+        if ($provider === 'infomaniak') {
+            // The Infomaniak endpoint defaults to SSE; OMO consumes one JSON response.
+            $payload['stream'] = false;
+            if (isset($payload['max_tokens'])) {
+                $payload['max_completion_tokens'] = $payload['max_tokens'];
+                unset($payload['max_tokens']);
+            }
+        }
     }
     return ['url' => $url, 'headers' => $headers, 'payload' => $payload];
 }

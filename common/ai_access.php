@@ -16,7 +16,11 @@ function commonAiIsConfigured(?string $model = null, ?string $apiKey = null): bo
         try { commonAiGetCompatibleBaseUrl(); }
         catch (InvalidArgumentException $error) { return false; }
     }
-    return in_array(commonAiGetProvider(), ['openai', 'anthropic', 'mistral', 'openai_compatible'], true)
+    if (commonAiGetProvider() === 'infomaniak') {
+        try { commonAiGetInfomaniakBaseUrl(); }
+        catch (InvalidArgumentException $error) { return false; }
+    }
+    return in_array(commonAiGetProvider(), ['openai', 'anthropic', 'mistral', 'infomaniak', 'openai_compatible'], true)
         && trim($apiKey ?? commonAiGetApiKey()) !== ''
         && trim($model) !== ''
         && function_exists('curl_init');
@@ -24,7 +28,11 @@ function commonAiIsConfigured(?string $model = null, ?string $apiKey = null): bo
 
 function commonAiIsTranscriptionConfigured(?string $model = null, ?string $apiKey = null): bool
 {
-    return in_array(commonAiGetTranscriptionProvider(), ['openai', 'groq', 'mistral'], true)
+    if (commonAiGetTranscriptionProvider() === 'infomaniak') {
+        try { commonAiGetTranscriptionInfomaniakProductId(); }
+        catch (InvalidArgumentException $error) { return false; }
+    }
+    return in_array(commonAiGetTranscriptionProvider(), ['openai', 'groq', 'mistral', 'infomaniak'], true)
         && trim($apiKey ?? commonAiGetTranscriptionApiKey()) !== ''
         && trim($model ?? commonAiGetTranscriptionModel()) !== ''
         && function_exists('curl_init');

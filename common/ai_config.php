@@ -12,6 +12,15 @@ function commonAiGetProvider(): string
     return commonAiEnv('AI_PROVIDER') ?: 'openai';
 }
 
+function commonAiGetInfomaniakBaseUrl(?string $productId = null): string
+{
+    $productId = trim($productId ?? commonAiEnv('AI_INFOMANIAK_PRODUCT_ID'));
+    if (!preg_match('/\A[1-9][0-9]{0,18}\z/D', $productId)) {
+        throw new InvalidArgumentException('Produit Infomaniak invalide.');
+    }
+    return 'https://api.infomaniak.com/2/ai/' . $productId . '/openai/v1';
+}
+
 function commonAiGetCompatibleBaseUrl(?string $configuredUrl = null): string
 {
     $url = rtrim(trim($configuredUrl ?? commonAiEnv('AI_BASE_URL')), '/');
@@ -34,7 +43,13 @@ function commonAiGetLegacyApiKey(): string
 function commonAiGetApiKey(): string
 {
     $key = commonAiEnv('AI_API_KEY');
+    if (commonAiGetProvider() === 'infomaniak') return commonAiNormalizeInfomaniakToken($key);
     return $key !== '' ? $key : (commonAiGetProvider() === 'openai' ? commonAiGetLegacyApiKey() : '');
+}
+
+function commonAiNormalizeInfomaniakToken(string $token): string
+{
+    return trim((string)preg_replace('/\ABearer\s+/i', '', trim($token)));
 }
 
 function commonAiGetModel(bool $translation = false): string
@@ -59,10 +74,18 @@ function commonAiGetTranscriptionProvider(): string
 function commonAiGetTranscriptionApiKey(): string
 {
     $key = commonAiEnv('TRANSCRIPTION_API_KEY');
-    if ($key !== '') return $key;
     $provider = commonAiGetTranscriptionProvider();
-    if (in_array($provider, ['openai', 'mistral'], true) && $provider === commonAiGetProvider()) return commonAiGetApiKey();
+    if ($key !== '') return $provider === 'infomaniak' ? commonAiNormalizeInfomaniakToken($key) : $key;
+    if (in_array($provider, ['openai', 'mistral', 'infomaniak'], true) && $provider === commonAiGetProvider()) return commonAiGetApiKey();
     return $provider === 'openai' ? commonAiGetLegacyApiKey() : '';
+}
+
+function commonAiGetTranscriptionInfomaniakProductId(): string
+{
+    $id = commonAiEnv('TRANSCRIPTION_INFOMANIAK_PRODUCT_ID');
+    if ($id === '' && commonAiGetProvider() === 'infomaniak') $id = commonAiEnv('AI_INFOMANIAK_PRODUCT_ID');
+    commonAiGetInfomaniakBaseUrl($id);
+    return $id;
 }
 
 function commonAiGetTranscriptionDefaultModel(string $provider): string
@@ -71,6 +94,7 @@ function commonAiGetTranscriptionDefaultModel(string $provider): string
         'openai' => 'gpt-4o-mini-transcribe',
         'groq' => 'whisper-large-v3-turbo',
         'mistral' => 'voxtral-mini-latest',
+        'infomaniak' => 'whisper',
         default => '',
     };
 }

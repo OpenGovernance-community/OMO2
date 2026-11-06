@@ -38,6 +38,9 @@ try {
     $currentValues = serverEnvAdminBuildCurrentValues();
     $mergedValues = serverEnvAdminMergeSubmittedValues($submittedValues, $currentValues);
     $errors = serverEnvAdminValidateValues($mergedValues, $currentValues, $submittedValues);
+    if ($errors === [] && !serverEnvAdminInfomaniakSelectionIsVerified($mergedValues, $currentValues)) {
+        $errors[] = omoServerEnvT('parameters.server_env.infomaniak.verify_required');
+    }
 
     if ($errors !== []) {
         http_response_code(422);
