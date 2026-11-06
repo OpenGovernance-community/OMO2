@@ -5187,3 +5187,9 @@ Le projet a avance sur quatre grands axes: une interface plus coherente, un modu
 - Visio : connexion sur URL de base avec adresse e-mail complete, sans suffixe de domaine de l organisation par defaut.
 
 - Visio : titre de la salle transmis a Jitsi des l ouverture pour remplacer l identifiant technique sur l accueil.
+
+- Visio : titre et bouton de creation de reunion alignes sur une meme ligne.
+
+- Visio : hauteur du bouton de creation harmonisee avec le champ du titre.
+
+- Visio : bouton de creation mis en valeur avec la couleur principale.

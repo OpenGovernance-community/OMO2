@@ -276,14 +276,14 @@ if ($access) {
     <section class="generic-soft-panel generic-soft-panel--stack">
         <h1 class="generic-card-title generic-card-title--display"><?= $escape($vt('title')) ?></h1>
         <p><?= $escape($vt('intro')) ?></p>
-        <form method="post" class="generic-form-stack" action="/visio/">
+        <form method="post" class="generic-form-grid generic-form-grid--inline" style="--param-form-grid-columns: minmax(0, 1fr) auto" action="/visio/">
             <input type="hidden" name="_csrf" value="<?= $escape($csrf) ?>">
             <input type="hidden" name="action" value="create">
             <div class="generic-form-field">
                 <label class="generic-form-label" for="room-title"><?= $escape($vt('room_title')) ?></label>
                 <input id="room-title" class="generic-form-control" name="title" maxlength="190" value="<?= $escape($titleInput) ?>" placeholder="<?= $escape($vt('default_title')) ?>">
             </div>
-            <div class="generic-form-actions"><button class="generic-action-button" type="submit"><?= $escape($vt('create')) ?></button></div>
+            <div class="generic-form-actions"><button class="generic-action-button generic-action-button--form-control generic-action-button--main" type="submit"><?= $escape($vt('create')) ?></button></div>
         </form>
     </section>
     <?php if ($rooms): ?>

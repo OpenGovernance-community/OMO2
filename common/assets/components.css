@@ -1481,6 +1481,13 @@ html[data-theme="dark"] .black-icon,
     box-sizing: border-box;
 }
 
+/* Match a single-line form control in adjacent form actions. */
+.generic-action-button--form-control {
+    min-height: 44px;
+    padding-block: 11px;
+    line-height: normal;
+}
+
 .generic-action-button[hidden] {
     display: none !important;
 }
