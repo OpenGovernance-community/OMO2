@@ -256,7 +256,7 @@ function displayField($object, $key, $default = null, $filter = null, ?array $tr
 
             // Load values and render them
             foreach ($object->getValues($key, $filter) as $value) {
-                $txt .= "<option value='" . $value->getId() . "'" . ($default == $value->getId() || (is_null($default) && $value->getId() == $object->get($key)) ? " selected" : "") . ">" . $value->getLabel() . "</option>";
+                $txt .= "<option value='" . $value->getId() . "'" . ($default == $value->getId() || (is_null($default) && $value->getId() == $object->get($key)) ? " selected" : "") . ">" . htmlspecialchars((string)$value->getLabel(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . "</option>";
             }
             $txt .= "</select>";
 

@@ -6,6 +6,18 @@ Les dates deja indiquees sont conservees. Les dates manquantes sont reconstituee
 
 ## 2026-11-06
 
+- Visioconférence / libellé du lobby Jitsi (2026-11-06) : l’action de retour à la demande d’admission indique « Je n’ai pas de mot de passe, je vais simplement attendre… », pour éviter de laisser croire qu’aucun mot de passe n’est défini dans la salle. Correction conservée dans l’image du frontal local et du VPS.
+
+- Visioconférence / entrée des invités (2026-11-06) : un bouton ouvre la réunion sans demander le nom dans OMO ; le nom est saisi directement dans Jitsi. L’identité des comptes OMO connectés reste préremplie.
+
+- Visioconférence / mot de passe Jitsi (2026-11-06) : mot de passe facultatif dans les réglages d’une salle pour contourner le lobby via le champ natif Jitsi, même sans animateur présent. Bouton de saisie masqué sans mot de passe défini. Mot de passe chiffré, jamais réaffiché, conservé si le champ reste vide et supprimable explicitement ; aucun formulaire de mot de passe extérieur et aucun changement des autres droits. Les mots de passe du premier prototype doivent être redéfinis une fois après migration.
+
+- Formulaires / sélecteurs de relations (2026-11-06) : libellés des options échappés dans adminEdit pour afficher les caractères spéciaux comme du texte, notamment les noms d’organisations proposés dans les réglages des salles.
+
+- Visioconférence / réglages des salles (2026-11-06) : édition du nom et association facultative à une organisation sans changer le lien d’invitation. Options distinctes pour les membres actifs de l’organisation (ou tous les comptes OMO sans organisation) et les invités : micro/caméra coupés au démarrage, caméra bloquée, partage d’écran libre ou sur autorisation individuelle et salle d’attente facultative. Propriétaire toujours animateur. Réglages signés et versionnés côté Jitsi ; caméra bloquée dès la préparation et le lobby, avec contrôle à l’entrée, sans bloquer le microphone.
+
+- PV / verification des autres propositions (2026-11-06) : tests de conservation du contenu propose a la reouverture pour les projets, taches recurrentes, indicateurs, roles, cercles et groupes, en creation et modification. Verification des champs volontairement vides dans les propositions de structure.
+
 - PV / edition des propositions de regle (2026-11-06) : la reouverture charge le contenu enregistre de la proposition, sans le remplacer par la regle actuelle. Les nouvelles propositions de modification restent initialisees avec la regle existante.
 
 - Visioconférence / activation sur le VPS (2026-11-06) : passerelle JWT OMO2 activée après publication sur bêta, avec identité et rôle signés, invités en salle d’attente et accueil meet.opengov.tools renvoyé vers beta.opengov.tools/visio/. Sauvegarde de la configuration précédente et commande de gestion conservant le profil OMO ; droits et audio/vidéo à trois participants simulés vérifiés sur le serveur public.

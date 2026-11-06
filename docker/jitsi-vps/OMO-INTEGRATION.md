@@ -23,13 +23,75 @@ trois participants simulés sur UDP 10000.
 
 La première étape fournit `/visio/` : connexion OMO2 habituelle, création d’une
 salle personnelle et invitation `/visio/<code aléatoire>`. Le créateur est le
-seul animateur. Les autres comptes OMO sont participants ; les invités indiquent
-leur nom puis attendent une admission. Les liens partagés ne contiennent aucun
+seul animateur. Les autres comptes OMO sont participants ; les invités ouvrent
+la réunion avec un bouton, puis indiquent leur nom directement dans Jitsi.
+Les liens partagés ne contiennent aucun
 jeton. Les rôles sont imposés par Jitsi, pas uniquement par l’interface OMO.
 
 Le nom de salle Jitsi est opaque. Le titre choisi apparaît dans OMO et devient
 le sujet de la conférence lorsque l’animateur la rejoint. Les salles restent
 réutilisables. Cette étape ne les associe pas encore à des événements du calendrier.
+
+## Réglages des salles
+
+Le propriétaire dispose d’un lien **Modifier la salle**, dans la liste et dans
+la salle ouverte. Le titre et l’organisation facultative sont modifiables sans
+changer le lien d’invitation. Les champs sont rendus par `adminEdit` et enregistrés
+avec la migration `2026-11-06-03-video-room-settings.sql`.
+
+Deux groupes possèdent des réglages indépendants : membres identifiés et invités.
+Avec une organisation associée, l’appartenance active à cette organisation est
+requise pour le groupe membres ; un autre compte OMO reste identifié mais reçoit
+les droits invités. Sans organisation, tout compte OMO actif est un membre.
+Le propriétaire conserve son rôle d’animateur et n’a pas de réglages de groupe.
+
+Chaque groupe peut commencer micro coupé et/ou caméra éteinte, avoir la caméra
+bloquée, partager librement ou sur autorisation individuelle, et passer ou non
+par le lobby. Les options de démarrage sont des valeurs initiales modifiables
+par la personne ; le blocage caméra s’applique aussi à l’écran de préparation et
+au lobby, via la politique de permissions du navigateur et un contrôle à l’entrée.
+Il ne coupe pas le microphone et n’interdit pas le partage d’écran.
+
+La politique complète et le groupe sont signés dans le JWT. Le module Prosody
+utilise les listes d’autorisation natives de Jitsi pour la caméra et le partage
+d’écran. Les personnes du groupe autorisé sont admises automatiquement dans ces
+listes ; le modérateur peut approuver individuellement les demandes de partage.
+Les versions des réglages sont monotones : un ancien jeton ne rétablit pas une
+ancienne politique. Les options de démarrage et l’appartenance sont recalculées
+à l’ouverture de la page ; recharger les pages déjà ouvertes après une modification.
+
+Le propriétaire peut définir un **mot de passe d’accès direct** commun aux groupes
+qui passent par le lobby. Sans mot de passe, ils peuvent toujours demander leur
+admission ; le bon mot de passe permet d’entrer immédiatement, même avant
+l’arrivée du propriétaire. Les groupes déjà autorisés à entrer directement
+n’ont rien à saisir. Les droits caméra/écran et le rôle restent identiques.
+
+Le mot de passe est saisi uniquement dans le champ natif du lobby Jitsi.
+Le bouton de saisie est masqué si aucun mot de passe n’est configuré.
+L’action de retour à la demande d’admission indique « Je n’ai pas de mot de
+passe, je vais simplement attendre… ». La correction française est intégrée
+dans le frontal construit depuis l’image officielle épinglée. Copier aussi
+`docker/jitsi/web/Dockerfile` vers `omo-integration/web/Dockerfile` et construire
+avec `sudo /opt/jitsi/compose.sh build web` avant de recréer le frontal.
+OMO chiffre le mot de passe avec AES-256-GCM, une clé dérivée du secret JWT et
+du nom de salle, puis transmet cette enveloppe dans la politique signée.
+Prosody la déchiffre et initialise le vrai mot de passe de la salle Jitsi.
+Le mot de passe en clair ne figure ni dans les jetons, ni dans les invitations,
+ni dans le HTML. Aucun formulaire d’accès ou de nom supplémentaire côté OMO.
+
+Un champ vide conserve le mot de passe ; une case permet de le supprimer.
+Les modifications s’appliquent à la prochaine ouverture, sans déconnecter les
+appels déjà établis. Les jetons délivrés gardent leur validité normale.
+Appliquer les migrations `2026-11-06-04-video-room-lobby-password.sql` puis
+`2026-11-06-05-video-room-native-password.sql` avec le code. Les mots de passe
+hachés du premier prototype doivent être redéfinis une fois pour Jitsi.
+Une rotation du secret JWT nécessite aussi de redéfinir les mots de passe
+des salles, chiffrés avec l’ancien secret.
+
+Déployer aussi la version correspondante de
+`prosody-plugins/mod_omo_lobby_autostart.lua` sur Jitsi, puis recharger ce module.
+Les anciens jetons sans réglages conservent le comportement initial pendant la
+publication de l’application.
 
 ## Publication en deux temps
 

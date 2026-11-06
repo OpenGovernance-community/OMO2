@@ -34,7 +34,9 @@ x-environment: &environment
 services:
   jitsi-web:
     <<: *runtime
-    image: ghcr.io/jitsi/web:stable-11248-3
+    image: omo-jitsi-web:stable-11248-3-omo1
+    build:
+      context: ./web
     mem_limit: 256m
     environment:
       <<: *environment

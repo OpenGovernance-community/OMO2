@@ -1,6 +1,9 @@
 # Add after compose.vps.yaml only when OMO2 /visio/ and its matching key are deployed.
 services:
   web:
+    image: omo-jitsi-web:stable-11248-3-omo1
+    build:
+      context: ./web
     environment:
       ENABLE_AUTH: "1"
       AUTH_TYPE: jwt

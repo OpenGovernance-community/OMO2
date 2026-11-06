@@ -3,6 +3,10 @@
 Jitsi est inclus dans le Compose principal. Il utilise les mêmes images
 officielles épinglées et les mêmes droits JWT que le profil OMO2 du VPS.
 Apache fournit HTTPS sur `https://meet.localtest.me` et transmet les WebSockets.
+Le frontal est construit depuis l’image officielle épinglée, avec une seule
+correction du libellé français du lobby dans `web/Dockerfile` : « Je n’ai pas de
+mot de passe, je vais simplement attendre… ». Le bouton revient à la demande
+d’admission. Reconstruire avec `docker compose build jitsi-web` après modification.
 Les quatre services Jitsi restent séparés ; seul le frontal rejoint le réseau
 de l’application. Aucun compte Jitsi à créer.
 
@@ -29,6 +33,30 @@ Ouvrir **https://localtest.me/visio/**, ou `/visio/` sur le sous-domaine local
 OMO habituel, puis se connecter et créer une réunion. Ouvrir son lien dans une
 fenêtre privée pour essayer la salle d’attente. Un autre compte OMO actif
 rejoint directement comme participant, sans devenir animateur.
+
+Le lien **Modifier la salle** permet de changer son nom, son organisation
+facultative et les options des membres et des invités. Une organisation associée
+réserve le groupe membres à ses membres actifs ; les autres comptes sont invités.
+Les micros/caméras au démarrage, la caméra bloquée, le partage sur autorisation et
+le lobby sont indépendants pour chaque groupe. Le propriétaire n’est pas restreint.
+Appliquer aussi la migration `2026-11-06-03-video-room-settings.sql` par le flux
+normal de mise à jour. Après une mise à jour du module Prosody local, recharger
+le module ou redémarrer `jitsi-prosody` pour prendre en compte ses nouveaux hooks.
+
+Un mot de passe facultatif d’accès direct est configurable dans cette même page.
+Il permet aux personnes soumises au lobby de le contourner, sans obtenir d’autres
+droits. Sans mot de passe, elles peuvent toujours attendre l’admission. Le code
+est saisi directement dans le lobby Jitsi et fonctionne sans animateur déjà
+présent. Le bouton de saisie reste masqué sans mot de passe configuré.
+Vide à l’enregistrement : conserver le code ; case cochée : le supprimer.
+Appliquer les migrations `2026-11-06-04-video-room-lobby-password.sql` puis
+`2026-11-06-05-video-room-native-password.sql` et recharger le module Prosody.
+Le mot de passe est chiffré en base et dans la politique signée ; Prosody seul
+le déchiffre pour initialiser le mot de passe natif de la salle. Une rotation
+du secret JWT nécessite de redéfinir ces mots de passe, de même que les codes
+hachés du premier prototype. Aucun nouveau paramètre de connexion à fournir.
+Pour un invité, OMO affiche simplement un bouton d’ouverture : le nom est
+demandé dans Jitsi. Les comptes connectés conservent leur identité OMO.
 
 Les réglages sont modifiables dans **Paramètres → Configuration du serveur →
 Visioconférence Jitsi** : activation, adresse publique, identifiant JWT, clé de
