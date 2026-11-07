@@ -7,6 +7,7 @@ require_once dirname(__DIR__) . '/common/patreon.php';
 require_once dirname(__DIR__) . '/common/translation_bundles.php';
 require_once dirname(__DIR__) . '/common/web_push.php';
 require_once __DIR__ . '/topbar.php';
+require_once __DIR__ . '/manifest_icons.php';
 
 $sourceLang = [
     'app.drawer.close' => ['text' => 'Fermer', 'context' => 'Accessible label and tooltip for closing an external application subdrawer.'],
@@ -359,26 +360,7 @@ function omoBuildManifestUrlForContext(array $organizationContext, $fallback = '
 
 function omoBuildManifestIconUrlForContext(array $organizationContext, $size = 192, $purpose = 'any')
 {
-    $payload = implode('|', [
-        (string)($organizationContext['id'] ?? 0),
-        (string)($organizationContext['logo'] ?? ''),
-        (string)($organizationContext['color'] ?? ''),
-    ]);
-    $query = [
-        'size' => (int)$size,
-        'v' => substr(sha1($payload), 0, 12),
-    ];
-
-    $organizationId = (int)($organizationContext['id'] ?? 0);
-    if ($organizationId > 0) {
-        $query['oid'] = $organizationId;
-    }
-
-    if ($purpose === 'maskable') {
-        $query['purpose'] = 'maskable';
-    }
-
-    return '/omo/manifest_icon.php?' . http_build_query($query);
+    return omoManifestBuildIconUrl($organizationContext, $size, $purpose);
 }
 
 function omoBuildPwaHeadHtml($themeColor = '#004663', $iconUrl = '/omo/icons/icon-192.png', $appTitle = 'OMO', $manifestUrl = '/omo/manifest.php')

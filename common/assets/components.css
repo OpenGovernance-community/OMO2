@@ -218,6 +218,10 @@ body.meeting-page {
         var(--param-page-shell-padding-bottom);
 }
 
+.generic-page-shell--compact-bottom {
+    padding-bottom: var(--generic-space-3, 12px);
+}
+
 /* Summernote appends its link dialog outside the editor. Keep that dialog
  * consistent with the application dark theme instead of inheriting light
  * modal surfaces with dark-theme text. */
@@ -888,6 +892,10 @@ a.generic-correspondence-list__row:focus-visible {
     grid-template-columns: var(--param-form-grid-columns, repeat(3, minmax(0, 1fr)));
 }
 
+.generic-form-grid--two-thirds {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+}
+
 .generic-form-grid--main-aside {
     /* Configurable column ratio, with the shared mobile stacking below. */
     grid-template-columns: var(--param-form-grid-columns, minmax(0, 3fr) minmax(0, 2fr));
@@ -895,6 +903,7 @@ a.generic-correspondence-list__row:focus-visible {
 
 @media (max-width: 480px) {
     .generic-form-grid--pair,
+    .generic-form-grid--two-thirds,
     .generic-form-grid--trio,
     .generic-form-grid--main-aside {
         grid-template-columns: minmax(0, 1fr);
@@ -1474,6 +1483,13 @@ html[data-theme="dark"] .black-icon,
     text-decoration: none;
     cursor: pointer;
     box-sizing: border-box;
+}
+
+/* Match a single-line form control in adjacent form actions. */
+.generic-action-button--form-control {
+    min-height: 44px;
+    padding-block: 11px;
+    line-height: normal;
 }
 
 .generic-action-button[hidden] {
@@ -3935,3 +3951,6 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
 .generic-resource-archives__item { display: grid; gap: 8px; }
 
 .generic-resource-archives__item > .generic-meta { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+
+/* Inactive records remain manageable while their status is visually distinct. */
+.generic-section--inactive { filter: grayscale(1); opacity: .65; }

@@ -17,14 +17,14 @@ set_exception_handler(static function (Throwable $error): void {
 });
 
 /** MCP and REST are two transports of the same OAuth resource and organization grant. */
-function omoApiAuthenticate(): array
+function omoApiAuthenticate(string $transport = 'mcp'): array
 {
     // A browser cookie or a share link never authorizes the API.
     if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
     $_SESSION = [];
     $authorization = (string)($_SERVER['HTTP_AUTHORIZATION'] ?? ($_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? ''));
     $grant = preg_match('/^Bearer ([A-Za-z0-9_-]{43})$/iD', $authorization, $match)
-        ? \dbObject\McpOauthGrant::authenticate($match[1], omoMcpPublicUrl()) : null;
+        ? \dbObject\McpOauthGrant::authenticate($match[1], omoMcpPublicUrl(), $transport) : null;
     if (!$grant) {
         header('WWW-Authenticate: ' . omoMcpChallenge($authorization === '' ? '' : 'invalid_token'));
         omoMcpJson(['error' => 'unauthorized', 'error_description' => 'Connect your OMO account using OAuth.'], 401);

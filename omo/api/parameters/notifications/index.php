@@ -4,6 +4,9 @@ require_once dirname(__DIR__, 2) . '/bootstrap.php';
 require_once dirname(__DIR__, 4) . '/common/notification_center.php';
 
 $sourceLang = [
+    'notifications.preferences.event.user_login_new_device' => ['text' => 'Connexion sur un nouvel appareil', 'context' => 'Personal notification preference for first login from a browser.'],
+    'notifications.preferences.event.user_login_known_device' => ['text' => 'Connexion sur un appareil deja identifie', 'context' => 'Personal notification preference for an explicit login from a known browser.'],
+    'notifications.preferences.personal_help' => ['text' => 'Ces reglages personnels sont communs a toutes vos organisations. Les connexions automatiques via "se souvenir de moi" ne declenchent aucune notification. Un navigateur est reconnu pendant un an apres sa derniere connexion manuelle ; un autre navigateur, la navigation privee ou la suppression des cookies peut le faire apparaitre comme nouvel appareil.', 'context' => 'Scope and limitations of personal login notification preferences.'],
     'notifications.title' => ['text' => 'Notifications', 'context' => 'Title of the personal push notification settings panel.'],
     'notifications.description' => ['text' => 'Autorisez OMO à vous prévenir sur cet appareil, puis choisissez les événements et canaux qui vous conviennent.', 'context' => 'Description of the personal push notification settings panel.'],
     'notifications.permission.label' => ['text' => 'Autoriser les notifications sur cet appareil', 'context' => 'Label of the toggle that controls browser push notifications.'],
@@ -176,6 +179,9 @@ $configuration = [
         <?php foreach ($eventGroups as $groupKey => $eventGroup): ?>
         <section class="omo-notification-preferences-group generic-stack generic-stack--compact" aria-labelledby="omo-notification-group-<?= htmlspecialchars($groupKey, ENT_QUOTES, 'UTF-8') ?>">
             <h4 id="omo-notification-group-<?= htmlspecialchars($groupKey, ENT_QUOTES, 'UTF-8') ?>" class="generic-card-title generic-card-title--medium"><?= htmlspecialchars($translate('notifications.preferences.group.' . $groupKey), ENT_QUOTES, 'UTF-8') ?></h4>
+            <?php if ($groupKey === 'personal'): ?>
+            <p class="generic-description"><?= htmlspecialchars($translate('notifications.preferences.personal_help'), ENT_QUOTES, 'UTF-8') ?></p>
+            <?php endif; ?>
             <div class="omo-notification-preferences-grid" role="table" aria-label="<?= htmlspecialchars($translate('notifications.preferences.group.' . $groupKey), ENT_QUOTES, 'UTF-8') ?>" style="--param-notification-channel-count: <?= count($preferenceChannels) ?>;">
                 <div class="omo-notification-preferences-grid__row omo-notification-preferences-grid__row--header" role="row">
                     <span role="columnheader"><?= htmlspecialchars($translate('notifications.preferences.header.event'), ENT_QUOTES, 'UTF-8') ?></span>

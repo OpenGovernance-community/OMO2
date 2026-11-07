@@ -116,7 +116,7 @@ omoMcpPageStart(omoMcpUiT('title'), $request['redirect_uri']);
             <label class="generic-form-label" for="organization_id"><?= omoMcpEscape(omoMcpUiT('organization')) ?></label>
             <select class="generic-form-control" name="organization_id" id="organization_id" required>
                 <?php foreach ($organizations as $organization): ?>
-                    <option value="<?= (int)$organization->getId() ?>"><?= omoMcpEscape((string)$organization->get('name')) ?></option>
+                    <option value="<?= (int)$organization->getId() ?>"><?= omoMcpEscape((string)$organization->get('name') . ' (' . implode(' / ', array_filter([$organization->isApiEnabled() ? 'API' : '', $organization->isMcpEnabled() ? 'MCP' : ''])) . ')') ?></option>
                 <?php endforeach; ?>
             </select>
         </div>

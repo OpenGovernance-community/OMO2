@@ -16,6 +16,8 @@ if ($expected === '' || !is_string($_POST['csrf'] ?? null) || !hash_equals($expe
     || (int)($_POST['organization_id'] ?? 0) !== $organizationId) { $respond(403, 'csrf'); }
 $organization = new \dbObject\Organization();
 if (!$organization->load($organizationId)) { $respond(404, 'organization'); }
+if (!in_array($_POST['mcp_enabled'] ?? null, ['0', '1'], true) || !in_array($_POST['api_enabled'] ?? null, ['0', '1'], true)
+    || !in_array($_POST['ai_blocked'] ?? null, ['0', '1'], true)) { $respond(422, 'mcp_invalid'); }
 $email = is_string($_POST['email'] ?? null) ? trim($_POST['email']) : null;
 $frequency = $_POST['frequency'] ?? null;
 if (!in_array($_POST['enabled'] ?? null, ['0', '1'], true) || $email === null || strlen($email) > 254
@@ -25,12 +27,15 @@ $backup = \dbObject\OrganizationBackup::forOrganization($organizationId);
 $backup->set('enabled', (int)$_POST['enabled']);
 $backup->set('email', $email);
 $backup->set('frequency', $frequency);
+$organization->setMcpEnabled($_POST['mcp_enabled'] === '1');
+$organization->setApiEnabled($_POST['api_enabled'] === '1');
+$organization->setAiBlocked($_POST['ai_blocked'] === '1');
 if (($_POST['backup_now'] ?? '') === '1') {
     require_once dirname(__DIR__, 4) . '/common/organization_backup.php';
     require_once dirname(__DIR__, 4) . '/common/omo_maintenance_lock.php';
     try {
-        $result = omoRunMaintenanceLocked(static function () use ($backup): array {
-            if (empty($backup->save()['status'])) { throw new RuntimeException('Unable to save backup settings.'); }
+        $result = omoRunMaintenanceLocked(static function () use ($backup, $organization): array {
+            $backup->saveSecuritySettings($organization);
             omoSendOrganizationBackup($backup);
             return ['sent' => true];
         }, 'organization_backup_manual', true);
@@ -44,8 +49,11 @@ if (($_POST['backup_now'] ?? '') === '1') {
         'nextDueLabel' => $backup->get('enabled') ? omoSecurityT('next', ['date' => $backup->nextDueAt()->format('d.m.Y H:i')]) : '',
     ]);
 }
-$result = $backup->save();
-if (empty($result['status'])) { $respond(500, 'error'); }
+try { $backup->saveSecuritySettings($organization); }
+catch (Throwable $exception) {
+    error_log('OMO organization security settings failed for ' . $organizationId . ': ' . $exception->getMessage());
+    $respond(500, 'error');
+}
 $next = $backup->nextDueAt();
 $respond(200, 'saved', [
     'nextDueLabel' => $backup->get('enabled')

@@ -31,6 +31,10 @@ if (
     $jsonResponse(['status' => false, 'message' => omoDocumentsUiT('acces_refuse')], 403);
 }
 
+if (!commonAiOrganizationAllows($organizationId)) {
+    $jsonResponse(['status' => false, 'code' => 'organization_ai_blocked', 'message' => commonAiOrganizationBlockedMessage()], 403);
+}
+
 if (!commonAiIsConfigured(commonOpenAiGetRewriteModel())) {
     $jsonResponse(['status' => false, 'message' => omoDocumentsUiT('configuration_ia_indisponible')], 503);
 }

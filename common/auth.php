@@ -2498,6 +2498,39 @@ function commonStorePendingLoginToken($token)
     $_SESSION['pending_login_token'] = (string)$token;
 }
 
+function commonGetLoginDeviceCookieName(int $userId): string
+{
+    return preg_replace('/^remember_token/', 'login_device', commonGetRememberCookieName()) . '_' . $userId;
+}
+
+function commonNotifyInteractiveLogin(int $userId, string $ipAddress): void
+{
+    // Notification/recognition failures must not invalidate an authenticated session.
+    try {
+        $cookieName = commonGetLoginDeviceCookieName($userId);
+        $device = \dbObject\UserLoginDevice::recordLogin($userId, (string)($_COOKIE[$cookieName] ?? ''));
+        commonSetCookieValue($cookieName, $device['token'], time() + \dbObject\UserLoginDevice::lifetimeSeconds(), true);
+        $_COOKIE[$cookieName] = $device['token'];
+        $known = $device['known'];
+    } catch (\Throwable $error) {
+        $known = false;
+        error_log('Login device recognition failed: ' . $error->getMessage());
+    }
+    try {
+        require_once __DIR__ . '/notification_center.php';
+        $titleKey = $known ? 'notification.login.known' : 'notification.login.new';
+        $body = notificationCenterT('notification.login.body', [
+            'date' => (new \DateTimeImmutable('now', new \DateTimeZone('Europe/Zurich')))->format('d.m.Y H:i:s'),
+            'ip' => $ipAddress,
+            'browser' => mb_substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 250, 'UTF-8'),
+        ]);
+        notificationCenterCreateForUsers(0, $known ? 'user_login_known_device' : 'user_login_new_device', [$userId],
+            'user-login:' . bin2hex(random_bytes(16)), notificationCenterT($titleKey), $body, '/omo/#parameters');
+    } catch (\Throwable $error) {
+        error_log('Login notification failed: ' . $error->getMessage());
+    }
+}
+
 function commonCompleteInteractiveLogin($userId, $remember, $ipAddress)
 {
     $userId = (int)$userId;
@@ -2525,6 +2558,7 @@ function commonCompleteInteractiveLogin($userId, $remember, $ipAddress)
     commonClearCurrentUserAllAdminModes();
     unset($_SESSION['permissionCacheByOrganization']);
     commonStorePendingLoginToken(null);
+    commonNotifyInteractiveLogin($userId, (string)$ipAddress);
     return true;
 }
 

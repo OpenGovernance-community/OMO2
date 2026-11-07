@@ -72,6 +72,26 @@ class OrganizationBackup extends DbObject
         )];
     }
 
+    /** Persist the whole security drawer together, before any optional backup delivery. */
+    public function saveSecuritySettings(Organization $organization): void
+    {
+        if ((int)$organization->getId() <= 0 || (int)$organization->getId() !== (int)$this->get('IDorganization')) {
+            throw new \InvalidArgumentException('Security settings organization mismatch.');
+        }
+        $pdo = self::getPdo();
+        $ownsTransaction = !$pdo->inTransaction();
+        try {
+            if ($ownsTransaction) $pdo->beginTransaction();
+            if (empty($organization->save()['status']) || empty($this->save()['status'])) {
+                throw new \RuntimeException('Unable to save organization security settings.');
+            }
+            if ($ownsTransaction) $pdo->commit();
+        } catch (\Throwable $error) {
+            if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+            throw $error;
+        }
+    }
+
     public function nextDueAt(): ?\DateTimeImmutable
     {
         $last = $this->get('last_sent_at');

@@ -730,6 +730,7 @@
 			
 			// Demande à l'IA une traduction du texte
             require_once __DIR__ . '/common/ai_client.php';
+            if (!commonAiOrganizationAllows(commonAiRequestOrganization())) return $text;
             $apiKey = commonAiGetApiKey();
             if ($apiKey === '') return $text;
             try {

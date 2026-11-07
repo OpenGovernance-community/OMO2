@@ -1,0 +1,129 @@
+# Local Jitsi: Apache terminates HTTPS; only the frontend joins the app network.
+x-runtime: &runtime
+  restart: unless-stopped
+  read_only: true
+  env_file:
+    - ./.env.private
+  tmpfs:
+    - /run:size=32m,mode=1750,exec,uid=1000,gid=1000
+    - /tmp:size=16m,mode=1777,noexec,uid=1000,gid=1000
+  networks:
+    - jitsi
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+x-environment: &environment
+  TZ: Europe/Zurich
+  PUBLIC_URL: https://meet.localtest.me
+  ENABLE_AUTH: "1"
+  AUTH_TYPE: jwt
+  ENABLE_GUESTS: "0"
+  ENABLE_LOBBY: "1"
+  ENABLE_AUTO_LOGIN: "0"
+  ENABLE_XMPP_WEBSOCKET: "1"
+  XMPP_DOMAIN: meet.jitsi
+  XMPP_AUTH_DOMAIN: auth.meet.jitsi
+  XMPP_MUC_DOMAIN: muc.meet.jitsi
+  XMPP_INTERNAL_MUC_DOMAIN: internal-muc.meet.jitsi
+  XMPP_SERVER: xmpp.meet.jitsi
+  ENABLE_IPV6: "0"
+
+services:
+  jitsi-web:
+    <<: *runtime
+    image: omo-jitsi-web:stable-11248-3-omo1
+    build:
+      context: ./web
+      args:
+        OMO_VISIO_INVITE_URL: https://localtest.me/visio
+    mem_limit: 256m
+    environment:
+      <<: *environment
+      XMPP_BOSH_URL_BASE: http://xmpp.meet.jitsi:5280
+      DISABLE_HTTPS: "1"
+      ENABLE_HTTP_REDIRECT: "0"
+      ENABLE_LETSENCRYPT: "0"
+      ENABLE_HSTS: "0"
+      ENABLE_PREJOIN_PAGE: "1"
+      ENABLE_REQUIRE_DISPLAY_NAME: "1"
+      DEFAULT_LANGUAGE: fr
+      ENABLE_P2P: "1"
+      ENABLE_RECORDING: "0"
+      ENABLE_LIVESTREAMING: "0"
+      ENABLE_TRANSCRIPTIONS: "0"
+      ENABLE_JAAS_COMPONENTS: "0"
+      ENABLE_THIRD_PARTY_REQUESTS: "0"
+      RTCSTATS_ENABLED: "0"
+    tmpfs:
+      - /run:size=32m,mode=1750,exec,uid=1000,gid=1000
+      - /tmp:size=16m,mode=1777,noexec,uid=1000,gid=1000
+      - /storage:size=16m,uid=1000,gid=1000
+    networks:
+      - default
+      - jitsi
+    depends_on:
+      - jitsi-prosody
+
+  jitsi-prosody:
+    <<: *runtime
+    image: ghcr.io/jitsi/prosody:stable-11248-3
+    mem_limit: 256m
+    environment:
+      <<: *environment
+      JWT_ALLOW_EMPTY: "0"
+      JWT_ENABLE_DOMAIN_VERIFICATION: "1"
+      JWT_ACCEPTED_ISSUERS: omo2
+      JWT_ACCEPTED_AUDIENCES: omo2
+      XMPP_MUC_MODULES: token_affiliation,token_lobby_bypass,omo_lobby_autostart
+    tmpfs:
+      - /run:size=32m,mode=1750,exec,uid=1000,gid=1000
+      - /tmp:size=16m,mode=1777,noexec,uid=1000,gid=1000
+      - /var/lib/prosody:size=32m,uid=1000,gid=1000
+    volumes:
+      - ../jitsi-vps/prosody-plugins/mod_omo_lobby_autostart.lua:/prosody-plugins-custom/mod_omo_lobby_autostart.lua:ro
+    networks:
+      jitsi:
+        aliases:
+          - xmpp.meet.jitsi
+
+  jitsi-jicofo:
+    <<: *runtime
+    image: ghcr.io/jitsi/jicofo:stable-11248-3
+    mem_limit: 512m
+    environment:
+      <<: *environment
+      JICOFO_ENABLE_AUTH: "0"
+      JICOFO_ENABLE_REST: "1"
+      JICOFO_ENABLE_HEALTH_CHECKS: "1"
+      ENABLE_AUTO_OWNER: "0"
+      JICOFO_MAX_MEMORY: 256m
+    networks:
+      jitsi:
+        aliases:
+          - jicofo
+    depends_on:
+      - jitsi-prosody
+
+  jitsi-jvb:
+    <<: *runtime
+    image: ghcr.io/jitsi/jvb:stable-11248-3
+    mem_limit: 1g
+    environment:
+      <<: *environment
+      JVB_PORT: "10000"
+      JVB_DISABLE_STUN: "1"
+      VIDEOBRIDGE_MAX_MEMORY: 512m
+    networks:
+      jitsi:
+        aliases:
+          - jvb
+    ports:
+      - "10000:10000/udp"
+    depends_on:
+      - jitsi-prosody
+
+networks:
+  jitsi:

@@ -14,6 +14,10 @@ board.opengov.tools {
     }
 }
 
+meet.opengov.tools {
+    reverse_proxy jitsi-web:8000
+}
+
 pad.omo2.org {
     reverse_proxy https://doc.opengov.tools {
         header_up Host doc.opengov.tools

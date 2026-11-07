@@ -1,9 +1,73 @@
 <?php
 require_once dirname(__DIR__) . '/shared_functions.php';
 require_once dirname(__DIR__) . '/common/auth.php';
+require_once __DIR__ . '/manifest_icons.php';
 
 $omoManifestIconDebug = isset($_GET['debug']) && $_GET['debug'] === '1';
 $omoManifestIconDiagnostics = [];
+
+function omoManifestIconRespond(string $png, bool $versioned = false): never
+{
+    header('Content-Type: image/png');
+    // Unpinned URLs can resolve to another organization on the next request.
+    header('Cache-Control: private, ' . ($versioned ? 'max-age=31536000, immutable' : 'no-cache'));
+    header('Vary: Cookie');
+    header_remove('Pragma');
+    header_remove('Expires');
+    $etag = '"' . hash('sha256', $png) . '"';
+    header('ETag: ' . $etag);
+    $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+    if (in_array($method, ['GET', 'HEAD'], true)) {
+        foreach (explode(',', (string)($_SERVER['HTTP_IF_NONE_MATCH'] ?? '')) as $candidate) {
+            $candidate = trim($candidate);
+            if ($candidate === '*' || preg_replace('/^W\//', '', $candidate) === $etag) {
+                http_response_code(304);
+                exit;
+            }
+        }
+    }
+    if ($method !== 'HEAD') {
+        echo $png;
+    }
+    exit;
+}
+
+function omoManifestIconCachePath(int $organizationId, int $size, string $purpose): string
+{
+    $directory = sys_get_temp_dir() . '/omo-manifest-icons-' . substr(hash('sha256', __DIR__), 0, 16);
+    // One slot per organization and variant; replacing a logo does not accumulate files.
+    return $directory . '/' . hash('sha256', $organizationId . ':' . $size . ':' . $purpose) . '.cache';
+}
+
+function omoManifestIconCacheRead(string $path, string $version): ?string
+{
+    $cached = @file_get_contents($path);
+    $prefix = $version . "\n";
+    if ($cached === false || !str_starts_with($cached, $prefix . "\x89PNG\r\n\x1a\n")) {
+        return null;
+    }
+    return substr($cached, strlen($prefix));
+}
+
+function omoManifestIconCacheWrite(string $path, string $version, string $png): void
+{
+    $directory = dirname($path);
+    if (!is_dir($directory) && !@mkdir($directory, 0775, true) && !is_dir($directory)) {
+        return;
+    }
+    $temporary = @tempnam($directory, 'icon-');
+    if ($temporary === false) {
+        return;
+    }
+    $content = $version . "\n" . $png;
+    if (@file_put_contents($temporary, $content) === strlen($content)) {
+        @chmod($temporary, 0644);
+        @rename($temporary, $path);
+    }
+    if (is_file($temporary)) {
+        @unlink($temporary);
+    }
+}
 
 function omoManifestIconLoadContext()
 {
@@ -40,6 +104,7 @@ function omoManifestIconOutputFallback($size, $purpose)
     $omoManifestIconDiagnostics['fallback_exists'] = is_file($fallbackPath);
 
     if ($omoManifestIconDebug) {
+        header('Cache-Control: no-store');
         header('Content-Type: application/json; charset=UTF-8');
         echo json_encode($omoManifestIconDiagnostics, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
         exit;
@@ -50,12 +115,7 @@ function omoManifestIconOutputFallback($size, $purpose)
         exit;
     }
 
-    header('Content-Type: image/png');
-    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-    header('Pragma: no-cache');
-    header('Expires: 0');
-    readfile($fallbackPath);
-    exit;
+    omoManifestIconRespond((string)file_get_contents($fallbackPath));
 }
 
 function omoManifestIconLoadSourceImage($absolutePath)
@@ -145,6 +205,9 @@ function omoManifestIconHexToRgb($value, $fallback = [0, 70, 99])
 }
 
 $context = omoManifestIconLoadContext();
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
 $size = isset($_GET['size']) ? (int)$_GET['size'] : 512;
 $purpose = isset($_GET['purpose']) && $_GET['purpose'] === 'maskable' ? 'maskable' : 'any';
 
@@ -174,6 +237,15 @@ if ($absoluteLogoPath === '' || !is_file($absoluteLogoPath)) {
     $omoManifestIconDiagnostics['result'] = 'fallback';
     $omoManifestIconDiagnostics['reason'] = 'logo_file_missing';
     omoManifestIconOutputFallback($size, $purpose);
+}
+
+$version = omoManifestBuildIconVersionToken($context);
+$versioned = (int)($_GET['oid'] ?? 0) > 0
+    && (int)$_GET['oid'] === (int)$context['id']
+    && is_string($_GET['v'] ?? null) && hash_equals($version, $_GET['v']);
+$cachePath = omoManifestIconCachePath((int)$context['id'], $size, $purpose);
+if (!$omoManifestIconDebug && ($cached = omoManifestIconCacheRead($cachePath, $version)) !== null) {
+    omoManifestIconRespond($cached, $versioned);
 }
 
 $source = omoManifestIconLoadSourceImage($absoluteLogoPath);
@@ -257,13 +329,13 @@ if ($omoManifestIconDebug) {
     $omoManifestIconDiagnostics['result'] = 'generated';
     $omoManifestIconDiagnostics['reason'] = 'ok';
     header('Content-Type: application/json; charset=UTF-8');
+    header('Cache-Control: no-store');
     echo json_encode($omoManifestIconDiagnostics, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
     exit;
 }
 
-header('Content-Type: image/png');
-header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-header('Pragma: no-cache');
-header('Expires: 0');
+ob_start();
 imagepng($canvas);
-exit;
+$png = (string)ob_get_clean();
+omoManifestIconCacheWrite($cachePath, $version, $png);
+omoManifestIconRespond($png, $versioned);

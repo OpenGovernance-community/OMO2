@@ -256,7 +256,7 @@ function displayField($object, $key, $default = null, $filter = null, ?array $tr
 
             // Load values and render them
             foreach ($object->getValues($key, $filter) as $value) {
-                $txt .= "<option value='" . $value->getId() . "'" . ($default == $value->getId() || (is_null($default) && $value->getId() == $object->get($key)) ? " selected" : "") . ">" . $value->getLabel() . "</option>";
+                $txt .= "<option value='" . $value->getId() . "'" . ($default == $value->getId() || (is_null($default) && $value->getId() == $object->get($key)) ? " selected" : "") . ">" . htmlspecialchars((string)$value->getLabel(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . "</option>";
             }
             $txt .= "</select>";
 
@@ -647,7 +647,11 @@ if (!empty($params['sections']) && is_array($params['sections'])) {
         if (!$sectionFields) continue;
         $collapsible = !empty($section['collapsible']);
         $title = htmlspecialchars((string)($section['title'] ?? ''), ENT_QUOTES, 'UTF-8');
-        $sectionBodyClass = ($section['layout'] ?? '') === 'pair' ? 'generic-form-grid generic-form-grid--pair' : 'generic-fieldset__body';
+        $sectionBodyClass = match ($section['layout'] ?? '') {
+            'pair' => 'generic-form-grid generic-form-grid--pair',
+            'two-thirds' => 'generic-form-grid generic-form-grid--two-thirds',
+            default => 'generic-fieldset__body',
+        };
         echo $collapsible
             ? "<details class='generic-accordion'><summary>" . $title . "</summary><div class='generic-accordion__content generic-form-stack'>"
             : "<fieldset class='generic-fieldset'><legend class='generic-card-title generic-card-title--small'>" . $title . "</legend><div class='" . $sectionBodyClass . "'>";
@@ -661,7 +665,8 @@ if (!empty($params['sections']) && is_array($params['sections'])) {
             $widget = in_array($field, $params['readOnlyFields'] ?? [], true)
                 ? htmlspecialchars((string)$this->get($field), ENT_QUOTES, 'UTF-8')
                 : displayField($this, $field, null, $params['filter'][$field] ?? null, $adminEditTranslationBundle, $adminEditTranslationSourceLang, !empty($params['compact']));
-            echo "<div class='generic-form-field' id='row_" . $fieldId . "'>";
+            $fieldClass = in_array($field, $section['fullWidthFields'] ?? [], true) ? ' generic-form-field--full' : '';
+            echo "<div class='generic-form-field" . $fieldClass . "' id='row_" . $fieldId . "'>";
             if ($this->getFieldType($field) === 'boolean') {
                 echo "<label class='generic-checkbox'>" . $widget . "<span class='generic-form-label'>" . $heading . "</span></label>";
             } else {

@@ -8,6 +8,15 @@ require_once dirname(__DIR__, 2) . '/omo/topbar.php';
 function siteStatsSourceLang(): array
 {
     $monitoring = [
+        'visio.title' => 'Trafic des visioconferences (prototype)',
+        'visio.group' => 'Regrouper le trafic visio', 'visio.organization' => 'Par organisation', 'visio.person' => 'Par personne',
+        'visio.received' => 'Recus par Jitsi (Mo)', 'visio.sent' => 'Envoyes par Jitsi (Mo)', 'visio.rooms' => 'Salles mesurees',
+        'visio.note' => 'Trafic media observe sur le serveur Jitsi, attribue au createur de la salle et a son organisation selectionnee au moment du releve. Releves toutes les 30 secondes ; les fins de connexion entre deux releves peuvent manquer. Echanges P2P, signalisation, TURN et surcout reseau exclus. Les volumes sont des minima observes, pas un compteur de facturation. Mo = 1 000 000 octets ; dates UTC.',
+        'visio.never' => 'Aucun releve recu. Le collecteur serveur doit etre active.',
+        'visio.fresh' => 'Dernier releve reussi : {date} UTC.',
+        'visio.stale' => 'Collecte interrompue ou en erreur : les totaux sont incomplets.',
+        'visio.unmatched' => '{count} connexions sans salle correspondante au dernier releve.',
+        'visio.deleted_person' => 'Personne #{id}', 'visio.deleted_org' => 'Organisation #{id}',
         'monitor.title' => 'Performance et charge', 'monitor.intro' => 'Temps de reponse, consommation et activite de la plateforme.',
         'monitor.range' => 'Periode', 'monitor.organization' => 'Organisation', 'monitor.all' => 'Toutes',
         'monitor.kind' => 'Mesures', 'monitor.web' => 'Pages HTTP', 'monitor.cron' => 'Executions du cron', 'monitor.task' => 'Taches du cron',
@@ -325,6 +334,7 @@ if ($kind !== 'web') { $organizationId = 0; } // Global maintenance is not owned
 $cron = in_array($_GET['cron'] ?? '', ['none', 'called', 'ran', 'skipped'], true) ? $_GET['cron'] : 'all';
 $sort = in_array($_GET['sort'] ?? '', ['cpu', 'total', 'volume'], true) ? $_GET['sort'] : 'slow';
 $aiOrigin = in_array($_GET['ai_origin'] ?? '', ['site', 'api', 'mcp', 'telegram', 'background'], true) ? $_GET['ai_origin'] : '';
+$visioGroup = ($_GET['visio_group'] ?? '') === 'person' ? 'person' : 'organization';
 $calDavSort = in_array($_GET['caldav_sort'] ?? '', ['cpu', 'total', 'volume'], true) ? $_GET['caldav_sort'] : 'total';
 $chartEndDate = new DateTimeImmutable('today', new DateTimeZone('UTC'));
 $chartStartDate = $chartEndDate->modify('-' . ($chartRange - 1) . ' days');
@@ -338,6 +348,7 @@ if ($allowed) {
         $organizationContext = ['id' => 1, 'name' => 'OpenMyOrganization', 'host' => commonGetRequestHost(), 'logo' => '/img/logo-OGC.png', 'isValid' => true];
     }
     commonReleaseReadOnlySession();
+    $visioTraffic = \dbObject\VideoTraffic::dashboard($chartStartDate->format('Y-m-d H:i:s'), $chartEndDate->modify('+1 day')->format('Y-m-d H:i:s'), $visioGroup, $organizationId);
     $aiUsage = \dbObject\AiUsage::dashboard($chartStartDate->format('Y-m-d H:i:s'), $chartEndDate->modify('+1 day')->format('Y-m-d H:i:s'), $organizationId, $aiOrigin);
     $growth = \dbObject\SiteStatistics::growth($chartStartDate, $chartEndDate);
     $performance = \dbObject\PerformanceHourly::dashboard($chartStartDate->format('Y-m-d H:i:s'),
@@ -380,6 +391,7 @@ if ($allowed) {
                 'cron' => ['monitor.cron_filter', array_combine(['all', 'none', 'called', 'ran', 'skipped'], array_map('siteStatsT', ['monitor.any', 'monitor.none', 'monitor.called', 'monitor.ran', 'monitor.skipped'])), $cron],
                 'sort' => ['monitor.sort', array_combine(['slow', 'cpu', 'total', 'volume'], array_map('siteStatsT', ['monitor.slow', 'monitor.cpu', 'monitor.total', 'monitor.volume'])), $sort],
                 'ai_origin' => ['ai.origin', ['' => siteStatsT('monitor.any')] + array_combine(['site', 'api', 'mcp', 'telegram', 'background'], array_map(static fn ($origin) => siteStatsT('ai.' . $origin), ['site', 'api', 'mcp', 'telegram', 'background'])), $aiOrigin],
+                'visio_group' => ['visio.group', ['organization' => siteStatsT('visio.organization'), 'person' => siteStatsT('visio.person')], $visioGroup],
                 'caldav_sort' => ['caldav.sort', array_combine(['total', 'volume', 'cpu'], array_map('siteStatsT', ['monitor.total', 'monitor.volume', 'monitor.cpu'])), $calDavSort],
             ]; foreach ($filters as $field => [$label, $options, $selected]): ?>
                 <label><?= siteStatsEscape(siteStatsT($label)) ?>
@@ -545,6 +557,31 @@ if ($allowed) {
                 </section>
             <?php endforeach; ?>
         </div>
+        <section class="generic-section generic-stack" id="visio-traffic">
+            <h2 class="generic-card-title"><?= siteStatsEscape(siteStatsT('visio.title')) ?></h2>
+            <p class="generic-help-text"><?= siteStatsEscape(siteStatsT('visio.note')) ?></p>
+            <?php if (!$visioTraffic['available']): ?>
+                <p><?= siteStatsEscape(siteStatsT('monitor.missing')) ?></p>
+            <?php else:
+                $trafficStatus = $visioTraffic['status'];
+                $lastSuccess = $trafficStatus['last_success'] ?? '';
+                $trafficStale = $lastSuccess !== '' && (strtotime($lastSuccess . ' UTC') < time() - 120 || !empty($trafficStatus['last_error'])); ?>
+                <p><?= siteStatsEscape($lastSuccess !== '' ? siteStatsT('visio.fresh', ['date' => $lastSuccess]) : siteStatsT('visio.never')) ?></p>
+                <?php if ($trafficStale): ?><p role="status"><?= siteStatsEscape(siteStatsT('visio.stale')) ?></p><?php endif; ?>
+                <?php if (!empty($trafficStatus['unmatched_rooms'])): ?><p><?= siteStatsEscape(siteStatsT('visio.unmatched', ['count' => $trafficStatus['unmatched_rooms']])) ?></p><?php endif; ?>
+                <?php if (!$visioTraffic['rows']): ?><p><?= siteStatsEscape(siteStatsT('stats.chart.empty')) ?></p>
+                <?php else: ?>
+                <div class="site-stats-table-scroll"><table class="site-stats-table">
+                    <thead><tr><?php foreach ([$visioGroup === 'person' ? 'visio.person' : 'visio.organization', 'visio.received', 'visio.sent', 'visio.rooms'] as $key): ?><th scope="col"><?= siteStatsEscape(siteStatsT($key)) ?></th><?php endforeach; ?></tr></thead>
+                    <tbody><?php foreach ($visioTraffic['rows'] as $trafficRow):
+                        $trafficName = trim((string)$trafficRow['name']);
+                        if ($trafficName === '') $trafficName = empty($trafficRow['owner_id']) && $visioGroup === 'organization' ? siteStatsT('monitor.unassigned') : siteStatsT($visioGroup === 'person' ? 'visio.deleted_person' : 'visio.deleted_org', ['id' => $trafficRow['owner_id']]); ?>
+                        <tr><th scope="row"><?= siteStatsEscape($trafficName) ?></th><td><?= siteStatsNumber($trafficRow['received_bytes'] / 1000000, 2) ?></td><td><?= siteStatsNumber($trafficRow['sent_bytes'] / 1000000, 2) ?></td><td><?= siteStatsNumber($trafficRow['rooms']) ?></td></tr>
+                    <?php endforeach; ?></tbody>
+                </table></div>
+                <?php endif; ?>
+            <?php endif; ?>
+        </section>
     </main>
 <?php endif; ?>
 </body>

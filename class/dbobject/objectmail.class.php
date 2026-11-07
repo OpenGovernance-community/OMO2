@@ -127,15 +127,39 @@ final class ObjectMail extends DbObject
             || !$document->canUserSendPvInvitations($oid, $uid)) {
             throw new \DomainException('Invitation PV non autorisee.');
         }
+        return self::beginNativeInvitationDelivery($uid, $oid, 'pv_invitation', (int)$document->getId(), $subject, $message, $recipients);
+    }
+
+    /** Store the custom text only, before the sender builds any personal access links. */
+    public static function beginDecisionInvitationDelivery(DecisionProcess $decision, string $subject, string $message, array $recipients): self
+    {
+        $uid = (int)\commonGetCurrentUserId();
+        $oid = (int)$decision->get('IDorganization');
+        $user = new User();
+        if ($uid <= 0 || !$user->load($uid, true) || !$user->get('active')
+            || !UserOrganization::hasActiveMembership($uid, $oid)
+            || !$decision->canUseManagementPermission('CAN_EDIT_DECISION', $uid)
+            || DecisionProcess::normalizeStatus($decision->get('status')) === DecisionProcess::STATUS_DRAFT) {
+            throw new \DomainException('Invitation au scrutin non autorisee.');
+        }
+        return self::beginNativeInvitationDelivery($uid, $oid, 'decision_invitation', (int)$decision->getId(), $subject, $message, $recipients);
+    }
+
+    /** Native sends share tracking and retention, but never enter the generic SMTP queue. */
+    private static function beginNativeInvitationDelivery(int $uid, int $oid, string $type, int $objectId, string $subject, string $message, array $recipients): self
+    {
         if (!$recipients || trim($subject) === '' || trim($message) === '') {
             throw new \InvalidArgumentException('Message et destinataires requis.');
+        }
+        if (mb_strlen($subject, 'UTF-8') > 250 || mb_strlen($message, 'UTF-8') > 20000) {
+            throw new \InvalidArgumentException('Objet ou message trop long.');
         }
         $pdo = self::getPdo();
         $pdo->beginTransaction();
         try {
             $mail = new self();
-            foreach (['IDuser' => $uid, 'IDorganization' => $oid, 'object_type' => 'pv_invitation',
-                'object_id' => (int)$document->getId(), 'request_hash' => hash('sha256', random_bytes(32)),
+            foreach (['IDuser' => $uid, 'IDorganization' => $oid, 'object_type' => $type,
+                'object_id' => $objectId, 'request_hash' => hash('sha256', random_bytes(32)),
                 'payload_hash' => hash('sha256', json_encode([$subject, $message, $recipients], JSON_THROW_ON_ERROR)),
                 'subject' => $subject, 'message' => $message, 'message_format' => 'plain',
                 'recipient_count' => count($recipients), 'created_at' => time()] as $field => $value) {

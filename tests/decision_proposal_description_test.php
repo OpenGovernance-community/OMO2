@@ -59,7 +59,7 @@ try {
     $csv = omoDecisionExportFlattenCsvRow(['detail_question' => $html], '', '');
     descriptionCheck($csv[11] === $plain, 'CSV descriptions contain readable text.');
     descriptionCheck(str_contains(PropertyFormat::sanitizeHtml($summary), '<em>vide</em>'), 'Italic empty marker survives persistence sanitization.');
-    $notice = 'Consultez le detail ci-dessous pour lire le texte complet de la regle.';
+    $notice = "Consultez le d\u{00E9}tail ci-dessous pour lire le texte complet de la r\u{00E8}gle.";
     $shortRule = ['title' => 'Short rule', 'intention' => '<p>Purpose</p>',
         'description' => '<p>Alpha</p><p>Beta &amp; gamma</p>', 'review_date' => '2030-01-01', 'expiration_date' => '2031-01-01'];
     $shortSummary = DecisionGovernanceAction::buildRuleStateDescription($shortRule);

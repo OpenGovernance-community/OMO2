@@ -355,7 +355,7 @@ if (!empty($disabledVisibilityTypes[$selectedVisibilityType])) {
 }
 
 if (!empty($disabledVisibilityTypes[$selectedEditVisibilityType])) {
-    $selectedEditVisibilityType = Document::getDefaultEditVisibilityType();
+    $selectedEditVisibilityType = ObjectVisibility::TYPE_SELF;
 }
 
 if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizationAccess($organizationId)) {

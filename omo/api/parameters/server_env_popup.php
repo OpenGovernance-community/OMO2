@@ -68,6 +68,17 @@ $serverEnvClientTexts = [
     'testFailed' => omoServerEnvT('parameters.server_env.feedback.test_failed'),
     'secretConfigured' => omoServerEnvT('parameters.server_env.secret.configured'),
     'secretEmpty' => omoServerEnvT('parameters.server_env.secret.empty'),
+    'infomaniakLoading' => omoServerEnvT('parameters.server_env.infomaniak.loading'),
+    'infomaniakLoaded' => omoServerEnvT('parameters.server_env.infomaniak.loaded'),
+    'infomaniakChooseProduct' => omoServerEnvT('parameters.server_env.infomaniak.choose_product'),
+    'infomaniakChooseModel' => omoServerEnvT('parameters.server_env.infomaniak.choose_model'),
+    'infomaniakMainModel' => omoServerEnvT('parameters.server_env.infomaniak.main_model'),
+    'infomaniakRefresh' => omoServerEnvT('parameters.server_env.infomaniak.load'),
+    'infomaniakTimeout' => omoServerEnvT('parameters.server_env.infomaniak.error.timeout'),
+    'infomaniakNetwork' => omoServerEnvT('parameters.server_env.infomaniak.error.network'),
+    'infomaniakResponse' => omoServerEnvT('parameters.server_env.infomaniak.error.response'),
+    'infomaniakHttp' => omoServerEnvT('parameters.server_env.infomaniak.error.http'),
+    'infomaniakUnlock' => omoServerEnvT('parameters.server_env.infomaniak.error.unlock'),
 ];
 ?>
 <div
@@ -199,18 +210,22 @@ $serverEnvClientTexts = [
                     </label>
                     <?php endif; ?>
 
-                    <div class="omo-server-env-popup__grid generic-form-grid">
+                    <div class="omo-server-env-popup__grid generic-form-grid<?= $sectionKey === 'ai' ? ' generic-form-grid--pair' : '' ?>">
                         <?php foreach ($section['fields'] as $field): ?>
                             <?php
                             $key = (string)$field['key'];
                             $fieldType = (string)($field['type'] ?? 'text');
                             $fieldValue = (string)($serverEnvDisplayValues[$key] ?? '');
+                            if (($serverEnvDisplayValues['AI_PROVIDER'] ?? '') === 'infomaniak' && in_array($key, ['AI_MODEL', 'AI_TRANSLATION_MODEL'], true)) $fieldType = 'select';
+                            if ($key === 'TRANSCRIPTION_MODEL' && ($serverEnvDisplayValues['TRANSCRIPTION_PROVIDER'] ?? '') === 'infomaniak') $fieldType = 'select';
                             $isSecret = !empty($field['secret']);
                             $isInactiveAiField = ($key === 'AI_BASE_URL' && ($serverEnvDisplayValues['AI_PROVIDER'] ?? '') !== 'openai_compatible')
+                                || ($key === 'AI_INFOMANIAK_PRODUCT_ID' && ($serverEnvDisplayValues['AI_PROVIDER'] ?? '') !== 'infomaniak')
+                                || ($key === 'TRANSCRIPTION_INFOMANIAK_PRODUCT_ID' && ($serverEnvDisplayValues['TRANSCRIPTION_PROVIDER'] ?? '') !== 'infomaniak')
                                 || (str_starts_with($key, 'AI_') && $key !== 'AI_PROVIDER' && ($serverEnvDisplayValues['AI_PROVIDER'] ?? '') === 'disabled')
                                 || (str_starts_with($key, 'TRANSCRIPTION_') && $key !== 'TRANSCRIPTION_PROVIDER' && ($serverEnvDisplayValues['TRANSCRIPTION_PROVIDER'] ?? '') === 'disabled');
                             ?>
-                            <div class="omo-server-env-popup__field generic-form-field"<?= $isInactiveAiField ? ' hidden' : '' ?>>
+                            <div class="omo-server-env-popup__field generic-form-field<?= $key === 'AI_API_KEY' ? ' generic-form-field--full' : '' ?>"<?= $isInactiveAiField ? ' hidden' : '' ?>>
                                 <div class="omo-server-env-popup__label-row">
                                     <div class="generic-inline-help">
                                         <label class="omo-server-env-popup__label generic-form-label" for="omoServerEnvField<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars((string)$field['label'], ENT_QUOTES, 'UTF-8') ?></label>
@@ -239,9 +254,19 @@ $serverEnvClientTexts = [
                                     class="generic-form-control"
                                     id="omoServerEnvField<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>"
                                     name="<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>"
+                                    <?= $isInactiveAiField ? 'disabled' : '' ?>
                                 >
+                                    <?php if ($fieldValue !== '' && empty($field['options'])): ?>
+                                    <option value="<?= htmlspecialchars($fieldValue, ENT_QUOTES, 'UTF-8') ?>" selected><?= htmlspecialchars($fieldValue, ENT_QUOTES, 'UTF-8') ?></option>
+                                    <?php endif; ?>
                                     <?php if ($fieldValue === ''): ?>
-                                    <option value="" selected><?= htmlspecialchars(omoServerEnvT('parameters.server_env.secret.empty'), ENT_QUOTES, 'UTF-8') ?></option>
+                                    <?php $emptyOptionKey = match ($key) {
+                                        'AI_INFOMANIAK_PRODUCT_ID' => 'parameters.server_env.infomaniak.choose_product',
+                                        'AI_MODEL' => 'parameters.server_env.infomaniak.choose_model',
+                                        'AI_TRANSLATION_MODEL' => 'parameters.server_env.infomaniak.main_model',
+                                        default => 'parameters.server_env.secret.empty',
+                                    }; ?>
+                                    <option value="" selected><?= htmlspecialchars(omoServerEnvT($emptyOptionKey), ENT_QUOTES, 'UTF-8') ?></option>
                                     <?php endif; ?>
                                     <?php foreach (($field['options'] ?? array()) as $optionValue => $optionLabel): ?>
                                     <option value="<?= htmlspecialchars((string)$optionValue, ENT_QUOTES, 'UTF-8') ?>"<?= $fieldValue === (string)$optionValue ? ' selected' : '' ?>>
@@ -262,7 +287,24 @@ $serverEnvClientTexts = [
                                     <?php if (isset($field['min'])): ?>min="<?= (int)$field['min'] ?>"<?php endif; ?>
                                     <?php if (isset($field['max'])): ?>max="<?= (int)$field['max'] ?>"<?php endif; ?>
                                     autocomplete="off"
+                                    <?php if (in_array($key, ['AI_INFOMANIAK_PRODUCT_ID', 'TRANSCRIPTION_INFOMANIAK_PRODUCT_ID'], true)): ?>inputmode="numeric" pattern="[1-9][0-9]{0,18}"<?php endif; ?>
+                                    <?php if ($key === 'AI_INFOMANIAK_PRODUCT_ID'): ?>list="omoServerEnvInfomaniakProducts"<?php endif; ?>
                                 >
+                                <?php endif; ?>
+
+                                <?php if ($key === 'AI_INFOMANIAK_PRODUCT_ID'): ?>
+                                <p class="generic-help-text"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.infomaniak.product_hint'), ENT_QUOTES, 'UTF-8') ?></p>
+                                <datalist id="omoServerEnvInfomaniakProducts"></datalist>
+                                <?php endif; ?>
+
+                                <?php if ($key === 'AI_API_KEY'): ?>
+                                <div id="omoServerEnvInfomaniakControls" class="generic-form-stack"<?= ($serverEnvDisplayValues['AI_PROVIDER'] ?? '') !== 'infomaniak' ? ' hidden' : '' ?>>
+                                    <p class="generic-help-text"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.infomaniak.token_hint'), ENT_QUOTES, 'UTF-8') ?></p>
+                                    <div class="generic-form-actions">
+                                        <button type="button" class="generic-action-button generic-action-button--secondary" id="omoServerEnvInfomaniakLoad"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.infomaniak.load'), ENT_QUOTES, 'UTF-8') ?></button>
+                                    </div>
+                                    <div id="omoServerEnvInfomaniakFeedback" class="omo-server-env-popup__feedback generic-soft-panel generic-feedback" role="status" aria-live="polite"></div>
+                                </div>
                                 <?php endif; ?>
 
                             </div>
@@ -303,5 +345,5 @@ $serverEnvClientTexts = [
 <?= commonPageScriptTags('/omo/api/parameters/server_env_popup.js', [
     'envTargetLabel' => $serverEnvTargetLabel,
     'texts' => $serverEnvClientTexts,
-    'transcriptionDefaultModels' => array_combine(['openai', 'groq', 'mistral'], array_map('commonAiGetTranscriptionDefaultModel', ['openai', 'groq', 'mistral'])),
+    'transcriptionDefaultModels' => array_combine(['openai', 'groq', 'mistral', 'infomaniak'], array_map('commonAiGetTranscriptionDefaultModel', ['openai', 'groq', 'mistral', 'infomaniak'])),
 ]) ?>

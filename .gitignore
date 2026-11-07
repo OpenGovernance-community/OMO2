@@ -8,6 +8,7 @@
 /docker/ethercalc/.env.private
 /docker/collabora/.env.private
 /docker/spacedeck/.env.private
+/docker/jitsi/.env.private
 /docker/spacedeck/fork/
 /docker/db/init/*.local.sql
 /docker/db/init/*.private.sql

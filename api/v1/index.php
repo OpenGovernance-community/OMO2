@@ -20,7 +20,7 @@ if (in_array($path, ['', '/', '/openapi.json'], true)) {
         'documentation_url' => omoMcpIssuer() . '/developer/',
         'oauth_resource' => omoMcpPublicUrl(), 'oauth_metadata_url' => omoMcpIssuer() . '/.well-known/oauth-authorization-server']);
 }
-$grant = omoApiAuthenticate();
+$grant = omoApiAuthenticate('api');
 commonAiSetUsageContext((int)$grant['IDuser'], (int)$grant['IDorganization'], 'request', 'api');
 $GLOBALS['omoExternalUsageInput'] = $restQuery;
 $route = omoRestMatchRoute($path, $method);

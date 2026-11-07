@@ -5,6 +5,7 @@ require_once __DIR__ . '/modules/context.php';
 require_once __DIR__ . '/modules/common.php';
 use dbObject\DecisionProcess;
 use dbObject\DecisionParticipant;
+use dbObject\ObjectMail;
 
 $input = $_SERVER['REQUEST_METHOD'] === 'POST'
     ? array_merge($_GET, $_POST)
@@ -69,10 +70,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
     }
 
-    $subject = $decision->buildDefaultInvitationEmailSubject();
+    $subject = mb_substr($decision->buildDefaultInvitationEmailSubject(), 0, 250, 'UTF-8');
+    try {
+        // Archive the user text, never the rendered mail or the returned access_url.
+        $historyMail = ObjectMail::beginDecisionInvitationDelivery($decision, $subject, $message, $recipientList);
+    } catch (\Throwable $error) {
+        error_log('Decision invitation history creation failed: ' . get_class($error));
+        omoDecisionModuleJsonResponse(500, [
+            'status' => false,
+            'message' => omoDecisionUiT('invitation_history_error'),
+        ]);
+    }
+    $historyWarning = false;
+    $recordDelivery = static function (string $email, string $status) use ($historyMail, &$historyWarning): void {
+        try {
+            $historyMail->recordRecipientDelivery($email, $status);
+        } catch (\Throwable $error) {
+            // Maintenance marks interrupted tracking unknown, without sending again.
+            error_log('Decision invitation tracking failed for mail ' . (int)$historyMail->getId() . ': ' . get_class($error));
+            $historyWarning = true;
+        }
+    };
 
     $sentCount = 0;
     $failedRecipients = [];
+    $unknownCount = 0;
     foreach ($recipientList as $recipient) {
         $email = trim((string)($recipient['email'] ?? ''));
         if ($email === '') {
@@ -90,10 +112,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (!($participant instanceof DecisionParticipant)) {
             $failedRecipients[] = $email;
+            $recordDelivery($email, 'failed');
             continue;
         }
 
-        $sendResult = omoDecisionSendParticipantAccessEmail($decision, $participant, $message);
+        try {
+            $sendResult = omoDecisionSendParticipantAccessEmail($decision, $participant, $message, $subject);
+        } catch (\Throwable $error) {
+            error_log('Decision invitation outcome unknown for mail ' . (int)$historyMail->getId() . ': ' . get_class($error));
+            $recordDelivery($email, 'unknown');
+            $unknownCount++;
+            continue;
+        }
+        $recordDelivery($email, !empty($sendResult['status']) ? 'sent' : 'failed');
         if (!empty($sendResult['status'])) {
             $sentCount++;
             continue;
@@ -117,7 +148,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($sentCount === 0) {
         omoDecisionModuleJsonResponse(500, [
             'status' => false,
-            'message' => omoDecisionUiT('aucune_invitation_n_a_pu_etre_envoyee'),
+            'message' => omoDecisionUiT($unknownCount > 0 ? 'invitation_delivery_unknown' : 'aucune_invitation_n_a_pu_etre_envoyee')
+                . ($historyWarning ? ' ' . omoDecisionUiT('invitation_history_warning') : ''),
+            'mail_id' => (int)$historyMail->getId(),
         ]);
     }
 
@@ -127,10 +160,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (count($failedRecipients) > 0) {
         $messageText .= ' ' . count($failedRecipients) . ' envoi(s) ont echoue.';
     }
+    if ($unknownCount > 0) {
+        $messageText .= ' ' . omoDecisionUiT('invitation_delivery_unknown');
+    }
+    if ($historyWarning) {
+        $messageText .= ' ' . omoDecisionUiT('invitation_history_warning');
+    }
 
     omoDecisionModuleJsonResponse(200, [
         'status' => true,
         'message' => $messageText,
+        'mail_id' => (int)$historyMail->getId(),
         'redirectUrl' => omoDecisionBuildEditorUrl($organizationId, $targetHolonId, (int)$decision->getId(), $method, 'manage'),
         'drawerTitle' => 'Prises de decision',
     ]);

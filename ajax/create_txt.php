@@ -15,6 +15,11 @@ if (isset($_POST['IDdocument']) && isset($_POST['IDaiprompt'])) {
     if ($doc->get("id")>0 && $ai->get("id")>0) {
 		
 		if ($doc->get("IDuser")==$_SESSION["currentUser"]) {
+			if (!commonAiOrganizationAllows((int)$doc->get('IDorganization'))) {
+				http_response_code(403);
+				echo json_encode(['error' => 'true', 'errorMsg' => commonAiOrganizationBlockedMessage()]);
+				exit;
+			}
 			if (!commonAiIsConfigured()) {
 				http_response_code(503);
 				echo json_encode(array('error' => 'true', 'errorMsg' => T_('Configuration IA indisponible.')));

@@ -1420,6 +1420,7 @@
 		$isPrivateChat = isTelegramPrivateChat($message);
 		$groupDestinationContext = null;
 		$documentUser = $user;
+		$configuredUser = null;
 		$summaryOnly = false;
 
 		if ($actorId <= 0 || $chatId === null || !isset($message['voice'])) {
@@ -1436,25 +1437,28 @@
 					return;
 				}
 				$summaryOnly = true;
-			} elseif ((int)$user->getId() <= 0) {
+			} else {
 				$configuredUser = new \dbObject\User();
-				if (!$configuredUser->load((int)$groupDestination->get('IDuser_configured'))) {
+				if (!$configuredUser->load((int)$groupDestination->get('IDuser_configured'), true)
+					|| !(bool)$configuredUser->get('active')
+					|| !\dbObject\Document::canCreateInOrganizationContext(
+						(int)$groupDestinationContext['organizationId'],
+						(int)$groupDestinationContext['holonId'] > 0 ? (int)$groupDestinationContext['holonId'] : null,
+						(int)$configuredUser->getId(), 0, false
+					)) {
+					sendMessage($chatId, "La connexion de ce groupe n'a plus les droits requis sur sa destination. Relancez /connect avec un compte autorise.", null, $threadId);
 					return;
 				}
-				$documentUser = $configuredUser;
-			}
-
-			if (!$summaryOnly && !\dbObject\Document::canCreateInOrganizationContext(
-				(int)$groupDestinationContext['organizationId'],
-				(int)$groupDestinationContext['holonId'] > 0 ? (int)$groupDestinationContext['holonId'] : null,
-				(int)$documentUser->getId(),
-				0,
-				false
-			)) {
-				if ((int)$user->getId() > 0) {
-					sendMessage($chatId, "Vous n'avez plus le droit d'envoyer des memos vers cette destination.", null, $threadId);
+				// The connected group can receive everyone's memos using its authorized connector.
+				// Keep the sender as document author only when their own OMO rights allow it.
+				if ((int)$user->getId() <= 0 || !(bool)$user->get('active')
+					|| !\dbObject\Document::canCreateInOrganizationContext(
+						(int)$groupDestinationContext['organizationId'],
+						(int)$groupDestinationContext['holonId'] > 0 ? (int)$groupDestinationContext['holonId'] : null,
+						(int)$user->getId(), 0, false
+					)) {
+					$documentUser = $configuredUser;
 				}
-				return;
 			}
 		} elseif ((int)$user->getId() <= 0) {
 			return;
@@ -1466,16 +1470,24 @@
 		}
 
 		$aiOrganizationId = !$summaryOnly && is_array($groupDestinationContext ?? null) ? (int)$groupDestinationContext['organizationId'] : 0;
-		commonAiSetUsageContext((int)$documentUser->getId(), $aiOrganizationId, 'telegram_memo', 'telegram');
-		if (!patreonUserCanUseAi((int)$documentUser->getId(), $aiOrganizationId)) {
+		if (!commonAiOrganizationAllows($aiOrganizationId)) {
+			sendMessage($chatId, commonAiOrganizationBlockedMessage(), null, $threadId);
+			return;
+		}
+		$personalAccess = (bool)$user->get('active') && patreonIndividualCanUseAi((int)$user->getId());
+		$organizationAccess = $aiOrganizationId > 0 && patreonOrganizationCanUseAi($aiOrganizationId);
+		// Sponsorship belongs to the actual sender or the destination organization, never another person's subscription.
+		$aiUserId = $personalAccess ? (int)$user->getId() : (int)($configuredUser instanceof \dbObject\User ? $configuredUser->getId() : $documentUser->getId());
+		if ((!$personalAccess && !$organizationAccess) || !patreonUserCanUseAi($aiUserId, $aiOrganizationId)) {
 			sendMessage(
 				$chatId,
-				"Les fonctions IA sont reservees aux contributeurs Patreon payants. Connectez votre compte avec /connect puis soutenez le projet sur Patreon pour utiliser la transcription audio.",
+				"La transcription necessite un abonnement Patreon personnel actif, ou un groupe relie par /connect a une organisation avec un abonnement actif. Connecter votre compte Telegram avec /connect reste possible sans abonnement.",
 				null,
 				$threadId
 			);
 			return;
 		}
+		commonAiSetUsageContext($aiUserId, $aiOrganizationId, 'telegram_memo', 'telegram');
 
 		$data = loadLocalSession($actorId);
 		if (isset($data->active) && !$data->active) {
@@ -1549,7 +1561,7 @@
 				'type' => 'audio/ogg',
 				'size' => $audioBytesWritten,
 				'error' => UPLOAD_ERR_OK,
-			], ['user_id' => (int)$documentUser->getId()]);
+			], ['user_id' => $aiUserId]);
 		} finally {
 			@unlink($tempFilePath);
 		}
@@ -1578,12 +1590,12 @@
 			$resume = trim((string)say(
 				"Summarize the following French text in no more than 150 characters. Return only the summary, without a title, label, markdown, or quotation marks.\n".$response->text,
 				"You produce concise French summaries.",
-				(int)$documentUser->getId()
+				$aiUserId
 			));
 		} else {
 			$metadataPrompt = "Return exactly three lines for the following text. TITLE: a concise document title. SUMMARY: a French summary of at most 150 characters. KEYWORDS: three to five French keywords separated only by commas. Do not use markdown or add any other text.\n".$response->text;
 			$metadataSystemInstruction = "You generate document metadata. Always return the requested TITLE, SUMMARY, and KEYWORDS lines exactly, even when the source text is in French.";
-			$metadata = (string)say($metadataPrompt, $metadataSystemInstruction, (int)$documentUser->getId());
+			$metadata = (string)say($metadataPrompt, $metadataSystemInstruction, $aiUserId);
 			if (preg_match('/^(?:TITLE|TITRE)\s*:\s*(.+)$/miu', $metadata, $titleMatch)) {
 				$title = trim($titleMatch[1], " \t\n\r\0\x0B*\"");
 			}

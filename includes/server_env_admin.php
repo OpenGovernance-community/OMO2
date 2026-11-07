@@ -531,10 +531,15 @@ function serverEnvAdminBuildCurrentValues()
     $values['AI_PROVIDER'] = commonAiGetProvider();
     $values['AI_API_KEY'] = commonAiGetApiKey();
     $values['AI_MODEL'] = commonAiGetModel();
-    $values['AI_TRANSLATION_MODEL'] = commonAiGetModel(true);
+    $values['AI_TRANSLATION_MODEL'] = commonAiGetProvider() === 'infomaniak'
+        ? commonAiEnv('AI_TRANSLATION_MODEL') : commonAiGetModel(true);
     $values['TRANSCRIPTION_PROVIDER'] = commonAiGetTranscriptionProvider();
     $values['TRANSCRIPTION_API_KEY'] = commonAiGetTranscriptionApiKey();
     $values['TRANSCRIPTION_MODEL'] = commonAiGetTranscriptionModel();
+    // Keep audio self-contained once saved, even if the text provider changes later.
+    if (commonAiGetTranscriptionProvider() === 'infomaniak' && $values['TRANSCRIPTION_INFOMANIAK_PRODUCT_ID'] === '' && commonAiGetProvider() === 'infomaniak') {
+        $values['TRANSCRIPTION_INFOMANIAK_PRODUCT_ID'] = commonAiEnv('AI_INFOMANIAK_PRODUCT_ID');
+    }
     return $values;
 }
 
@@ -575,6 +580,14 @@ function serverEnvAdminBuildSecretStateMap(array $actualValues)
     return $states;
 }
 
+/** Read the persisted credentials, including changes saved since the page was opened. */
+function serverEnvAdminGetSavedInfomaniakToken(?array $savedValues = null): string
+{
+    $savedValues ??= array_replace(serverEnvAdminBuildCurrentValues(), serverEnvAdminReadEnvDefaults(serverEnvAdminGetEnvPath()));
+    if (($savedValues['AI_PROVIDER'] ?? '') !== 'infomaniak') return '';
+    return commonAiNormalizeInfomaniakToken((string)($savedValues['AI_API_KEY'] ?? ''));
+}
+
 function serverEnvAdminReadSubmittedValues(array $source)
 {
     $values = [];
@@ -589,6 +602,12 @@ function serverEnvAdminReadSubmittedValues(array $source)
         $values[$key] = str_replace("\n", ' ', $value);
     }
 
+    if (($source['AI_PROVIDER'] ?? '') === 'infomaniak' && isset($values['AI_API_KEY'])) {
+        $values['AI_API_KEY'] = commonAiNormalizeInfomaniakToken($values['AI_API_KEY']);
+    }
+    if (($source['TRANSCRIPTION_PROVIDER'] ?? '') === 'infomaniak' && isset($values['TRANSCRIPTION_API_KEY'])) {
+        $values['TRANSCRIPTION_API_KEY'] = commonAiNormalizeInfomaniakToken($values['TRANSCRIPTION_API_KEY']);
+    }
     return $values;
 }
 
@@ -608,7 +627,45 @@ function serverEnvAdminMergeSubmittedValues(array $submittedValues, array $curre
         $mergedValues[$key] = $submittedValue;
     }
 
+    if (($submittedValues['TRANSCRIPTION_PROVIDER'] ?? '') === 'infomaniak'
+        && ($currentValues['TRANSCRIPTION_PROVIDER'] ?? 'openai') !== 'infomaniak'
+        && array_key_exists('TRANSCRIPTION_API_KEY', $submittedValues)
+        && $submittedValues['TRANSCRIPTION_API_KEY'] === '') {
+        // An old OpenAI/Groq/Mistral audio key must never be sent to Infomaniak.
+        $mergedValues['TRANSCRIPTION_API_KEY'] = '';
+    }
     return $mergedValues;
+}
+
+/** Store discovery receipts only; the API token never belongs in the session payload. */
+function serverEnvAdminRememberInfomaniakDiscovery(string $token, array $discovery): void
+{
+    $receipt = $_SESSION['server_env_infomaniak'] ?? [];
+    $hash = hash('sha256', $token);
+    if (($receipt['token_hash'] ?? '') !== $hash) $receipt = ['token_hash' => $hash, 'models' => []];
+    $receipt['products'] = array_column($discovery['products'], 'id');
+    if ($discovery['productId'] !== '') {
+        $receipt['models'][$discovery['productId']] = array_column($discovery['models'], 'id');
+    }
+    $_SESSION['server_env_infomaniak'] = $receipt;
+}
+
+/** Unchanged settings can be saved during an outage; new choices require live discovery. */
+function serverEnvAdminInfomaniakSelectionIsVerified(array $values, array $currentValues): bool
+{
+    if (($values['AI_PROVIDER'] ?? '') !== 'infomaniak') return true;
+    $changed = false;
+    foreach (['AI_PROVIDER', 'AI_API_KEY', 'AI_INFOMANIAK_PRODUCT_ID', 'AI_MODEL', 'AI_TRANSLATION_MODEL'] as $key) {
+        if (($values[$key] ?? '') !== ($currentValues[$key] ?? '')) $changed = true;
+    }
+    if (!$changed) return true;
+    $receipt = $_SESSION['server_env_infomaniak'] ?? [];
+    $id = (string)($values['AI_INFOMANIAK_PRODUCT_ID'] ?? '');
+    $models = $receipt['models'][$id] ?? [];
+    return hash_equals((string)($receipt['token_hash'] ?? ''), hash('sha256', (string)($values['AI_API_KEY'] ?? '')))
+        && in_array($id, $receipt['products'] ?? [], true)
+        && in_array($values['AI_MODEL'] ?? '', $models, true)
+        && (($values['AI_TRANSLATION_MODEL'] ?? '') === '' || in_array($values['AI_TRANSLATION_MODEL'], $models, true));
 }
 
 function serverEnvAdminIsHttpUrl($value)
@@ -660,6 +717,14 @@ function serverEnvAdminValidateValues(array $values, ?array $currentValues = nul
 {
     $errors = [];
 
+    if (in_array(strtolower((string)($values['JITSI_ENABLED'] ?? 'false')), ['1', 'true', 'yes', 'on'], true)
+        && (!serverEnvAdminIsValidPublicOrigin((string)($values['JITSI_URL'] ?? ''))
+            || !preg_match('/\A[A-Za-z0-9._-]{1,64}\z/D', (string)($values['JITSI_APP_ID'] ?? ''))
+            || !preg_match('/\A[A-Za-z0-9.-]{1,253}\z/D', (string)($values['JITSI_XMPP_DOMAIN'] ?? ''))
+            || strlen((string)($values['JITSI_APP_SECRET'] ?? '')) < 32)) {
+        $errors[] = serverEnvAdminT('parameters.server_env.error.invalid_jitsi', 'Renseignez une origine HTTPS Jitsi, un identifiant JWT, un domaine XMPP et une clé de signature d’au moins 32 caractères.');
+    }
+
     $provider = ($values['AI_PROVIDER'] ?? '') ?: 'openai';
     $destinationChanged = $currentValues !== null && $provider !== (($currentValues['AI_PROVIDER'] ?? '') ?: 'openai');
     if ($provider === 'openai_compatible') {
@@ -682,6 +747,17 @@ function serverEnvAdminValidateValues(array $values, ?array $currentValues = nul
         $errors[] = serverEnvAdminT('parameters.server_env.error.ai_provider_key', 'Saisissez la cle API du fournisseur choisi lorsque vous changez de fournisseur de texte ou d adresse API.');
     }
     $audioProvider = ($values['TRANSCRIPTION_PROVIDER'] ?? '') ?: 'openai';
+    if ($audioProvider === 'infomaniak') {
+        $audioProduct = trim((string)($values['TRANSCRIPTION_INFOMANIAK_PRODUCT_ID'] ?? ''));
+        if ($audioProduct === '' && $provider === 'infomaniak') $audioProduct = (string)($values['AI_INFOMANIAK_PRODUCT_ID'] ?? '');
+        try { commonAiGetInfomaniakBaseUrl($audioProduct); }
+        catch (InvalidArgumentException $error) {
+            $errors[] = serverEnvAdminT('parameters.server_env.infomaniak.audio_product_required', 'Renseignez le Product ID de transcription Infomaniak, ou celui du texte si Infomaniak est choisi pour les deux services.');
+        }
+        $audioKey = trim((string)($values['TRANSCRIPTION_API_KEY'] ?? ''));
+        if ($audioKey === '' && $provider === 'infomaniak') $audioKey = trim((string)($values['AI_API_KEY'] ?? ''));
+        if ($audioKey === '') $errors[] = serverEnvAdminT('parameters.server_env.infomaniak.audio_token_required', 'Renseignez un token Infomaniak pour la transcription, ou configurez Infomaniak pour le texte afin de partager son token.');
+    }
     if ($currentValues !== null && $audioProvider !== 'disabled'
         && $audioProvider !== (($currentValues['TRANSCRIPTION_PROVIDER'] ?? '') ?: 'openai')
         && trim((string)($currentValues['TRANSCRIPTION_API_KEY'] ?? '')) !== ''
@@ -689,7 +765,13 @@ function serverEnvAdminValidateValues(array $values, ?array $currentValues = nul
         && ($values['TRANSCRIPTION_API_KEY'] ?? '') === ($currentValues['TRANSCRIPTION_API_KEY'] ?? '')) {
         $errors[] = serverEnvAdminT('parameters.server_env.error.transcription_provider_key', 'Saisissez la cle API du service choisi lorsque vous changez de fournisseur de transcription.');
     }
-    if (in_array($provider, ['anthropic', 'mistral', 'openai_compatible'], true)
+    if ($provider === 'infomaniak') {
+        try { commonAiGetInfomaniakBaseUrl((string)($values['AI_INFOMANIAK_PRODUCT_ID'] ?? '')); }
+        catch (InvalidArgumentException $error) {
+            $errors[] = serverEnvAdminT('parameters.server_env.infomaniak.product_required', 'Saisissez le Product ID Infomaniak, puis cliquez sur Actualiser les modeles sous le token avant d enregistrer.');
+        }
+    }
+    if (in_array($provider, ['anthropic', 'mistral', 'infomaniak', 'openai_compatible'], true)
         && trim((string)($values['AI_API_KEY'] ?? '')) !== ''
         && trim((string)($values['AI_MODEL'] ?? '')) === '') {
         $errors[] = serverEnvAdminT('parameters.server_env.error.ai_model_required', 'Indiquez le modele principal du fournisseur de texte choisi.');
@@ -698,7 +780,7 @@ function serverEnvAdminValidateValues(array $values, ?array $currentValues = nul
     $fieldMap = serverEnvAdminGetFieldMap();
 
     foreach ($fieldMap as $key => $field) {
-        if (!isset($fieldMap[$key]['options'])) {
+        if ($key === 'AI_INFOMANIAK_PRODUCT_ID' || !isset($fieldMap[$key]['options'])) {
             continue;
         }
 

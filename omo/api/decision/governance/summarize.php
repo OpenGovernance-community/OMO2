@@ -35,6 +35,9 @@ if ((int)($context['targetHolonId'] ?? 0) <= 0
         : (empty($context['canCreate']) || empty($settings['governance']['enabled'])))) {
     $respond(403, ['status' => false, 'message' => omoDecisionUiT('acces_refuse')]);
 }
+if (!commonAiOrganizationAllows((int)$context['organization']->getId())) {
+    $respond(403, ['status' => false, 'code' => 'organization_ai_blocked', 'message' => commonAiOrganizationBlockedMessage()]);
+}
 if (!commonAiUserCanUse($currentUserId, commonOpenAiGetRewriteModel(), null, (int)$context['organization']->getId())) {
     $respond(403, ['status' => false, 'message' => omoDecisionGovernanceT('governance.proposal.summary.unavailable')]);
 }

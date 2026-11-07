@@ -1,0 +1,22 @@
+# Experimental local collector. No JVB administration port is published.
+services:
+  jitsi-jvb:
+    volumes:
+      - ./docker/jitsi/traffic-jvb.conf:/config/custom-jvb.conf:ro
+  visio-traffic:
+    image: openmyorganization-app
+    restart: unless-stopped
+    entrypoint: ["php", "/var/www/html/scripts/collect-visio-traffic.php", "--watch"]
+    environment:
+      VISIO_TRAFFIC_URL: http://jitsi-jvb:8080/debug?full=true
+    env_file:
+      - ./docker/app/.env.private
+    volumes:
+      - ./:/var/www/html:ro
+      - ./docker/app/.env:/var/www/html/.env:ro
+    networks:
+      - default
+      - jitsi
+    depends_on:
+      - jitsi-jvb
+      - db

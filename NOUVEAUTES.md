@@ -4,7 +4,75 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 Les dates deja indiquees sont conservees. Les dates manquantes sont reconstituees a partir de la premiere apparition des entrees dans l historique GitHub, en heure Europe/Zurich ; elles correspondent a leur ajout au journal, pas necessairement a leur mise en production.
 
+## 2026-11-07
+
+- Visio / compatibilite des sondes (2026-11-07) : selection de l option de protocoles selon les capacites PHP/cURL de l hebergement pour eviter un faux etat indisponible de tous les composants Jitsi. Echecs HTTP et codes cURL journalises cote serveur sans exposer de diagnostics dans le JSON public.
+
+- Technologies et visio (2026-11-07) : hebergement Infomaniak complete et fiche AI Services ajoutee pour l assistance, la traduction et la transcription. Controle public /visio/health.php compatible UptimeRobot (HTTP 200/503), vue manuelle /visio/status.php et sondes Jitsi limitees a la sante de Jicofo et du pont audio/video. Verification de la base OMO, des ressources web et d une session de signalisation sans creer de salle ; limites du controle et configuration de la surveillance documentees. Sondes deployees sur le VPS et verifiees depuis Internet en GET/HEAD, avec sauvegarde et retour arriere disponibles.
+
+- OMO / cache des icones (2026-11-07) : variantes conservees par organisation, taille et usage, avec cache navigateur sur les URL versionnees. La version suit le logo, son contenu et la couleur ; les URL sans organisation explicite sont revalidees pour conserver la bonne icone selon le contexte.
+
+- Telegram / transcription et Patreon (2026-11-07) : /connect reste disponible sans abonnement pour les destinations OMO autorisees. Un abonnement personnel finance les propres vocaux de l expediteur ; une organisation abonnee finance les messages de tous les participants des groupes ou sujets relies a ses roles et projets. L abonnement personnel de la personne ayant configure le groupe ne finance plus les autres expediteurs. Droits du compte de connexion reverifies, financement conserve pour les metadonnees et blocage IA de l organisation prioritaire.
+
+- Organisations / lisibilite des preferences de securite (2026-11-07) : capsules ? placees juste a cote des libelles et etendues aux explications des sauvegardes. Espacement augmente entre les reglages, les liens et les endpoints ; dates de suivi conservees directement a l ecran.
+
+## 2026-11-06
+
+- Organisations / aides IA et acces externes (2026-11-06) : explications regroupees dans des capsules ?. Lorsqu un acces API ou MCP est autorise, sa documentation et son endpoint configure apparaissent sous le selecteur. Guide de connexion MCP ajoute a la documentation publique.
+
+- Organisations / enregistrement de la securite (2026-11-06) : un seul bouton Enregistrer conserve ensemble les preferences IA, API, MCP et sauvegardes. Suppression du bouton propre aux acces externes ; validation commune et enregistrement en une transaction, sans fausse alerte de modifications non enregistrees apres succes.
+
+- Organisations / blocage IA (2026-11-06) : option Bloquer les fonctions IA dans Parametres > Securite, applicable meme aux membres avec abonnement personnel et aux administrateurs. Chat, resumes, reformulation, transcription et memos Telegram destines a l organisation sont controles cote serveur avant tout nouvel appel IA. Aucune nouvelle traduction IA n est declenchee depuis une organisation bloquee ; les traductions deja disponibles restent lisibles. Par defaut, IA interne autorisee et acces API/MCP bloques ; trois choix independants, configurables sans lien Patreon.
+
+- Organisations / securite des integrations (2026-11-06) : deux reglages independants API REST et serveur MCP dans Parametres > Securite, tous deux bloques par defaut et configurables sans lien Patreon de l organisation ou de son administrateur. Le blocage s impose aussi aux membres abonnes individuellement. Controle a chaque acces et autorisation d ecriture, y compris pour les jetons existants ; nouvelles connexions et renouvellements refuses si les deux sont bloques. Le chat integre reste independant. Reglages stockes dans les parametres existants de chaque organisation, sans changement de schema SQL.
+
+- Confidentialite / services IA (2026-11-06) : politique completee avec les fournisseurs et modeles courants des fonctions IA, de la traduction et de la transcription, lus dans les parametres de chaque instance sans exposer tokens, Product ID ou URL completes. Precision des textes et enregistrements audio transmis, des fonctions desactivees et du cas des assistants externes par API ou MCP.
+
+- IA / transcription Infomaniak (2026-11-06) : service audio Whisper V3 ajoute aux reglages, modele whisper propose automatiquement, Product ID audio facultatif et reprise du token et du produit texte quand les deux services utilisent Infomaniak. Envoi de l audio puis suivi borne de la tache asynchrone et recuperation de son resultat pour les dictees et memos vocaux.
+
+- Reglages serveur / sauvegarde et token Infomaniak (2026-11-06) : fermeture sans fausse alerte de perte de donnees apres sauvegarde reussie ; les modifications ulterieures restent protegees. L actualisation des modeles relit le token Infomaniak dans la configuration enregistree lorsque le champ est vide, sans le renvoyer au navigateur.
+
+- IA / Product ID Infomaniak (2026-11-06) : champ numerique editable pour definir le produit AI Services commun aux modeles de la connexion. L actualisation utilise directement ce produit sans imposer l acces a la liste des produits du compte ; detection et suggestions facultatives si le champ reste vide.
+
+- IA / chargement Infomaniak (2026-11-06) : bouton Actualiser place directement sous le token, utilisable avant toute sauvegarde, avec consigne visible et etat de chargement. Erreurs distinctes pour token refuse, droits insuffisants, delai depasse ou reponse invalide ; expiration du deverrouillage signalee sans effacer le token saisi et validation de sauvegarde sans doublon. Prefixe Bearer accepte, controle du format explicite et token normalise a l enregistrement.
+
+- IA / Infomaniak (2026-11-06) : fournisseur dedie dans les reglages du serveur, chargement des produits accessibles par token et choix des modeles principal et de traduction dans des listes. Produit unique choisi automatiquement, URL construite et choix conserves ; decouverte reservee aux administrateurs avec validation du token et des selections, sans exposer la cle enregistree.
+
+- Visioconférence / libellé du lobby Jitsi (2026-11-06) : l’action de retour à la demande d’admission indique « Je n’ai pas de mot de passe, je vais simplement attendre… », traduit dans les huit langues OMO et leurs variantes Jitsi, pour éviter de laisser croire qu’aucun mot de passe n’est défini dans la salle. Traductions natives conservées dans l’image du frontal local et du VPS.
+
+- Visioconférence / entrée des invités (2026-11-06) : un bouton ouvre la réunion sans demander le nom dans OMO ; le nom est saisi directement dans Jitsi. L’identité des comptes OMO connectés reste préremplie.
+
+- Visioconférence / mot de passe Jitsi (2026-11-06) : mot de passe facultatif dans les réglages d’une salle pour contourner le lobby via le champ natif Jitsi, même sans animateur présent. Bouton de saisie masqué sans mot de passe défini. Mot de passe chiffré, jamais réaffiché, conservé si le champ reste vide et supprimable explicitement ; aucun formulaire de mot de passe extérieur et aucun changement des autres droits. Les mots de passe du premier prototype doivent être redéfinis une fois après migration.
+
+- Formulaires / sélecteurs de relations (2026-11-06) : libellés des options échappés dans adminEdit pour afficher les caractères spéciaux comme du texte, notamment les noms d’organisations proposés dans les réglages des salles.
+
+- Visioconférence / réglages des salles (2026-11-06) : édition du nom et association facultative à une organisation sans changer le lien d’invitation. Options distinctes pour les membres actifs de l’organisation (ou tous les comptes OMO sans organisation) et les invités : micro/caméra coupés au démarrage, caméra bloquée, partage d’écran libre ou sur autorisation individuelle et salle d’attente facultative. Propriétaire toujours animateur. Réglages signés et versionnés côté Jitsi ; caméra bloquée dès la préparation et le lobby, avec contrôle à l’entrée, sans bloquer le microphone.
+
+- PV / verification des autres propositions (2026-11-06) : tests de conservation du contenu propose a la reouverture pour les projets, taches recurrentes, indicateurs, roles, cercles et groupes, en creation et modification. Verification des champs volontairement vides dans les propositions de structure.
+
+- PV / edition des propositions de regle (2026-11-06) : la reouverture charge le contenu enregistre de la proposition, sans le remplacer par la regle actuelle. Les nouvelles propositions de modification restent initialisees avec la regle existante.
+
+- Visioconférence / activation sur le VPS (2026-11-06) : passerelle JWT OMO2 activée après publication sur bêta, avec identité et rôle signés, invités en salle d’attente et accueil meet.opengov.tools renvoyé vers beta.opengov.tools/visio/. Sauvegarde de la configuration précédente et commande de gestion conservant le profil OMO ; droits et audio/vidéo à trois participants simulés vérifiés sur le serveur public.
+
+- Scrutins / tests des resumes de gouvernance (2026-11-06) : attentes des tests alignees sur le message francais avec accents. La generation du resume compact et la conservation du texte complet restent inchangees.
+
+- Notifications / connexion personnelle (2026-11-06) : reglages communs aux organisations pour les connexions sur un nouvel appareil ou un navigateur deja identifie, avec choix des canaux OMO, e-mail, navigateur et Telegram si disponibles. Reconnaissance du navigateur pendant un an, conservee apres deconnexion ; restauration automatique par "se souvenir de moi" silencieuse. Migration des empreintes de reconnaissance, sans pouvoir d'authentification.
+
+- Scrutins / ordre des dates (2026-11-06) : en consultation et en vote, les propositions sont affichees par date et heure de debut si le champ date est actif et l'ordre aleatoire desactive. Les propositions sans date viennent a la fin ; l'ordre d'edition et le classement des resultats sont conserves.
+
+- Decisions / journal des e-mails (2026-11-06) : les prochains envois depuis un scrutin apparaissent dans le bouton mail de la topbar, avec le texte personnalise, les destinataires et le resultat individuel. Les liens personnels ajoutes aux messages ne sont pas archives ; conservation et acces prives identiques aux invitations PV, sans reprise des anciens envois.
+
+- Visioconférence / Docker local (2026-11-06) : Jitsi intégré au démarrage Docker sur meet.localtest.me avec HTTPS et WebSockets via Apache. Configuration locale automatique, détection IPv4 pour les médias et clés privées distinctes de la production ; réglages dans la configuration générale du serveur, rubrique Visioconférence Jitsi. Protection de formulaire partagée réutilisée. Création de salles, identités, droits et lobby testés depuis /visio/ avec audio/vidéo réellement reçus à trois participants simulés, sans publication d’OMO2.
+
+- Visioconférence / passerelle OMO2 (2026-11-06) : page /visio/ pour créer une salle avec son identité OMO, lien participant sans jeton et rôle animateur réservé au créateur. Invités en salle d’attente, paramètres Jitsi au niveau serveur, migration des salles et profil JWT séparé à activer sur le VPS après publication OMO2. Accès Jitsi provisoire conservé pendant la préparation.
+
 ## 2026-11-05
+
+- Documents / creation dans une organisation minimale (2026-11-05) : correction de la portee d edition par defaut lorsqu il n existe qu un holon organisation, avec repli sur le proprietaire et conservation des portees cercle et role lorsqu elles sont disponibles. Erreur serveur precise affichee a l enregistrement ; le glisser-deplacer indique le stockage manquant au lieu d un refus de droits.
+
+- Accueil OMO2 / technologies et remerciements (2026-11-05) : nouvelle page publique accessible en popup depuis le footer, avec illustrations carrees locales, liens officiels et code source. Presentation du role des applications collaboratives, bibliotheques, services connectes et outils d hebergement ; inventaire detaille des dependances PHP et de leurs licences depuis composer.lock.
+
+- Visioconference / installation Jitsi VPS (2026-11-05) : installation Docker officielle epinglee, configuration separee des autres services et HTTPS actif sur meet.opengov.tools via Caddy. Compte organisateur, invites et salle d attente disponibles sans integration OMO2 a cette etape ; secrets prives et limites memoire pour le VPS partage. Port UDP 10000 et appel a trois participants simules verifies : audio/video recus et decodes, droits moderateur/participant et admission depuis la salle d attente controles dans Chromium.
 
 - Navigation / logo de l organisation (2026-11-05) : retour a /omo/ sur le meme hote pour les URL personnalisees, sans renvoi au catalogue. Detection de la racine partagee avec le routage et basee sur COOKIE_ROOT_HOST du .env, avec conservation des racines beta, dev et deploy.
 
@@ -5137,3 +5205,47 @@ Les dates deja indiquees sont conservees. Les dates manquantes sont reconstituee
 ## 2026-06 Vue D Ensemble
 
 Le projet a avance sur quatre grands axes: une interface plus coherente, un module `Decisions` beaucoup plus abouti, un meilleur confort sur les pages publiques et partagees, et une base plus solide pour les outils transverses comme l authentification, le calendrier, la FAQ ou la recherche.
+
+- Visio : suppression des reunions par leur proprietaire et reglages par icones dans deux blocs membres et invites.
+
+- Visio : icones compactes, blocs de largeur naturelle empiles sur mobile, cadenas commun aux deux groupes et infobulles explicitant chaque statut.
+
+- Visio : actions alignees aux reglages, capsule organisation coloree et description des salles (apercu tronque dans la liste et texte complet a la connexion). Migration 2026-11-06-06 requise.
+
+- Visio : nom et organisation sur une ligne en proportions 2/3 et 1/3 dans le formulaire, description en dessous sur toute la largeur.
+
+- Visio : connexion OMO2 et acces invite regroupes sur une ligne, avec le libelle Rejoindre comme invite.
+
+- Visio : connexion sur URL de base avec adresse e-mail complete, sans suffixe de domaine de l organisation par defaut.
+
+- Visio : titre de la salle transmis a Jitsi des l ouverture pour remplacer l identifiant technique sur l accueil.
+
+- Visio : titre et bouton de creation de reunion alignes sur une meme ligne.
+
+- Visio : hauteur du bouton de creation harmonisee avec le champ du titre.
+
+- Visio : bouton de creation mis en valeur avec la couleur principale.
+
+- Visio : la video grandit avec le defilement jusqu a remplir la fenetre ; les informations sont placees avant la video.
+
+- Visio : apercu initial ajuste a la place disponible en bas de fenetre, au ratio de l ecran, puis agrandissement proportionnel au defilement.
+
+- Visio : hauteur minimale de la video fixee a 360 pixels pendant l agrandissement.
+
+- Visio : retrait du message de chargement persistant et reduction de l espace avant la video ; les erreurs et la fin d appel restent visibles.
+
+- Visio : bouton pour recharger la page et rejoindre de nouveau apres la fin d appel.
+
+- Visio : bouton de reconnexion aligne sur la meme ligne que le message de fin d appel.
+
+- Visio : invitations copiees dans Jitsi dirigees directement vers /visio/ grace au domaine d invitation personnalise et au code public de la salle. Reconstruction du frontend Jitsi requise.
+
+- Visio : versionnement de la configuration Jitsi pour renouveler le cache des liens d invitation.
+
+- Visio : prototype local de suivi du trafic JVB par createur et organisation dans common/admin/stats.php, avec periode, regroupement et etat de collecte. Releves toutes les 30 secondes, volumes minimaux observes (hors P2P et fins de connexion non observees). Migration 2026-11-07-01 et collecteur prive documentes dans docker/jitsi/TRAFFIC-MONITORING.md.
+
+- Conditions generales (07.11.2026) : ajout de la politique de consommation visio sans quota actuel, evolution selon les ressources avec information prealable, et suivi du trafic attribue au createur et a l organisation de la salle.
+
+- Visio : creation reservee aux contributions Patreon personnelles ou organisations eligibles ; choix organisation obligatoire et filtre sans contribution personnelle. Les salles devenues ineligibles sont grisees et leurs anciens liens affichent un message explicite pour tous, sans acces Jitsi. Les invites restent admis dans les salles actives sans contribution. Verification aux nouvelles connexions selon le statut Patreon synchronise.
+
+- VPS Jitsi (07.11.2026) : frontal reconstruit et deploye avec domaine d invitation direct beta.opengov.tools/visio et URL de configuration versionnee. Sondes Jicofo et Videobridge controlees ; publication OMO et collecteur de trafic distincts.

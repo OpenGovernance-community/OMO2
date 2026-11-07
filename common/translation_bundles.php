@@ -686,6 +686,8 @@ function translationBundleTriggerAsyncRefreshJob($jobId)
 
 function translationBundleQueueRefresh(string $bundleKey, string $locale, array $sourceLang, string $storageLocale = ''): bool
 {
+    require_once __DIR__ . '/ai_access.php';
+    if (!commonAiOrganizationAllows(commonAiRequestOrganization())) return false;
     if (commonAiGetProvider() === 'disabled') return false;
     $bundleKey = trim($bundleKey);
     $storageLocale = translationBundleResolveStorageLocale($storageLocale !== '' ? $storageLocale : $locale);

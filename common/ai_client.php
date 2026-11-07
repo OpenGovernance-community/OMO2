@@ -2,12 +2,13 @@
 
 require_once __DIR__ . '/ai_config.php';
 require_once __DIR__ . '/ai_usage.php';
+require_once __DIR__ . '/ai_access.php';
 
 /** Text-only adapter shared by document tools, Telegram and UI translations. */
 function commonAiBuildTextRequest(string $apiKey, array $payload): array
 {
     $provider = commonAiGetProvider();
-    if (!in_array($provider, ['openai', 'anthropic', 'mistral', 'openai_compatible'], true)) {
+    if (!in_array($provider, ['openai', 'anthropic', 'mistral', 'infomaniak', 'openai_compatible'], true)) {
         throw new InvalidArgumentException('Fournisseur IA inconnu.');
     }
     $headers = ['Content-Type: application/json'];
@@ -37,9 +38,18 @@ function commonAiBuildTextRequest(string $apiKey, array $payload): array
         $headers[] = 'Authorization: Bearer ' . $apiKey;
         $url = match ($provider) {
             'openai_compatible' => commonAiGetCompatibleBaseUrl() . '/chat/completions',
+            'infomaniak' => commonAiGetInfomaniakBaseUrl() . '/chat/completions',
             'mistral' => 'https://api.mistral.ai/v1/chat/completions',
             default => 'https://api.openai.com/v1/chat/completions',
         };
+        if ($provider === 'infomaniak') {
+            // The Infomaniak endpoint defaults to SSE; OMO consumes one JSON response.
+            $payload['stream'] = false;
+            if (isset($payload['max_tokens'])) {
+                $payload['max_completion_tokens'] = $payload['max_tokens'];
+                unset($payload['max_tokens']);
+            }
+        }
     }
     return ['url' => $url, 'headers' => $headers, 'payload' => $payload];
 }
@@ -84,6 +94,9 @@ function commonAiRequestText(string $apiKey, array $payload, int $timeout = 120)
 /** Shared HTTP transport for text requests and local assistant tool calls. */
 function commonAiRequestJson(array $request, int $timeout = 120): array
 {
+    if (!commonAiOrganizationAllows(commonAiRequestOrganization())) {
+        return ['status' => false, 'http_code' => 403, 'code' => 'organization_ai_blocked', 'message' => commonAiOrganizationBlockedMessage()];
+    }
     $encoded = json_encode($request['payload'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
     $curl = curl_init($request['url']);
     if ($curl === false) return ['status' => false, 'message' => 'Impossible de preparer la requete IA.'];
