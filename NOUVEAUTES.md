@@ -6,7 +6,7 @@ Les dates deja indiquees sont conservees. Les dates manquantes sont reconstituee
 
 ## 2026-11-07
 
-- Technologies et visio (2026-11-07) : hebergement Infomaniak complete et fiche AI Services ajoutee pour l assistance, la traduction et la transcription. Controle public /visio/health.php compatible UptimeRobot (HTTP 200/503), vue manuelle /visio/status.php et sondes Jitsi limitees a la sante de Jicofo et du pont audio/video. Verification de la base OMO, des ressources web et d une session de signalisation sans creer de salle ; limites du controle et configuration de la surveillance documentees.
+- Technologies et visio (2026-11-07) : hebergement Infomaniak complete et fiche AI Services ajoutee pour l assistance, la traduction et la transcription. Controle public /visio/health.php compatible UptimeRobot (HTTP 200/503), vue manuelle /visio/status.php et sondes Jitsi limitees a la sante de Jicofo et du pont audio/video. Verification de la base OMO, des ressources web et d une session de signalisation sans creer de salle ; limites du controle et configuration de la surveillance documentees. Sondes deployees sur le VPS et verifiees depuis Internet en GET/HEAD, avec sauvegarde et retour arriere disponibles.
 
 - OMO / cache des icones (2026-11-07) : variantes conservees par organisation, taille et usage, avec cache navigateur sur les URL versionnees. La version suit le logo, son contenu et la couleur ; les URL sans organisation explicite sont revalidees pour conserver la bonne icone selon le contexte.
 
@@ -5245,3 +5245,5 @@ Le projet a avance sur quatre grands axes: une interface plus coherente, un modu
 - Conditions generales (07.11.2026) : ajout de la politique de consommation visio sans quota actuel, evolution selon les ressources avec information prealable, et suivi du trafic attribue au createur et a l organisation de la salle.
 
 - Visio : creation reservee aux contributions Patreon personnelles ou organisations eligibles ; choix organisation obligatoire et filtre sans contribution personnelle. Les salles devenues ineligibles sont grisees et leurs anciens liens affichent un message explicite pour tous, sans acces Jitsi. Les invites restent admis dans les salles actives sans contribution. Verification aux nouvelles connexions selon le statut Patreon synchronise.
+
+- VPS Jitsi (07.11.2026) : frontal reconstruit et deploye avec domaine d invitation direct beta.opengov.tools/visio et URL de configuration versionnee. Sondes Jicofo et Videobridge controlees ; publication OMO et collecteur de trafic distincts.

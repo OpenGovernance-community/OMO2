@@ -59,7 +59,8 @@ public reconnu ne demande aucune configuration supplementaire en production.
 
 ## Activation sur le VPS
 
-Publier d abord les fichiers OMO. Copier la version actuelle de
+Le deploiement des sondes VPS peut preceder la publication OMO. Publier aussi
+les fichiers OMO pour rendre disponibles les deux pages de controle. Copier la version actuelle de
 `docker/jitsi/web/` (y compris `health.conf`) dans
 `/opt/jitsi/omo-integration/web/`, ainsi que `docker/jitsi-vps/compose.omo.yaml`
 dans `/opt/jitsi/omo-integration/compose.omo.yaml`, selon le deploiement existant.
@@ -74,6 +75,22 @@ une plage sans appel. Aucun changement du bloc Caddy existant n est requis :
 il transmet deja ces chemins au frontal Jitsi. Ne pas publier les ports 8080
 ou 8888 et ne pas ajouter un proxy public vers les prefixes REST complets.
 Attendre la fin du demarrage et verifier `/visio/status.php`.
+
+### Etat du VPS au 7 novembre 2026
+
+Sondes deployees sur `meet.opengov.tools` : `/omo-health/jicofo` et
+`/omo-health/videobridge`. GET et HEAD renvoient HTTP 200 ; le frontal utilise
+GET vers les tests internes, y compris pour une sonde HEAD. Les chemins voisins
+restent refuses et aucun port REST n est publie. Le frontal et Jicofo ont ete
+recrees apres verification de l absence de conference sur le pont ; Prosody et
+le Videobridge ont conserve leurs conteneurs.
+
+Sauvegarde privee et script de retour arriere :
+`/opt/jitsi/backups/20261107T103423Z-health/`. Le script `rollback.sh` restaure
+la configuration et l image du frontal precedentes. Les verifications depuis
+Internet couvrent les sondes GET/HEAD, les ressources web et une session BOSH
+ouverte puis fermee sans creer de salle. La publication des pages OMO et la
+creation du moniteur UptimeRobot restent des etapes distinctes.
 
 ## Configuration UptimeRobot
 
