@@ -2,36 +2,7 @@
 require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/shared_functions.php';
 require_once dirname(__DIR__) . '/common/auth.php';
-
-function omoManifestBuildIconVersionToken(array $organizationContext)
-{
-    $payload = implode('|', [
-        (string)($organizationContext['id'] ?? 0),
-        (string)($organizationContext['logo'] ?? ''),
-        (string)($organizationContext['color'] ?? ''),
-    ]);
-
-    return substr(sha1($payload), 0, 12);
-}
-
-function omoManifestBuildIconUrl(array $organizationContext, $size, $purpose = 'any')
-{
-    $query = [
-        'size' => (int)$size,
-        'v' => omoManifestBuildIconVersionToken($organizationContext),
-    ];
-
-    $organizationId = (int)($organizationContext['id'] ?? 0);
-    if ($organizationId > 0) {
-        $query['oid'] = $organizationId;
-    }
-
-    if ($purpose === 'maskable') {
-        $query['purpose'] = 'maskable';
-    }
-
-    return '/omo/manifest_icon.php?' . http_build_query($query);
-}
+require_once __DIR__ . '/manifest_icons.php';
 
 $organizationContext = commonResolveOrganizationContext(1);
 $requestedOrganizationId = isset($_GET['oid']) ? (int)$_GET['oid'] : 0;

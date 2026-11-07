@@ -6,6 +6,8 @@ Les dates deja indiquees sont conservees. Les dates manquantes sont reconstituee
 
 ## 2026-11-07
 
+- OMO / cache des icones (2026-11-07) : variantes conservees par organisation, taille et usage, avec cache navigateur sur les URL versionnees. La version suit le logo, son contenu et la couleur ; les URL sans organisation explicite sont revalidees pour conserver la bonne icone selon le contexte.
+
 - Telegram / transcription et Patreon (2026-11-07) : /connect reste disponible sans abonnement pour les destinations OMO autorisees. Un abonnement personnel finance les propres vocaux de l expediteur ; une organisation abonnee finance les messages de tous les participants des groupes ou sujets relies a ses roles et projets. L abonnement personnel de la personne ayant configure le groupe ne finance plus les autres expediteurs. Droits du compte de connexion reverifies, financement conserve pour les metadonnees et blocage IA de l organisation prioritaire.
 
 - Organisations / lisibilite des preferences de securite (2026-11-07) : capsules ? placees juste a cote des libelles et etendues aux explications des sauvegardes. Espacement augmente entre les reglages, les liens et les endpoints ; dates de suivi conservees directement a l ecran.
