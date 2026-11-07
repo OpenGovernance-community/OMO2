@@ -36,7 +36,7 @@ function mcpFixtures(bool $configurePatreon = true): array
         $items['patreon_subscription'] = mcpFixture(\dbObject\UserPatreon::class, ['IDuser' => $items['user']->getId(),
             'is_connected' => 1, 'refresh_token' => 'fixture-only', 'patron_status' => 'active_patron', 'currently_entitled_amount_cents' => 100]);
         $items['password'] = 'MCP-fixture-password-' . $nonce;
-        $items['org'] = mcpFixture(McpTestOrganization::class, ['name' => 'MCP ' . $nonce, 'shortname' => 'mcp-' . $nonce]);
+        $items['org'] = mcpFixture(McpTestOrganization::class, ['name' => 'MCP ' . $nonce, 'shortname' => 'mcp-' . $nonce, 'parameters' => ['mcp_enabled' => true, 'api_enabled' => true]]);
         $items['membership'] = mcpFixture(UserOrganization::class, ['IDuser' => $items['user']->getId(), 'IDorganization' => $items['org']->getId(), 'active' => 1]);
         $apps = new ArrayApplication();
         $apps->load(['where' => [['field' => 'hash', 'value' => 'structure']], 'limit' => 1]);

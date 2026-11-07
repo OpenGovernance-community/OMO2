@@ -36,7 +36,7 @@ function omoMcpUiBundle(): array
         'scope_create' => ['text' => 'L’assistant pourra aussi enregistrer des textes et fichiers dans les espaces où votre compte a le droit de créer des documents. Les droits OMO sont vérifiés à chaque création. Cette autorisation ne permet pas de modifier ou supprimer des documents existants.', 'context' => 'Additional document creation scope on OAuth consent.'],
         'allow_create' => ['text' => 'Autoriser la lecture et la création de documents', 'context' => 'Approve read and document creation OAuth access.'],
         'deny' => ['text' => 'Refuser', 'context' => 'Deny OAuth consent.'],
-        'empty' => ['text' => 'Aucune organisation éligible. Un abonnement Patreon individuel ou de l’organisation est requis, ainsi qu’une adhésion active.', 'context' => 'No eligible organization for MCP authorization.'],
+        'empty' => ['text' => "Aucune organisation eligible. Une adhesion active, un acces IA eligible et au moins une autorisation API ou MCP de l'organisation sont requis. Ces deux acces sont bloques par defaut dans ses parametres de securite.", 'context' => 'No eligible organization; separate API and MCP opt-in policies.'],
         'invalid' => ['text' => 'Demande invalide ou expiree. Relancez la connexion depuis votre assistant.', 'context' => 'Persistent OAuth request validation error.'],
         'connections' => ['text' => 'Mes connexions aux assistants', 'context' => 'MCP grant management page title and link.'],
         'connections_intro' => ['text' => 'Chaque connexion autorise les opérations acceptées lors du consentement, dans une organisation. Vous pouvez retirer cet accès ici.', 'context' => 'MCP grant management page introduction.'],
@@ -102,7 +102,7 @@ function omoMcpEligibleOrganizations(int $userId): array
     if (!$user->load($userId)) return [];
     $items = [];
     foreach ($user->getAccessibleOrganizations() as $organization) {
-        if (\dbObject\UserOrganization::hasActiveMembership($userId, (int)$organization->getId())
+        if (($organization->isMcpEnabled() || $organization->isApiEnabled()) && \dbObject\UserOrganization::hasActiveMembership($userId, (int)$organization->getId())
             && patreonUserCanUseAi($userId, (int)$organization->getId()) && $organization->canViewDetail()) $items[] = $organization;
     }
     return $items;

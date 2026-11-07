@@ -33,6 +33,7 @@ if (!is_string($csrf) || empty($pageContext['csrf']) || ($pageContext['user'] ??
 try { $grant = commonAssistantWithContext($oid, static fn () => commonAssistantGrant($oid)); }
 catch (Throwable $error) { $fail('context', 403); }
 commonAiSetUsageContext($grant['IDuser'], $oid, 'assistant');
+if (!commonAiOrganizationAllows($oid)) $reply(403, ['status' => false, 'code' => 'organization_ai_blocked', 'message' => commonAiOrganizationBlockedMessage()]);
 if (!commonAiUserCanUse($grant['IDuser'], null, null, $oid)) $fail('unavailable', 403);
 $chatId = $input['conversationId'] ?? null;
 if (!is_string($chatId) || !preg_match('/^[a-f0-9]{32}$/D', $chatId)) $fail('invalid');

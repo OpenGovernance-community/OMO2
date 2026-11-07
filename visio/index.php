@@ -9,6 +9,7 @@ use dbObject\VideoRoom;
 use dbObject\AuthRateLimit;
 
 $sourceLang = [
+    'rejoin' => ['text' => 'Rejoindre de nouveau', 'context' => 'Reload video room after leaving'],
     'audio_muted_on' => ['text' => 'Micro coupe au demarrage', 'context' => 'Meeting list option status'],
     'audio_muted_off' => ['text' => 'Micro actif au demarrage', 'context' => 'Meeting list option status'],
     'video_muted_on' => ['text' => 'Camera eteinte au demarrage', 'context' => 'Meeting list option status'],
@@ -194,7 +195,7 @@ if ($access) {
     <?php if ($editing && $room && $room->isOwner($userId)): ?><script src="https://code.jquery.com/jquery-3.7.1.min.js"></script><?php endif; ?>
 </head>
 <body class="generic-public-page">
-<main class="generic-page-shell generic-stack">
+<main class="generic-page-shell generic-stack<?= $access ? ' generic-page-shell--compact-bottom' : '' ?>">
     <header class="generic-public-brand">
         <a href="/visio/"><img class="generic-public-brand__logo" src="/img/omo2/logo-omo-dark.png" alt="OMO2" width="1076" height="332"></a>
         <span class="generic-public-brand__label"><?= $escape($vt('title')) ?></span>
@@ -268,9 +269,11 @@ if ($access) {
         <?php endif; ?>
     </section>
     <?php if ($access): ?>
-    <p id="visio-status" role="status"><?= $escape($vt('loading')) ?></p>
-    <div id="visio-frame"></div>
-    <p><?= $escape($vt('expiry')) ?></p>
+    <div class="generic-form-actions" id="visio-status-row" hidden>
+    <p id="visio-status" role="status" hidden></p>
+    <div id="visio-rejoin" class="generic-form-actions" hidden><button class="generic-action-button generic-action-button--main" type="button" data-visio-reload><?= $escape($vt('rejoin')) ?></button></div>
+    </div>
+    <p class="generic-help-text"><?= $escape($vt('expiry')) ?></p>
     <?php endif; ?>
     <?php elseif ($ready && $code === '' && $userId > 0): ?>
     <section class="generic-soft-panel generic-soft-panel--stack">
@@ -334,5 +337,8 @@ if ($access) {
     <?php endif; ?>
     <?php endif; ?>
 </main>
+<?php if ($access): ?>
+<div id="visio-stage"><div id="visio-frame"></div></div>
+<?php endif; ?>
 </body>
 </html>

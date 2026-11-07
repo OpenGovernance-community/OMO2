@@ -464,6 +464,66 @@
 			return is_array($parameters) ? $parameters : array();
 		}
 
+        public const MCP_ENABLED_PARAMETER = 'mcp_enabled';
+        public const API_ENABLED_PARAMETER = 'api_enabled';
+        public const AI_BLOCKED_PARAMETER = 'ai_blocked';
+
+        public function isAiBlocked(): bool
+        {
+            return in_array($this->getLexiconParameters()[self::AI_BLOCKED_PARAMETER] ?? false, [true, 1, '1'], true);
+        }
+
+        public function setAiBlocked(bool $blocked): void
+        {
+            $parameters = $this->getLexiconParameters();
+            $parameters[self::AI_BLOCKED_PARAMETER] = $blocked;
+            $this->setParametersArray($parameters);
+        }
+
+        public static function allowsInternalAi(int $organizationId): bool
+        {
+            $organization = new self();
+            return $organizationId > 0 && $organization->load($organizationId, true) && !$organization->isAiBlocked();
+        }
+
+        public function isApiEnabled(): bool
+        {
+            return in_array($this->getLexiconParameters()[self::API_ENABLED_PARAMETER] ?? false, [true, 1, '1'], true);
+        }
+
+        public function setApiEnabled(bool $enabled): void
+        {
+            $parameters = $this->getLexiconParameters();
+            $parameters[self::API_ENABLED_PARAMETER] = $enabled;
+            $this->setParametersArray($parameters);
+        }
+
+        public function isMcpEnabled(): bool
+        {
+            $value = $this->getLexiconParameters()[self::MCP_ENABLED_PARAMETER] ?? false;
+            return in_array($value, [true, 1, '1'], true);
+        }
+
+        public function setMcpEnabled(bool $enabled): void
+        {
+            $parameters = $this->getLexiconParameters();
+            $parameters[self::MCP_ENABLED_PARAMETER] = $enabled;
+            $this->setParametersArray($parameters);
+        }
+
+        /** No cache: disabling integrations must reject the next authenticated request. */
+        public static function allowsExternalIntegration(int $organizationId, ?string $transport = null): bool
+        {
+            $organization = new self();
+            if ($organizationId <= 0 || !$organization->load($organizationId, true)) return false;
+            return match ($transport) {
+                'api' => $organization->isApiEnabled(),
+                'mcp' => $organization->isMcpEnabled(),
+                null => $organization->isApiEnabled() || $organization->isMcpEnabled(),
+                default => false,
+            };
+        }
+
 		public function setParametersArray(array $parameters): void
 		{
 			$this->set('parameters', $parameters);

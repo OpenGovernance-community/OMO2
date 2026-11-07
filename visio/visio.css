@@ -1,5 +1,12 @@
 /* Only the video viewport needs page-specific geometry; panels and forms are shared. */
-#visio-frame { height: 75dvh; min-height: 25rem; }
+#visio-stage { height: 100dvh; }
+#visio-frame {
+    min-height: 360px;
+    width: var(--visio-video-width, 100%);
+    height: var(--visio-video-height, 75dvh);
+    margin-inline: auto;
+}
+#visio-stage[hidden] { display: none; }
 #visio-frame iframe { display: block; border: 0; }
 
 .visio-policies { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .75rem; }

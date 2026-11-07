@@ -40,12 +40,38 @@ function commonAiIsTranscriptionConfigured(?string $model = null, ?string $apiKe
 
 function commonAiUserCanTranscribe(int $userId, ?string $model = null, ?int $organizationId = null): bool
 {
-    return commonAiIsTranscriptionConfigured($model) && patreonUserCanUseAi($userId, $organizationId ?? commonAiContextOrganization($userId));
+    $organizationId ??= commonAiContextOrganization($userId);
+    return commonAiOrganizationAllows($organizationId) && commonAiIsTranscriptionConfigured($model) && patreonUserCanUseAi($userId, $organizationId);
 }
 
 function commonAiUserCanUse(int $userId, ?string $model = null, ?string $apiKey = null, ?int $organizationId = null): bool
 {
-    return commonAiIsConfigured($model, $apiKey) && patreonUserCanUseAi($userId, $organizationId ?? commonAiContextOrganization($userId));
+    $organizationId ??= commonAiContextOrganization($userId);
+    return commonAiOrganizationAllows($organizationId) && commonAiIsConfigured($model, $apiKey) && patreonUserCanUseAi($userId, $organizationId);
+}
+
+/** Organization policy is independent of individual subscriptions and admin overrides. */
+function commonAiOrganizationAllows(int $organizationId): bool
+{
+    return $organizationId <= 0 || \dbObject\Organization::allowsInternalAi($organizationId);
+}
+
+function commonAiRequestOrganization(): int
+{
+    $context = $GLOBALS['commonAiUsageContext'] ?? [];
+    return array_key_exists('IDorganization', $context)
+        ? (int)($context['IDorganization'] ?? 0) : (int)($_SESSION['currentOrganization'] ?? 0);
+}
+
+function commonAiOrganizationBlockedMessage(): string
+{
+    require_once __DIR__ . '/translation_bundles.php';
+    $sourceLang = ['organization_blocked' => ['text' => 'Les fonctions IA sont bloquees par cette organisation.',
+        'context' => 'Organization security policy blocks all internal AI tools regardless of personal subscriptions.']];
+    static $lang = null;
+    $locale = function_exists('omoGetTranslationLocale') ? omoGetTranslationLocale() : (string)($_COOKIE['lang'] ?? 'fr');
+    $lang ??= loadTranslationBundle('common_ai_access', $locale, $sourceLang);
+    return t('organization_blocked', [], $lang, $sourceLang);
 }
 
 function commonAiGetCurrentUserId(): int
@@ -58,5 +84,8 @@ function commonAiGetCurrentUserId(): int
 function commonAiContextOrganization(int $userId): int
 {
     $context = $GLOBALS['commonAiUsageContext'] ?? [];
-    return (int)($context['IDuser'] ?? 0) === $userId ? (int)($context['IDorganization'] ?? 0) : 0;
+    if (array_key_exists('IDorganization', $context) && (int)($context['IDuser'] ?? 0) === $userId) {
+        return (int)($context['IDorganization'] ?? 0);
+    }
+    return $userId === commonAiGetCurrentUserId() ? (int)($_SESSION['currentOrganization'] ?? 0) : 0;
 }

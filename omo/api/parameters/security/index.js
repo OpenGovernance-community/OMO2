@@ -25,10 +25,19 @@ window.commonPageScripts['/omo/api/parameters/security/index.js'] = function (pa
     }
     enabled.addEventListener('change', syncFields);
     syncFields();
+    ['api', 'mcp'].forEach(function (key) {
+        var select = form.elements[key + '_enabled'];
+        var info = root.querySelector('[data-omo-integration-info="' + key + '"]');
+        if (!select || !info) return;
+        function syncIntegrationInfo() { info.hidden = select.value !== '1'; }
+        select.addEventListener('change', syncIntegrationInfo);
+        syncIntegrationInfo();
+    });
     form.addEventListener('submit', function (event) {
         event.preventDefault();
         if (button.disabled) { return; }
         var data = new FormData(form);
+        data.set('ai_blocked', form.elements.ai_blocked.checked ? '1' : '0');
         var sendNow = event.submitter === backupButton;
         if (sendNow) { data.set('backup_now', '1'); }
         data.set('enabled', enabled.checked ? '1' : '0');
@@ -41,7 +50,7 @@ window.commonPageScripts['/omo/api/parameters/security/index.js'] = function (pa
         backupButton.disabled = true;
         feedback.className = 'generic-feedback generic-feedback--collapse-empty';
         feedback.textContent = sendNow ? pageConfig.sending : '';
-        fetch('/omo/api/parameters/security/save.php', {
+        fetch('/omo/api/parameters/security/save.php?oid=' + encodeURIComponent(root.dataset.organizationId), {
             method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json' }, body: data
         }).then(function (response) {
             return response.json().then(function (payload) {
@@ -50,6 +59,7 @@ window.commonPageScripts['/omo/api/parameters/security/index.js'] = function (pa
             });
         }).then(function (payload) {
             showMessage(payload.message, 'success');
+            if (typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(form);
             if (payload.lastSentLabel) {
                 root.querySelector('[data-omo-security-last]').textContent = payload.lastSentLabel;
             }

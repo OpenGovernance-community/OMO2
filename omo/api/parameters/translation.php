@@ -16,7 +16,7 @@ function omoParametersIndexSourceLang()
         'parameters.index.card.calendar.title' => ['text' => 'Calendrier', 'context' => 'Organization calendar settings card title.'],
         'parameters.index.card.calendar.description' => ['text' => 'Définir les heures de début et de fin de journée utilisées en absence d’horaires personnels actifs.', 'context' => 'Organization calendar settings card description.'],
         'parameters.index.card.security.title' => ['text' => 'Sécurité', 'context' => 'Organization security settings card title.'],
-        'parameters.index.card.security.description' => ['text' => 'Configurer l’envoi automatique des sauvegardes de l’organisation par e-mail.', 'context' => 'Organization backup settings card description.'],
+        'parameters.index.card.security.description' => ['text' => "Configurer les sauvegardes, bloquer les fonctions IA et autoriser separement l'API REST et le serveur MCP de l'organisation.", 'context' => 'Organization backup, internal AI policy and independent external integration access settings.'],
         'parameters.index.card.security.cta' => ['text' => 'configurer', 'context' => 'Open organization security settings.'],
         'parameters.index.title' => ['text' => 'Paramètres', 'context' => 'Main title of the OMO settings hub.'],
         'parameters.index.description' => ['text' => "Retrouvez ici vos réglages personnels ainsi que les écrans de configuration disponibles pour l'organisation.", 'context' => 'Intro text shown at the top of the OMO settings hub.'],

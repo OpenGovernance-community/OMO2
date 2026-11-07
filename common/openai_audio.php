@@ -118,6 +118,9 @@ function commonOpenAiBuildTranscriptionModelFallbacks($preferredModel)
 
 function commonOpenAiRequestAudioTranscription($apiKey, $tmpName, $mimeType, $filename, array $payload)
 {
+    if (!commonAiOrganizationAllows(commonAiRequestOrganization())) {
+        return ['status' => false, 'http_code' => 403, 'code' => 'organization_ai_blocked', 'message' => commonAiOrganizationBlockedMessage()];
+    }
     if (!commonAiIsTranscriptionConfigured((string)($payload['model'] ?? ''), (string)$apiKey)) {
         return ['status' => false, 'message' => 'Configuration IA indisponible.'];
     }
@@ -216,6 +219,7 @@ function commonOpenAiRequestAudioTranscription($apiKey, $tmpName, $mimeType, $fi
 /** Poll and download only from the fixed product URL; never follow a URL from an API reply. */
 function commonInfomaniakTranscriptionGet(string $path, string $apiKey, int $timeout): array|string
 {
+    if (!commonAiOrganizationAllows(commonAiRequestOrganization())) throw new RuntimeException(commonAiOrganizationBlockedMessage());
     $curl = curl_init('https://api.infomaniak.com' . $path);
     if ($curl === false) throw new RuntimeException('Impossible de preparer le suivi de transcription Infomaniak.');
     curl_setopt_array($curl, [CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => false,

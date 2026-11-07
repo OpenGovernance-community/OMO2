@@ -173,3 +173,5 @@ permet de vérifier aussi la redirection des invitations sans jeton vers OMO.
 Documentation primaire : [authentification Docker Jitsi](https://jitsi.github.io/handbook/docs/devops-guide/devops-guide-docker/),
 [API iframe](https://jitsi.github.io/handbook/docs/dev-guide/dev-guide-iframe/),
 [modules Prosody complémentaires](https://github.com/jitsi-contrib/prosody-plugins).
+
+Le frontend personnalise utilise le lien direct https://beta.opengov.tools/visio/ pour les invitations Jitsi. Le parametre de build OMO_VISIO_INVITE_URL permet de changer cette base (sans slash final). Reconstruire le frontend apres modification. Le client OMO transmet brandingRoomAlias pour conserver le code public sans prefixe omo-.

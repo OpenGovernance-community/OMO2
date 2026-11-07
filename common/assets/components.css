@@ -218,6 +218,10 @@ body.meeting-page {
         var(--param-page-shell-padding-bottom);
 }
 
+.generic-page-shell--compact-bottom {
+    padding-bottom: var(--generic-space-3, 12px);
+}
+
 /* Summernote appends its link dialog outside the editor. Keep that dialog
  * consistent with the application dark theme instead of inheriting light
  * modal surfaces with dark-theme text. */

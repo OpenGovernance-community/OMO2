@@ -25,6 +25,9 @@ $sourceLang = [
     'spec' => ['text' => 'Voir la spécification OpenAPI (JSON)', 'context' => 'Link to the machine-readable API specification.'],
     'base' => ['text' => 'URL de base', 'context' => 'API server URL label.'],
     'auth' => ['text' => 'Connexion OAuth', 'context' => 'Authentication guide heading.'],
+    'mcp' => ['text' => 'Connexion MCP', 'context' => 'Public MCP connection guide heading and navigation.'],
+    'mcp_intro' => ['text' => "Dans votre assistant, ajoutez un serveur MCP distant avec le transport Streamable HTTP et cette URL exacte, barre oblique finale comprise :", 'context' => 'Remote MCP connector setup instruction.'],
+    'mcp_consent' => ['text' => "Connectez votre compte OMO, puis choisissez une organisation et les autorisations souhaitees. L'organisation doit autoriser le MCP dans Parametres > Securite ; cet acces est bloque par defaut, meme avec un abonnement personnel. Les droits OMO et les conditions habituelles d'acces restent applicables.", 'context' => 'MCP organization authorization and consent requirements.'],
     'auth_intro' => ['text' => 'Utilisez Authorization Code avec PKCE S256. La personne choisit une organisation et autorise les scopes ; les permissions OMO continuent de limiter chaque opération. Demandez toujours organization:read, puis ajoutez les scopes des opérations d’écriture souhaitées.', 'context' => 'OAuth guide introduction.'],
     'register' => ['text' => 'Enregistrez votre client avec client_name, redirect_uris et token_endpoint_auth_method: none. Conservez le client_id retourné.', 'context' => 'OAuth dynamic registration instruction.'],
     'authorize' => ['text' => 'Ouvrez cette URL avec response_type=code, client_id, redirect_uri, resource, scope, state, code_challenge et code_challenge_method=S256.', 'context' => 'OAuth authorization instruction.'],
@@ -133,6 +136,7 @@ function developerResponseFields(array $schema, array $schemas, string $prefix =
                 </div>
                 <a href="#overview" class="developer-nav-link"><?= $escape($tr('intro')) ?></a>
                 <a href="#authentication" class="developer-nav-link"><?= $escape($tr('auth')) ?></a>
+                <a href="#mcp" class="developer-nav-link"><?= $escape($tr('mcp')) ?></a>
                 <a href="#conventions" class="developer-nav-link"><?= $escape($tr('conventions')) ?></a>
                 <div class="developer-function-links">
                 <?php foreach ($operations as $operation): ?>
@@ -154,6 +158,13 @@ function developerResponseFields(array $schema, array $schemas, string $prefix =
             <p><?= $escape($tr('shared')) ?></p>
             <div class="developer-base"><span><?= $escape($tr('base')) ?></span><code><?= $escape($baseUrl) ?></code></div>
             <a class="generic-action-button generic-action-button--secondary" href="/api/v1/openapi.json"><?= $escape($tr('spec')) ?></a>
+        </section>
+        <section id="mcp" class="generic-section generic-section--stack developer-section" tabindex="-1">
+            <h2 class="generic-card-title generic-card-title--section"><?= $escape($tr('mcp')) ?></h2>
+            <p><?= $escape($tr('mcp_intro')) ?></p>
+            <code><?= $escape(omoMcpPublicUrl()) ?></code>
+            <p><?= $escape($tr('mcp_consent')) ?></p>
+            <a href="#authentication"><?= $escape($tr('auth')) ?></a>
         </section>
         <section id="authentication" class="generic-section generic-section--stack developer-section" tabindex="-1">
             <h2 class="generic-card-title generic-card-title--section"><?= $escape($tr('auth')) ?></h2>

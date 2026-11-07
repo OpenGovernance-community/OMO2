@@ -159,7 +159,7 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
 
             <button type="button" class="omo-settings__card omo-card omo-card--interactive omo-settings__card--admin-mode-required"
                 data-omo-settings-drawer-title="<?= htmlspecialchars(omoParametersIndexT('parameters.index.card.security.title'), ENT_QUOTES, 'UTF-8') ?>"
-                data-omo-settings-drawer-url="/omo/api/parameters/security/index.php"
+                data-omo-settings-drawer-url="/omo/api/parameters/security/index.php?oid=<?= (int)$currentOrganizationId ?>"
                 data-omo-settings-drawer-mode="fetch"
                 <?= $isOrganizationAdminModeEnabled ? '' : 'disabled aria-disabled="true"' ?>>
                 <span class="omo-settings__card-head">

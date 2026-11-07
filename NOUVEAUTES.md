@@ -4,7 +4,23 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 Les dates deja indiquees sont conservees. Les dates manquantes sont reconstituees a partir de la premiere apparition des entrees dans l historique GitHub, en heure Europe/Zurich ; elles correspondent a leur ajout au journal, pas necessairement a leur mise en production.
 
+## 2026-11-07
+
+- Telegram / transcription et Patreon (2026-11-07) : /connect reste disponible sans abonnement pour les destinations OMO autorisees. Un abonnement personnel finance les propres vocaux de l expediteur ; une organisation abonnee finance les messages de tous les participants des groupes ou sujets relies a ses roles et projets. L abonnement personnel de la personne ayant configure le groupe ne finance plus les autres expediteurs. Droits du compte de connexion reverifies, financement conserve pour les metadonnees et blocage IA de l organisation prioritaire.
+
+- Organisations / lisibilite des preferences de securite (2026-11-07) : capsules ? placees juste a cote des libelles et etendues aux explications des sauvegardes. Espacement augmente entre les reglages, les liens et les endpoints ; dates de suivi conservees directement a l ecran.
+
 ## 2026-11-06
+
+- Organisations / aides IA et acces externes (2026-11-06) : explications regroupees dans des capsules ?. Lorsqu un acces API ou MCP est autorise, sa documentation et son endpoint configure apparaissent sous le selecteur. Guide de connexion MCP ajoute a la documentation publique.
+
+- Organisations / enregistrement de la securite (2026-11-06) : un seul bouton Enregistrer conserve ensemble les preferences IA, API, MCP et sauvegardes. Suppression du bouton propre aux acces externes ; validation commune et enregistrement en une transaction, sans fausse alerte de modifications non enregistrees apres succes.
+
+- Organisations / blocage IA (2026-11-06) : option Bloquer les fonctions IA dans Parametres > Securite, applicable meme aux membres avec abonnement personnel et aux administrateurs. Chat, resumes, reformulation, transcription et memos Telegram destines a l organisation sont controles cote serveur avant tout nouvel appel IA. Aucune nouvelle traduction IA n est declenchee depuis une organisation bloquee ; les traductions deja disponibles restent lisibles. Par defaut, IA interne autorisee et acces API/MCP bloques ; trois choix independants, configurables sans lien Patreon.
+
+- Organisations / securite des integrations (2026-11-06) : deux reglages independants API REST et serveur MCP dans Parametres > Securite, tous deux bloques par defaut et configurables sans lien Patreon de l organisation ou de son administrateur. Le blocage s impose aussi aux membres abonnes individuellement. Controle a chaque acces et autorisation d ecriture, y compris pour les jetons existants ; nouvelles connexions et renouvellements refuses si les deux sont bloques. Le chat integre reste independant. Reglages stockes dans les parametres existants de chaque organisation, sans changement de schema SQL.
+
+- Confidentialite / services IA (2026-11-06) : politique completee avec les fournisseurs et modeles courants des fonctions IA, de la traduction et de la transcription, lus dans les parametres de chaque instance sans exposer tokens, Product ID ou URL completes. Precision des textes et enregistrements audio transmis, des fonctions desactivees et du cas des assistants externes par API ou MCP.
 
 - IA / transcription Infomaniak (2026-11-06) : service audio Whisper V3 ajoute aux reglages, modele whisper propose automatiquement, Product ID audio facultatif et reprise du token et du produit texte quand les deux services utilisent Infomaniak. Envoi de l audio puis suivi borne de la tache asynchrone et recuperation de son resultat pour les dictees et memos vocaux.
 
@@ -5203,3 +5219,19 @@ Le projet a avance sur quatre grands axes: une interface plus coherente, un modu
 - Visio : hauteur du bouton de creation harmonisee avec le champ du titre.
 
 - Visio : bouton de creation mis en valeur avec la couleur principale.
+
+- Visio : la video grandit avec le defilement jusqu a remplir la fenetre ; les informations sont placees avant la video.
+
+- Visio : apercu initial ajuste a la place disponible en bas de fenetre, au ratio de l ecran, puis agrandissement proportionnel au defilement.
+
+- Visio : hauteur minimale de la video fixee a 360 pixels pendant l agrandissement.
+
+- Visio : retrait du message de chargement persistant et reduction de l espace avant la video ; les erreurs et la fin d appel restent visibles.
+
+- Visio : bouton pour recharger la page et rejoindre de nouveau apres la fin d appel.
+
+- Visio : bouton de reconnexion aligne sur la meme ligne que le message de fin d appel.
+
+- Visio : invitations copiees dans Jitsi dirigees directement vers /visio/ grace au domaine d invitation personnalise et au code public de la salle. Reconstruction du frontend Jitsi requise.
+
+- Visio : versionnement de la configuration Jitsi pour renouveler le cache des liens d invitation.

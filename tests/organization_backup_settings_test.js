@@ -6,7 +6,7 @@ const vm = require('node:vm');
     const handlers = {};
     const toggle = { checked: false, addEventListener: (name, callback) => { handlers[name] = callback; } };
     const form = {
-        elements: { email: { value: 'backup@example.invalid' }, frequency: { value: '8m' } },
+        elements: { email: { value: 'backup@example.invalid' }, frequency: { value: '8m' }, ai_blocked: {checked: true} },
         querySelector: () => toggle,
         addEventListener: (name, callback) => { handlers[name] = callback; }
     };
@@ -17,7 +17,7 @@ const vm = require('node:vm');
     const next = {};
     const root = {
         dataset: { organizationId: '42', csrf: 'fixture-token' },
-        querySelector: (selector) => ({ form, '[data-omo-security-save]': button, '[data-omo-security-backup-now]': backupButton,
+        querySelector: (selector) => ({ 'form': form, '[data-omo-security-save]': button, '[data-omo-security-backup-now]': backupButton,
             '[data-omo-security-feedback]': feedback, '[data-omo-security-last]': last, '[data-omo-security-next]': next })[selector]
     };
     const requests = [];
@@ -47,6 +47,7 @@ const vm = require('node:vm');
     assert.equal(requests.length, 1, 'Repeated clicks must not submit while saving');
     const data = requests[0].options.body;
     assert.equal(data.get('enabled'), '0');
+    assert.equal(data.get('ai_blocked'), '1', 'Global save includes the AI security preference');
     assert.equal(data.get('email'), 'backup@example.invalid', 'Disabling backups preserves the configured email');
     assert.equal(data.get('frequency'), '8m', 'Disabling backups preserves the chosen frequency');
     assert.equal(data.get('organization_id'), '42', 'Saving stays bound to the organization that opened the form');

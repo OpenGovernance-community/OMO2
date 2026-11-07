@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../shared_functions.php';
 require_once __DIR__ . '/legal_page_helper.php';
+require_once __DIR__ . '/ai_disclosure.php';
 
 $siteTitle = 'OpenMyOrganization';
 $locale = commonLegalResolveLocale();
@@ -157,6 +158,41 @@ $sourceLang = array_merge(commonGetLegalSharedSourceLang(), [
         'text' => 'Les services facultatifs activés par une organisation, notamment l’envoi de courriels ou une intégration externe, peuvent impliquer les prestataires correspondants. Seules les données nécessaires à la fonction concernée doivent alors leur être transmises, et l’organisation qui active cette fonction doit en informer les personnes concernées lorsque cela est requis.',
         'context' => 'Paragraph describing optional third-party integrations and their responsibility.',
     ],
+    'legal.privacy.ai.title' => [
+        'text' => "6.1. Services d'intelligence artificielle utilises sur cette instance",
+        'context' => 'Privacy policy section listing current AI services from runtime configuration.',
+    ],
+    'legal.privacy.ai.configuration' => [
+        'text' => "Les services ci-dessous correspondent aux parametres actuels de cette instance. Cette liste est mise a jour automatiquement lorsque la configuration change. Les contenus et traductions deja enregistres peuvent provenir d'autres configurations.",
+        'context' => 'Explain live instance-specific disclosure, distinct from historical data or another instance sharing content.',
+    ],
+    'legal.privacy.ai.data_title' => ['text' => '6.2. Donnees transmises aux services IA', 'context' => 'Privacy policy subsection describing data sent for each AI feature.'],
+    'legal.privacy.ai.functions' => ['text' => 'Fonctions IA, resumes et chat integre', 'context' => 'Purpose of the main text model.'],
+    'legal.privacy.ai.translation' => ['text' => "Traduction de l'interface", 'context' => 'Purpose of the separate translation model.'],
+    'legal.privacy.ai.transcription' => ['text' => 'Transcription audio', 'context' => 'Purpose of the independently configured audio service.'],
+    'legal.privacy.ai.service' => [
+        'text' => '<strong>{purpose}</strong> : service {provider} ; modele {model}.',
+        'context' => 'AI service list entry; provider and model are escaped runtime values, never translated or cached as source copy.',
+    ],
+    'legal.privacy.ai.disabled' => ['text' => '<strong>{purpose}</strong> : service desactive sur cette instance.', 'context' => 'Explicitly disabled AI feature, hiding retained model settings.'],
+    'legal.privacy.ai.unconfigured' => ['text' => '<strong>{purpose}</strong> : service indisponible ou configuration incomplete.', 'context' => 'AI service cannot currently be called with the instance settings.'],
+    'legal.privacy.ai.unknown' => ['text' => 'Service personnalise', 'context' => 'Fallback service label when a configured provider cannot be identified.'],
+    'legal.privacy.ai.text_data' => [
+        'text' => "Lorsque vous demandez un resume, une reformulation ou utilisez le chat integre, du contenu texte est envoye au service IA configure : vos questions et consignes, ainsi que les extraits de documents ou les informations de l'organisation necessaires pour traiter votre demande, dans la limite de vos droits d'acces.",
+        'context' => 'Disclose text transmission for summaries, rewriting and organization chat, including permission-scoped tool results.',
+    ],
+    'legal.privacy.ai.translation_data' => [
+        'text' => "La traduction automatique de l'interface transmet au service de traduction les libelles et textes de l'interface a traduire.",
+        'context' => 'Disclose transmission of UI source strings to the translation provider.',
+    ],
+    'legal.privacy.ai.audio_data' => [
+        'text' => "Pour la transcription, l'enregistrement audio et, le cas echeant, des consignes textuelles sont envoyes au service audio configure. Le texte obtenu peut ensuite etre envoye au service IA de texte si vous demandez un resume ou une reformulation.",
+        'context' => 'Accurately disclose audio and optional text prompts for transcription, then separate text processing when requested.',
+    ],
+    'legal.privacy.ai.external' => [
+        'text' => 'Les assistants externes connectes par API ou MCP utilisent leur propre fournisseur, choisi par la personne qui les utilise. Les donnees recues par ces assistants dependent des acces et autorisations accordes.',
+        'context' => 'Distinguish AI called by the site from external MCP/API clients.',
+    ],
     'legal.privacy.section.7.title' => [
         'text' => '7. Logiciel libre et auto-hébergement',
         'context' => 'Section title describing the open-source and self-hosting model.',
@@ -219,6 +255,22 @@ $sourceLang = array_merge(commonGetLegalSharedSourceLang(), [
     ],
 ]);
 $lang = commonLegalLoadBundle('common_legal_privacy_page', $sourceLang, $locale);
+
+// Keep dynamic settings outside translation sources and the shared translation cache.
+$aiServiceItems = [];
+foreach (commonAiGetPublicServices() as $purpose => $service) {
+    $purposeLabel = htmlspecialchars(commonLegalT('legal.privacy.ai.' . $purpose, [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8');
+    $entryKey = match ($service['status']) {
+        'configured' => 'legal.privacy.ai.service',
+        'disabled' => 'legal.privacy.ai.disabled',
+        default => 'legal.privacy.ai.unconfigured',
+    };
+    $aiServiceItems[] = commonLegalT($entryKey, [
+        'purpose' => $purposeLabel,
+        'provider' => htmlspecialchars($service['provider'] ?: commonLegalT('legal.privacy.ai.unknown', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8'),
+        'model' => htmlspecialchars($service['model'], ENT_QUOTES, 'UTF-8'),
+    ], $lang, $sourceLang);
+}
 
 commonRenderLegalPage([
     'siteTitle' => $siteTitle,
@@ -294,6 +346,20 @@ commonRenderLegalPage([
                 commonLegalT('legal.privacy.section.6.body.1', [], $lang, $sourceLang),
                 commonLegalT('legal.privacy.section.6.body.2', [], $lang, $sourceLang),
                 commonLegalT('legal.privacy.section.6.body.3', [], $lang, $sourceLang),
+            ],
+        ],
+        [
+            'title' => commonLegalT('legal.privacy.ai.title', [], $lang, $sourceLang),
+            'paragraphs' => [commonLegalT('legal.privacy.ai.configuration', [], $lang, $sourceLang)],
+            'list' => $aiServiceItems,
+        ],
+        [
+            'title' => commonLegalT('legal.privacy.ai.data_title', [], $lang, $sourceLang),
+            'paragraphs' => [
+                commonLegalT('legal.privacy.ai.text_data', [], $lang, $sourceLang),
+                commonLegalT('legal.privacy.ai.translation_data', [], $lang, $sourceLang),
+                commonLegalT('legal.privacy.ai.audio_data', [], $lang, $sourceLang),
+                commonLegalT('legal.privacy.ai.external', [], $lang, $sourceLang),
             ],
         ],
         [

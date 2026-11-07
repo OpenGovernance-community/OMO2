@@ -37,6 +37,8 @@ services:
     image: omo-jitsi-web:stable-11248-3-omo1
     build:
       context: ./web
+      args:
+        OMO_VISIO_INVITE_URL: https://localtest.me/visio
     mem_limit: 256m
     environment:
       <<: *environment

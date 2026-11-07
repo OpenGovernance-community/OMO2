@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/ai_config.php';
 require_once __DIR__ . '/ai_usage.php';
+require_once __DIR__ . '/ai_access.php';
 
 /** Text-only adapter shared by document tools, Telegram and UI translations. */
 function commonAiBuildTextRequest(string $apiKey, array $payload): array
@@ -93,6 +94,9 @@ function commonAiRequestText(string $apiKey, array $payload, int $timeout = 120)
 /** Shared HTTP transport for text requests and local assistant tool calls. */
 function commonAiRequestJson(array $request, int $timeout = 120): array
 {
+    if (!commonAiOrganizationAllows(commonAiRequestOrganization())) {
+        return ['status' => false, 'http_code' => 403, 'code' => 'organization_ai_blocked', 'message' => commonAiOrganizationBlockedMessage()];
+    }
     $encoded = json_encode($request['payload'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
     $curl = curl_init($request['url']);
     if ($curl === false) return ['status' => false, 'message' => 'Impossible de preparer la requete IA.'];

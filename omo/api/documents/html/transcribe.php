@@ -53,6 +53,12 @@ if ($organizationId <= 0 || $currentUserId <= 0 || !commonCurrentUserHasOrganiza
     exit;
 }
 
+if (!commonAiOrganizationAllows($organizationId)) {
+    http_response_code(403);
+    echo json_encode(['status' => false, 'code' => 'organization_ai_blocked', 'message' => commonAiOrganizationBlockedMessage()]);
+    exit;
+}
+
 if (!commonAiIsTranscriptionConfigured()) {
     http_response_code(503);
     echo json_encode(['status' => false, 'message' => omoDocumentsTranscribeT('documents.transcribe.error.configuration')]);
