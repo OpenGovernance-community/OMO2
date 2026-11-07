@@ -6,6 +6,8 @@ Les dates deja indiquees sont conservees. Les dates manquantes sont reconstituee
 
 ## 2026-11-07
 
+- Visio / compatibilite des sondes (2026-11-07) : selection de l option de protocoles selon les capacites PHP/cURL de l hebergement pour eviter un faux etat indisponible de tous les composants Jitsi. Echecs HTTP et codes cURL journalises cote serveur sans exposer de diagnostics dans le JSON public.
+
 - Technologies et visio (2026-11-07) : hebergement Infomaniak complete et fiche AI Services ajoutee pour l assistance, la traduction et la transcription. Controle public /visio/health.php compatible UptimeRobot (HTTP 200/503), vue manuelle /visio/status.php et sondes Jitsi limitees a la sante de Jicofo et du pont audio/video. Verification de la base OMO, des ressources web et d une session de signalisation sans creer de salle ; limites du controle et configuration de la surveillance documentees. Sondes deployees sur le VPS et verifiees depuis Internet en GET/HEAD, avec sauvegarde et retour arriere disponibles.
 
 - OMO / cache des icones (2026-11-07) : variantes conservees par organisation, taille et usage, avec cache navigateur sur les URL versionnees. La version suit le logo, son contenu et la couleur ; les URL sans organisation explicite sont revalidees pour conserver la bonne icone selon le contexte.

@@ -11,7 +11,6 @@ function visioHealthHttp(string $url, ?string $xml = null, int $timeoutMs = 2000
         CURLOPT_FOLLOWLOCATION => false,
         CURLOPT_CONNECTTIMEOUT_MS => 1000,
         CURLOPT_TIMEOUT_MS => $timeoutMs,
-        CURLOPT_PROTOCOLS_STR => 'http,https',
         CURLOPT_USERAGENT => 'OMO2-Visio-Health/1.0',
         CURLOPT_HTTPHEADER => $xml === null ? ['Accept: */*'] : ['Content-Type: text/xml; charset=UTF-8'],
         CURLOPT_WRITEFUNCTION => static function ($handle, string $chunk) use (&$body): int {
@@ -20,9 +19,21 @@ function visioHealthHttp(string $url, ?string $xml = null, int $timeoutMs = 2000
             return strlen($chunk);
         },
     ]);
+    // This option also depends on the libcurl build, not only the PHP version.
+    if (defined('CURLOPT_PROTOCOLS_STR')) {
+        curl_setopt($curl, CURLOPT_PROTOCOLS_STR, 'http,https');
+    } else {
+        curl_setopt($curl, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
+    }
     if ($xml !== null) curl_setopt_array($curl, [CURLOPT_POST => true, CURLOPT_POSTFIELDS => $xml]);
     $success = curl_exec($curl);
-    return ['code' => $success === false ? 0 : (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE), 'body' => $body];
+    $code = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+    if ($success === false || $code !== 200) {
+        // Keep diagnostics private and omit target hosts, query strings, credentials and response bodies.
+        error_log('Visio HTTP probe failed (path=' . (string)parse_url($url, PHP_URL_PATH)
+            . ', curl=' . curl_errno($curl) . ', http=' . $code . ').');
+    }
+    return ['code' => $success === false ? 0 : $code, 'body' => $body];
 }
 
 /** Opens then closes an anonymous BOSH session; no room, JWT or media is created. */

@@ -91,7 +91,7 @@ try {
         foreach (['GET', 'HEAD'] as $method) {
             $context = stream_context_create(['http' => ['method' => $method, 'ignore_errors' => true, 'timeout' => 20]]);
             $body = file_get_contents($origin . '/visio/health.php?url=https://example.com&jwt=private-visitor-token', false, $context);
-            $headers = http_get_last_response_headers();
+            $headers = function_exists('http_get_last_response_headers') ? http_get_last_response_headers() : get_defined_vars()['http_response_header'];
             $status = $mode === 'ok' ? 200 : 503;
             assertVisioHealth(str_contains($headers[0], ' ' . $status . ' '), $method . ' ' . $mode . ' status: ' . $body);
             $headerText = strtolower(implode("\n", $headers));

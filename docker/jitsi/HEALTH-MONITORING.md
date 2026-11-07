@@ -30,6 +30,16 @@ verifient les certificats TLS. Une reponse HTML de connexion ou de secours ne
 valide pas le service. Le JSON public ne contient ni adresses internes, ni
 identites, ni statistiques de salles, ni cles. Aucune salle n est creee.
 
+Si tous les composants Jitsi sont indisponibles alors que la visio fonctionne,
+verifier aussi les capacites PHP/cURL de l hebergement OMO. La sonde choisit
+`CURLOPT_PROTOCOLS_STR` seulement si cette constante existe, sinon elle utilise
+la restriction de protocoles historique. Une ancienne version de la sonde
+pouvait echouer avant tout appel HTTP sur PHP 8.2 ou une ancienne libcurl.
+Les echecs de transport sont journalises dans le log PHP avec le chemin, le
+code cURL et le code HTTP, sans adresse cible ni contenu de reponse. Le JSON
+public reste minimal. Un code cURL 6 indique un echec DNS, 7 une connexion
+impossible, 28 un delai depasse et 60 un certificat non reconnu.
+
 ## Activation dans Docker local
 
 Depuis la racine :
