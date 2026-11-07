@@ -27,6 +27,13 @@ if ($requestedOrganizationId > 0) {
     }
 }
 
+// The catalog has its own installation, even when root-host resolution returns
+// a default organization for other parts of the application.
+if ($requestedOrganizationId <= 0 && commonGetRequestedOrganizationId() <= 0
+    && commonGetRequestSubdomain() === '' && !commonIsDemoHost()) {
+    $organizationContext = [];
+}
+
 $defaultName = 'OpenMyOrganization';
 $defaultShortName = 'OMO';
 $defaultIcon = '/omo/icons/icon-512.png';
@@ -111,7 +118,7 @@ $manifest = [
     'description' => omoInterfaceUiT('application_de_gouvernance_omo_pour_consulter_la_structure_les_espaces_et_les_outils'),
     'lang' => omoGetTranslationLocale(),
     'dir' => 'ltr',
-    'start_url' => $startUrl,
+    'start_url' => $startUrl . '?pwa=' . (!empty($organizationContext['isValid']) ? (int)$organizationContext['id'] : 0),
     'scope' => $scope,
     'related_applications' => [[
         'platform' => 'webapp',

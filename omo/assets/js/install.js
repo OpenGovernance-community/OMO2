@@ -17,6 +17,8 @@ var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; 
     let bannerElement = null;
 
     function omoIsStandalone() {
+        if (window.omoPwaNavigation) return window.omoPwaNavigation.isStandalone();
+
         const standaloneQuery = typeof window.matchMedia === 'function'
             ? window.matchMedia('(display-mode: standalone)')
             : null;

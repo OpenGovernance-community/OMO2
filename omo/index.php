@@ -363,10 +363,19 @@ function omoBuildManifestIconUrlForContext(array $organizationContext, $size = 1
     return omoManifestBuildIconUrl($organizationContext, $size, $purpose);
 }
 
-function omoBuildPwaHeadHtml($themeColor = '#004663', $iconUrl = '/omo/icons/icon-192.png', $appTitle = 'OMO', $manifestUrl = '/omo/manifest.php')
+function omoBuildPwaHeadHtml($themeColor = '#004663', $iconUrl = '/omo/icons/icon-192.png', $appTitle = 'OMO', $manifestUrl = '/omo/manifest.php', array $pwaOrganizationContext = [])
 {
     $resolvedIconUrl = omoResolvePwaIconUrl($iconUrl);
     $resolvedAppTitle = trim((string)$appTitle) !== '' ? (string)$appTitle : 'OMO';
+    $pwaOrganizationId = !empty($pwaOrganizationContext['isValid']) ? (int)($pwaOrganizationContext['id'] ?? 0) : 0;
+    $pwaHomePath = $pwaOrganizationId > 0 && ($pwaOrganizationContext['routeMode'] ?? '') === 'path'
+        ? commonBuildOrganizationEntryPath($pwaOrganizationId) : '/omo/';
+    $pwaNavigation = [
+        'organizationId' => $pwaOrganizationId,
+        'hostOrganizationId' => $pwaOrganizationId > 0 && ($pwaOrganizationContext['routeMode'] ?? '') === 'host' ? $pwaOrganizationId : 0,
+        'homeUrl' => commonBuildUrl($pwaHomePath),
+        'catalogUrl' => commonBuildUrl('/omo/', commonGetRootHost()),
+    ];
 
     return implode(PHP_EOL, [
         '<link rel="manifest" href="' . htmlspecialchars((string)$manifestUrl, ENT_QUOTES, 'UTF-8') . '">',
@@ -378,6 +387,8 @@ function omoBuildPwaHeadHtml($themeColor = '#004663', $iconUrl = '/omo/icons/ico
         '<link rel="icon" href="' . htmlspecialchars($resolvedIconUrl, ENT_QUOTES, 'UTF-8') . '">',
         '<link rel="apple-touch-icon" href="' . htmlspecialchars($resolvedIconUrl, ENT_QUOTES, 'UTF-8') . '">',
         '<link rel="stylesheet" href="/omo/assets/css/install.css">',
+        '<script>window.omoPwaNavigationConfig = ' . json_encode($pwaNavigation, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES) . ';</script>',
+        '<script src="' . commonAssetUrl('/omo/assets/js/pwa-navigation.js') . '" defer></script>',
     ]);
 }
 
@@ -605,7 +616,8 @@ if (!commonGetCurrentUserId() && !$isDemoGuest) {
         commonGetOrganizationAccentColor($loginOrganizationContext, '#004663'),
         omoBuildManifestIconUrlForContext($loginOrganizationContext, 192),
         ($loginOrganizationContext['name'] ?? 'OMO') ?: 'OMO',
-        omoBuildManifestUrlForContext($loginOrganizationContext)
+        omoBuildManifestUrlForContext($loginOrganizationContext),
+        $loginOrganizationContext
     );
 
     commonRenderMagicLoginPage([
@@ -652,10 +664,11 @@ $isSiteAdmin = !$isDemoGuest && commonCurrentUserIsSiteAdminModeEnabled();
 $omoOrganizationAccentColor = commonGetOrganizationAccentColor($organizationContext, '#004663');
 $omoOrganizationAccentColorCss = htmlspecialchars($omoOrganizationAccentColor, ENT_QUOTES, 'UTF-8');
 $omoPwaHeadHtml = omoBuildPwaHeadHtml(
-    $omoOrganizationAccentColor,
-    omoBuildManifestIconUrlForContext($organizationContext, 192),
-    ($organizationContext['name'] ?? 'OMO') ?: 'OMO',
-    omoBuildManifestUrlForContext($organizationContext)
+    $isOrganizationHub ? '#004663' : $omoOrganizationAccentColor,
+    omoBuildManifestIconUrlForContext($isOrganizationHub ? $omoLandingOrganization : $organizationContext, 192),
+    $isOrganizationHub ? 'OMO' : (($organizationContext['name'] ?? 'OMO') ?: 'OMO'),
+    omoBuildManifestUrlForContext($isOrganizationHub ? $omoLandingOrganization : $organizationContext),
+    $isOrganizationHub ? $omoLandingOrganization : $organizationContext
 );
 if (empty($organizationContext['isValid'])) {
     http_response_code(404);

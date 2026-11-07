@@ -6,6 +6,14 @@ require_once __DIR__ . '/translations.php';
 function omoGetTopbarSourceLang(): array
 {
     return [
+        'topbar.brand.home' => [
+            'text' => 'Accueil de l\'organisation',
+            'context' => 'Accessible label for returning to the first page of the current organization.',
+        ],
+        'topbar.brand.catalog' => [
+            'text' => 'Catalogue des organisations',
+            'context' => 'Accessible label for the organization logo when clicking it returns to the catalog.',
+        ],
         'topbar.bug.button' => [
             'text' => 'Bug',
             'context' => 'Topbar bug report button label in OMO pages.',
@@ -520,6 +528,11 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
         'appKey' => 'omo',
         'appLabel' => 'OMO',
         'organization' => $organizationContext,
+        'brandNavigation' => [
+            'enabled' => $variant === 'app' && $hasOrganizationContext,
+            'homeLabel' => omoTopbarTranslate('topbar.brand.home'),
+            'catalogLabel' => omoTopbarTranslate('topbar.brand.catalog'),
+        ],
         'logoutReturnTo' => (string)($options['logoutReturnTo'] ?? '/omo/'),
         'helpLabel' => omoTopbarTranslate('topbar.help.button'),
         'helpItems' => omoGetTopbarHelpItems($variant, $helpOrganizationId, $hasOrganizationContext ? (string)($organizationContext['name'] ?? '') : ''),
