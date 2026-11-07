@@ -1,5 +1,8 @@
 # Jitsi local
 
+Controle de disponibilite et configuration UptimeRobot :
+[HEALTH-MONITORING.md](HEALTH-MONITORING.md).
+
 Jitsi est inclus dans le Compose principal. Il utilise les mêmes images
 officielles épinglées et les mêmes droits JWT que le profil OMO2 du VPS.
 Apache fournit HTTPS sur `https://meet.localtest.me` et transmet les WebSockets.

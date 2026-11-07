@@ -96,8 +96,14 @@ services:
     environment:
       <<: *environment
       JICOFO_ENABLE_AUTH: "0"
+      JICOFO_ENABLE_REST: "1"
+      JICOFO_ENABLE_HEALTH_CHECKS: "1"
       ENABLE_AUTO_OWNER: "0"
       JICOFO_MAX_MEMORY: 256m
+    networks:
+      jitsi:
+        aliases:
+          - jicofo
     depends_on:
       - jitsi-prosody
 
@@ -110,6 +116,10 @@ services:
       JVB_PORT: "10000"
       JVB_DISABLE_STUN: "1"
       VIDEOBRIDGE_MAX_MEMORY: 512m
+    networks:
+      jitsi:
+        aliases:
+          - jvb
     ports:
       - "10000:10000/udp"
     depends_on:

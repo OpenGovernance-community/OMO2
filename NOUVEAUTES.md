@@ -6,6 +6,8 @@ Les dates deja indiquees sont conservees. Les dates manquantes sont reconstituee
 
 ## 2026-11-07
 
+- Technologies et visio (2026-11-07) : hebergement Infomaniak complete et fiche AI Services ajoutee pour l assistance, la traduction et la transcription. Controle public /visio/health.php compatible UptimeRobot (HTTP 200/503), vue manuelle /visio/status.php et sondes Jitsi limitees a la sante de Jicofo et du pont audio/video. Verification de la base OMO, des ressources web et d une session de signalisation sans creer de salle ; limites du controle et configuration de la surveillance documentees.
+
 - OMO / cache des icones (2026-11-07) : variantes conservees par organisation, taille et usage, avec cache navigateur sur les URL versionnees. La version suit le logo, son contenu et la couleur ; les URL sans organisation explicite sont revalidees pour conserver la bonne icone selon le contexte.
 
 - Telegram / transcription et Patreon (2026-11-07) : /connect reste disponible sans abonnement pour les destinations OMO autorisees. Un abonnement personnel finance les propres vocaux de l expediteur ; une organisation abonnee finance les messages de tous les participants des groupes ou sujets relies a ses roles et projets. L abonnement personnel de la personne ayant configure le groupe ne finance plus les autres expediteurs. Droits du compte de connexion reverifies, financement conserve pour les metadonnees et blocage IA de l organisation prioritaire.
@@ -5237,3 +5239,9 @@ Le projet a avance sur quatre grands axes: une interface plus coherente, un modu
 - Visio : invitations copiees dans Jitsi dirigees directement vers /visio/ grace au domaine d invitation personnalise et au code public de la salle. Reconstruction du frontend Jitsi requise.
 
 - Visio : versionnement de la configuration Jitsi pour renouveler le cache des liens d invitation.
+
+- Visio : prototype local de suivi du trafic JVB par createur et organisation dans common/admin/stats.php, avec periode, regroupement et etat de collecte. Releves toutes les 30 secondes, volumes minimaux observes (hors P2P et fins de connexion non observees). Migration 2026-11-07-01 et collecteur prive documentes dans docker/jitsi/TRAFFIC-MONITORING.md.
+
+- Conditions generales (07.11.2026) : ajout de la politique de consommation visio sans quota actuel, evolution selon les ressources avec information prealable, et suivi du trafic attribue au createur et a l organisation de la salle.
+
+- Visio : creation reservee aux contributions Patreon personnelles ou organisations eligibles ; choix organisation obligatoire et filtre sans contribution personnelle. Les salles devenues ineligibles sont grisees et leurs anciens liens affichent un message explicite pour tous, sans acces Jitsi. Les invites restent admis dans les salles actives sans contribution. Verification aux nouvelles connexions selon le statut Patreon synchronise.

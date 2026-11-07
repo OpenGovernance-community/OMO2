@@ -38,6 +38,9 @@ try {
         $sessionIds[] = session_id();
         session_write_close();
     }
+    $subscription = new \dbObject\UserPatreon();
+    foreach (['IDuser' => $users[0]->getId(), 'is_connected' => 1, 'refresh_token' => 'fixture-only', 'patron_status' => 'active_patron', 'currently_entitled_amount_cents' => 100] as $field => $value) $subscription->set($field, $value);
+    if (empty($subscription->save()['status'])) throw new RuntimeException('Contribution fixture failed');
     $organization = new \dbObject\Organization();
     $organization->set('name', 'Video <room> & members');
     videoHttpExpect(!empty($organization->save()['status']), 'Fixture organization saved');
@@ -120,6 +123,14 @@ try {
         videoHttpExpect($status === 200 && !$access['moderator'] && !str_contains($body,$password), 'Native password configuration preserves participant role and secret privacy');
         if ($identity !== 1) videoHttpExpect(str_contains($headers,'Permissions-Policy: camera=()'), 'Native password configuration does not lift the camera block');
     }
+    $subscription->set('is_connected', 0); $subscription->save();
+    foreach ([null, $sessionIds[0]] as $viewer) {
+        [$status, , $body] = $request($path, $viewer);
+        videoHttpExpect($status === 403 && str_contains($body, 'Cette salle n est plus valide'), 'Inactive invitation explained for guest and owner');
+        videoHttpExpect(!str_contains($body, '/external_api.js'), 'Inactive room never loads Jitsi');
+    }
+    [$status, , $body] = $request('/visio/', $sessionIds[0]);
+    videoHttpExpect($status === 200 && str_contains($body, 'generic-section--inactive') && str_contains($body, 'creation de salles est reservee'), 'Owner list shows inactive room and contribution requirement');
 } finally {
     if (is_resource($process)) { proc_terminate($process); proc_close($process); }
     foreach ($users as $user) $user->delete(); // FK cascade also removes the fixture room.

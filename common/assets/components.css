@@ -3951,3 +3951,6 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
 .generic-resource-archives__item { display: grid; gap: 8px; }
 
 .generic-resource-archives__item > .generic-meta { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+
+/* Inactive records remain manageable while their status is visually distinct. */
+.generic-section--inactive { filter: grayscale(1); opacity: .65; }

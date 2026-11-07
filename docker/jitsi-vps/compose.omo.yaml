@@ -29,4 +29,6 @@ services:
       ENABLE_AUTH: "1"
       AUTH_TYPE: jwt
       JICOFO_ENABLE_AUTH: "0"
+      JICOFO_ENABLE_REST: "1"
+      JICOFO_ENABLE_HEALTH_CHECKS: "1"
       ENABLE_AUTO_OWNER: "0"

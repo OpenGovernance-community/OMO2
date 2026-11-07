@@ -182,6 +182,15 @@ function patreonIndividualCanUseAi($userId)
 		&& (int)$connection->get('currently_entitled_amount_cents') > 0;
 }
 
+/** Strict contribution check: no administrator or unconfigured-instance bypass. */
+function patreonIndividualHasContribution(int $userId): bool
+{
+    if ($userId <= 0 || !\dbObject\UserPatreon::isStorageAvailable()) return false;
+    $connection = \dbObject\UserPatreon::findByUserId($userId);
+    return $connection && $connection->isConnected() && (patreonConnectionIsCreator($connection)
+        || ((string)$connection->get('patron_status') === 'active_patron' && (int)$connection->get('currently_entitled_amount_cents') > 0));
+}
+
 function patreonGetConfigurationMessage($context = 'api')
 {
 	$issues = patreonGetConfigurationIssues($context);

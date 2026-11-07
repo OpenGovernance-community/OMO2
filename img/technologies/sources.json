@@ -103,6 +103,13 @@
     "brandSource": "https://www.infomaniak.com/en/about/press",
     "license": "CC0-1.0 (collection)"
   },
+  "infomaniak-ai": {
+    "name": "Infomaniak AI Services",
+    "type": "Simple Icons 15.0.0",
+    "download": "https://cdn.jsdelivr.net/npm/simple-icons@15.0.0/icons/infomaniak.svg",
+    "brandSource": "https://www.infomaniak.com/en/about/press",
+    "license": "CC0-1.0 (collection)"
+  },
   "jitsi": {
     "name": "Jitsi Meet",
     "type": "Simple Icons 15.0.0",

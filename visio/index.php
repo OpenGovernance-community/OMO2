@@ -9,6 +9,13 @@ use dbObject\VideoRoom;
 use dbObject\AuthRateLimit;
 
 $sourceLang = [
+    'service_status' => ['text' => 'Etat du service', 'context' => 'Link to the public video service health checks'],
+    'contributor_required' => ['text' => 'La creation de salles est reservee aux personnes ou organisations contributrices sur Patreon. Connectez une contribution personnelle valable ou choisissez une organisation contributrice dont vous etes membre.', 'context' => 'Video creation contribution requirement'],
+    'room_inactive' => ['text' => 'Cette salle n est plus valide : la contribution Patreon de son createur ou de l organisation associee ne permet plus son utilisation.', 'context' => 'Inactive room explanation shown to owners and guests'],
+    'organization_select' => ['text' => 'Choisir une organisation', 'context' => 'Video organization select placeholder'],
+    'organization_required' => ['text' => 'Organisation contributrice (obligatoire)', 'context' => 'Organization-funded video creation'],
+    'organization_optional' => ['text' => 'Organisation associee (facultatif)', 'context' => 'Personally-funded video creation'],
+    'organization_policy' => ['text' => 'Sans contribution personnelle valable, une organisation contributrice dont vous etes membre est obligatoire. Avec une contribution personnelle valable, l organisation est facultative et toutes vos organisations sont disponibles.', 'context' => 'Video organization selection policy'],
     'rejoin' => ['text' => 'Rejoindre de nouveau', 'context' => 'Reload video room after leaving'],
     'audio_muted_on' => ['text' => 'Micro coupe au demarrage', 'context' => 'Meeting list option status'],
     'audio_muted_off' => ['text' => 'Micro actif au demarrage', 'context' => 'Meeting list option status'],
@@ -96,6 +103,10 @@ $access = null;
 $rooms = [];
 $titleInput = '';
 $ready = false;
+$roomActive = false;
+$personalContribution = false;
+$creationOrganizations = [];
+$canCreate = false;
 $editing = isset($_GET['edit']) || ($_POST['action'] ?? '') === 'update';
 $returnTo = '/visio/' . ($code !== '' ? rawurlencode($code) . '?login=1' : '');
 
@@ -114,9 +125,15 @@ try {
     if (!$config['enabled']) { http_response_code(503); throw new RuntimeException('not_configured'); }
     if (!VideoRoom::isStorageAvailable()) { http_response_code(503); throw new RuntimeException('storage_error'); }
     $ready = true;
+    if ($userId > 0) {
+        $personalContribution = VideoRoom::hasPersonalContribution($userId);
+        $creationOrganizations = VideoRoom::creationOrganizations($userId);
+        $canCreate = $personalContribution || count($creationOrganizations) > 0;
+    }
     if ($code !== '') {
         $room = VideoRoom::findByInvitation($code);
         if (!$room) { http_response_code(404); throw new RuntimeException('not_found'); }
+        $roomActive = $room->hasValidContribution();
     }
     if ($editing && (!$room || !$room->isOwner($userId))) { http_response_code(403); throw new RuntimeException('forbidden'); }
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -137,17 +154,19 @@ try {
         if (!$room && ($_POST['action'] ?? '') === 'create') {
             if (isset($_POST['title']) && !is_string($_POST['title'])) throw new RuntimeException('invalid_title');
             $titleInput = trim((string)($_POST['title'] ?? ''));
-            $room = VideoRoom::createForCurrentUser($titleInput !== '' ? $titleInput : $vt('default_title'));
+            $room = VideoRoom::createForCurrentUser($titleInput !== '' ? $titleInput : $vt('default_title'), $_POST['IDorganization'] ?? null);
             header('Location: ' . $room->invitationPath(), true, 303);
             exit;
         }
         if ($room && ($_POST['action'] ?? '') === 'join') {
+            if (!$roomActive) { http_response_code(403); throw new RuntimeException('room_inactive'); }
             header('Location: ' . $room->invitationPath() . '?join=1', true, 303);
             exit;
         }
         http_response_code(400);
         throw new RuntimeException('not_found');
     }
+    if (!$editing && $room && !$roomActive) { http_response_code(403); throw new RuntimeException('room_inactive'); }
     if (!$editing && $room && ($userId > 0 || isset($_GET['join']))) {
         $access = visioIssueAccess($room, $userId);
     }
@@ -156,7 +175,7 @@ try {
     $key = $exception->getMessage();
     if (!isset($sourceLang[$key])) $key = 'storage_error';
     $error = $vt($key);
-    if (http_response_code() < 400) http_response_code($key === 'storage_error' ? 503 : 400);
+    if (http_response_code() < 400) http_response_code($key === 'storage_error' ? 503 : ($key === 'contributor_required' ? 403 : 400));
 }
 
 $shareUrl = $room ? commonBuildUrl($room->invitationPath()) : '';
@@ -200,6 +219,7 @@ if ($access) {
         <a href="/visio/"><img class="generic-public-brand__logo" src="/img/omo2/logo-omo-dark.png" alt="OMO2" width="1076" height="332"></a>
         <span class="generic-public-brand__label"><?= $escape($vt('title')) ?></span>
     </header>
+    <?php if (!$room): ?><p><a href="/visio/status.php"><?= $escape($vt('service_status')) ?></a></p><?php endif; ?>
     <?php if ($error !== ''): ?>
     <section class="generic-section generic-section--warning" role="alert"><?= $escape($error) ?></section>
     <?php endif; ?>
@@ -231,7 +251,7 @@ if ($access) {
             'buttons' => false, 'bindFormScripts' => false, 'includeComponentAssets' => false,
             'action' => $room->invitationPath() . '?edit=1',
             'sections' => [
-                ['title' => $vt('general'), 'description' => $vt('organization_note'), 'layout' => 'two-thirds', 'fullWidthFields' => ['description'], 'fields' => ['title', 'IDorganization', 'description']],
+                ['title' => $vt('general'), 'description' => $vt('organization_note') . ' ' . $vt('organization_policy'), 'layout' => 'two-thirds', 'fullWidthFields' => ['description'], 'fields' => ['title', 'IDorganization', 'description']],
                 ['title' => $vt('members'), 'description' => $vt('policy_note'), 'layout' => 'pair', 'fields' => array_values(array_filter(array_keys(VideoRoom::settingDefaults()), static fn($key) => str_starts_with($key, 'member_')))],
                 ['title' => $vt('guests'), 'description' => $vt('policy_note'), 'layout' => 'pair', 'fields' => array_values(array_filter(array_keys(VideoRoom::settingDefaults()), static fn($key) => str_starts_with($key, 'guest_')))],
             ],
@@ -254,7 +274,7 @@ if ($access) {
             <?php if ($room->isOwner($userId)): ?><a class="generic-action-button" href="<?= $escape($room->invitationPath() . '?edit=1') ?>"><?= $escape($vt('edit')) ?></a><?php endif; ?>
             <?php if ($userId > 0): ?><a class="generic-action-button" href="/visio/"><?= $escape($vt('back')) ?></a><?php endif; ?>
         </div>
-        <?php elseif ($ready && $userId <= 0): ?>
+        <?php elseif ($roomActive && $ready && $userId <= 0): ?>
         <p><?= $escape($vt($room->policy()['guest']['lobby'] ? 'guest_intro' : 'guest_direct')) ?></p>
         <div class="generic-form-actions">
         <a class="generic-action-button" href="<?= $escape($room->invitationPath() . '?login=1') ?>"><?= $escape($vt('login')) ?></a>
@@ -279,6 +299,7 @@ if ($access) {
     <section class="generic-soft-panel generic-soft-panel--stack">
         <h1 class="generic-card-title generic-card-title--display"><?= $escape($vt('title')) ?></h1>
         <p><?= $escape($vt('intro')) ?></p>
+        <?php if (!$canCreate): ?><p><?= $escape($vt('contributor_required')) ?></p><?php else: ?>
         <form method="post" class="generic-form-grid generic-form-grid--inline" style="--param-form-grid-columns: minmax(0, 1fr) auto" action="/visio/">
             <input type="hidden" name="_csrf" value="<?= $escape($csrf) ?>">
             <input type="hidden" name="action" value="create">
@@ -287,15 +308,23 @@ if ($access) {
                 <input id="room-title" class="generic-form-control" name="title" maxlength="190" value="<?= $escape($titleInput) ?>" placeholder="<?= $escape($vt('default_title')) ?>">
             </div>
             <div class="generic-form-actions"><button class="generic-action-button generic-action-button--form-control generic-action-button--main" type="submit"><?= $escape($vt('create')) ?></button></div>
+            <div class="generic-form-field generic-form-field--full">
+                <label class="generic-form-label" for="create-organization"><?= $escape($vt($personalContribution ? 'organization_optional' : 'organization_required')) ?></label>
+                <select class="generic-form-control" id="create-organization" name="IDorganization"<?= $personalContribution ? '' : ' required' ?>>
+                    <option value=""><?= $escape($vt('organization_select')) ?></option>
+                    <?php foreach ($creationOrganizations as $organization): ?><option value="<?= (int)$organization->getId() ?>"<?= is_scalar($_POST['IDorganization'] ?? null) && (string)$_POST['IDorganization'] === (string)$organization->getId() ? ' selected' : '' ?>><?= $escape($organization->get('name')) ?></option><?php endforeach; ?>
+                </select>
+            </div>
         </form>
+        <?php endif; ?>
     </section>
     <?php if ($rooms): ?>
     <section class="generic-soft-panel generic-soft-panel--stack">
         <h2 class="generic-card-title"><?= $escape($vt('my_rooms')) ?></h2>
         <div class="generic-stack"><?php foreach ($rooms as $owned): ?>
-        <article class="generic-section generic-stack">
+        <article class="generic-section generic-stack<?= $owned['contribution_active'] ? '' : ' generic-section--inactive' ?>">
             <div class="visio-heading">
-                <h3 class="generic-card-title"><a href="/visio/<?= $escape($owned['code']) ?>"><?= $escape($owned['title']) ?></a></h3>
+                <h3 class="generic-card-title"><?php if ($owned['contribution_active']): ?><a href="/visio/<?= $escape($owned['code']) ?>"><?= $escape($owned['title']) ?></a><?php else: ?><?= $escape($owned['title']) ?><?php endif; ?></h3>
                 <?php if (!empty($owned['organization_name'])):
                     $organizationColor = trim((string)($owned['organization_color'] ?? ''));
                     if (!preg_match('/\A(?:#[a-fA-F0-9]{3,8}|[a-zA-Z]{1,20})\z/D', $organizationColor)) $organizationColor = '#4f46e5'; ?>
@@ -303,6 +332,7 @@ if ($access) {
                 <?php endif; ?>
                 <span class="visio-description" title="<?= $escape($owned['description'] ?? '') ?>"><?= $escape($owned['description'] ?? '') ?></span>
             </div>
+            <?php if (!$owned['contribution_active']): ?><p class="generic-help-text"><?= $escape($vt('room_inactive')) ?></p><?php endif; ?>
             <div class="visio-room-controls">
             <div class="visio-policies">
             <?php foreach (['member' => 'members', 'guest' => 'guests'] as $group => $label): ?>

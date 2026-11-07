@@ -38,6 +38,9 @@ try {
         $fixture['users'][] = ['id' => $user->getId(), 'session' => session_id()];
         session_write_close();
     }
+    $subscription = new \dbObject\UserPatreon();
+    foreach (['IDuser' => $fixture['users'][0]['id'], 'is_connected' => 1, 'refresh_token' => 'fixture-only', 'patron_status' => 'active_patron', 'currently_entitled_amount_cents' => 100] as $field => $value) $subscription->set($field, $value);
+    if (empty($subscription->save()['status'])) throw new RuntimeException('Contribution fixture failed');
     $organization = new \dbObject\Organization();
     $organization->set('name', 'Visio browser fixture ' . bin2hex(random_bytes(6)));
     if (empty($organization->save()['status'])) throw new RuntimeException('Unable to save fixture organization.');

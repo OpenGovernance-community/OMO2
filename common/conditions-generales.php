@@ -4,7 +4,7 @@ require_once __DIR__ . '/legal_page_helper.php';
 
 $siteTitle = 'OpenMyOrganization';
 $locale = commonLegalResolveLocale();
-$versionDate = '15.10.2026';
+$versionDate = '07.11.2026';
 $sourceLang = [
     'legal.terms.page_title' => [
         'text' => 'Conditions générales d’utilisation - {siteTitle}',
@@ -127,10 +127,26 @@ $sourceLang = [
         'context' => 'Human verification of AI output and authorized sharing with configured providers and connected applications.',
     ],
     'legal.terms.section.11.title' => [
-        'text' => '11. Évolution des conditions et droit applicable',
+        'text' => '11. Visioconference et utilisation des ressources',
+        'context' => 'Terms section title for video conferencing usage and resources.',
+    ],
+    'legal.terms.section.11.body.1' => [
+        'text' => 'Sur l instance hebergee par le projet, la creation et l utilisation des salles par leur createur sont reservees aux personnes disposant d une contribution Patreon personnelle valable ou aux membres actifs creant une salle pour une organisation dont la contribution est valable. Sans contribution personnelle valable, l association a une organisation contributrice est obligatoire. Une salle devient inactive si aucune de ces conditions n est remplie ; son lien affiche alors son indisponibilite pour tous. Une personne invitee n a pas besoin de contribuer pour rejoindre une salle active. Aucun quota de consommation n est actuellement applique par le projet a la visioconference : aucun plafond de duree cumulee ou de volume de trafic par periode n est impose. Cette absence de quota ne constitue pas une garantie de capacite ou de disponibilite illimitee. Les limites techniques du service, les capacites du serveur et les mesures de securite et de prevention des abus restent applicables.',
+        'context' => 'Current absence of video usage quotas, subject to technical capacity and abuse prevention.',
+    ],
+    'legal.terms.section.11.body.2' => [
+        'text' => 'Cette politique peut evoluer en fonction de la charge, des couts et des ressources necessaires au fonctionnement du service. Le projet peut notamment introduire des plafonds de consommation, des quotas par personne ou par organisation, ou des offres contributives ou abonnements specifiques pour certains volumes de visioconference. Ces changements seront annonces avant leur entree en vigueur, avec leurs conditions et leur date d application. L absence actuelle de quota ne constitue pas un droit acquis a un usage sans plafond. Les usages passes ne feront l objet d aucune facturation retroactive et aucune souscription automatique a un nouvel abonnement payant ne sera effectuee ; toute nouvelle offre payante necessitera une acceptation explicite.',
+        'context' => 'Prospective video usage policy changes with advance notice, no retroactive billing and explicit acceptance.',
+    ],
+    'legal.terms.section.11.body.3' => [
+        'text' => 'Pour suivre la consommation des ressources, diagnostiquer les incidents et prevenir les abus, le service peut enregistrer des indicateurs techniques de trafic recus et envoyes par le serveur de visioconference. Ces volumes sont rattaches au createur de la salle et, lorsqu une organisation est selectionnee pour la salle, a cette organisation. Ils incluent le trafic des participants et invites passant par le serveur, mais pas les echanges directs entre navigateurs en mode pair a pair (P2P). Ces compteurs ne constituent pas un enregistrement du contenu audio, video ou des partages d ecran.',
+        'context' => 'Video traffic monitoring purposes and attribution to the room creator and selected organization, excluding P2P and media recording.',
+    ],
+    'legal.terms.section.12.title' => [
+        'text' => '12. Évolution des conditions et droit applicable',
         'context' => 'Terms section title for revisions and applicable law.',
     ],
-    'legal.terms.section.11.body' => [
+    'legal.terms.section.12.body' => [
         'text' => 'Ces conditions peuvent être mises à jour lorsque le logiciel, son hébergement ou les exigences applicables évoluent. La version publiée sur cette page s’applique à compter de sa publication. Les présentes conditions sont interprétées selon le droit suisse, sous réserve des règles impératives applicables et des protections dont bénéficie toute personne utilisatrice en vertu du droit de son lieu de résidence. Si une disposition est inapplicable, les autres dispositions conservent leur effet dans la mesure permise par la loi.',
         'context' => 'Terms revision, Swiss law and mandatory protections.',
     ],
@@ -138,10 +154,11 @@ $sourceLang = [
 $lang = commonLegalLoadBundle('common_legal_terms_page', $sourceLang, $locale);
 
 $sections = [];
-for ($sectionNumber = 1; $sectionNumber <= 11; $sectionNumber++) {
+for ($sectionNumber = 1; $sectionNumber <= 12; $sectionNumber++) {
     $paragraphKeys = match ($sectionNumber) {
         5, 8 => ['body.1', 'body.2'],
         10 => ['body.1', 'body.2', 'body.3', 'body.4', 'body.5'],
+        11 => ['body.1', 'body.2', 'body.3'],
         default => ['body'],
     };
     $paragraphs = [];

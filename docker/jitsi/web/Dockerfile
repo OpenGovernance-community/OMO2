@@ -2,6 +2,8 @@
 FROM ghcr.io/jitsi/web:stable-11248-3
 USER root
 ARG OMO_VISIO_INVITE_URL=https://beta.opengov.tools/visio
+COPY health.conf /tmp/omo-health.conf
+RUN cat /tmp/omo-health.conf >> /defaults/meet.conf && rm /tmp/omo-health.conf
 COPY labels.json /tmp/omo-labels.json
 RUN mkdir /usr/share/jitsi-meet/static/omo-labels \
     && for locale in $(jq -r '.labels | keys[]' /tmp/omo-labels.json); do \

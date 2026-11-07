@@ -27,6 +27,7 @@ function visioIssueAccess(\dbObject\VideoRoom $room, int $userId): array
     $config = visioConfig();
     if (!$config['enabled']) throw new RuntimeException('not_configured');
     if (!$room->getId() || !preg_match('/\A[a-f0-9]{32}\z/D', (string)$room->get('code'))) throw new RuntimeException('not_found');
+    if (!$room->hasValidContribution()) throw new RuntimeException('room_inactive');
     $moderator = false;
     if ($userId > 0) {
         // The caller must have restored the session; disallow alternate identities.

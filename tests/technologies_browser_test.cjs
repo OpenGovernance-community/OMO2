@@ -25,7 +25,7 @@ const {chromium} = require(process.argv[2] || 'playwright');
         await frame.locator('#technology-summernote').waitFor();
         const ids = await frame.locator('.technology-card').evaluateAll(cards => cards.map(card => card.id.replace('technology-', '')).sort());
         assert.deepEqual(ids, Object.keys(illustrations).sort(), 'Every documented technology has a local illustration');
-        for (const id of ['dompdf', 'tcpdf', 'phpword', 'phpspreadsheet', 'etherpad', 'ethercalc', 'collabora', 'spacedeck', 'jitsi']) {
+        for (const id of ['dompdf', 'tcpdf', 'phpword', 'phpspreadsheet', 'etherpad', 'ethercalc', 'collabora', 'spacedeck', 'jitsi', 'infomaniak', 'infomaniak-ai']) {
             assert.equal(await frame.locator('#technology-' + id).count(), 1, 'Required technology: ' + id);
         }
         assert(await frame.locator('.technology-card').evaluateAll(cards => cards.every(card => [...card.querySelectorAll('a')].some(link => /^https:\/\//.test(link.href)))), 'Each card links to its project');

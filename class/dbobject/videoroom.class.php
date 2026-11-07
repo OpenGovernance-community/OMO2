@@ -32,10 +32,41 @@ class VideoRoom extends DbObject
     public static function getValues($field)
     {
         if ($field !== 'IDorganization') return parent::getValues($field);
+        return self::creationOrganizations((int)($_SESSION['currentUser'] ?? 0));
+    }
+    public static function hasPersonalContribution(int $userId): bool
+    {
+        require_once dirname(__DIR__, 2) . '/common/patreon.php';
+        return \patreonIndividualHasContribution($userId);
+    }
+    public static function creationOrganizations(int $userId): array
+    {
+        $personal = self::hasPersonalContribution($userId);
         $user = new User();
-        if (!$user->load((int)($_SESSION['currentUser'] ?? 0))) return [];
+        if (!$user->load($userId) || !$user->get('active')) return [];
         return array_values(array_filter(iterator_to_array($user->getAccessibleOrganizations()),
-            static fn($org) => $org->getMembership($user->getId(), true) !== null));
+            static fn($org) => $org->getMembership($userId, true) !== null && ($personal || \patreonOrganizationCanUseAi((int)$org->getId()))));
+    }
+    public static function contributionAllows(int $userId, int $organizationId): bool
+    {
+        $user = new User();
+        if ($userId <= 0 || !$user->load($userId) || !$user->get('active')) return false;
+        if (self::hasPersonalContribution($userId)) return true;
+        return $organizationId > 0 && UserOrganization::hasActiveMembership($userId, $organizationId)
+            && \patreonOrganizationCanUseAi($organizationId);
+    }
+    private static function validateOrganization($value, int $userId): int
+    {
+        if (!is_scalar($value) && $value !== null) throw new \RuntimeException('invalid_organization');
+        if ($value !== '' && $value !== null && !preg_match('/\A[1-9][0-9]*\z/D', (string)$value)) throw new \RuntimeException('invalid_organization');
+        $id = (int)$value;
+        if ($id && !in_array($id, array_map(static fn($org) => (int)$org->getId(), self::creationOrganizations($userId)), true)) throw new \RuntimeException('invalid_organization');
+        if (!self::contributionAllows($userId, $id)) throw new \RuntimeException('contributor_required');
+        return $id;
+    }
+    public function hasValidContribution(): bool
+    {
+        return self::contributionAllows((int)$this->get('IDuser'), (int)$this->get('IDorganization'));
     }
     public function accessRole(int $userId): string
     {
@@ -98,16 +129,7 @@ class VideoRoom extends DbObject
                 if (!in_array($values[$field], [0, 1, '0', '1'], true)) throw new \RuntimeException('invalid_settings');
                 $clean[$field] = (int)$values[$field];
             }
-            if (array_key_exists('IDorganization', $values)) {
-                $id = $values['IDorganization'];
-                if ($id !== '' && $id !== null && (!is_scalar($id) || !preg_match('/\A[1-9][0-9]*\z/D', (string)$id))) throw new \RuntimeException('invalid_organization');
-                $id = (int)$id;
-                if ($id && $id !== (int)$this->get('IDorganization')) {
-                    $organization = new Organization();
-                    if (!$organization->load($id) || !$organization->getMembership((int)$_SESSION['currentUser'], true)) throw new \RuntimeException('invalid_organization');
-                }
-                $clean['IDorganization'] = $id ?: null;
-            }
+            $clean['IDorganization'] = self::validateOrganization(array_key_exists('IDorganization', $values) ? $values['IDorganization'] : $this->get('IDorganization'), (int)$_SESSION['currentUser']) ?: null;
             $this->loadFromArray($clean);
             $this->set('settings_version', (int)$this->get('settings_version') + 1);
             if (empty($this->save()['status'])) throw new \RuntimeException('storage_error');
@@ -129,18 +151,20 @@ class VideoRoom extends DbObject
         $room = new self();
         return $room->load(['code', $code], true) ? $room : null;
     }
-    public static function createForCurrentUser(string $title): self
+    public static function createForCurrentUser(string $title, $organizationId = null): self
     {
         $userId = (int)($_SESSION['currentUser'] ?? 0);
         if ($userId <= 0) throw new \RuntimeException('login_required');
         $user = new User();
         if (!$user->load($userId) || !$user->get('active')) throw new \RuntimeException('login_required');
+        $organizationId = self::validateOrganization($organizationId, $userId);
         $title = trim($title);
         if ($title === '' || mb_strlen($title, 'UTF-8') > 190) throw new \RuntimeException('invalid_title');
         $room = new self();
         $room->set('IDuser', $userId);
         $room->set('code', bin2hex(random_bytes(16)));
         $room->set('title', $title);
+        $room->set('IDorganization', $organizationId ?: null);
         $room->set('created_at', new \DateTimeImmutable());
         if (empty($room->save()['status'])) throw new \RuntimeException('storage_error');
         return $room;
@@ -151,6 +175,8 @@ class VideoRoom extends DbObject
         if ($userId <= 0) return [];
         $rows = self::fetchAll('SELECT r.*, o.name AS organization_name, o.color AS organization_color FROM video_room r LEFT JOIN organization o ON o.id = r.IDorganization WHERE r.IDuser = :uid ORDER BY r.created_at DESC, r.id DESC LIMIT 20', ['uid' => $userId]);
         if (!is_array($rows)) throw new \RuntimeException('storage_error');
+        foreach ($rows as &$row) $row['contribution_active'] = self::contributionAllows($userId, (int)$row['IDorganization']);
+        unset($row);
         return $rows;
     }
     public function deleteForCurrentUser(): void

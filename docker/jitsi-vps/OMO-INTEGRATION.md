@@ -1,5 +1,8 @@
 # Accès Jitsi avec l’identité OMO2
 
+Controle de disponibilite et configuration UptimeRobot :
+[guide de surveillance](../jitsi/HEALTH-MONITORING.md).
+
 ## État du VPS au 6 novembre 2026
 
 La passerelle est activée après publication sur bêta. Jitsi utilise les clés

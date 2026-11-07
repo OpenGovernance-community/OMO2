@@ -42,6 +42,9 @@ try {
         $users[] = $user;
     }
     [$owner, $member] = $users;
+    $subscription = new \dbObject\UserPatreon();
+    foreach (['IDuser' => $owner->getId(), 'is_connected' => 1, 'refresh_token' => 'fixture-only', 'patron_status' => 'active_patron', 'currently_entitled_amount_cents' => 100] as $field => $value) $subscription->set($field, $value);
+    if (empty($subscription->save()['status'])) throw new RuntimeException('Contribution fixture failed');
     $_SESSION['currentUser'] = $owner->getId();
     $room = VideoRoom::createForCurrentUser('Réunion de test');
     visioExpect($room->isOwner((int)$owner->getId()) && !$room->isOwner((int)$member->getId()), 'Room ownership');
