@@ -56,6 +56,8 @@ if ($serverEnvTechnicalGroup !== null) {
 }
 $serverEnvServiceGroups = array_diff_key($serverEnvGroups, ['general' => true, 'technical' => true]);
 $serverEnvFirstService = array_key_first($serverEnvServiceGroups);
+$requestedService = is_string($_GET['tab'] ?? null) ? $_GET['tab'] : '';
+if (isset($serverEnvServiceGroups[$requestedService])) $serverEnvFirstService = $requestedService;
 $serverEnvActualValues = $isUnlocked ? serverEnvAdminBuildCurrentValues() : array();
 $serverEnvDisplayValues = $isUnlocked ? serverEnvAdminBuildDisplayValues($serverEnvActualValues) : array();
 $serverEnvSecretStates = $isUnlocked ? serverEnvAdminBuildSecretStateMap($serverEnvActualValues) : array();
@@ -84,7 +86,7 @@ $serverEnvClientTexts = [
 <div
     class="omo-server-env-popup generic-stack generic-stack--flush"
     id="omoServerEnvPopup"
-    data-popup-url="/omo/api/parameters/server_env_popup.php"
+    data-popup-url="/omo/api/parameters/server_env_popup.php<?= $requestedService === 'security' ? '?tab=security' : '' ?>"
     data-unlock-url="/omo/api/parameters/server_env_unlock.php"
     data-save-url="/omo/api/parameters/server_env_save.php"
     data-test-url="/omo/api/parameters/server_env_test_connection.php"

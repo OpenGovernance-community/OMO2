@@ -1,6 +1,8 @@
 <?php
 
 	require_once __DIR__ . '/common/environment_subdomains.php';
+	require_once __DIR__ . '/common/search_indexing.php';
+	commonSendSearchEngineIndexingHeaders();
 
 	$routes = [
 		'admin'   => '/admin/index.php',

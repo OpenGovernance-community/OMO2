@@ -4,6 +4,21 @@
 function omoServerEnvAdditionalSections(): array
 {
     return [
+        'security' => [
+            'title' => 'Securite',
+            'intro' => 'Visibilite de cette installation dans les moteurs de recherche, independamment des autres installations.',
+            'fields' => [
+                'SEARCH_ENGINE_INDEXING' => [
+                    'label' => 'Indexation dans les moteurs de recherche',
+                    'type' => 'select',
+                    'options' => [
+                        'allow' => 'Autoriser l indexation',
+                        'block' => 'Bloquer l indexation',
+                    ],
+                    'help' => 'Indexation autorisee par defaut. Ce choix depend uniquement du fichier .env de cette installation, sans detection du domaine. Le blocage demande aux moteurs de retirer les pages lors de leur prochain passage. Il ne rend pas le site prive et ne remplace pas les droits d acces. Les exclusions propres aux pages restent applicables meme si l indexation est autorisee.',
+                ],
+            ],
+        ],
         'visio' => [
             'title' => 'Visioconférence Jitsi',
             'intro' => 'Création de réunions sur /visio/ avec l’identité OMO2. Le créateur est animateur, les autres comptes sont participants et les invités passent par la salle d’attente. Activez uniquement après la configuration JWT du serveur Jitsi.',

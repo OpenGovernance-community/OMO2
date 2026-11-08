@@ -2,6 +2,7 @@
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
 require_once __DIR__ . '/shared.php';
 require_once dirname(__DIR__, 4) . '/common/mcp/protocol.php';
+require_once dirname(__DIR__, 4) . '/common/search_indexing.php';
 
 $organizationId = (int)($_SESSION['currentOrganization'] ?? 0);
 $organization = new \dbObject\Organization();
@@ -31,6 +32,18 @@ $integrations = [
 ?>
 <div data-omo-security data-organization-id="<?= $organizationId ?>" data-csrf="<?= omoSecurityEscape($_SESSION['omo_security_csrf']) ?>">
     <div class="generic-drawer-content">
+    <?php if (commonCurrentUserIsSiteAdminModeEnabled()): ?>
+    <section class="generic-section generic-stack">
+        <div class="generic-heading-with-help">
+            <h2 class="generic-card-title generic-card-title--medium"><?= omoSecurityEscape(omoSecurityT('indexing_title')) ?></h2>
+            <?= omoSecurityHelp('indexing_title', ['indexing_help']) ?>
+        </div>
+        <p class="generic-help-text"><?= omoSecurityEscape(omoSecurityT(commonSearchEngineIndexingAllowed() ? 'indexing_allowed' : 'indexing_blocked')) ?></p>
+        <div class="generic-action-row">
+            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-security-indexing><?= omoSecurityEscape(omoSecurityT('indexing_configure')) ?></button>
+        </div>
+    </section>
+    <?php endif; ?>
     <section class="generic-section generic-stack generic-stack--roomy" data-omo-mcp-settings>
         <div class="generic-heading-with-help">
             <h2 class="generic-card-title generic-card-title--medium"><?= omoSecurityEscape(omoSecurityT('mcp_title')) ?></h2>

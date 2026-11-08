@@ -3,6 +3,11 @@
 function omoSecuritySourceLang(): array
 {
     return [
+        'indexing_title' => ['text' => 'Indexation dans les moteurs de recherche', 'context' => 'Server-wide search indexing section in security settings.'],
+        'indexing_allowed' => ['text' => 'Indexation autorisee sur cette installation.', 'context' => 'Effective search indexing policy allows public application pages.'],
+        'indexing_blocked' => ['text' => 'Indexation bloquee sur cette installation.', 'context' => 'Effective search indexing policy excludes application pages.'],
+        'indexing_help' => ['text' => 'Ce reglage concerne toute cette installation et depend uniquement de son fichier .env. Indexation autorisee par defaut, sans detection du domaine. Le retrait des resultats existants attend le prochain passage du moteur. Ce blocage ne rend pas le site prive.', 'context' => 'Instance scope, explicit environment setting and search removal delay.'],
+        'indexing_configure' => ['text' => 'Configurer l indexation du serveur', 'context' => 'Open existing protected server settings on the security tab.'],
         'mcp_title' => ['text' => 'IA et connexions externes', 'context' => 'Organization internal AI and external integration security section.'],
         'mcp_description' => ['text' => "Par defaut : IA interne autorisee, API REST et MCP bloques. Trois choix independants, configurables sans lien Patreon. Les blocages s'appliquent aussi aux connexions existantes.", 'context' => 'Three independent organization security policies, configurable without Patreon and binding on existing connections.'],
         'ai_blocked_label' => ['text' => 'Bloquer les fonctions IA', 'context' => 'Organization setting disabling all internal AI features.'],

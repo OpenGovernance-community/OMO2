@@ -6,6 +6,8 @@ Les dates deja indiquees sont conservees. Les dates manquantes sont reconstituee
 
 ## 2026-11-08
 
+- Securite / indexation : reglage propre a chaque installation dans les parametres du serveur, accessible depuis Securite. Choix explicite dans le .env : SEARCH_ENGINE_INDEXING=allow (par defaut) ou block, sans detection du domaine. Consigne HTTP noindex et maintien des exclusions propres aux pages. Le retrait des resultats existants depend du prochain passage des moteurs.
+
 - Statistiques / trafic visio quotidien (2026-11-08) : graphique des volumes recus et envoyes par jour UTC, toutes organisations confondues et salles sans organisation comprises. Periode choisie conservee, jours sans trafic enregistre a zero et valeurs en Mo avec decimales ; le filtre Organisation continue de s appliquer au tableau, mais pas au graphique global.
 
 - Statistiques / tendance STL (2026-11-08) : courbes de tendance robustes superposees aux graphiques quotidiens, avec separation du cycle hebdomadaire et option pour les masquer. Calcul sur au moins 21 jours complets, sans le jour UTC en cours ni les profils horaires ; regroupement des tendances quotidiennes sur les semaines completes dans la vue annuelle. Aucune projection future.
