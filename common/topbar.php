@@ -256,6 +256,7 @@ function commonRenderTopbar(array $options = [])
         'brandLogoHref' => (string)($options['brandLogoHref'] ?? ($options['brandHref'] ?? $brandHref)),
         'brandLabelHref' => (string)($options['brandLabelHref'] ?? ($options['brandHref'] ?? $brandHref)),
         'brandLabel' => $brandLabel,
+        'brandNavigation' => $options['brandNavigation'] ?? null,
         'showBrandLabelOnMobile' => !empty($options['showBrandLabelOnMobile']),
         'logoutPath' => (string)($options['logoutPath'] ?? '/common/logout.php'),
         'logoutReturnTo' => commonNormalizeLocalPath($options['logoutReturnTo'] ?? ($_SERVER['REQUEST_URI'] ?? '/'), '/'),
@@ -484,6 +485,11 @@ function commonRenderTopbar(array $options = [])
         >
             <span class="common-topbar__brand">
                 <img src="<?= htmlspecialchars($brandLogo) ?>" alt="<?= htmlspecialchars($config['brandAlt']) ?>" class="common-topbar__brand-logo" data-common-topbar-brand-logo>
+                <?php if (!empty($config['brandNavigation']['enabled'])): ?>
+                <span class="common-topbar__catalog-badge" data-common-topbar-catalog-badge hidden aria-hidden="true">
+                    <img src="<?= htmlspecialchars(commonAssetUrl('/common/assets/icon-topbar-catalog.png')) ?>" width="48" height="48" alt="">
+                </span>
+                <?php endif; ?>
             </span>
         </a>
         <?php if ($config['brandLabel'] !== ''): ?>

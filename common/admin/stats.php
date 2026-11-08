@@ -12,7 +12,8 @@ function siteStatsSourceLang(): array
         'visio.group' => 'Regrouper le trafic visio', 'visio.organization' => 'Par organisation', 'visio.person' => 'Par personne',
         'visio.received' => 'Recus par Jitsi (Mo)', 'visio.sent' => 'Envoyes par Jitsi (Mo)', 'visio.rooms' => 'Salles mesurees',
         'visio.note' => 'Trafic media observe sur le serveur Jitsi, attribue au createur de la salle et a son organisation selectionnee au moment du releve. Releves toutes les 30 secondes ; les fins de connexion entre deux releves peuvent manquer. Echanges P2P, signalisation, TURN et surcout reseau exclus. Les volumes sont des minima observes, pas un compteur de facturation. Mo = 1 000 000 octets ; dates UTC.',
-        'visio.never' => 'Aucun releve recu. Le collecteur serveur doit etre active.',
+        'visio.never' => 'Aucun releve recu. Verifier le collecteur VPS et la publication du point de reception /visio/traffic.php sur l instance de destination.',
+        'visio.attempt' => 'Derniere tentative de collecte : {date} UTC.',
         'visio.fresh' => 'Dernier releve reussi : {date} UTC.',
         'visio.stale' => 'Collecte interrompue ou en erreur : les totaux sont incomplets.',
         'visio.unmatched' => '{count} connexions sans salle correspondante au dernier releve.',
@@ -565,8 +566,9 @@ if ($allowed) {
             <?php else:
                 $trafficStatus = $visioTraffic['status'];
                 $lastSuccess = $trafficStatus['last_success'] ?? '';
-                $trafficStale = $lastSuccess !== '' && (strtotime($lastSuccess . ' UTC') < time() - 120 || !empty($trafficStatus['last_error'])); ?>
+                $trafficStale = !empty($trafficStatus['last_error']) || ($lastSuccess !== '' && strtotime($lastSuccess . ' UTC') < time() - 120); ?>
                 <p><?= siteStatsEscape($lastSuccess !== '' ? siteStatsT('visio.fresh', ['date' => $lastSuccess]) : siteStatsT('visio.never')) ?></p>
+                <?php if (!empty($trafficStatus['last_attempt']) && $trafficStale): ?><p><?= siteStatsEscape(siteStatsT('visio.attempt', ['date' => $trafficStatus['last_attempt']])) ?></p><?php endif; ?>
                 <?php if ($trafficStale): ?><p role="status"><?= siteStatsEscape(siteStatsT('visio.stale')) ?></p><?php endif; ?>
                 <?php if (!empty($trafficStatus['unmatched_rooms'])): ?><p><?= siteStatsEscape(siteStatsT('visio.unmatched', ['count' => $trafficStatus['unmatched_rooms']])) ?></p><?php endif; ?>
                 <?php if (!$visioTraffic['rows']): ?><p><?= siteStatsEscape(siteStatsT('stats.chart.empty')) ?></p>

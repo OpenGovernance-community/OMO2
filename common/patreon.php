@@ -138,6 +138,15 @@ function patreonUserCanManageOrganization(int $userId, int $organizationId): boo
     return $membership && $membership->isOrganizationAdmin();
 }
 
+/** Video contribution checks need OAuth credentials; routing defaults alone do not enable them. */
+function patreonContributionChecksEnabled(): bool
+{
+    foreach (['patreonClientId', 'patreonClientSecret'] as $key) {
+        if (trim((string)($GLOBALS[$key] ?? '')) !== '') return true;
+    }
+    return false;
+}
+
 function patreonIndividualCanUseAi($userId)
 {
 	$userId = (int)$userId;
@@ -151,14 +160,9 @@ function patreonIndividualCanUseAi($userId)
 	// A broken OAuth UI or unavailable storage must never disable the paywall.
 	$configured = false;
 	foreach (['patreonClientId', 'patreonClientSecret', 'patreonCreatorCampaignId', 'patreonCreatorUserId', 'patreonConnectUrl', 'patreonRedirectUri', 'patreonConnectAllowedOrigins'] as $key) {
-		if (trim((string)($GLOBALS[$key] ?? '')) !== '') {
-			$configured = true;
-			break;
-		}
+		if (trim((string)($GLOBALS[$key] ?? '')) !== '') { $configured = true; break; }
 	}
-	if (!$configured) {
-		return true;
-	}
+	if (!$configured) return true;
 
 	if (trim((string)($GLOBALS['patreonClientId'] ?? '')) === ''
 		|| trim((string)($GLOBALS['patreonClientSecret'] ?? '')) === '') {

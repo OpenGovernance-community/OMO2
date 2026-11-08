@@ -10,5 +10,10 @@ class VideoTrafficCollector extends DbObject
     {
         if (!self::execute('UPDATE video_traffic_collector SET last_attempt = UTC_TIMESTAMP(), last_success = UTC_TIMESTAMP(), last_error = NULL, observed_endpoints = :endpoints, unmatched_rooms = :unmatched WHERE id = 1', ['endpoints' => $endpoints, 'unmatched' => $unmatched])) throw new \RuntimeException('Collector status storage failed');
     }
-    public static function failure(): void { self::execute("UPDATE video_traffic_collector SET last_attempt = UTC_TIMESTAMP(), last_error = 'Collection failed; see collector logs' WHERE id = 1"); }
+    public static function failure(): void
+    {
+        if (!self::execute("UPDATE video_traffic_collector SET last_attempt = UTC_TIMESTAMP(), last_error = 'Collection failed; see collector logs' WHERE id = 1")) {
+            throw new \RuntimeException('Collector failure status storage failed');
+        }
+    }
 }

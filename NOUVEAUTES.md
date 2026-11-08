@@ -6,6 +6,8 @@ Les dates deja indiquees sont conservees. Les dates manquantes sont reconstituee
 
 ## 2026-11-07
 
+- OMO / retour par le logo (2026-11-07) : premier clic vers l accueil de l organisation ; sur cet accueil, l icone catalogue fournie recouvre toute la taille du logo uniquement au survol, en blanc sur un fond de la couleur de l organisation, pour indiquer le retour au catalogue. Les webapps installees sur une organisation restent dans celle-ci ; celles installees sur le catalogue conservent ce retour. Origine de lancement conservee par fenetre, sans melanger les installations.
+
 - Visio / compatibilite des sondes (2026-11-07) : selection de l option de protocoles selon les capacites PHP/cURL de l hebergement pour eviter un faux etat indisponible de tous les composants Jitsi. Echecs HTTP et codes cURL journalises cote serveur sans exposer de diagnostics dans le JSON public.
 
 - Technologies et visio (2026-11-07) : hebergement Infomaniak complete et fiche AI Services ajoutee pour l assistance, la traduction et la transcription. Controle public /visio/health.php compatible UptimeRobot (HTTP 200/503), vue manuelle /visio/status.php et sondes Jitsi limitees a la sante de Jicofo et du pont audio/video. Verification de la base OMO, des ressources web et d une session de signalisation sans creer de salle ; limites du controle et configuration de la surveillance documentees. Sondes deployees sur le VPS et verifiees depuis Internet en GET/HEAD, avec sauvegarde et retour arriere disponibles.
@@ -5249,3 +5251,9 @@ Le projet a avance sur quatre grands axes: une interface plus coherente, un modu
 - Visio : creation reservee aux contributions Patreon personnelles ou organisations eligibles ; choix organisation obligatoire et filtre sans contribution personnelle. Les salles devenues ineligibles sont grisees et leurs anciens liens affichent un message explicite pour tous, sans acces Jitsi. Les invites restent admis dans les salles actives sans contribution. Verification aux nouvelles connexions selon le statut Patreon synchronise.
 
 - VPS Jitsi (07.11.2026) : frontal reconstruit et deploye avec domaine d invitation direct beta.opengov.tools/visio et URL de configuration versionnee. Sondes Jicofo et Videobridge controlees ; publication OMO et collecteur de trafic distincts.
+
+- Visio : les controles de contribution sont desactives lorsque Patreon est entierement non configure sur le serveur ; organisation facultative, toutes les organisations membres disponibles et anciennes salles actives. Une configuration partielle conserve les controles.
+
+- Visio : correction de la detection Patreon en local ; les adresses de connexion et autres valeurs de routage seules n activent plus les controles sans identifiant client ni secret OAuth.
+
+- Visio : retrait du lien Etat du service de la page des reunions.
