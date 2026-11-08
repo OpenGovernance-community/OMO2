@@ -21,6 +21,10 @@
 .site-stats-chart__bar--secondary { fill: #d97706; }
 .site-stats-chart__bar:hover, .site-stats-chart__bar:focus-visible { opacity: 1; stroke: currentColor; }
 .site-stats-chart__bar--empty { opacity: .12; }
+.site-stats-chart__trend { fill: none; stroke: #9f1239; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.site-stats-chart__trend--secondary { stroke: #6d28d9; stroke-dasharray: 6 4; }
+.site-stats-chart__legend-line { display: inline-block; width: 22px; border-top: 3px solid #9f1239; }
+.site-stats-chart__legend-line.site-stats-chart__trend--secondary { border-top-color: #6d28d9; border-top-style: dashed; }
 .site-stats-chart__legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: .8rem; }
 .site-stats-chart__legend span { display: inline-flex; align-items: center; gap: 6px; }
 .site-stats-chart__legend-swatch { display: inline-block; width: 10px; height: 10px; background: var(--color-primary, #2563eb); }

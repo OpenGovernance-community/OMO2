@@ -4,6 +4,14 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 Les dates deja indiquees sont conservees. Les dates manquantes sont reconstituees a partir de la premiere apparition des entrees dans l historique GitHub, en heure Europe/Zurich ; elles correspondent a leur ajout au journal, pas necessairement a leur mise en production.
 
+## 2026-11-08
+
+- Statistiques / trafic visio quotidien (2026-11-08) : graphique des volumes recus et envoyes par jour UTC, toutes organisations confondues et salles sans organisation comprises. Periode choisie conservee, jours sans trafic enregistre a zero et valeurs en Mo avec decimales ; le filtre Organisation continue de s appliquer au tableau, mais pas au graphique global.
+
+- Statistiques / tendance STL (2026-11-08) : courbes de tendance robustes superposees aux graphiques quotidiens, avec separation du cycle hebdomadaire et option pour les masquer. Calcul sur au moins 21 jours complets, sans le jour UTC en cours ni les profils horaires ; regroupement des tendances quotidiennes sur les semaines completes dans la vue annuelle. Aucune projection future.
+
+- Visio / collecte du trafic VPS (2026-11-08) : collecteur autonome toutes les 30 secondes et reception HTTPS signee dans la base OMO commune aux trois domaines. Comptage sans duplication lors des retransmissions, file locale pour les envois en attente et diagnostic des echecs ; aucun acces SQL distant ni API JVB publique. Dates des tentatives affichees en cas d erreur. Les appels P2P et le trafic anterieur a l activation restent exclus.
+
 ## 2026-11-07
 
 - OMO / retour par le logo (2026-11-07) : premier clic vers l accueil de l organisation ; sur cet accueil, l icone catalogue fournie recouvre toute la taille du logo uniquement au survol, en blanc sur un fond de la couleur de l organisation, pour indiquer le retour au catalogue. Les webapps installees sur une organisation restent dans celle-ci ; celles installees sur le catalogue conservent ce retour. Origine de lancement conservee par fenetre, sans melanger les installations.
