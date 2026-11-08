@@ -1,0 +1,25 @@
+# Optional overlay installed as /opt/jitsi/omo-integration/compose.traffic.yaml.
+# Only counters leave the private bridge network, through signed HTTPS requests.
+services:
+  visio-traffic:
+    image: python:3.13-alpine
+    restart: unless-stopped
+    read_only: true
+    user: "65534:65534"
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 128m
+    pids_limit: 32
+    command: [python, -B, /app/collector.py]
+    env_file:
+      - "${OMO_JITSI_PLUGIN_DIR:?Set OMO_JITSI_PLUGIN_DIR}/../traffic/collector.env"
+    volumes:
+      - "${OMO_JITSI_PLUGIN_DIR:?Set OMO_JITSI_PLUGIN_DIR}/../traffic/collector.py:/app/collector.py:ro"
+      - "${OMO_JITSI_PLUGIN_DIR:?Set OMO_JITSI_PLUGIN_DIR}/../traffic/state:/state"
+    networks:
+      - meet.jitsi
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"

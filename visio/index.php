@@ -9,7 +9,6 @@ use dbObject\VideoRoom;
 use dbObject\AuthRateLimit;
 
 $sourceLang = [
-    'service_status' => ['text' => 'Etat du service', 'context' => 'Link to the public video service health checks'],
     'contributor_required' => ['text' => 'La creation de salles est reservee aux personnes ou organisations contributrices sur Patreon. Connectez une contribution personnelle valable ou choisissez une organisation contributrice dont vous etes membre.', 'context' => 'Video creation contribution requirement'],
     'room_inactive' => ['text' => 'Cette salle n est plus valide : la contribution Patreon de son createur ou de l organisation associee ne permet plus son utilisation.', 'context' => 'Inactive room explanation shown to owners and guests'],
     'organization_select' => ['text' => 'Choisir une organisation', 'context' => 'Video organization select placeholder'],
@@ -219,7 +218,6 @@ if ($access) {
         <a href="/visio/"><img class="generic-public-brand__logo" src="/img/omo2/logo-omo-dark.png" alt="OMO2" width="1076" height="332"></a>
         <span class="generic-public-brand__label"><?= $escape($vt('title')) ?></span>
     </header>
-    <?php if (!$room): ?><p><a href="/visio/status.php"><?= $escape($vt('service_status')) ?></a></p><?php endif; ?>
     <?php if ($error !== ''): ?>
     <section class="generic-section generic-section--warning" role="alert"><?= $escape($error) ?></section>
     <?php endif; ?>

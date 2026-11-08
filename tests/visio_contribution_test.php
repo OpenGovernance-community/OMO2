@@ -46,5 +46,18 @@ try {
     mcpCheck($room->hasValidContribution(), 'Personal contribution restores room regardless of organization funding');
     $room->updateForCurrentUser(['IDorganization' => '']);
     mcpCheck((int)$room->get('IDorganization') === 0 && $room->hasValidContribution(), 'Personal contributor may clear organization');
+    $personal->set('is_connected', 0); $personal->save();
+    foreach (['patreonClientId', 'patreonClientSecret', 'patreonCreatorCampaignId', 'patreonCreatorUserId', 'patreonConnectUrl', 'patreonRedirectUri', 'patreonConnectAllowedOrigins'] as $key) $GLOBALS[$key] = '';
+    mcpCheck(!patreonContributionChecksEnabled(), 'No Patreon configuration disables checks');
+    mcpCheck($room->hasValidContribution(), 'Old room remains active without Patreon configuration');
+    mcpCheck(in_array($oid, $ids(), true), 'All membership organizations available without Patreon');
+    $items['unconfigured_room'] = VideoRoom::createForCurrentUser('No Patreon configuration');
+    mcpCheck($items['unconfigured_room']->hasValidContribution(), 'Personal room creation without Patreon');
+    $GLOBALS['patreonCreatorUserId'] = '123';
+    $GLOBALS['patreonConnectUrl'] = 'https://example.invalid/connect';
+    $GLOBALS['patreonConnectAllowedOrigins'] = 'https://example.invalid';
+    mcpCheck(!patreonContributionChecksEnabled() && $room->hasValidContribution(), 'Routing defaults alone do not enable checks');
+    $GLOBALS['patreonClientId'] = 'partial';
+    mcpCheck(patreonContributionChecksEnabled() && !$room->hasValidContribution(), 'Partial configuration does not bypass contribution checks');
     echo "OK: video contribution choices, enforcement, guest entry, revocation and reactivation.\n";
 } finally { mcpCleanup($items); }

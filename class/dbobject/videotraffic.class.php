@@ -42,6 +42,13 @@ class VideoTraffic extends DbObject
     }
     public static function ingest(array $observations): array
     {
+        if (!array_is_list($observations) || count($observations) > 2000) throw new \InvalidArgumentException('Invalid traffic observations');
+        foreach ($observations as $observation) {
+            if (!is_array($observation) || !is_string($observation['key'] ?? null) || !is_string($observation['code'] ?? null)
+                || !preg_match('/\A[a-f0-9]{64}\z/D', $observation['key']) || !preg_match('/\A[a-f0-9]{32}\z/D', $observation['code'])
+                || !is_int($observation['received'] ?? null) || $observation['received'] < 0
+                || !is_int($observation['sent'] ?? null) || $observation['sent'] < 0) throw new \InvalidArgumentException('Invalid traffic observation');
+        }
         $pdo = self::getPdo();
         $ownTransaction = !$pdo->inTransaction();
         if ($ownTransaction) $pdo->beginTransaction();

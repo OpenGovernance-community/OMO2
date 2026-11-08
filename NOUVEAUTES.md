@@ -5251,3 +5251,9 @@ Le projet a avance sur quatre grands axes: une interface plus coherente, un modu
 - Visio : creation reservee aux contributions Patreon personnelles ou organisations eligibles ; choix organisation obligatoire et filtre sans contribution personnelle. Les salles devenues ineligibles sont grisees et leurs anciens liens affichent un message explicite pour tous, sans acces Jitsi. Les invites restent admis dans les salles actives sans contribution. Verification aux nouvelles connexions selon le statut Patreon synchronise.
 
 - VPS Jitsi (07.11.2026) : frontal reconstruit et deploye avec domaine d invitation direct beta.opengov.tools/visio et URL de configuration versionnee. Sondes Jicofo et Videobridge controlees ; publication OMO et collecteur de trafic distincts.
+
+- Visio : les controles de contribution sont desactives lorsque Patreon est entierement non configure sur le serveur ; organisation facultative, toutes les organisations membres disponibles et anciennes salles actives. Une configuration partielle conserve les controles.
+
+- Visio : correction de la detection Patreon en local ; les adresses de connexion et autres valeurs de routage seules n activent plus les controles sans identifiant client ni secret OAuth.
+
+- Visio : retrait du lien Etat du service de la page des reunions.

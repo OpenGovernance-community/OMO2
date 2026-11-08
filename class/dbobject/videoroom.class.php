@@ -37,7 +37,7 @@ class VideoRoom extends DbObject
     public static function hasPersonalContribution(int $userId): bool
     {
         require_once dirname(__DIR__, 2) . '/common/patreon.php';
-        return \patreonIndividualHasContribution($userId);
+        return !\patreonContributionChecksEnabled() || \patreonIndividualHasContribution($userId);
     }
     public static function creationOrganizations(int $userId): array
     {
