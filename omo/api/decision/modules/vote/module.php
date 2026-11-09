@@ -805,9 +805,11 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                     <div class="omo-decision-vote__grid omo-decision-schedule__primary">
                     <?= commonDecisionRenderVisibilitySelectors($settingsDecision instanceof DecisionProcess ? $settingsDecision : null, $context, $canEditStructure, 'decision-vote') ?>
 
-                        <label class="generic-form-field omo-decision-vote__field">
+                        <?php $stageActions = omoDecisionRenderProcessStageActions($decision instanceof DecisionProcess ? $decision : null, $context, $lang, $sourceLang, $escape); ?>
+                        <div class="generic-form-field omo-decision-vote__field">
                             <span class="generic-form-label"><?= $escape(t('decisions.vote.field.status', [], $lang, $sourceLang)) ?></span>
-                            <select name="status" class="generic-form-control generic-form-control--compact" <?= $isEditable ? '' : 'disabled' ?>>
+                            <div<?= $stageActions !== '' ? ' class="generic-form-control-group"' : '' ?>>
+                            <select name="status" class="generic-form-control generic-form-control--compact" aria-label="<?= $escape(t('decisions.vote.field.status', [], $lang, $sourceLang)) ?>" <?= $isEditable ? '' : 'disabled' ?>>
                                 <?php foreach ([
                                     DecisionProcess::STATUS_DRAFT => 'decisions.vote.option.status.draft',
                                     DecisionProcess::STATUS_SCHEDULED => 'decisions.vote.option.status.scheduled',
@@ -820,7 +822,9 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                                 <option value="<?= $escape($statusKey) ?>"<?= $status === $statusKey ? ' selected' : '' ?>><?= $escape(t($statusLabel, [], $lang, $sourceLang)) ?></option>
                                 <?php endforeach; ?>
                             </select>
-                        </label>
+                            <?= $stageActions ?>
+                            </div>
+                        </div>
                     </div>
 
                     <?= omoDecisionRenderProcessSchedule($decision instanceof DecisionProcess ? $decision : null, $canEditStartDates, $isEditable, $lang, $sourceLang, $escape, $consultationOnly) ?>

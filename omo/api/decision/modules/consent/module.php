@@ -411,9 +411,11 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                 <div class="omo-decision-consent__grid omo-decision-schedule__primary generic-form-grid generic-form-grid--compact">
                 <?= commonDecisionRenderVisibilitySelectors($settingsDecision instanceof DecisionProcess ? $settingsDecision : null, $context, $canEditStructure, 'decision-consent') ?>
 
-                    <label class="generic-form-field omo-decision-consent__field">
+                    <?php $stageActions = omoDecisionRenderProcessStageActions($decision instanceof DecisionProcess ? $decision : null, $context, $lang, $sourceLang, $escape); ?>
+                    <div class="generic-form-field omo-decision-consent__field">
                         <span class="generic-form-label"><?= $escape(t('decisions.consent.field.status', [], $lang, $sourceLang)) ?></span>
-                        <select class="generic-form-control generic-form-control--compact" name="status">
+                        <div<?= $stageActions !== '' ? ' class="generic-form-control-group"' : '' ?>>
+                        <select class="generic-form-control generic-form-control--compact" name="status" aria-label="<?= $escape(t('decisions.consent.field.status', [], $lang, $sourceLang)) ?>">
                             <option value="<?= $escape(DecisionProcess::STATUS_DRAFT) ?>" <?= $status === DecisionProcess::STATUS_DRAFT ? 'selected' : '' ?>><?= $escape(t('decisions.consent.option.status.draft', [], $lang, $sourceLang)) ?></option>
                             <option value="<?= $escape(DecisionProcess::STATUS_SCHEDULED) ?>" <?= $status === DecisionProcess::STATUS_SCHEDULED ? 'selected' : '' ?>><?= $escape(t('decisions.consent.option.status.scheduled', [], $lang, $sourceLang)) ?></option>
                             <option value="<?= $escape(DecisionProcess::STATUS_CONSULTATION) ?>" <?= $status === DecisionProcess::STATUS_CONSULTATION ? 'selected' : '' ?>><?= $escape(t('decisions.consent.option.status.consultation', [], $lang, $sourceLang)) ?></option>
@@ -421,7 +423,9 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                             <option value="<?= $escape(DecisionProcess::STATUS_RESULTS) ?>" <?= $status === DecisionProcess::STATUS_RESULTS ? 'selected' : '' ?>><?= $escape(t('decisions.consent.option.status.results', [], $lang, $sourceLang)) ?></option>
                             <option value="<?= $escape(DecisionProcess::STATUS_ARCHIVED) ?>" <?= $status === DecisionProcess::STATUS_ARCHIVED ? 'selected' : '' ?>><?= $escape(t('decisions.consent.option.status.archived', [], $lang, $sourceLang)) ?></option>
                         </select>
-                    </label>
+                        <?= $stageActions ?>
+                        </div>
+                    </div>
                 </div>
 
                 <?= omoDecisionRenderProcessSchedule($decision instanceof DecisionProcess ? $decision : null, $canEditStartDates, true, $lang, $sourceLang, $escape, false, true) ?>

@@ -715,14 +715,9 @@ if ($isEditing && $intent === 'manage' && !empty($context['canManage'])) {
             <?php if (!$useMultiQuestionEditor && !$isGovernanceWorkflow && $evaluationPreviewActionHtml !== ''): ?>
             <div hidden data-omo-decision-editor-actions><?= $evaluationPreviewActionHtml ?></div>
             <?php endif; ?>
-            <?php if ($isEditing && $intent === 'manage' && !empty($context['canManage']) && $decision->canInterruptEvaluation()): ?>
+            <?php if ($isEditing && $isGovernanceWorkflow && $intent === 'manage'): ?>
             <div class="generic-form-actions">
-                <button type="button" class="generic-action-button generic-action-button--secondary"
-                    data-omo-decision-interrupt
-                    data-request-url="<?= $escape(omoDecisionBuildActionUrl()) ?>"
-                    data-request-payload="<?= $escape(json_encode(['oid' => (int)$context['organizationId'], 'id' => (int)$decision->getId(), 'decision_action' => 'interrupt'], JSON_THROW_ON_ERROR)) ?>"
-                ><?= $escape(t('decisions.edit.interrupt.label', [], $lang, $baseSourceLang)) ?></button>
-                <span class="generic-meta"><?= $escape(t('decisions.edit.interrupt.help', [], $lang, $baseSourceLang)) ?></span>
+                <?= omoDecisionRenderProcessStageActions($decision, $context, $lang, $baseSourceLang, $escape) ?>
             </div>
             <?php endif; ?>
 
@@ -882,15 +877,19 @@ if ($isEditing && $intent === 'manage' && !empty($context['canManage'])) {
 
                             <div class="omo-decision-edit__process-primary">
                                 <?= commonDecisionRenderVisibilitySelectors($multiDecision, $context, $multiCanEditStructure, 'decision-multi') ?>
-                                <label class="generic-form-field">
+                                <?php $stageActions = omoDecisionRenderProcessStageActions($multiDecision, $multiContext, $lang, $baseSourceLang, $escape); ?>
+                                <div class="generic-form-field">
                                     <span class="generic-form-label"><?= $escape(t('decisions.edit.multi.status', [], $lang, $baseSourceLang)) ?></span>
-                                    <select class="generic-form-control generic-form-control--compact" name="status">
+                                    <div<?= $stageActions !== '' ? ' class="generic-form-control-group"' : '' ?>>
+                                    <select class="generic-form-control generic-form-control--compact" name="status" aria-label="<?= $escape(t('decisions.edit.multi.status', [], $lang, $baseSourceLang)) ?>">
                                         <?php foreach ($multiStatusOptions as $statusValue => $statusLabelKey): ?>
                                         <?php if ($multiConsultationOnly && !in_array($statusValue, [DecisionProcess::STATUS_DRAFT, DecisionProcess::STATUS_SCHEDULED, DecisionProcess::STATUS_CONSULTATION], true)) continue; ?>
                                         <option value="<?= $escape($statusValue) ?>" <?= $multiStatus === $statusValue ? 'selected' : '' ?>><?= $escape(t($statusLabelKey, [], $lang, $baseSourceLang)) ?></option>
                                         <?php endforeach; ?>
                                     </select>
-                                </label>
+                                    <?= $stageActions ?>
+                                    </div>
+                                </div>
                             </div>
 
                             <?= omoDecisionRenderProcessSchedule($isDuplicate ? null : $multiDecision, $multiCanEditStartDates, true, $lang, $baseSourceLang, $escape, $multiConsultationOnly, true) ?>
@@ -1160,6 +1159,9 @@ if ($isEditing && $intent === 'manage' && !empty($context['canManage'])) {
     'interruptConfirm' => t('decisions.edit.interrupt.confirm', [], $lang, $baseSourceLang),
     'interruptPending' => t('decisions.edit.interrupt.pending', [], $lang, $baseSourceLang),
     'interruptError' => t('decisions.edit.interrupt.error', [], $lang, $baseSourceLang),
+    'finishConfirm' => t('decisions.schedule.finish.confirm', [], $lang, $baseSourceLang),
+    'finishPending' => t('decisions.schedule.finish.pending', [], $lang, $baseSourceLang),
+    'finishError' => t('decisions.schedule.finish.error', [], $lang, $baseSourceLang),
 ]) ?>
 
 <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/decision/edit_shared.css') ?>">

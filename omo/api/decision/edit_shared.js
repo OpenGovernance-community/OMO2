@@ -42,14 +42,18 @@ window.commonPageScripts["/omo/api/decision/edit_shared.js"] = function (pageCon
     const unsavedQuestionLabel = pageConfig.unsavedQuestionLabel;
     const questionItemTemplate = pageConfig.questionItemTemplate;
 
-    document.querySelectorAll('[data-omo-decision-interrupt]').forEach(function (button) {
+    document.querySelectorAll('[data-omo-decision-interrupt], [data-omo-decision-finish]').forEach(function (button) {
         if (button.dataset.interruptReady === '1') return;
         button.dataset.interruptReady = '1';
+        const finish = button.hasAttribute('data-omo-decision-finish');
+        const confirmMessage = finish ? pageConfig.finishConfirm : pageConfig.interruptConfirm;
+        const pendingMessage = finish ? pageConfig.finishPending : pageConfig.interruptPending;
+        const errorMessage = finish ? pageConfig.finishError : pageConfig.interruptError;
         button.addEventListener('click', async function () {
-            if (button.disabled || !window.confirm(pageConfig.interruptConfirm)) return;
+            if (button.disabled || !window.confirm(confirmMessage)) return;
             const label = button.textContent;
             button.disabled = true;
-            button.textContent = pageConfig.interruptPending;
+            button.textContent = pendingMessage;
             try {
                 const data = new FormData();
                 const payload = JSON.parse(button.getAttribute('data-request-payload'));
@@ -59,7 +63,7 @@ window.commonPageScripts["/omo/api/decision/edit_shared.js"] = function (pageCon
                 const response = await fetch(url, {method: 'POST', body: data, credentials: 'same-origin',
                     headers: {'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'}});
                 const result = await response.json();
-                if (!response.ok || !result.status) throw new Error(result.message || pageConfig.interruptError);
+                if (!response.ok || !result.status) throw new Error(result.message || errorMessage);
                 const editor = button.closest('.omo-decision-edit');
                 if (editor) {
                     if (typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(editor);
@@ -70,7 +74,7 @@ window.commonPageScripts["/omo/api/decision/edit_shared.js"] = function (pageCon
                 notifyQuestionSwitch(result.message, 'success');
                 openEditorUrl(result.redirectUrl);
             } catch (error) {
-                notifyQuestionSwitch(error && error.message ? error.message : pageConfig.interruptError, 'error');
+                notifyQuestionSwitch(error && error.message ? error.message : errorMessage, 'error');
             } finally {
                 button.disabled = false;
                 button.textContent = label;

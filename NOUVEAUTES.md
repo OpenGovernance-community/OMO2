@@ -6,6 +6,8 @@ Les dates déjà indiquées sont conservées. Les dates manquantes sont reconsti
 
 ## 2026-11-09
 
+- Scrutins / clôture anticipée : bouton « Clôturer maintenant » à côté du choix de l’étape lorsque chaque participant actif a terminé tous les blocs à voter. La date de fin d’évaluation est fixée à maintenant et les résultats deviennent disponibles ; contrôle serveur des réponses et des droits de gestion. Le bouton d’interruption sans réponse est rapproché du même sélecteur.
+
 - Scrutins / anonymat : passage en vote nominatif possible avant l’évaluation, même après une élaboration à plusieurs. Les anciennes propositions gardent leur auteur anonyme et les anciens messages conservent leur anonymat, y compris dans les résumés des discussions. Les nouvelles propositions et les nouveaux messages suivent le réglage courant ; l’anonymat des évaluations reste verrouillé dès leur démarrage.
 
 - Connexion / envoi des codes : affichage du délai restant en secondes ou en minutes en cas de limite atteinte. Les demandes refusées pendant l’attente n’envoient aucun e-mail, ne consomment aucun autre quota et ne prolongent plus le délai ; le renvoi reste espacé d’au moins une minute. Même correction pour les demandes de réinitialisation du mot de passe.

@@ -479,9 +479,11 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                     <div class="omo-decision-majority-judgment__grid omo-decision-schedule__primary generic-form-grid generic-form-grid--compact">
                     <?= commonDecisionRenderVisibilitySelectors($settingsDecision instanceof DecisionProcess ? $settingsDecision : null, $context, $canEditStructure, 'decision-majority_judgment') ?>
 
-                        <label class="generic-form-field omo-decision-majority-judgment__field">
+                        <?php $stageActions = omoDecisionRenderProcessStageActions($decision instanceof DecisionProcess ? $decision : null, $context, $lang, $sourceLang, $escape); ?>
+                        <div class="generic-form-field omo-decision-majority-judgment__field">
                             <span class="generic-form-label"><?= $escape(t('decisions.majority_judgment.field.status', [], $lang, $sourceLang)) ?></span>
-                            <select name="status" class="generic-form-control generic-form-control--compact" <?= $isEditable ? '' : 'disabled' ?>>
+                            <div<?= $stageActions !== '' ? ' class="generic-form-control-group"' : '' ?>>
+                            <select name="status" class="generic-form-control generic-form-control--compact" aria-label="<?= $escape(t('decisions.majority_judgment.field.status', [], $lang, $sourceLang)) ?>" <?= $isEditable ? '' : 'disabled' ?>>
                                 <?php foreach ([
                                     DecisionProcess::STATUS_DRAFT => 'decisions.majority_judgment.option.status.draft',
                                     DecisionProcess::STATUS_SCHEDULED => 'decisions.majority_judgment.option.status.scheduled',
@@ -493,7 +495,9 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                 <option value="<?= $escape($statusKey) ?>"<?= $status === $statusKey ? ' selected' : '' ?>><?= $escape(t($statusLabel, [], $lang, $sourceLang)) ?></option>
                                 <?php endforeach; ?>
                             </select>
-                        </label>
+                            <?= $stageActions ?>
+                            </div>
+                        </div>
                     </div>
 
                     <?= omoDecisionRenderProcessSchedule($decision instanceof DecisionProcess ? $decision : null, $canEditStartDates, $isEditable, $lang, $sourceLang, $escape, false) ?>

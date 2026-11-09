@@ -11,7 +11,26 @@ function omoDecisionScheduleGetSourceLang(): array
         'decisions.schedule.evaluation_help' => ['text' => "La phase d'évaluation est la période pendant laquelle les participants votent sur les propositions selon la méthode du scrutin.", 'context' => 'Explanation of the evaluation phase next to its scheduling checkbox.'],
         'decisions.schedule.start' => ['text' => 'Début', 'context' => 'Label for the start date and time of a decision phase.'],
         'decisions.schedule.end' => ['text' => 'Fin', 'context' => 'Label for the end date and time of a decision phase.'],
+        'decisions.schedule.finish.label' => ['text' => 'Clôturer maintenant', 'context' => 'Action ending the evaluation immediately once every participant has finished.'],
+        'decisions.schedule.finish.help' => ['text' => 'Tous les participants ont répondu. Fixer la fin de l’évaluation à maintenant et afficher les résultats.', 'context' => 'Tooltip for early evaluation completion.'],
+        'decisions.schedule.finish.confirm' => ['text' => 'Clôturer le scrutin maintenant ? La fin de l’évaluation sera fixée à maintenant. Les modifications non enregistrées seront perdues.', 'context' => 'Confirmation before immediate evaluation completion and editor reload.'],
+        'decisions.schedule.finish.pending' => ['text' => 'Clôture en cours…', 'context' => 'Progress label during early evaluation completion.'],
+        'decisions.schedule.finish.error' => ['text' => 'Impossible de clôturer le scrutin pour le moment.', 'context' => 'Fallback error when early evaluation completion fails.'],
     ];
+}
+
+function omoDecisionRenderProcessStageActions(?DecisionProcess $decision, array $context, array $lang, array $sourceLang, callable $escape): string
+{
+    if (!$decision || ($context['intent'] ?? 'manage') !== 'manage' || empty($context['canManage']) || !empty($context['isDuplicate'])) return '';
+    $interrupt = $decision->canInterruptEvaluation();
+    if (!$interrupt && !$decision->canFinishEvaluationNow()) return '';
+    $label = t($interrupt ? 'decisions.edit.interrupt.label' : 'decisions.schedule.finish.label', [], $lang, $sourceLang);
+    $help = t($interrupt ? 'decisions.edit.interrupt.help' : 'decisions.schedule.finish.help', [], $lang, $sourceLang);
+    $payload = ['oid' => (int)$context['organizationId'], 'id' => (int)$decision->getId(), 'decision_action' => $interrupt ? 'interrupt' : 'finish_evaluation'];
+    return '<button type="button" class="generic-action-button generic-action-button--' . ($interrupt ? 'secondary' : 'main') . '" '
+        . ($interrupt ? 'data-omo-decision-interrupt' : 'data-omo-decision-finish')
+        . ' title="' . $escape($help) . '" data-request-url="' . $escape(omoDecisionBuildActionUrl())
+        . '" data-request-payload="' . $escape(json_encode($payload, JSON_THROW_ON_ERROR)) . '">' . $escape($label) . '</button>';
 }
 
 function omoDecisionRenderProcessSchedule(?DecisionProcess $decision, bool $canEditStartDates, bool $canEditEndDates, array $lang, array $sourceLang, callable $escape, bool $consultationOnly = false, bool $readonlyStart = false): string

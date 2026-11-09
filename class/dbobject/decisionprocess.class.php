@@ -32,6 +32,9 @@ class DecisionProcess extends DbObject
                 'impossible_de_sauvegarder_la_decision_et_son_agenda' => ['text' => 'Impossible de sauvegarder la décision et son agenda.', 'context' => 'Validation or action feedback for decisionprocess.'],
                 'destination_invalide' => ['text' => 'Destination invalide.', 'context' => 'Validation or action feedback for decisionprocess.'],
                 'acces_refuse' => ['text' => 'Accès refusé.', 'context' => 'Validation or action feedback for decisionprocess.'],
+                'evaluation_cloturee' => ['text' => 'Le scrutin est clôturé. Les résultats sont disponibles.', 'context' => 'Success after ending an evaluation early once everyone has answered.'],
+                'evaluation_cloture_incomplete' => ['text' => 'La clôture anticipée est possible uniquement pendant l’évaluation, lorsque tous les participants ont répondu à tous les blocs à voter.', 'context' => 'Reject early completion when a participant still has pending answers or evaluation is not open.'],
+                'evaluation_cloture_echec' => ['text' => 'Impossible de clôturer le scrutin pour le moment.', 'context' => 'Failure while ending an evaluation early.'],
                 'questions_suppression_verrouillee' => ['text' => 'Les questions ne peuvent plus être supprimées après le début de l’évaluation.', 'context' => 'Question deletion rejected once evaluation has started.'],
                 'question_suppression_invalide' => ['text' => 'La question à supprimer n’appartient pas à ce scrutin.', 'context' => 'Question deletion ownership validation.'],
                 'derniere_question_protegee' => ['text' => 'Le scrutin doit conserver au moins une question.', 'context' => 'Reject deleting the last questionnaire block.'],
@@ -1773,6 +1776,59 @@ class DecisionProcess extends DbObject
     {
         return (int)$this->getId() > 0 && $this->resolveAutomaticStatus() === self::STATUS_EVALUATION
             && !$this->hasEvaluationResponses();
+    }
+
+    public function canFinishEvaluationNow(): bool
+    {
+        if ((int)$this->getId() <= 0 || $this->resolveAutomaticStatus() !== self::STATUS_EVALUATION) return false;
+        $required = [];
+        foreach ($this->getParticipants(true) as $participant) {
+            if (!in_array($participant->get('status'), [DecisionParticipant::STATUS_DECLINED, DecisionParticipant::STATUS_REVOKED], true)) {
+                $required[(int)$participant->getId()] = true;
+            }
+        }
+        if (!$required) return false;
+        $hasVotingGroup = false;
+        foreach ($this->getDecisionGroups(true) as $group) {
+            if ($group->get('evaluation_method') === self::METHOD_CONSULTATION_ONLY) continue;
+            $hasVotingGroup = true;
+            $answered = [];
+            foreach ($group->getResponses(DecisionResponse::STATUS_SUBMITTED) as $response) {
+                $answered[(int)$response->get('IDdecision_participant')] = true;
+            }
+            if (array_diff_key($required, $answered)) return false;
+        }
+        return $hasVotingGroup;
+    }
+
+    public function finishEvaluationNowForManager(int $userId): array
+    {
+        $pdo = self::getPdo();
+        $ownsTransaction = !$pdo->inTransaction();
+        try {
+            if ($ownsTransaction) $pdo->beginTransaction();
+            $row = self::fetchRow('SELECT * FROM decision_process WHERE id = :id FOR UPDATE', ['id' => (int)$this->getId()]);
+            if (!$row) throw new \RuntimeException('decision_not_found');
+            $this->hydrateFromDatabaseRow($row, true);
+            if (!$this->canUseManagementPermission('CAN_EDIT_DECISION', $userId)) {
+                if ($ownsTransaction) $pdo->rollBack();
+                return ['status' => false, 'code' => 403, 'message' => self::uiMessage('acces_refuse')];
+            }
+            if (empty($this->syncParticipantsFromInvitations(true)['status'])) throw new \RuntimeException('decision_participants_sync_failed');
+            if (!$this->canFinishEvaluationNow()) {
+                if ($ownsTransaction) $pdo->rollBack();
+                return ['status' => false, 'code' => 409, 'message' => self::uiMessage('evaluation_cloture_incomplete')];
+            }
+            $now = new \DateTimeImmutable('now');
+            $this->set('evaluation_end_at', $now);
+            if (empty($this->save()['status']) || !$this->syncLifecycleStatus($now)) throw new \RuntimeException('decision_evaluation_finish_failed');
+            if ($ownsTransaction) $pdo->commit();
+            return ['status' => true, 'action' => 'finish_evaluation', 'message' => self::uiMessage('evaluation_cloturee')];
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+            error_log('decision_evaluation_finish_failed: ' . $exception->getMessage());
+            return ['status' => false, 'code' => 500, 'message' => self::uiMessage('evaluation_cloture_echec')];
+        }
     }
 
     protected function isInterruptedEvaluationDraft(): bool

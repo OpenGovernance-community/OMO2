@@ -40,7 +40,7 @@ if (!($decision instanceof DecisionProcess) || (int)$decision->getId() <= 0) {
     ]);
 }
 
-if (empty($context[$requestedAction === 'interrupt' ? 'canManage' : 'canDelete'])) {
+if (empty($context[in_array($requestedAction, ['interrupt', 'finish_evaluation'], true) ? 'canManage' : 'canDelete'])) {
     omoDecisionActionJsonResponse(403, [
         'status' => false,
         'message' => omoDecisionUiT('acces_refuse_a_cette_prise_de_decision'),
@@ -49,6 +49,8 @@ if (empty($context[$requestedAction === 'interrupt' ? 'canManage' : 'canDelete']
 
 if ($requestedAction === 'interrupt') {
     $result = $decision->interruptEvaluationForManager((int)$context['currentUserId']);
+} elseif ($requestedAction === 'finish_evaluation') {
+    $result = $decision->finishEvaluationNowForManager((int)$context['currentUserId']);
 } elseif ($requestedAction === 'archive') {
     $result = $decision->archiveForManager();
 } elseif ($requestedAction === 'delete') {
@@ -71,5 +73,5 @@ omoDecisionActionJsonResponse(200, [
     'requestedAction' => $requestedAction,
     'resolvedAction' => (string)($result['action'] ?? ''),
     'decisionId' => (int)$decision->getId(),
-    'redirectUrl' => $requestedAction === 'interrupt' ? omoDecisionBuildContextualEditorUrl($context, 'manage') : '',
+    'redirectUrl' => in_array($requestedAction, ['interrupt', 'finish_evaluation'], true) ? omoDecisionBuildContextualEditorUrl($context, 'manage') : '',
 ]);
