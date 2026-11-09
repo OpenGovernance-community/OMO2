@@ -1212,13 +1212,13 @@ if (!function_exists('omoDecisionResolveExternalParticipantName')) {
 }
 
 if (!function_exists('omoDecisionResolveProposalParticipantName')) {
-    function omoDecisionResolveProposalParticipantName(DecisionProcess $decision, $userId, $fallbackName = '', $anonymous = false, $participantId = 0)
+    function omoDecisionResolveProposalParticipantName(DecisionProcess $decision, $userId, $fallbackName = '', $anonymous = false, $participantId = 0, $anonymousByAuthor = false)
     {
         $userId = (int)$userId;
         $participantId = (int)$participantId;
         $fallbackName = trim((string)$fallbackName);
         $isAdministrator = $userId > 0 && $userId === (int)$decision->get('IDuser');
-        if (!empty($anonymous) && !$isAdministrator) {
+        if (!empty($anonymous) && (!$isAdministrator || $anonymousByAuthor)) {
             if ($participantId > 0) {
                 return $decision->getAnonymousPseudonymForParticipant($participantId);
             }
@@ -1376,17 +1376,20 @@ if (!function_exists('omoDecisionRenderProposalMetadata')) {
                 $lastMessageType = (string)($summary['last_message_type'] ?? '');
                 $lastMessageUserId = (int)($summary['last_message_user_id'] ?? 0);
                 $lastMessageParticipantId = (int)($summary['last_message_participant_id'] ?? 0);
+                $lastMessageIsAnonymous = !empty($summary['last_message_is_anonymous'])
+                    || $proposal->isDiscussionAnonymous();
                 if ($lastMessageType === 'system') {
                     $lastAuthor = omoDecisionProposalT('decisions.proposals.metadata.system');
-                } elseif ($isAnonymous && $lastMessageUserId <= 0 && $lastMessageParticipantId > 0) {
+                } elseif ($lastMessageIsAnonymous && $lastMessageUserId <= 0 && $lastMessageParticipantId > 0) {
                     $lastAuthor = $decision->getAnonymousPseudonymForParticipant($lastMessageParticipantId);
                 } else {
                     $lastAuthor = omoDecisionResolveProposalParticipantName(
                         $decision,
                         $lastMessageUserId,
                         trim((string)($summary['last_message_author_name'] ?? '')),
-                        $isAnonymous,
-                        $lastMessageParticipantId
+                        $lastMessageIsAnonymous,
+                        $lastMessageParticipantId,
+                        !empty($summary['last_message_force_anonymous'])
                     );
                 }
                 if ($lastAuthor === '') {

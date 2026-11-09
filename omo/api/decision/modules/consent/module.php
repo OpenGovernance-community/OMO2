@@ -579,10 +579,16 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                                 <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact">
                                     <span class="omo-decision-settings-popup__group-title"><?= $escape(t('decisions.edit.settings.privacy', [], $lang, $sourceLang)) ?></span>
                                     <div class="omo-decision-settings-popup__options">
+                                        <div class="omo-decision-settings-popup__option-with-help">
                                         <label class="omo-decision-settings-popup__option">
                                             <input type="checkbox" data-omo-decision-consent-popup-anonymous <?= $canEditStructure && $canEnableNamedVote ? '' : 'disabled' ?>>
                                             <span><?= $escape(t('decisions.consent.field.named', [], $lang, $sourceLang)) ?></span>
                                         </label>
+                                        <details class="generic-context-help">
+                                            <summary aria-label="<?= $escape(omoDecisionUiT('vote_nominatif_contributions_precedentes')) ?>">?</summary>
+                                            <div class="generic-context-help__content"><?= $escape(omoDecisionUiT('vote_nominatif_contributions_precedentes')) ?></div>
+                                        </details>
+                                        </div>
                                         <div class="omo-decision-settings-popup__option-with-help" data-omo-decision-consent-popup-allow-anonymous-votes-option hidden>
                                             <label class="omo-decision-settings-popup__option">
                                                 <input type="checkbox" data-omo-decision-consent-popup-allow-anonymous-votes <?= $canEditStructure ? '' : 'disabled' ?>>

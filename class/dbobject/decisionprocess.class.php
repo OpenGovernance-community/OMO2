@@ -2043,9 +2043,7 @@ class DecisionProcess extends DbObject
 
     public function hasParticipationPreventingNamedVote()
     {
-        return $this->hasSubmittedResponses()
-            || $this->hasProposalsFromOtherPeople()
-            || $this->hasProposalDiscussionMessages();
+        return $this->hasEvaluationResponses();
     }
 
     public function canEnableNamedVote($referenceDateTime = null)
