@@ -71,14 +71,6 @@ class ArrayDecisionProcess extends ArrayDbObject
             return false;
         }
 
-        $decisionHolonId = (int)$decision->get('IDholon');
-        if ($decisionHolonId > 0) {
-            $decisionHolon = new \dbObject\Holon();
-            if (!$decisionHolon->load($decisionHolonId) || !$decisionHolon->canViewDetail()) {
-                return false;
-            }
-        }
-
         $participant = $this->resolveDecisionParticipant($decision, $userId, $organizationId, $scopedEmail);
         $hasParticipation = $participant instanceof \dbObject\DecisionParticipant;
         $isOwner = (int)$decision->get('IDuser') === $userId;
@@ -89,7 +81,7 @@ class ArrayDecisionProcess extends ArrayDbObject
             $isOwner = $isOwner || \dbObject\DecisionParticipant::normalizeRole($participant->get('role')) === \dbObject\DecisionParticipant::ROLE_OWNER;
         }
 
-        $canManage = $isOwner;
+        $canManage = $decision->canUseManagementPermission('CAN_EDIT_DECISION', $userId);
         $canParticipate = ($isOwner || $hasParticipation) && $decision->isParticipationInterfaceOpen();
         $canView = $canManage
             || $hasParticipation

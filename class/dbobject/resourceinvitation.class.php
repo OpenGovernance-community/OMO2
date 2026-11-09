@@ -3,6 +3,17 @@ namespace dbObject;
 
 class ResourceInvitation extends DbObject
 {
+    protected static function uiMessageSourceLang(): array
+    {
+        return parent::uiMessageSourceLang() + [
+            'copy.invite' => ['text' => 'Invité', 'context' => 'Interface text in class/dbobject/resourceinvitation.class.php'],
+            'copy.refuse' => ['text' => 'Refusé', 'context' => 'Interface text in class/dbobject/resourceinvitation.class.php'],
+
+            'option.accepte' => ['text' => 'Accepte', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+            'option.revoque' => ['text' => 'Revoque', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+        ];
+    }
+
     const TYPE_HOLON = 'holon';
     const TYPE_USER = 'user';
     const TYPE_EMAIL = 'email';
@@ -51,21 +62,21 @@ class ResourceInvitation extends DbObject
 			'IDholon' => 'Espace',
             'IDuser' => 'Utilisateur',
             'email' => 'E-mail',
-            'display_name' => 'Nom affiche',
-            'invitation_type' => 'Type d invitation',
+            'display_name' => 'Nom affiché',
+            'invitation_type' => 'Type d’invitation',
             'status' => 'Statut',
             'accepted' => 'Accepte',
-            'parameters' => 'Parametres',
+            'parameters' => 'Paramètres',
             'active' => 'Active',
-            'created_at' => 'Creation',
-            'updated_at' => 'Mise a jour',
+            'created_at' => 'Création',
+            'updated_at' => 'Mise à jour',
         ];
     }
 
     public static function attributeDescriptions()
     {
         return [
-            'resource_type' => 'Identifie le type d objet invite sans imposer de cle etrangere polymorphe.',
+            'resource_type' => 'Identifie le type d’objet invité sans imposer de clé étrangère polymorphe.',
 			'invitation_type' => 'Précise si l’invitation vise un espace, un membre ou une adresse e-mail externe.',
         ];
     }
@@ -109,7 +120,7 @@ class ResourceInvitation extends DbObject
 
     public static function getStatusCatalog()
     {
-        return [self::STATUS_INVITED => 'Invite', self::STATUS_ACCEPTED => 'Accepte', self::STATUS_DECLINED => 'Refuse', self::STATUS_REVOKED => 'Revoque'];
+        return [self::STATUS_INVITED => self::uiMessage('copy.invite'), self::STATUS_ACCEPTED => self::uiMessage('option.accepte'), self::STATUS_DECLINED => self::uiMessage('copy.refuse'), self::STATUS_REVOKED => self::uiMessage('option.revoque')];
     }
 
     public static function normalizeType($type)

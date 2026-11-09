@@ -194,12 +194,12 @@
 		public static function attributeDescriptions()
 		{
 			return [
-				'IDuser' => 'Utilisateur associe à cette organisation.',
+				'IDuser' => 'Utilisateur associé à cette organisation.',
 				'IDorganization' => 'Organisation concernée par ce lien.',
-				'username' => 'Nom d\'utilisateur affiche specifiquement dans cette organisation. Laissez vide pour utiliser la valeur générale.',
-				'email' => 'Adresse e-mail affichée specifiquement dans cette organisation. Laissez vide pour utiliser la valeur générale.',
+				'username' => 'Nom d\'utilisateur affiché spécifiquement dans cette organisation. Laissez vide pour utiliser la valeur générale.',
+				'email' => 'Adresse e-mail affichée spécifiquement dans cette organisation. Laissez vide pour utiliser la valeur générale.',
 				'phone' => 'Numéro de téléphone affiché spécifiquement dans cette organisation. Laissez vide pour utiliser la valeur générale.',
-				'presentation' => 'Présentation visible uniquement dans cette organisation. Laissez vide pour reutiliser la présentation générale.',
+				'presentation' => 'Présentation visible uniquement dans cette organisation. Laissez vide pour réutiliser la présentation générale.',
 				'image' => 'Photo de profil spécifique à cette organisation. Si elle est vide, la photo générale est utilisée.',
 				'parameters' => 'Paramètres spécifiques au rôle de cette personne dans l’organisation.',
 				'datecreation' => 'Date de création du lien avec l’organisation.',

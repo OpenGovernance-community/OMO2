@@ -822,6 +822,15 @@ a.generic-correspondence-list__row:focus-visible {
     border: 0;
 }
 
+/* Shared tick shape for selected ratings and completed questionnaire blocks. */
+.generic-checkmark {
+    display: inline-block;
+    font-weight: 900;
+    line-height: 1;
+    transform: scaleX(-1) rotate(-45deg);
+    transform-origin: center;
+}
+
 /* Hierarchical selectors used by calendar and decision invitations. */
 .generic-tree-toggle,
 .generic-tree-spacer {
@@ -3214,8 +3223,8 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
     text-align: left;
 }
 
-.generic-menu-item:hover,
-.generic-menu-item:focus-visible {
+.generic-menu-item:not(:disabled):hover,
+.generic-menu-item:not(:disabled):focus-visible {
     background: var(--generic-menu-hover, color-mix(in srgb, var(--generic-menu-accent, var(--color-primary, #2563eb)) 10%, var(--generic-menu-surface, var(--color-surface, #ffffff))));
     outline: none;
 }
@@ -3224,9 +3233,15 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
     color: var(--generic-menu-danger, var(--color-danger, #dc2626));
 }
 
-.generic-menu-item--danger:hover,
-.generic-menu-item--danger:focus-visible {
+.generic-menu-item--danger:not(:disabled):hover,
+.generic-menu-item--danger:not(:disabled):focus-visible {
     background: color-mix(in srgb, var(--generic-menu-danger, var(--color-danger, #dc2626)) 10%, var(--generic-menu-surface, var(--color-surface, #ffffff)));
+}
+
+.generic-menu-item:disabled,
+.generic-menu-toggle:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 .generic-menu-separator {
@@ -3954,3 +3969,49 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
 
 /* Inactive records remain manageable while their status is visually distinct. */
 .generic-section--inactive { filter: grayscale(1); opacity: .65; }
+
+.generic-visibility-capsule {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 24px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 84%, var(--color-surface, #ffffff));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-border, #d1d5db) 86%, transparent);
+}
+
+.generic-visibility-capsule__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    opacity: 0.86;
+}
+
+.generic-visibility-capsule__icon img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.generic-visibility-capsule__separator {
+    width: 1px;
+    height: 12px;
+    background: color-mix(in srgb, var(--color-text-light, #64748b) 32%, transparent);
+    border-radius: 999px;
+}
+
+.generic-visibility-capsule--compact {
+    min-height: 22px;
+    padding: 0 7px;
+    gap: 5px;
+}
+
+.generic-visibility-capsule--compact .generic-visibility-capsule__icon {
+    width: 13px;
+    height: 13px;
+}

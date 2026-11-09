@@ -1,5 +1,8 @@
 <?php
 	require_once dirname(__DIR__) . '/includes/env.php';
+
+
+
 	foreach (envGetRuntimeEnvPaths() as $webhookEnvPath) loadEnv($webhookEnvPath);
 	$webhookSecret = (string)envValue('TELEGRAM_WEBHOOK_SECRET', '');
 	$receivedSecret = $_SERVER['HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN'] ?? null;
@@ -8,12 +11,16 @@
 		http_response_code(403);
 		exit;
 	}
+	// Webhook identity comes from Telegram, never browser cookies or URL parameters.
+	$_GET = $_POST = $_REQUEST = $_COOKIE = [];
+	define('OMO_API_LOCAL_LINKS', true);
 	require_once($_SERVER['DOCUMENT_ROOT']."/config.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/shared_functions.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/common/patreon.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/shared/openai.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/common/openai_audio.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/shared/telegram.php");
+	require_once dirname(__DIR__) . '/common/assistant/telegram.php';
 
 	$minTimeMessage = 10; // Duree minimum en seconde du message pour justifier une transformation
 
@@ -178,7 +185,7 @@
 		if (strlen($code) !== 6) {
 			return array(
 				'status' => false,
-				'message' => "Veuillez saisir le code complet a 6 caracteres.",
+				'message' => 'Veuillez saisir le code complet à 6 caractères.',
 			);
 		}
 
@@ -207,7 +214,7 @@
 			saveLocalSession($sessionData, $actorId);
 			return array(
 				'status' => false,
-				'message' => "Le code a expire. Envoyez /connect pour recommencer.",
+				'message' => 'Le code a expiré. Envoyez /connect pour recommencer.',
 			);
 		}
 
@@ -262,7 +269,7 @@
 		if (!is_array($saveResult) || empty($saveResult['status'])) {
 			return array(
 				'status' => false,
-				'message' => "Le compte Telegram n'a pas pu etre enregistre.",
+				'message' => 'Le compte Telegram n\'a pas pu être enregistré.',
 			);
 		}
 
@@ -271,7 +278,7 @@
 
 		return array(
 			'status' => true,
-			'message' => "Connexion confirmee avec ".getTelegramConnectedUserLabel($targetUser).".",
+			'message' => "Connexion confirmée avec ".getTelegramConnectedUserLabel($targetUser).".",
 		);
 	}
 
@@ -303,13 +310,13 @@
 		if (($connectState->step ?? '') === 'await_email') {
 			$email = strtolower(trim($text));
 			if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-				sendMessage($chatId, "Veuillez repondre avec une adresse e-mail valide, ou /cancel.", null, $threadId);
+				sendMessage($chatId, 'Veuillez répondre avec une adresse e-mail valide, ou /cancel.', null, $threadId);
 				return true;
 			}
 
 			$targetUser = new \dbObject\User();
 			if (!$targetUser->load(array('email', $email))) {
-				sendMessage($chatId, "Aucun compte n'a ete trouve avec cette adresse. Reessayez ou envoyez /cancel.", null, $threadId);
+				sendMessage($chatId, 'Aucun compte n\'a été trouvé avec cette adresse. Réessayez ou envoyez /cancel.', null, $threadId);
 				return true;
 			}
 
@@ -320,7 +327,7 @@
 
 		if (($connectState->step ?? '') === 'await_code') {
 			$result = completeTelegramConnectFlow($actorId, $text);
-			sendMessage($chatId, $result['message'] ?? "Impossible de verifier le code.", null, $threadId);
+			sendMessage($chatId, $result['message'] ?? 'Impossible de vérifier le code.', null, $threadId);
 			return true;
 		}
 
@@ -599,7 +606,7 @@
 
 	function buildTelegramGroupRolePrompt(\dbObject\User $user, int $organizationId = 0, int $holonId = 0): array {
 		if ((int)$user->getId() <= 0) {
-			return array('text' => "Connectez d'abord votre compte Telegram au bot en message prive avec /connect.", 'buttons' => null);
+			return array('text' => 'Connectez d\'abord votre compte Telegram au bot en message privé avec /connect.', 'buttons' => null);
 		}
 
 		if ($organizationId <= 0) {
@@ -616,7 +623,7 @@
 			}
 
 			if (count($buttons) === 0) {
-				return array('text' => "Aucune organisation avec une destination autorisee n'est disponible.", 'buttons' => null);
+				return array('text' => 'Aucune organisation avec une destination autorisée n\'est disponible.', 'buttons' => null);
 			}
 
 			$buttons[] = array(array('text' => 'Annuler', 'callback_data' => 'tg_dest_cancel'));
@@ -701,7 +708,9 @@
 		$text = "Connecter ce groupe\n\nStructure : ".buildHolonPathLabel($organization, $currentHolon === $rootHolon ? null : $currentHolon);
 		$text .= (int)$currentHolon->get('IDtypeholon') === 1
 			? "\n\nVous pouvez sélectionner ce rôle ou explorer les projets rattachés à ce rôle."
-			: "\n\nLes groupes et les cercles servent uniquement a naviguer. Choisissez un role.";
+			: '
+
+Les groupes et les cercles servent uniquement à naviguer. Choisissez un rôle.';
 		return array('text' => $text, 'buttons' => $buttons);
 	}
 
@@ -768,7 +777,7 @@
 			$buttons[] = array(array('text' => 'Retour', 'callback_data' => 'tg_dest_projects_'.$organizationId.'_'.$roleHolonId.'_'.(int)($parentByProjectId[$parentProjectId] ?? 0)));
 		}
 		$buttons[] = array(
-			array('text' => 'Retour au role', 'callback_data' => 'tg_dest_holon_'.$organizationId.'_'.$roleHolonId),
+			array('text' => 'Retour au rôle', 'callback_data' => 'tg_dest_holon_'.$organizationId.'_'.$roleHolonId),
 			array('text' => 'Annuler', 'callback_data' => 'tg_dest_cancel'),
 		);
 
@@ -778,8 +787,9 @@
 			array_unshift($path, trim((string)$projectsById[$currentId]->get('title')));
 			$currentId = (int)($parentByProjectId[$currentId] ?? 0);
 		}
-		$text = "Connecter ce groupe a un projet\n\nRole : ".trim((string)$role->getDisplayName());
-		$text .= count($path) > 0 ? "\nProjet : ".implode(' > ', $path) : "\nChoisissez un projet rattache a ce role.";
+		$text = "Connecter ce groupe à un projet\n\nRole : ".trim((string)$role->getDisplayName());
+		$text .= count($path) > 0 ? "\nProjet : ".implode(' > ', $path) : '
+Choisissez un projet rattaché à ce rôle.';
 		return array('text' => $text, 'buttons' => $buttons);
 	}
 
@@ -846,7 +856,7 @@
 
 			if (count($availableOrganizations) === 0) {
 				return array(
-					'text' => "Aucune organisation accessible avec droit de creation de document n'est disponible pour classer ce memo.",
+					'text' => 'Aucune organisation accessible avec droit de création de document n\'est disponible pour classer ce mémo.',
 					'buttons' => array(
 						array(
 							array('text' => 'Fermer', 'callback_data' => 'btn_classify_cancel'),
@@ -983,11 +993,15 @@
 
 		$text = "Classer ce mémo\n\nEmplacement sélectionné : ".$currentPath;
 		if (!$canFinishHere && !$hasDescendantDestination) {
-			$text .= "\n\nAucune destination avec droit de creation de document n'est disponible ici.";
+			$text .= '
+
+Aucune destination avec droit de création de document n\'est disponible ici.';
 		} elseif ($hasDescendantDestination && !$useIncrementalMode) {
 			$text .= $canFinishHere
 				? "\n\nChoisissez directement un emplacement ou un sous-niveau ci-dessous, ou utilisez \"Terminer ici\" pour valider cet emplacement."
-				: "\n\nChoisissez directement un sous-niveau ou une destination autorisee ci-dessous.";
+				: '
+
+Choisissez directement un sous-niveau ou une destination autorisée ci-dessous.';
 		} elseif (count($children) > 0) {
 			$text .= $canFinishHere
 				? "\n\nChoisissez un sous-niveau, ou utilisez \"Terminer ici\" pour valider cet emplacement."
@@ -1052,12 +1066,12 @@
 
 		if (strpos($callbackData, 'tg_dest_') === 0) {
 			if ((int)$user->getId() <= 0) {
-				answerCallbackQuery($callbackId, "Connectez d'abord votre compte Telegram en prive.");
+				answerCallbackQuery($callbackId, 'Connectez d\'abord votre compte Telegram en privé.');
 				return;
 			}
 
 			if ((int)$chatId === $actorId) {
-				answerCallbackQuery($callbackId, 'Cette configuration doit etre faite dans un groupe.');
+				answerCallbackQuery($callbackId, 'Cette configuration doit être faite dans un groupe.');
 				return;
 			}
 
@@ -1098,7 +1112,7 @@
 					answerCallbackQuery($callbackId);
 				} catch (\Throwable $exception) {
 					error_log('Telegram project destination navigation failed: '.$exception->getMessage());
-					sendMessage($chatId, "Impossible d'afficher les projets pour le moment. Le detail a ete enregistre dans le journal PHP.", null, $threadId);
+					sendMessage($chatId, 'Impossible d\'afficher les projets pour le moment. Le détail a été enregistré dans le journal PHP.', null, $threadId);
 					answerCallbackQuery($callbackId, 'Erreur lors du chargement des projets.');
 				}
 				return;
@@ -1106,7 +1120,7 @@
 
 			if (preg_match('/^tg_dest_role_(\d+)_(\d+)$/', $callbackData, $matches)) {
 				if (!\dbObject\TelegramChatDestination::isStorageAvailable()) {
-					editMessageText($chatId, (int)$message['message_id'], "La destination Telegram ne peut pas encore etre enregistree: la migration SQL telegram-chat-destinations doit etre executee sur ce serveur.", null, $threadId);
+					editMessageText($chatId, (int)$message['message_id'], "La destination Telegram ne peut pas encore être enregistrée: la migration SQL telegram-chat-destinations doit être exécutée sur ce serveur.", null, $threadId);
 					answerCallbackQuery($callbackId, 'Migration SQL manquante.');
 					return;
 				}
@@ -1121,7 +1135,7 @@
 					|| !$organization->containsHolon($role)
 					|| !telegramRoleCanReceiveGroupMemos($user, $organization, $role)
 				) {
-					answerCallbackQuery($callbackId, "Cette destination n'est plus autorisee.");
+					answerCallbackQuery($callbackId, 'Cette destination n\'est plus autorisée.');
 					return;
 				}
 
@@ -1141,19 +1155,19 @@
 						'roleId' => (int)$role->getId(),
 						'error' => $destinationSave['dbError'] ?? $destinationSave['message'] ?? '',
 					), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-					editMessageText($chatId, (int)$message['message_id'], "Impossible d'enregistrer la destination. Le detail est dans les journaux du serveur.", null, $threadId);
+					editMessageText($chatId, (int)$message['message_id'], "Impossible d'enregistrer la destination. Le détail est dans les journaux du serveur.", null, $threadId);
 					answerCallbackQuery($callbackId, "Impossible d'enregistrer la destination.");
 					return;
 				}
 
-				editMessageText($chatId, (int)$message['message_id'], "Ce groupe est connecte au role : ".buildHolonPathLabel($organization, $role).".\nLes prochains vocaux seront ajoutes a ce contexte.", null, $threadId);
+				editMessageText($chatId, (int)$message['message_id'], "Ce groupe est connecté au rôle : ".buildHolonPathLabel($organization, $role).".\nLes prochains vocaux seront ajoutes à ce contexte.", null, $threadId);
 				answerCallbackQuery($callbackId, 'Role connecte.');
 				return;
 			}
 
 			if (preg_match('/^tg_dest_project_(\d+)_(\d+)_(\d+)$/', $callbackData, $matches)) {
 				if (!\dbObject\TelegramChatDestination::isStorageAvailable()) {
-					editMessageText($chatId, (int)$message['message_id'], "La destination Telegram ne peut pas encore etre enregistree: la migration SQL telegram-chat-destinations doit etre executee sur ce serveur.", null, $threadId);
+					editMessageText($chatId, (int)$message['message_id'], "La destination Telegram ne peut pas encore être enregistrée: la migration SQL telegram-chat-destinations doit être exécutée sur ce serveur.", null, $threadId);
 					answerCallbackQuery($callbackId, 'Migration SQL manquante.');
 					return;
 				}
@@ -1172,7 +1186,7 @@
 					|| (int)$project->get('IDorganization') !== $organizationId
 					|| !telegramProjectCanReceiveGroupMemos($user, $project, $organization, $role)
 				) {
-					answerCallbackQuery($callbackId, "Cette destination n'est plus autorisee.");
+					answerCallbackQuery($callbackId, 'Cette destination n\'est plus autorisée.');
 					return;
 				}
 
@@ -1193,12 +1207,12 @@
 						'projectId' => (int)$project->getId(),
 						'error' => $destinationSave['dbError'] ?? $destinationSave['message'] ?? '',
 					), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-					editMessageText($chatId, (int)$message['message_id'], "Impossible d'enregistrer la destination. Le detail est dans les journaux du serveur.", null, $threadId);
+					editMessageText($chatId, (int)$message['message_id'], "Impossible d'enregistrer la destination. Le détail est dans les journaux du serveur.", null, $threadId);
 					answerCallbackQuery($callbackId, "Impossible d'enregistrer la destination.");
 					return;
 				}
 
-				editMessageText($chatId, (int)$message['message_id'], "Ce groupe est connecte au projet : ".trim((string)$project->get('title')).".\nLes prochains vocaux seront lies a ce projet.", null, $threadId);
+				editMessageText($chatId, (int)$message['message_id'], "Ce groupe est connecté au projet : ".trim((string)$project->get('title')).".\nLes prochains vocaux seront lies à ce projet.", null, $threadId);
 				answerCallbackQuery($callbackId, 'Projet connecte.');
 				return;
 			}
@@ -1211,7 +1225,7 @@
 
 		if ($callbackData === 'btn_share') {
 			if (!$document || (int)$document->get('IDuser') !== (int)$user->getId()) {
-				answerCallbackQuery($callbackId, 'Acces refuse.');
+				answerCallbackQuery($callbackId, 'Accès refusé.');
 				return;
 			}
 			if ($document && $document->getId() > 0) {
@@ -1258,7 +1272,7 @@
 
 		if ($callbackData === 'btn_del_file' || $callbackData === 'btn_del_all') {
 			if (!$document || (int)$document->get('IDuser') !== (int)$user->getId()) {
-				answerCallbackQuery($callbackId, 'Acces refuse.');
+				answerCallbackQuery($callbackId, 'Accès refusé.');
 				return;
 			}
 			if ($document && $document->getId() > 0) {
@@ -1343,7 +1357,7 @@
 					),
 					$threadId
 				);
-				answerCallbackQuery($callbackId, "Action non autorisee.");
+				answerCallbackQuery($callbackId, 'Action non autorisée.');
 				return;
 			}
 
@@ -1446,7 +1460,7 @@
 						(int)$groupDestinationContext['holonId'] > 0 ? (int)$groupDestinationContext['holonId'] : null,
 						(int)$configuredUser->getId(), 0, false
 					)) {
-					sendMessage($chatId, "La connexion de ce groupe n'a plus les droits requis sur sa destination. Relancez /connect avec un compte autorise.", null, $threadId);
+					sendMessage($chatId, 'La connexion de ce groupe n\'a plus les droits requis sur sa destination. Relancez /connect avec un compte autorisé.', null, $threadId);
 					return;
 				}
 				// The connected group can receive everyone's memos using its authorized connector.
@@ -1481,7 +1495,7 @@
 		if ((!$personalAccess && !$organizationAccess) || !patreonUserCanUseAi($aiUserId, $aiOrganizationId)) {
 			sendMessage(
 				$chatId,
-				"La transcription necessite un abonnement Patreon personnel actif, ou un groupe relie par /connect a une organisation avec un abonnement actif. Connecter votre compte Telegram avec /connect reste possible sans abonnement.",
+				'La transcription nécessite un abonnement Patreon personnel actif, ou un groupe relié par /connect à une organisation avec un abonnement actif. Connecter votre compte Telegram avec /connect reste possible sans abonnement.',
 				null,
 				$threadId
 			);
@@ -1491,7 +1505,7 @@
 
 		$data = loadLocalSession($actorId);
 		if (isset($data->active) && !$data->active) {
-			sendMessage($chatId, "La transcription est desactivee pour votre compte. Envoyez /start pour la reactiver.", null, $threadId);
+			sendMessage($chatId, 'La transcription est désactivée pour votre compte. Envoyez /start pour la réactiver.', null, $threadId);
 			return;
 		}
 
@@ -1501,7 +1515,7 @@
 
 		if ($fileId === '' || $duration < $minTimeMessage) {
 			if ($fileId !== '' && $duration < $minTimeMessage) {
-				sendMessage($chatId, "Le memo vocal est trop court. Envoyez au moins ".$minTimeMessage." secondes pour lancer la transcription.", null, $threadId);
+				sendMessage($chatId, "Le mémo vocal est trop court. Envoyez au moins ".$minTimeMessage." secondes pour lancer la transcription.", null, $threadId);
 			}
 			return;
 		}
@@ -1705,10 +1719,11 @@
 	}
 
 	function handleTextMessage(array $message, \dbObject\User $user): void {
-		$text = isset($message['text']) ? trim((string)$message['text']) : '';
-		if ($text === '') {
+		$route = telegramTextRoute($message);
+		if ($route === null) {
 			return;
 		}
+		$text = $route['text'];
 
 		$actorId = isset($message['from']['id']) ? (int)$message['from']['id'] : 0;
 		$chatId = $message['chat']['id'] ?? null;
@@ -1717,7 +1732,7 @@
 			return;
 		}
 
-		$command = strtolower((string)preg_replace('/@[^\s]+$/', '', strtok($text, " \t\r\n")));
+		$command = $route['command'];
 		if ($command === '/help') {
 			$help = "Commandes disponibles:\n".
 				"/help - Afficher cette aide\n".
@@ -1726,8 +1741,12 @@
 				"/cancel - Supprimer la connexion Telegram ou la destination du groupe\n".
 				"/time - Afficher l'heure du serveur\n".
 				"/start - Afficher le statut de connexion\n".
-				"/stop - Desactiver le traitement des messages\n".
+				"/stop - Désactiver le traitement des messages\n".
+				"/organization - Choisir l’organisation de l’assistant\n".
+				"/ask - Poser une question (réponse en privé)\n".
+				"/new - Démarrer une nouvelle discussion\n".
 				"/delete - Supprimer le dernier message du bot";
+			$help .= "\n\n" . commonTelegramAssistantT('help');
 			sendMessage($chatId, $help, null, $threadId);
 			return;
 		}
@@ -1759,7 +1778,7 @@
 				}
 
 				if ($destination->deactivate()) {
-					sendMessage($chatId, "La destination Telegram de ce groupe a ete supprimee.", null, $threadId);
+					sendMessage($chatId, 'La destination Telegram de ce groupe a été supprimée.', null, $threadId);
 				} else {
 					sendMessage($chatId, "Impossible de supprimer la destination Telegram de ce groupe.", null, $threadId);
 				}
@@ -1771,15 +1790,15 @@
 			saveLocalSession($sessionData, $actorId);
 
 			if ($user->getId() <= 0) {
-				sendMessage($chatId, "Ce compte Telegram n'est relie a aucun utilisateur. Envoyez /connect pour vous connecter.", null, $threadId);
+				sendMessage($chatId, 'Ce compte Telegram n\'est relié à aucun utilisateur. Envoyez /connect pour vous connecter.', null, $threadId);
 				return;
 			}
 
 			$connectedUserLabel = getTelegramConnectedUserLabel($user);
 			if (disconnectTelegramUser($user)) {
-				sendMessage($chatId, "La connexion Telegram avec ".$connectedUserLabel." a ete supprimee. Envoyez /connect pour connecter un compte.", null, $threadId);
+				sendMessage($chatId, "La connexion Telegram avec ".$connectedUserLabel." a été supprimée. Envoyez /connect pour connecter un compte.", null, $threadId);
 			} else {
-				sendMessage($chatId, "Impossible de supprimer la connexion Telegram pour le moment. Reessayez plus tard.", null, $threadId);
+				sendMessage($chatId, 'Impossible de supprimer la connexion Telegram pour le moment. Réessayez plus tard.', null, $threadId);
 			}
 			return;
 		}
@@ -1801,7 +1820,7 @@
 				sendMessage($chatId, $messageText, null, $threadId);
 			} else {
 				if ((int)$user->getId() <= 0) {
-					sendMessage($chatId, "Votre compte Telegram doit d'abord etre connecte en message prive. Ouvrez une discussion privee avec le bot et envoyez /connect.", null, $threadId);
+					sendMessage($chatId, 'Votre compte Telegram doit d\'abord être connecté en message privé. Ouvrez une discussion privée avec le bot et envoyez /connect.', null, $threadId);
 					return;
 				}
 
@@ -1843,7 +1862,7 @@
 
 			if (!isTelegramPrivateChat($message)) {
 				if ($user->getId() <= 0) {
-					sendMessage($chatId, "Bienvenue dans EasyMEMO. Connectez d'abord votre compte Telegram en message prive avec /connect.", null, $threadId);
+					sendMessage($chatId, 'Bienvenue dans EasyMEMO. Connectez d\'abord votre compte Telegram en message privé avec /connect.', null, $threadId);
 					return;
 				}
 
@@ -1860,14 +1879,21 @@
 			if ($user->getId() > 0) {
 				sendMessage(
 					$chatId,
-					"Bienvenue dans EasyMEMO.\n\nCe compte Telegram est connecte a : ".getTelegramConnectedUserLabel($user).".\nSi ce n'est pas vous, envoyez /cancel pour supprimer cette connexion.",
+					"Bienvenue dans EasyMEMO.\n\nCe compte Telegram est connecté à : ".getTelegramConnectedUserLabel($user).".\nSi ce n'est pas vous, envoyez /cancel pour supprimer cette connexion.\n\n" . commonTelegramAssistantT('help'),
 					null,
 					$threadId
 				);
 				return;
 			}
 
-			sendMessage($chatId, "Bienvenue dans EasyMEMO.\n\nCe compte Telegram n'est pas encore connecte. Envoyez /connect pour relier votre compte.", null, $threadId);
+			sendMessage($chatId, 'Bienvenue dans EasyMEMO.
+
+Ce compte Telegram n\'est pas encore connecté. Envoyez /connect pour relier votre compte.', null, $threadId);
+			return;
+		}
+
+		if (in_array($command, ['/ask', '/organization', '/new'], true)) {
+			commonTelegramAssistantHandle($message, $user, $command);
 			return;
 		}
 
@@ -1876,9 +1902,7 @@
 			return;
 		}
 
-		if (preg_match('/^@pottylicensebot/', $text)) {
-			sendMessage($chatId, "Je ne réponds pas aux messages directs, utilisez les commandes.", null, $threadId);
-		}
+		commonTelegramAssistantHandle($message, $user, $command);
 	}
 
 	$content = file_get_contents('php://input', false, null, 0, 1024 * 1024 + 1);

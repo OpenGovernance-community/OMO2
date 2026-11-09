@@ -18,9 +18,9 @@ class EventTimeBuffer extends DbObject
     }
     public static function attributeLabels()
     {
-        return ['IDevent' => 'Evenement', 'IDuser' => 'Personne',
-            'preparation_minutes' => 'Preparation (minutes)', 'closing_minutes' => 'Cloture (minutes)',
-            'updated_at' => 'Mise a jour'];
+        return ['IDevent' => 'Événement', 'IDuser' => 'Personne',
+            'preparation_minutes' => 'Préparation (minutes)', 'closing_minutes' => 'Clôture (minutes)',
+            'updated_at' => 'Mise à jour'];
     }
     public static function forUser(int $eventId, int $userId): self
     {

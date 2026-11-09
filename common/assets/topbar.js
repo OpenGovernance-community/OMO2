@@ -86,7 +86,7 @@
             ? media.querySelector('.common-topbar-profile-card__photo, .common-topbar-profile-card__placeholder')
             : null;
         var emptyValue = getConfigTextValue('profile.details.emptyValueLabel', 'Non renseigne');
-        var summaryFallback = getConfigTextValue('profile.summaryFallback', 'Resume du profil');
+        var summaryFallback = getConfigTextValue('profile.summaryFallback', 'Résumé du profil');
 
         profile = profile && typeof profile === 'object' ? profile : {};
         renderProfileAvatar(triggerAvatar, profile, 'common-topbar__avatar-image', 'common-topbar__avatar-initial');
@@ -1276,7 +1276,7 @@
 
         if (targetUrl) {
             openModal(
-                tension.title || getConfigTextValue('tension.title', 'Declarer une tension'),
+                tension.title || getConfigTextValue('tension.title', 'Déclarer une tension'),
                 targetUrl,
                 tension.mode === 'fetch' ? 'fetch' : (tension.mode === 'html' ? 'html' : 'iframe')
             );
@@ -1284,7 +1284,7 @@
         }
 
         openModal(
-            getConfigTextValue('tension.title', 'Declarer une tension'),
+            getConfigTextValue('tension.title', 'Déclarer une tension'),
             getConfigTextValue('translations.tensionUnavailableHtml', '<p>Formulaire indisponible.</p>'),
             'html'
         );

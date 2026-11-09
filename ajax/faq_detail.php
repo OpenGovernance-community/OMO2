@@ -142,7 +142,7 @@ if (\dbObject\FAQ::hasViewcountColumn()) {
 					<button type="button" class="faq-popup__edit generic-action-button generic-action-button--secondary" data-faq-edit data-faq-id="<?= (int)$faq->getId() ?>"><?= htmlspecialchars(faqPopupT('editer'), ENT_QUOTES, 'UTF-8') ?></button>
 				<?php endif; ?>
 				<?php if ($canDeleteFaq): ?>
-					<button type="button" class="generic-action-button generic-action-button--danger generic-action-button--icon-only" data-faq-delete data-faq-id="<?= (int)$faq->getId() ?>" data-faq-delete-confirm="Supprimer cette FAQ ? Cette action est definitive." title="<?= htmlspecialchars(faqPopupT('supprimer'), ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(faqPopupT('supprimer'), ENT_QUOTES, 'UTF-8') ?>">
+					<button type="button" class="generic-action-button generic-action-button--danger generic-action-button--icon-only" data-faq-delete data-faq-id="<?= (int)$faq->getId() ?>" data-faq-delete-confirm="Supprimer cette FAQ ? Cette action est définitive." title="<?= htmlspecialchars(faqPopupT('supprimer'), ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(faqPopupT('supprimer'), ENT_QUOTES, 'UTF-8') ?>">
 						<svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M5 7h14M10 11v6M14 11v6M9 7V5h6v2m-9 0 1 13h10l1-13"></path></svg>
 					</button>
 				<?php endif; ?>

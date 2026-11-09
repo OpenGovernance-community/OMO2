@@ -16,8 +16,8 @@ class CalendarShare extends DbObject
     public static function attributeLabels()
     {
         return ['IDuser' => 'Utilisateur', 'label' => 'Nom du partage', 'months' => 'Mois visibles',
-            'details' => 'Afficher les details', 'expires_at' => 'Expiration', 'active' => 'Actif',
-            'token' => 'Jeton secret', 'scope_key' => 'Portee du calendrier', 'created_at' => 'Creation'];
+            'details' => 'Afficher les détails', 'expires_at' => 'Expiration', 'active' => 'Actif',
+            'token' => 'Jeton secret', 'scope_key' => 'Portée du calendrier', 'created_at' => 'Création'];
     }
     public static function attributeLength() { return ['label' => 100, 'token' => 64, 'scope_key' => 100]; }
     public function canView() { return (int)$this->get('IDuser') > 0 && (int)$this->get('IDuser') === (int)($_SESSION['currentUser'] ?? 0); }

@@ -209,6 +209,7 @@ window.commonPageScripts["/omo/api/parameters/notifications/index.js"] = functio
                     return payload;
                 });
             }).then(function () {
+                if (typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(preferencesForm);
                 showFeedback(pageConfig.notificationsPreferencesSaved, 'success', preferencesFeedback);
             }).catch(function (error) {
                 showFeedback(error && error.message ? error.message : pageConfig.message, 'error', preferencesFeedback);

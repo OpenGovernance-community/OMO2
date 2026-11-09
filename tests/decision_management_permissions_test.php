@@ -103,6 +103,11 @@ try {
     decisionPermissionExpect(!empty($decision->syncParticipantsFromInvitations()['status']), 'Participants synchronized');
     $archivable = decisionPermissionFixture(DecisionProcess::class, array_replace($fields, ['title' => 'Finished scrutiny', 'status' => 'results',
         'consultation_end_at' => '2020-01-02 00:00:00', 'evaluation_start_at' => '2020-01-03 00:00:00', 'evaluation_end_at' => '2020-01-04 00:00:00']));
+    if ($actorType === 'editor') {
+        foreach ([$decision, $archivable] as $item) {
+            decisionPermissionExpect(!empty($item->saveVisibilityRulesFromInput(['edit_visibility_type' => 'circle'])['status']), 'Circle editors saved');
+        }
+    }
     $actor = $actorType === 'owner' ? $owner : $other;
     $_SESSION['currentUser'] = (int)$actor->getId();
     $_SESSION['currentOrganization'] = $oid;
@@ -119,6 +124,8 @@ try {
     $entries = decisionPermissionList($input);
     $byId = array_column($entries, null, 'id');
     decisionPermissionExpect(isset($byId[$decision->getId()]) && $byId[$decision->getId()]['canManage'] === $canManage, 'List management permission matches');
+    decisionPermissionExpect(substr_count($byId[$decision->getId()]['visibilityCapsuleHtml'], '<img ') === 2
+        && $byId[$decision->getId()]['editVisibilityType'] === ($actorType === 'editor' ? 'circle' : 'self'), 'List exposes both visibility scopes in the shared capsule');
     $modes = array_column($byId[$decision->getId()]['actions'], 'mode');
     decisionPermissionExpect(in_array('manage', $modes, true) === $canManage, 'Manage button follows edit permission');
     $archiveActions = array_filter($byId[$archivable->getId()]['menuActions'], static fn($action) => ($action['requestPayload']['decision_action'] ?? '') === 'archive');
@@ -159,6 +166,7 @@ try {
     if ($scenario === 'editor') {
         $vote = decisionPermissionFixture(DecisionProcess::class, array_replace($fields,
             ['evaluation_method' => DecisionProcess::METHOD_SIMPLE_VOTE, 'parameters' => []]));
+        decisionPermissionExpect(!empty($vote->saveVisibilityRulesFromInput(['edit_visibility_type' => 'circle'])['status']), 'Vote editors saved');
         $_POST = $_REQUEST = ['oid' => $oid, 'cid' => $circle->getId(), 'id' => $vote->getId(), 'intent' => 'view',
             'process_title' => 'Edited by manager', 'title' => 'Question', 'proposals' => ['Yes', 'No'], 'proposal_content_title' => 1];
         $GLOBALS['omoDecisionCaptureModuleResponse'] = true;

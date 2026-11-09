@@ -731,6 +731,10 @@ window.commonPageScripts["/omo/api/decision/modules/vote/module.js"] = function 
                         Array.prototype.forEach.call(proposalList.querySelectorAll('[data-omo-decision-vote-proposal-card]'), bindProposalCard);
                         refreshProposalLabels();
                         syncSettingsSummary();
+                        form.commonDecisionQuestionSettings = {
+                            button: settingsOpenButton, editable: payload.proposalEditable === true,
+                            payload: payload, proposals: proposalList, prefix: 'vote', refreshSummary: syncSettingsSummary
+                        };
 
                         document.addEventListener('click', function (event) {
                             if (!proposalList.contains(event.target)) {
@@ -932,9 +936,15 @@ window.commonPageScripts["/omo/api/decision/modules/vote/module.js"] = function 
                                     return;
                                 }
                                 if (maxChoices > 0 && checkedChoices.length > maxChoices) {
-                                    setFeedback(payload.texts && payload.texts.multipleHint ? payload.texts.multipleHint : 'Trop de propositions selectionnees.', true);
+                                    setFeedback(payload.texts && payload.texts.multipleHint ? payload.texts.multipleHint : (window.omoUiText || function (key, fallback) { return fallback; })("copy_trop_de_propositions_selectionnees", "Trop de propositions sélectionnées."), true);
                                     return;
                                 }
+                            }
+
+                            if (payload.evaluationPreview || document.body.hasAttribute('data-omo-decision-evaluation-preview')) {
+                                setFeedback('', false);
+                                if (typeof window.omoDecisionCompleteEvaluationPreview === 'function') window.omoDecisionCompleteEvaluationPreview(form);
+                                return;
                             }
 
                             const formData = new FormData(form);

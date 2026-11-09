@@ -67,7 +67,7 @@ $decisionAdministratorUserId = $decision instanceof \dbObject\DecisionProcess
     ? (int)$decision->get('IDuser')
     : 0;
 $proposalAuthorUserId = (int)$proposal->getAuthorUserId();
-$discussionIsAnonymous = $proposal->isAnonymous();
+$discussionIsAnonymous = $proposal->isDiscussionAnonymous();
 $anonymousPreferenceExpiresAt = '';
 if ($decision instanceof \dbObject\DecisionProcess) {
     if ($decision->hasEvaluationStarted()) {
@@ -137,10 +137,13 @@ if ($thread) {
             $messageData = $message->toClientArray($viewerUserId, $viewerParticipantId);
             $messageAuthorUserId = (int)($messageData['authorUserId'] ?? 0);
             $messageAuthorParticipantId = (int)($messageData['authorParticipantId'] ?? 0);
-            $messageIsAnonymous = (string)($messageData['type'] ?? '') === ChatMessage::TYPE_USER
-                && $message->isAnonymous();
+            $messageIsAnonymous = $message->isAnonymous();
             $hideMessageAuthor = $messageIsAnonymous
-                && ($messageAuthorUserId !== $decisionAdministratorUserId || $message->isAnonymousByAuthor());
+                && ($messageAuthorUserId !== $decisionAdministratorUserId || $message->isAnonymousByAuthor() || $message->hasPreservedAnonymity());
+            if ($message->hasPreservedAnonymity()
+                && (omoDecisionModuleDecodeParameters($message->get('parameters'))['action'] ?? '') === 'decision_proposal_updated') {
+                $messageData['content'] = omoDecisionUiT('proposition_modifiee');
+            }
             if ($hideMessageAuthor && $decision instanceof \dbObject\DecisionProcess) {
                 $anonymousName = $messageAuthorParticipantId > 0
                     ? $decision->getAnonymousPseudonymForParticipant($messageAuthorParticipantId)
@@ -160,6 +163,7 @@ if ($thread) {
             }
             if (
                 !$hideMessageAuthor
+                && !$proposal->isAnonymous()
                 && (
                     ($messageAuthorUserId > 0 && $messageAuthorUserId === $proposalAuthorUserId)
                     || ($messageAuthorParticipantId > 0 && $messageAuthorParticipantId === $proposal->getAuthorParticipantId())

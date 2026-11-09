@@ -21,9 +21,9 @@ class OrganizationalMaturityAssessmentResponse extends DbObject
     {
         return [
             'id' => 'ID',
-            'IDassessment' => 'Evaluation',
+            'IDassessment' => 'Évaluation',
             'principle_number' => 'Principe',
-            'affinity_score' => 'Affinite',
+            'affinity_score' => 'Affinité',
             'today_score' => 'Aujourd hui',
             'tomorrow_score' => 'Demain',
         ];

@@ -11,7 +11,7 @@ try {
 } catch {
   homepageScoreFormatter = new Intl.NumberFormat('fr', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
-const homepageMapTexts = { current: 'Etat actuel', desired: 'Ambition', maturity: 'Maturit\u00e9 organisationnelle', open: 'Voir le graphique et sa legende', close: 'Fermer', cluster: '{count} organisations : cliquer pour zoomer' };
+const homepageMapTexts = { current: 'État actuel', desired: 'Ambition', maturity: 'Maturit\u00e9 organisationnelle', open: 'Voir le graphique et sa légende', close: 'Fermer', cluster: '{count} organisations : cliquer pour zoomer' };
 const homepageMapTextsReady = fetch('/common/jstranslation/homepage_map.php?v=20261104-clusters&lang=' + encodeURIComponent(homepageMapLocale))
   .then((response) => response.ok ? response.json() : {})
   .then((texts) => Object.keys(homepageMapTexts).forEach((key) => {

@@ -33,11 +33,11 @@ class TelegramChatDestination extends DbObject
             'telegram_thread_id' => 'Sujet Telegram',
             'IDorganization' => 'Organisation',
             'destination_type' => 'Type de destination',
-            'IDholon' => 'Role',
+            'IDholon' => 'Rôle',
             'IDproject' => 'Projet',
             'IDuser_configured' => 'Configure par',
             'active' => 'Actif',
-            'created_at' => 'Date de creation',
+            'created_at' => 'Date de création',
             'updated_at' => 'Date de modification',
         ];
     }

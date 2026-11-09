@@ -1,6 +1,29 @@
 <?php
 
 require_once __DIR__ . '/avatar.php';
+
+function commonTopbarUiT(string $key, array $variables = []): string
+{
+    static $sourceLang = [
+        'copy.d_autres_filtres_avances_pourront_s_ajouter_ici' => ['text' => 'D’autres filtres avancés pourront s’ajouter ici.', 'context' => 'Interface text in common/topbar.php'],
+        'copy.periode' => ['text' => 'Période', 'context' => 'Interface text in common/topbar.php'],
+        'copy.declarer_une_tension' => ['text' => 'Déclarer une tension', 'context' => 'Interface text in common/topbar.php'],
+        'copy.e_mails_envoyes' => ['text' => 'E-mails envoyés', 'context' => 'Interface text in common/topbar.php'],
+        'copy.resume_du_profil' => ['text' => 'Résumé du profil', 'context' => 'Interface text in common/topbar.php'],
+        'copy.activer_le_mode_admin_d_organisation' => ['text' => 'Activer le mode admin d’organisation', 'context' => 'Interface text in common/topbar.php'],
+        'copy.quitter_le_mode_admin_d_organisation' => ['text' => 'Quitter le mode admin d’organisation', 'context' => 'Interface text in common/topbar.php'],
+        'copy.theme' => ['text' => 'Thème', 'context' => 'Interface text in common/topbar.php'],
+        'copy.systeme' => ['text' => 'Système', 'context' => 'Interface text in common/topbar.php'],
+        'copy.se_deconnecter' => ['text' => 'Se déconnecter', 'context' => 'Interface text in common/topbar.php'],
+    ];
+    require_once __DIR__ . '/translation_bundles.php';
+    static $bundles = [];
+    $locale = translationBundleResolveRequestLocale();
+    $bundle = class_exists(\dbObject\TranslationBundle::class)
+        ? ($bundles[$locale] ??= loadTranslationBundle('common_topbar', $locale, $sourceLang)) : $sourceLang;
+    return t($key, $variables, $bundle, $sourceLang);
+}
+
 require_once __DIR__ . '/assets.php';
 
 function commonResolveTopbarProfileData($organizationContext = null, array $profileOptions = [])
@@ -269,11 +292,11 @@ function commonRenderTopbar(array $options = [])
             'scopeProvider' => (string)($options['search']['scopeProvider'] ?? ''),
             'scopeLabel' => (string)($options['search']['scopeLabel'] ?? 'Chercher dans'),
             'scopeHint' => (string)($options['search']['scopeHint'] ?? ''),
-            'advancedHint' => (string)($options['search']['advancedHint'] ?? 'D autres filtres avances pourront s ajouter ici.'),
+            'advancedHint' => (string)($options['search']['advancedHint'] ?? commonTopbarUiT('copy.d_autres_filtres_avances_pourront_s_ajouter_ici')),
             'period' => [
                 'minDate' => (string)($options['search']['periodMinDate'] ?? ''),
                 'maxDate' => (string)($options['search']['periodMaxDate'] ?? ''),
-                'label' => (string)($options['search']['periodLabel'] ?? 'Periode'),
+                'label' => (string)($options['search']['periodLabel'] ?? commonTopbarUiT('copy.periode')),
                 'startLabel' => (string)($options['search']['periodStartLabel'] ?? 'Du'),
                 'endLabel' => (string)($options['search']['periodEndLabel'] ?? 'Au'),
             ],
@@ -289,7 +312,7 @@ function commonRenderTopbar(array $options = [])
         'tension' => [
             'enabled' => !empty($options['tension']['enabled']),
             'buttonLabel' => (string)($options['tension']['buttonLabel'] ?? 'Tension'),
-            'title' => (string)($options['tension']['title'] ?? 'Declarer une tension'),
+            'title' => (string)($options['tension']['title'] ?? commonTopbarUiT('copy.declarer_une_tension')),
             'mode' => (string)($options['tension']['mode'] ?? 'fetch'),
             'url' => (string)($options['tension']['url'] ?? ''),
             'callback' => (string)($options['tension']['callback'] ?? ''),
@@ -307,7 +330,7 @@ function commonRenderTopbar(array $options = [])
         'mail' => [
             'enabled' => !empty($options['mail']['enabled']),
             'buttonLabel' => (string)($options['mail']['buttonLabel'] ?? 'Mail'),
-            'title' => (string)($options['mail']['title'] ?? 'E-mails envoyes'),
+            'title' => (string)($options['mail']['title'] ?? commonTopbarUiT('copy.e_mails_envoyes')),
             'url' => (string)($options['mail']['url'] ?? ''),
         ],
         'organizationLevel' => [
@@ -325,15 +348,15 @@ function commonRenderTopbar(array $options = [])
             'editUrl' => (string)($options['profile']['editUrl'] ?? '/popup/profil.php'),
             'editCallback' => (string)($options['profile']['editCallback'] ?? ''),
             'buttonLabel' => (string)($options['profile']['buttonLabel'] ?? 'Profil'),
-            'summaryFallback' => (string)($options['profile']['summaryFallback'] ?? 'Resume du profil'),
+            'summaryFallback' => (string)($options['profile']['summaryFallback'] ?? commonTopbarUiT('copy.resume_du_profil')),
             'adminMode' => [
                 'enabled' => !empty($options['profile']['adminMode']['enabled']),
                 'active' => !empty($options['profile']['adminMode']['active']),
                 'organizationId' => (int)($options['profile']['adminMode']['organizationId'] ?? 0),
-                'enableLabel' => (string)($options['profile']['adminMode']['enableLabel'] ?? 'Activer le mode admin d organisation'),
-                'disableLabel' => (string)($options['profile']['adminMode']['disableLabel'] ?? 'Quitter le mode admin d organisation'),
-                'statusActiveLabel' => (string)($options['profile']['adminMode']['statusActiveLabel'] ?? 'Mode admin d organisation actif'),
-                'statusInactiveLabel' => (string)($options['profile']['adminMode']['statusInactiveLabel'] ?? 'Mode admin d organisation inactif'),
+                'enableLabel' => (string)($options['profile']['adminMode']['enableLabel'] ?? commonTopbarUiT('copy.activer_le_mode_admin_d_organisation')),
+                'disableLabel' => (string)($options['profile']['adminMode']['disableLabel'] ?? commonTopbarUiT('copy.quitter_le_mode_admin_d_organisation')),
+                'statusActiveLabel' => (string)($options['profile']['adminMode']['statusActiveLabel'] ?? 'Mode admin d’organisation actif'),
+                'statusInactiveLabel' => (string)($options['profile']['adminMode']['statusInactiveLabel'] ?? 'Mode admin d’organisation inactif'),
                 'toggleUrl' => (string)($options['profile']['adminMode']['toggleUrl'] ?? '/common/admin_mode.php'),
             ],
             'extendedAuthorities' => [
@@ -358,7 +381,7 @@ function commonRenderTopbar(array $options = [])
                 'enabled' => array_key_exists('enabled', $options['profile']['preferences'] ?? []) ? !empty($options['profile']['preferences']['enabled']) : true,
                 'languageLabel' => (string)($options['profile']['preferences']['languageLabel'] ?? 'Langue'),
                 'languageOptions' => $languageOptions,
-                'themeLabel' => (string)($options['profile']['preferences']['themeLabel'] ?? 'Theme'),
+                'themeLabel' => (string)($options['profile']['preferences']['themeLabel'] ?? commonTopbarUiT('copy.theme')),
                 'colorStyleLabel' => (string)($options['profile']['preferences']['colorStyleLabel'] ?? 'Couleur'),
                 'colorStyleDefaultLabel' => (string)($options['profile']['preferences']['colorStyleDefaultLabel'] ?? 'Noir et blanc'),
                 'colorStyleTurquoiseLabel' => (string)($options['profile']['preferences']['colorStyleTurquoiseLabel'] ?? 'Turquoise'),
@@ -366,8 +389,8 @@ function commonRenderTopbar(array $options = [])
                 'currentLocale' => (string)($options['profile']['preferences']['currentLocale'] ?? $currentLocalePreference),
                 'resolvedLocale' => (string)($options['profile']['preferences']['resolvedLocale'] ?? $currentLocale),
                 'systemLocale' => (string)($options['profile']['preferences']['systemLocale'] ?? $systemLocale),
-                'systemLabel' => (string)($options['profile']['preferences']['systemLabel'] ?? 'Systeme'),
-                'themeSystemLabel' => (string)($options['profile']['preferences']['themeSystemLabel'] ?? 'Systeme'),
+                'systemLabel' => (string)($options['profile']['preferences']['systemLabel'] ?? commonTopbarUiT('copy.systeme')),
+                'themeSystemLabel' => (string)($options['profile']['preferences']['themeSystemLabel'] ?? commonTopbarUiT('copy.systeme')),
                 'themeLightLabel' => (string)($options['profile']['preferences']['themeLightLabel'] ?? 'Clair'),
                 'themeDarkLabel' => (string)($options['profile']['preferences']['themeDarkLabel'] ?? 'Sombre'),
                 'themeLightIconUrl' => (string)($options['profile']['preferences']['themeLightIconUrl'] ?? '/common/assets/icon-theme-sun.png'),
@@ -388,11 +411,11 @@ function commonRenderTopbar(array $options = [])
         'publicParticipant' => [
             'enabled' => !empty($options['publicParticipant']['enabled']) && $publicParticipantLogoutPath !== '',
             'name' => (string)($options['publicParticipant']['name'] ?? ''),
-            'logoutLabel' => (string)($options['publicParticipant']['logoutLabel'] ?? 'Se deconnecter'),
+            'logoutLabel' => (string)($options['publicParticipant']['logoutLabel'] ?? commonTopbarUiT('copy.se_deconnecter')),
             'logoutPath' => $publicParticipantLogoutPath,
             'token' => (string)($options['publicParticipant']['token'] ?? ''),
         ],
-        'logoutLabel' => (string)($options['logoutLabel'] ?? 'Se deconnecter'),
+        'logoutLabel' => (string)($options['logoutLabel'] ?? commonTopbarUiT('copy.se_deconnecter')),
         'modal' => [
             'defaultTitle' => (string)($options['modal']['defaultTitle'] ?? 'Panneau'),
             'closeLabel' => (string)($options['modal']['closeLabel'] ?? 'Fermer'),
@@ -922,6 +945,7 @@ function commonRenderTopbar(array $options = [])
 
 <div class="common-notifications" id="commonNotifications" aria-live="polite" aria-atomic="false"></div>
 
+<script src="<?= commonAssetUrl('/common/assets/ui-translations.js') ?>"></script>
 <script src="<?= commonAssetUrl('/common/drawer/subdrawer.js') ?>"></script>
 <script>
 window.commonTopbarConfig = <?= json_encode($config, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;

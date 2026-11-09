@@ -40,14 +40,16 @@ if (!($decision instanceof DecisionProcess) || (int)$decision->getId() <= 0) {
     ]);
 }
 
-if (empty($context['canDelete'])) {
+if (empty($context[$requestedAction === 'interrupt' ? 'canManage' : 'canDelete'])) {
     omoDecisionActionJsonResponse(403, [
         'status' => false,
         'message' => omoDecisionUiT('acces_refuse_a_cette_prise_de_decision'),
     ]);
 }
 
-if ($requestedAction === 'archive') {
+if ($requestedAction === 'interrupt') {
+    $result = $decision->interruptEvaluationForManager((int)$context['currentUserId']);
+} elseif ($requestedAction === 'archive') {
     $result = $decision->archiveForManager();
 } elseif ($requestedAction === 'delete') {
     $result = $decision->deleteWithRelations();
@@ -55,7 +57,7 @@ if ($requestedAction === 'archive') {
     $result = $decision->closeForManager();
 }
 if (!is_array($result) || empty($result['status'])) {
-    omoDecisionActionJsonResponse(422, [
+    omoDecisionActionJsonResponse((int)($result['code'] ?? 422), [
         'status' => false,
         'message' => (string)($result['message'] ?? omoDecisionUiT('impossible_de_mettre_a_jour_cette_prise_de_decision')),
         'requestedAction' => $requestedAction,
@@ -69,4 +71,5 @@ omoDecisionActionJsonResponse(200, [
     'requestedAction' => $requestedAction,
     'resolvedAction' => (string)($result['action'] ?? ''),
     'decisionId' => (int)$decision->getId(),
+    'redirectUrl' => $requestedAction === 'interrupt' ? omoDecisionBuildContextualEditorUrl($context, 'manage') : '',
 ]);

@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../common/account-translations.php';
+
 require_once dirname(__DIR__) . '/shared_functions.php';
 
 header('Content-Type: application/json; charset=UTF-8');
@@ -8,7 +10,7 @@ $fail = static function (int $status, string $message): never {
     echo json_encode(['status' => false, 'message' => $message]);
     exit;
 };
-if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') $fail(405, 'Requete invalide.');
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') $fail(405, commonAccountUiT('copy.requete_invalide'));
 $code = $_POST['code'] ?? null;
 $user = \dbObject\User::findByPasswordResetCode($code);
 if (!$user || !is_scalar($_POST['id'] ?? null) || (int)$_POST['id'] !== (int)$user->getId()) {
@@ -26,7 +28,7 @@ try {
     }
 } catch (Throwable $error) {
     error_log('Account recovery failed: ' . get_class($error));
-    $fail(503, 'Impossible de mettre a jour le compte.');
+    $fail(503, commonAccountUiT('copy.impossible_de_mettre_a_jour_le_compte'));
 }
 commonAuthSecurityLog('password_reset', 'success', ['user_id' => (int)$user->getId()]);
-echo json_encode(['status' => true, 'message' => 'Compte mis a jour.', 'script' => "document.location='/';"]);
+echo json_encode(['status' => true, 'message' => commonAccountUiT('copy.compte_mis_a_jour'), 'script' => "document.location='/';"]);

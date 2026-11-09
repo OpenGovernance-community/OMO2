@@ -65,7 +65,9 @@
         window.fetch(form.action, {method: 'POST', body: new FormData(form), credentials: 'same-origin'})
             .then(function (response) {
                 return response.json().then(function (payload) {
-                    showFeedback(String(payload.message || errorMessage), !response.ok || !payload.status);
+                    var success = response.ok && !!payload.status;
+                    if (success && typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(form);
+                    showFeedback(String(payload.message || errorMessage), !success);
                 });
             })
             .catch(function () { showFeedback(errorMessage, true); })

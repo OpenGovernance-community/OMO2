@@ -43,7 +43,7 @@ class ControlTask extends DbObject
             'execution_duration_value' => 'Délai avant retard',
             'execution_duration_unit' => 'Unité du délai avant retard',
             'position' => 'Position',
-            'project_visible_in_holon' => 'Afficher dans l’espace si liée a un projet',
+            'project_visible_in_holon' => 'Afficher dans l’espace si liée à un projet',
             'active' => 'Active',
             'archived_at' => 'Date d’archivage',
             'created_at' => 'Création',
@@ -53,7 +53,7 @@ class ControlTask extends DbObject
 
     public static function attributeDescriptions()
     {
-        return ['project_visible_in_holon' => 'Conserve cette tâche dans les listes de l’espace lorsqu elle est liée a un projet.'];
+        return ['project_visible_in_holon' => 'Conserve cette tâche dans les listes de l’espace lorsqu’elle est liée à un projet.'];
     }
 
     public function hasProjectAssociation(): bool

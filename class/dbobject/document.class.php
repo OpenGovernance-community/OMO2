@@ -19,7 +19,7 @@
                 'un_ou_plusieurs_documents_source_ne_peuvent_pas_etre_supprimes' => ['text' => 'Un ou plusieurs documents source ne peuvent pas être supprimés.', 'context' => 'Validation or action feedback for document.'],
                 'impossible_de_finaliser_la_fusion_des_documents' => ['text' => 'Impossible de finaliser la fusion des documents.', 'context' => 'Validation or action feedback for document.'],
                 'impossible_de_devenir_editeur_du_pv' => ['text' => 'Impossible de devenir éditeur du PV.', 'context' => 'Validation or action feedback for document.'],
-                'le_pv_est_deja_attribue_a_une_autre_personne' => ['text' => 'Le PV est déjà attribue a une autre personne.', 'context' => 'Validation or action feedback for document.'],
+                'le_pv_est_deja_attribue_a_une_autre_personne' => ['text' => 'Le PV est déjà attribué à une autre personne.', 'context' => 'Validation or action feedback for document.'],
                 'impossible_de_passer_la_main_pour_ce_pv' => ['text' => 'Impossible de passer la main pour ce PV.', 'context' => 'Validation or action feedback for document.'],
                 'impossible_de_remplacer_l_editeur_du_pv' => ['text' => 'Impossible de remplacer l’éditeur du PV.', 'context' => 'Validation or action feedback for document.'],
                 'participant_introuvable' => ['text' => 'Participant introuvable.', 'context' => 'Validation or action feedback for document.'],
@@ -80,7 +80,7 @@
                 'ce_type_de_document_ne_peut_pas_etre_utilise_comme_modele' => ['text' => 'Ce type de document ne peut pas être utilisé comme modèle.', 'context' => 'Validation or action feedback for document.'],
                 'impossible_de_copier_le_contenu_du_dossier_modele' => ['text' => 'Impossible de copier le contenu du dossier modèle.', 'context' => 'Validation or action feedback for document.'],
                 'impossible_de_copier_le_contenu_du_modele' => ['text' => 'Impossible de copier le contenu du modèle.', 'context' => 'Validation or action feedback for document.'],
-                'aucun_fichier_n_est_actuellement_associe_a_ce_document' => ['text' => 'Aucun fichier n’est actuellement associe à ce document.', 'context' => 'Validation or action feedback for document.'],
+                'aucun_fichier_n_est_actuellement_associe_a_ce_document' => ['text' => 'Aucun fichier n’est actuellement associé à ce document.', 'context' => 'Validation or action feedback for document.'],
                 'les_fichiers_sans_contexte_ne_peuvent_pas_etre_modifies_depuis_cet_editeur' => ['text' => 'Les fichiers sans contexte ne peuvent pas être modifiés depuis cet éditeur.', 'context' => 'Validation or action feedback for document.'],
                 'l_etape_du_pv_a_change_rechargez_le_document_avant_de_continuer' => ['text' => 'L’étape du PV a changé. Rechargez le document avant de continuer.', 'context' => 'Validation or action feedback for document.'],
                 'impossible_de_mettre_a_jour_ce_document' => ['text' => 'Impossible de mettre à jour ce document.', 'context' => 'Validation or action feedback for document.'],
@@ -88,11 +88,63 @@
                 'acces_refuse_pour_cette_destination' => ['text' => 'Accès refusé pour cette destination.', 'context' => 'Validation or action feedback for document.'],
                 'le_document_est_deja_dans_cette_destination' => ['text' => 'Le document est déjà dans cette destination.', 'context' => 'Validation or action feedback for document.'],
                 'impossible_de_deplacer_ce_document' => ['text' => 'Impossible de déplacer ce document.', 'context' => 'Validation or action feedback for document.'],
-                'la_visibilite_role_demande_un_document_lie_a_un_role' => ['text' => 'La visibilité rôle demande un document lié a un rôle.', 'context' => 'Validation or action feedback for document.'],
+                'la_visibilite_role_demande_un_document_lie_a_un_role' => ['text' => 'La visibilité rôle demande un document lié à un rôle.', 'context' => 'Validation or action feedback for document.'],
                 'la_visibilite_cercle_demande_un_document_place_dans_un_cercle_ou_dans_un_role_de_cercle' => ['text' => 'La visibilité cercle demande un document placé dans un cercle ou dans un rôle de cercle.', 'context' => 'Validation or action feedback for document.'],
                 'contexte_de_visibilite_invalide' => ['text' => 'Contexte de visibilité invalide.', 'context' => 'Validation or action feedback for document.'],
                 'contexte_d_edition_invalide' => ['text' => 'Contexte d’édition invalide.', 'context' => 'Validation or action feedback for document.'],
-            ];
+
+                'copy.preparation' => ['text' => 'Préparation', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.reunion' => ['text' => 'Réunion', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.memo' => ['text' => 'Mémo', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.telechargement' => ['text' => 'Téléchargement', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.le_dossier_nextcloud_est_introuvable_ou_a_quitte_le_dossier_configure' => ['text' => 'Le dossier NextCloud est introuvable ou a quitte le dossier configuré.', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.texte_importe_depuis_sourcetitle' => ['text' => 'Texte importé depuis : {sourceTitle}', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.ouvrir_dans_une_nouvelle_fenetre' => ['text' => 'Ouvrir dans une nouvelle fenêtre', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.evenement_eventid' => ['text' => 'Événement #{eventId}', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.etat_des_sous_projets_value' => ['text' => 'État des sous-projets: {value}', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.ouvrir_le_projet_dans_une_nouvelle_fenetre' => ['text' => 'Ouvrir le projet dans une nouvelle fenêtre', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.taches_recurrentes' => ['text' => 'Tâches récurrentes', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.aucune_url_n_est_encore_definie_pour_ce_document' => ['text' => 'Aucune URL n’est encore définie pour ce document.', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.ce_document_ouvre_un_site_externe_dans_une_nouvelle_fenetre' => ['text' => 'Ce document ouvre un site externe dans une nouvelle fenêtre.', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.site_externe_affiche_dans_omo' => ['text' => 'Site externe affiche dans OMO.', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.si_le_site_refuse_l_affichage_en_iframe_utilisez_le_bouton_pour_l_ouvr' => ['text' => 'Si le site refuse l’affichage en iframe, utilisez le bouton pour l’ouvrir directement.', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.aucun_pad_etherpad_n_est_associe_a_ce_document' => ['text' => 'Aucun pad Etherpad n’est associé à ce document.', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.le_serveur_etherpad_n_est_pas_disponible' => ['text' => 'Le serveur Etherpad n’est pas disponible.', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.aucun_tableur_collaboratif_n_est_associe_a_ce_document' => ['text' => 'Aucun tableur collaboratif n’est associé à ce document.', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.tableur_collaboratif_a_consulter_dans_omo' => ['text' => 'Tableur collaboratif à consulter dans OMO.', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.aucun_fichier_n_est_actuellement_televerse_pour_ce_document' => ['text' => 'Aucun fichier n’est actuellement televerse pour ce document.', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.telecharger_le_fichier' => ['text' => 'Télécharger le fichier', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.reference_circulaire_detectee' => ['text' => 'Référence circulaire détectée.', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.ce_type_de_document_ne_peut_pas_etre_integre_ici' => ['text' => 'Ce type de document ne peut pas être intégré ici.', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.le_tableau_blanc_collaboratif_n_est_pas_disponible' => ['text' => 'Le tableau blanc collaboratif n’est pas disponible.', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.tableau_blanc_collaboratif_a_consulter_dans_omo' => ['text' => 'Tableau blanc collaboratif à consulter dans OMO.', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.la_structure_pv_n_est_pas_encore_disponible_dans_cette_base' => ['text' => 'La structure PV n’est pas encore disponible dans cette base.', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.reel_totalactualminutes_min' => ['text' => 'Réel {totalActualMinutes} min', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.aucun_point_a_l_ordre_du_jour_pour_ce_pv' => ['text' => 'Aucun point à l’ordre du jour pour ce PV.', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.ce_document_est_deja_en_cours_d_edition_dans_votre_session' => ['text' => 'Ce document est déjà en cours d’édition dans votre session.', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.ce_document_est_deja_en_cours_d_edition' => ['text' => 'Ce document est déjà en cours d’édition.', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.reessayez_dans_quelques_minutes' => ['text' => ' Réessayez dans quelques minutes.', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.impossible_de_conserver_le_fichier_de_reference' => ['text' => 'Impossible de conserver le fichier de référence.', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.impossible_de_conserver_le_pad_de_reference' => ['text' => 'Impossible de conserver le pad de référence.', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.impossible_de_conserver_le_tableur_de_reference' => ['text' => 'Impossible de conserver le tableur de référence.', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.document_deplace' => ['text' => 'Document déplacé.', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.document_deplace_la_visibilite_a_ete_adaptee' => ['text' => 'Document déplacé. La visibilité a été adaptée.', 'context' => 'Interface text in class/dbobject/document.class.php'],
+                'copy.la_visibilite_cercle_demande_un_document_lie_a_un_cercle_ou_a_un_role' => ['text' => 'La visibilité cercle demande un document lié à un cercle ou à un rôle.', 'context' => 'Interface text in class/dbobject/document.class.php'],
+
+                'option.relecture' => ['text' => 'Relecture', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+                'option.valide' => ['text' => 'Valide', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+                'option.lien_externe' => ['text' => 'Lien externe', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+                'option.dossier' => ['text' => 'Dossier', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+                'option.dossier_nextcloud' => ['text' => 'Dossier NextCloud', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+                'option.pv' => ['text' => 'PV', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+                'option.pad_cooperatif' => ['text' => 'Pad coopératif', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+                'option.tableur_collaboratif' => ['text' => 'Tableur collaboratif', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+                'option.document_cooperatif' => ['text' => 'Document Coopératif', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+                'option.classeur_collaboratif' => ['text' => 'Classeur collaboratif', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+                'option.presentation_collaborative' => ['text' => 'Présentation collaborative', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+                'option.dessin_collaboratif' => ['text' => 'Dessin collaboratif', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+                'option.tableau_blanc_collaboratif' => ['text' => 'Tableau blanc collaboratif', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+        ];
         }
 
 		public const TYPE_HTML = 'html';
@@ -152,9 +204,9 @@
 				'IDorganization' => 'Organisation',
 				'IDholon' => 'Holon',
 				'IDevent' => 'Événement associé',
-				'IDuser_pv_editor' => 'Secretaire du PV',
-				'IDuser_pv_official_editor' => 'Dernier secretaire officiel du PV',
-				'pv_editor_handover_open' => 'Passation du secretaire ouverte',
+				'IDuser_pv_editor' => 'Secrétaire du PV',
+				'IDuser_pv_official_editor' => 'Dernier secrétaire officiel du PV',
+				'pv_editor_handover_open' => 'Passation du secrétaire ouverte',
 				'estDossier' => 'Dossier',
 				'IDdocument_parent' => 'Dossier parent',
 				'datecreation' => 'Date de création',
@@ -171,7 +223,7 @@
 				'is_template' => 'Modèle de document',
 				'externalurl' => 'URL externe',
 				'openinnewwindow' => 'Ouvrir dans une nouvelle fenêtre',
-				'project_visible_in_holon' => 'Afficher dans le holon si le document est lié a un projet ou événement',
+				'project_visible_in_holon' => 'Afficher dans le holon si le document est lié à un projet ou événement',
 				'storedfilepath' => 'Chemin distant du fichier',
 				'storedfilename' => 'Nom original du fichier',
 				'storedfilemime' => 'Type MIME du fichier',
@@ -184,41 +236,41 @@
 			];
 		}
 
-		// Ajoute un champ description, qui peut apparaitre sous forme de bulle d information ou en sous-titre
+		// Ajoute un champ description, qui peut apparaitre sous forme de bulle d’information ou en sous-titre
 		public static function attributeDescriptions()
 		{
 			return [
-				'title' => 'Titre affiche dans une liste de fichiers',
+				'title' => 'Titre affiché dans une liste de fichiers',
 				'description' => 'Abstract du contenu du document',
-				'content' => 'Formate en texte libre ou en HTML',
+				'content' => 'Formaté en texte libre ou en HTML',
 				'contentedition' => 'Brouillon HTML temporaire pendant l’édition',
 				'IDuser' => 'Créateur du document',
-				'IDusercreation' => 'Utilisateur qui a cree le document',
-				'IDusermodification' => 'Utilisateur qui a realise la dernière modification',
-				'IDuseredition' => 'Utilisateur qui edite actuellement le document',
-				'IDorganization' => 'Organisation a laquelle le document est rattaché',
-				'IDholon' => 'Holon concerne si le document est spécifique a un contexte local',
+				'IDusercreation' => 'Utilisateur qui a créé le document',
+				'IDusermodification' => 'Utilisateur qui a réalisé la dernière modification',
+				'IDuseredition' => 'Utilisateur qui édite actuellement le document',
+				'IDorganization' => 'Organisation à laquelle le document est rattaché',
+				'IDholon' => 'Holon concerné si le document est spécifique à un contexte local',
 				'IDevent' => 'Événement auquel ce document est rattaché si le fichier provient de l’agenda',
 				'estDossier' => 'Permet de traiter cette entrée comme un dossier',
 				'IDdocument_parent' => 'Dossier qui contient ce document',
-				'dateconsultation' => 'Dernière fois que le document a été affiche dans son détail',
+				'dateconsultation' => 'Dernière fois que le document a été affiché dans son détail',
 				'dateedition' => 'Date du dernier signal de présence pendant l’édition',
 				'datecontentedition' => 'Date de mise à jour du brouillon temporaire',
-				'documenttype' => 'Permet de distinguer les Mémos, les liens externes, les telechargements, les documents collaboratifs, les tableurs collaboratifs, les PV et les dossiers',
+				'documenttype' => 'Permet de distinguer les Mémos, les liens externes, les téléchargements, les documents collaboratifs, les tableurs collaboratifs, les PV et les dossiers',
 				'pvstage' => 'Étape actuelle du flux d’un document PV: préparation, réunion, relecture ou valide',
 				'is_template' => 'Permet d’utiliser le contenu de ce document lors d’une nouvelle création',
 				'IDuser_pv_editor' => 'Personne qui tient le PV pendant la réunion et peut modifier tous les points.',
 				'IDuser_pv_official_editor' => 'Dernière personne officielle a tenir le PV, utilisée pour le retour en relecture.',
-				'pv_editor_handover_open' => 'Indique que le secretaire actuel autorise un invite à reprendre son rôle.',
+				'pv_editor_handover_open' => 'Indique que le secrétaire actuel autorise un invité à reprendre son rôle.',
 				'externalurl' => 'Adresse du site a ouvrir pour un document de type lien externe',
 				'openinnewwindow' => 'Ouvre le lien externe directement dans une autre fenêtre',
-				'project_visible_in_holon' => 'Autorise l’affichage dans la liste du holon pour un document lié a un projet ou événement',
+				'project_visible_in_holon' => 'Autorise l’affichage dans la liste du holon pour un document lié à un projet ou événement',
 				'storedfilepath' => 'Chemin du fichier sur le stockage de documents de l’organisation',
 				'storedfilename' => 'Nom du fichier téléversé par l’utilisateur',
-				'storedfilemime' => 'Type MIME detecte pour le fichier distant',
+				'storedfilemime' => 'Type MIME détecté pour le fichier distant',
 				'storedfilesize' => 'Taille du fichier distant en octets',
-				'nextcloudfolderpath' => 'Chemin du dossier NextCloud, relatif au dossier configure pour les documents',
-				'nextcloudfolderfileid' => 'Identifiant stable NextCloud utilise pour retrouver un dossier renomme ou deplace',
+				'nextcloudfolderpath' => 'Chemin du dossier NextCloud, relatif au dossier configuré pour les documents',
+				'nextcloudfolderfileid' => 'Identifiant stable NextCloud utilisé pour retrouver un dossier renommé ou déplacé',
 				'etherpadpadid' => 'Identifiant technique du pad associe à ce document',
 				'ethercalcroomid' => 'Identifiant technique du tableur associe à ce document',
 				'spacedeckspaceid' => 'Identifiant technique du tableau blanc SpaceDeck associe à ce document',
@@ -2638,10 +2690,10 @@
 		public static function getPvStageOptions(): array
 		{
 			return [
-				self::PV_STAGE_PREPARATION => 'Preparation',
-				self::PV_STAGE_MEETING => 'Reunion',
-				self::PV_STAGE_REVIEW => 'Relecture',
-				self::PV_STAGE_VALIDATED => 'Valide',
+				self::PV_STAGE_PREPARATION => self::uiMessage('copy.preparation'),
+				self::PV_STAGE_MEETING => self::uiMessage('copy.reunion'),
+				self::PV_STAGE_REVIEW => self::uiMessage('option.relecture'),
+				self::PV_STAGE_VALIDATED => self::uiMessage('option.valide'),
 			];
 		}
 
@@ -2841,19 +2893,19 @@
 		public static function getDocumentTypeCatalog(): array
 		{
 			return array(
-				self::TYPE_HTML => 'Memo',
-				self::TYPE_EXTERNAL_LINK => 'Lien externe',
-				self::TYPE_UPLOADED_FILE => 'Telechargement',
-				self::TYPE_FOLDER => 'Dossier',
-				self::TYPE_NEXTCLOUD_FOLDER => 'Dossier NextCloud',
-				self::TYPE_PV => 'PV',
-				self::TYPE_ETHERPAD => 'Pad coopératif',
-				self::TYPE_ETHERCALC => 'Tableur collaboratif',
-				self::TYPE_COLLABORA_DOCUMENT => 'Document Coopératif',
-				self::TYPE_COLLABORA_SPREADSHEET => 'Classeur collaboratif',
-				self::TYPE_COLLABORA_PRESENTATION => 'Présentation collaborative',
-				self::TYPE_COLLABORA_DRAWING => 'Dessin collaboratif',
-				self::TYPE_WHITEBOARD => 'Tableau blanc collaboratif',
+				self::TYPE_HTML => self::uiMessage('copy.memo'),
+				self::TYPE_EXTERNAL_LINK => self::uiMessage('option.lien_externe'),
+				self::TYPE_UPLOADED_FILE => self::uiMessage('copy.telechargement'),
+				self::TYPE_FOLDER => self::uiMessage('option.dossier'),
+				self::TYPE_NEXTCLOUD_FOLDER => self::uiMessage('option.dossier_nextcloud'),
+				self::TYPE_PV => self::uiMessage('option.pv'),
+				self::TYPE_ETHERPAD => self::uiMessage('option.pad_cooperatif'),
+				self::TYPE_ETHERCALC => self::uiMessage('option.tableur_collaboratif'),
+				self::TYPE_COLLABORA_DOCUMENT => self::uiMessage('option.document_cooperatif'),
+				self::TYPE_COLLABORA_SPREADSHEET => self::uiMessage('option.classeur_collaboratif'),
+				self::TYPE_COLLABORA_PRESENTATION => self::uiMessage('option.presentation_collaborative'),
+				self::TYPE_COLLABORA_DRAWING => self::uiMessage('option.dessin_collaboratif'),
+				self::TYPE_WHITEBOARD => self::uiMessage('option.tableau_blanc_collaboratif'),
 			);
 		}
 
@@ -2992,7 +3044,7 @@
 			if (empty($locatedFolder['status']) || empty($locatedFolder['isFolder']) || $relativePath === '') {
 				return array(
 					'status' => false,
-					'text' => trim((string)($locatedFolder['text'] ?? 'Le dossier NextCloud est introuvable ou a quitte le dossier configure.')),
+					'text' => trim((string)($locatedFolder['text'] ?? self::uiMessage('copy.le_dossier_nextcloud_est_introuvable_ou_a_quitte_le_dossier_configure'))),
 				);
 			}
 
@@ -3651,7 +3703,7 @@
 
 			if ($variantClass === 'resolved') {
 				$sourceTitle = trim($title) !== '' ? trim($title) : ('Document #' . (int)$documentId);
-				$sourceLabel = 'Texte importe depuis : ' . $sourceTitle;
+				$sourceLabel = self::uiMessage('copy.texte_importe_depuis_sourcetitle', ['sourceTitle' => $sourceTitle]);
 				return '<div class="omo-document-embed omo-document-embed--resolved"'
 					. ' data-omo-embed-type="document"'
 					. ' data-omo-document-id="' . (int)$documentId . '"'
@@ -3672,11 +3724,7 @@
 						. '</div>';
 				} else {
 					$documentUrl = '#documents-d' . (int)$documentId;
-					$html .= '<div class="omo-document-embed__title-wrap">'
-						. '<a class="omo-document-embed__title" href="' . htmlspecialchars($documentUrl, ENT_QUOTES, 'UTF-8') . '">'
-						. $titleHtml . '</a>'
-						. '<a class="omo-document-embed__external" href="' . htmlspecialchars($documentUrl, ENT_QUOTES, 'UTF-8') . '" target="_blank" rel="noopener noreferrer" title="Ouvrir dans une nouvelle fenetre" aria-label="Ouvrir dans une nouvelle fenetre">&#8599;</a>'
-						. '</div>';
+					$html .= ('<div class="omo-document-embed__title-wrap">' . '<a class="omo-document-embed__title" href="' . htmlspecialchars($documentUrl, ENT_QUOTES, 'UTF-8') . '">' . $titleHtml . '</a>' . '<a class="omo-document-embed__external" href="' . htmlspecialchars($documentUrl, ENT_QUOTES, 'UTF-8') . '" target="_blank" rel="noopener noreferrer" title="' . htmlspecialchars(self::uiMessage('copy.ouvrir_dans_une_nouvelle_fenetre'), ENT_QUOTES, 'UTF-8') . '" aria-label="' . htmlspecialchars(self::uiMessage('copy.ouvrir_dans_une_nouvelle_fenetre'), ENT_QUOTES, 'UTF-8') . '">' . '&#8599;' . '</a>' . '</div>');
 				}
 			}
 
@@ -3742,7 +3790,7 @@
 			$summary = trim(implode(' - ', array_filter(array(trim($schedule), trim($location)))));
 			$html = '<div class="omo-event-embed" data-omo-embed-type="event" data-omo-event-id="' . $eventId . '">';
 			$html .= '<a class="omo-event-embed__title" href="' . htmlspecialchars($eventUrl, ENT_QUOTES, 'UTF-8') . '">'
-				. htmlspecialchars($title !== '' ? $title : ('Evenement #' . $eventId), ENT_QUOTES, 'UTF-8')
+				. htmlspecialchars($title !== '' ? $title : (self::uiMessage('copy.evenement_eventid', ['eventId' => $eventId])), ENT_QUOTES, 'UTF-8')
 				. '</a>';
 			if ($summary !== '') {
 				$html .= '<div class="omo-event-embed__summary">' . htmlspecialchars($summary, ENT_QUOTES, 'UTF-8') . '</div>';
@@ -3820,7 +3868,7 @@
 					$labelParts[] = \dbObject\Project::getOrganizationStatusLabel($organizationId, $status) . ': ' . $count . ' (' . $percentage . '%)';
 				}
 			}
-			$label = 'Etat des sous-projets: ' . implode(', ', $labelParts);
+			$label = self::uiMessage('copy.etat_des_sous_projets_value', ['value' => implode(', ', $labelParts)]);
 			$html .= ' aria-label="' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '" title="' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '">';
 			foreach (self::getProjectStatusDisplayOrder() as $status) {
 				$segmentWidth = max(0, min(100, $weightsByStatus[$status] * 100));
@@ -3870,8 +3918,7 @@
 				. '" data-omo-project-children-loading="Chargement des sous-projets..." data-omo-project-children-empty="Aucun sous-projet direct." data-omo-project-children-error="Impossible de charger les sous-projets.">';
 			$html .= '<div class="omo-project-embed__head"><a class="omo-project-embed__title" href="'
 				. htmlspecialchars($projectUrl, ENT_QUOTES, 'UTF-8') . '">' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</a>';
-			$html .= '<a class="omo-project-embed__external" href="' . htmlspecialchars($projectUrl, ENT_QUOTES, 'UTF-8')
-				. '" target="_blank" rel="noopener noreferrer" aria-label="Ouvrir le projet dans une nouvelle fenetre" title="Ouvrir le projet dans une nouvelle fenetre">&#8599;</a>';
+			$html .= ('<a class="omo-project-embed__external" href="' . htmlspecialchars($projectUrl, ENT_QUOTES, 'UTF-8') . '" target="_blank" rel="noopener noreferrer" aria-label="' . htmlspecialchars(self::uiMessage('copy.ouvrir_le_projet_dans_une_nouvelle_fenetre'), ENT_QUOTES, 'UTF-8') . '" title="' . htmlspecialchars(self::uiMessage('copy.ouvrir_le_projet_dans_une_nouvelle_fenetre'), ENT_QUOTES, 'UTF-8') . '">' . '&#8599;' . '</a>');
 			$html .= '<span class="omo-project-embed__status omo-project-embed__status--' . htmlspecialchars($status, ENT_QUOTES, 'UTF-8') . '">'
 				. htmlspecialchars(\dbObject\Project::getOrganizationStatusLabel($organizationId, $status), ENT_QUOTES, 'UTF-8') . '</span>';
 			if ($priority !== null) {
@@ -3925,7 +3972,7 @@
 			$counts = (array)($summary['counts'] ?? []);
 			$html = '<div class="omo-checklist-embed omo-checklist-embed--resolved" data-omo-embed-type="checklist" data-omo-checklist-id="' . $checklistId . '">';
 			$html .= '<div class="omo-project-embed__head"><a class="omo-project-embed__title" href="#processus-c' . $checklistId . '">' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</a></div>';
-			$html .= '<span class="omo-checklist-embed__review-label">' . (!empty($summary['isContainer']) ? 'Taches recurrentes' : 'Instances en cours') . ((int)($summary['overdueCount'] ?? 0) > 0 ? ' &#9888;' : '') . '</span>';
+			$html .= '<span class="omo-checklist-embed__review-label">' . (!empty($summary['isContainer']) ? self::uiMessage('copy.taches_recurrentes') : 'Instances en cours') . ((int)($summary['overdueCount'] ?? 0) > 0 ? ' &#9888;' : '') . '</span>';
 			if ($total > 0) {
 				$html .= '<span class="omo-project-status-bar">';
 				foreach (self::getProjectStatusDisplayOrder() as $status) { $count = (int)($counts[$status] ?? 0); if ($count > 0) { $width = ($count / $total) * 100; $html .= '<span class="omo-project-status-bar__segment omo-project-status-bar__segment--' . htmlspecialchars($status, ENT_QUOTES, 'UTF-8') . '" style="flex-basis:' . number_format($width, 4, '.', '') . '%"></span>'; } }
@@ -4090,7 +4137,7 @@
 		{
 			$externalUrl = $this->getExternalUrl();
 			if ($externalUrl === '') {
-				return '<div class="omo-document-external omo-document-external--invalid">Aucune URL n est encore definie pour ce document.</div>';
+				return ('<div class="omo-document-external omo-document-external--invalid">' . self::uiMessage('copy.aucune_url_n_est_encore_definie_pour_ce_document') . '</div>');
 			}
 
 			$escapedUrl = htmlspecialchars($externalUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
@@ -4099,27 +4146,17 @@
 				. '" target="_blank" rel="noopener noreferrer">Ouvrir le site</a>';
 
 			if ($this->shouldOpenExternalLinkInNewWindow()) {
-				return '<div class="omo-document-external omo-document-external--window">'
-					. '<p>Ce document ouvre un site externe dans une nouvelle fenetre.</p>'
-					. $linkHtml
-					. '</div>';
+				return ('<div class="omo-document-external omo-document-external--window">' . '<p>' . self::uiMessage('copy.ce_document_ouvre_un_site_externe_dans_une_nouvelle_fenetre') . '</p>' . $linkHtml . '</div>');
 			}
 
-			return '<div class="omo-document-external omo-document-external--iframe">'
-				. '<div class="omo-document-external__toolbar">'
-				. '<span class="omo-document-external__hint">Site externe affiche dans OMO.</span>'
-				. $linkHtml
-				. '</div>'
-				. '<iframe class="omo-document-external__frame" src="' . $escapedUrl . '" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>'
-				. '<p class="omo-document-external__fallback">Si le site refuse l affichage en iframe, utilisez le bouton pour l ouvrir directement.</p>'
-				. '</div>';
+			return ('<div class="omo-document-external omo-document-external--iframe">' . '<div class="omo-document-external__toolbar">' . '<span class="omo-document-external__hint">' . self::uiMessage('copy.site_externe_affiche_dans_omo') . '</span>' . $linkHtml . '</div>' . '<iframe class="omo-document-external__frame" src="' . $escapedUrl . '" loading="lazy" referrerpolicy="no-referrer-when-downgrade">' . '</iframe>' . '<p class="omo-document-external__fallback">' . self::uiMessage('copy.si_le_site_refuse_l_affichage_en_iframe_utilisez_le_bouton_pour_l_ouvr') . '</p>' . '</div>');
 		}
 
 		protected function renderEtherpadForViewer(): string
 		{
 			$openUrl = $this->buildEtherpadOpenUrl();
 			if ($openUrl === '' || $this->getEtherpadPadId() === '') {
-				return '<div class="omo-document-etherpad omo-document-etherpad--empty">Aucun pad Etherpad n est associe a ce document.</div>';
+				return ('<div class="omo-document-etherpad omo-document-etherpad--empty">' . self::uiMessage('copy.aucun_pad_etherpad_n_est_associe_a_ce_document') . '</div>');
 			}
 
 			require_once dirname(__DIR__, 2) . '/common/etherpad.php';
@@ -4143,13 +4180,13 @@
 			$padId = $this->getEtherpadPadId();
 			$organizationId = (int)$this->get('IDorganization');
 			if ($padId === '' || $organizationId <= 0) {
-				return '<div class="omo-document-etherpad omo-document-etherpad--empty">Aucun pad Etherpad n est associe a ce document.</div>';
+				return ('<div class="omo-document-etherpad omo-document-etherpad--empty">' . self::uiMessage('copy.aucun_pad_etherpad_n_est_associe_a_ce_document') . '</div>');
 			}
 
 			require_once dirname(__DIR__, 2) . '/common/etherpad.php';
 			$organization = new \dbObject\Organization();
 			if (!$organization->load($organizationId) || !omoEtherpadHasConfig($organization)) {
-				return '<div class="omo-document-etherpad omo-document-etherpad--empty">Le serveur Etherpad n est pas disponible.</div>';
+				return ('<div class="omo-document-etherpad omo-document-etherpad--empty">' . self::uiMessage('copy.le_serveur_etherpad_n_est_pas_disponible') . '</div>');
 			}
 
 			$htmlResult = omoEtherpadGetReadOnlyContent($organization, $padId);
@@ -4166,7 +4203,7 @@
 		{
 			$openUrl = $this->buildEthercalcOpenUrl();
 			if ($openUrl === '' || $this->getEthercalcRoomId() === '') {
-				return '<div class="omo-document-ethercalc omo-document-ethercalc--empty">Aucun tableur collaboratif n est associe a ce document.</div>';
+				return ('<div class="omo-document-ethercalc omo-document-ethercalc--empty">' . self::uiMessage('copy.aucun_tableur_collaboratif_n_est_associe_a_ce_document') . '</div>');
 			}
 
 			return '<iframe class="omo-document-ethercalc__frame" src="'
@@ -4176,7 +4213,7 @@
 
 		protected function renderEthercalcSnapshotForViewer(): string
 		{
-			return '<div class="omo-document-ethercalc-snapshot">Tableur collaboratif a consulter dans OMO.</div>';
+			return ('<div class="omo-document-ethercalc-snapshot">' . self::uiMessage('copy.tableur_collaboratif_a_consulter_dans_omo') . '</div>');
 		}
 
 		protected function renderSpaceDeckFrameForViewer(string $openUrl): string
@@ -4201,7 +4238,7 @@
 		protected function renderUploadedFileForViewer(): string
 		{
 			if (!$this->hasStoredFile()) {
-				return '<div class="omo-document-file omo-document-file--empty">Aucun fichier n est actuellement televerse pour ce document.</div>';
+				return ('<div class="omo-document-file omo-document-file--empty">' . self::uiMessage('copy.aucun_fichier_n_est_actuellement_televerse_pour_ce_document') . '</div>');
 			}
 
 			$isStoredPdf = $this->isStoredPdfFile();
@@ -4252,16 +4289,9 @@
 					. '</div>';
 			}
 
-			return '<div class="omo-document-file omo-document-file--' . htmlspecialchars($storedFileKind, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '">'
-				. '<div class="omo-document-file__title">' . htmlspecialchars($this->getStoredFileDownloadName(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</div>'
-				. $mediaHtml
-				. (count($fileMeta) > 0
+			return ('<div class="omo-document-file omo-document-file--' . htmlspecialchars($storedFileKind, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '">' . '<div class="omo-document-file__title">' . htmlspecialchars($this->getStoredFileDownloadName(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</div>' . $mediaHtml . count($fileMeta) > 0
 					? '<div class="omo-document-file__meta">' . implode(' · ', $fileMeta) . '</div>'
-					: '')
-				. '<a class="generic-action-button generic-action-button--main omo-document-file__download" href="'
-				. htmlspecialchars($downloadUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
-				. '">Telecharger le fichier</a>'
-				. '</div>';
+					: '' . '<a class="generic-action-button generic-action-button--main omo-document-file__download" href="' . htmlspecialchars($downloadUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '">' . self::uiMessage('copy.telecharger_le_fichier') . '</a>' . '</div>');
 		}
 
 		protected function renderResolvedHtmlNode(\DOMNode $node, int $organizationId, array $options = array()): string
@@ -4374,7 +4404,7 @@
 			}
 
 			if (!empty($visitedIds[$targetDocumentId])) {
-				return self::buildDocumentEmbedDisplayHtml($targetDocumentId, $fallbackTitle, $fallbackDescription, '', 'cycle', 'Reference circulaire detectee.');
+				return self::buildDocumentEmbedDisplayHtml($targetDocumentId, $fallbackTitle, $fallbackDescription, '', 'cycle', self::uiMessage('copy.reference_circulaire_detectee'));
 			}
 
 			$remainingDepth = isset($options['maxDepth']) ? max(0, (int)$options['maxDepth']) : 4;
@@ -4388,7 +4418,7 @@
 			}
 
 			if (!$targetDocument->canBeEmbedded()) {
-				return self::buildDocumentEmbedDisplayHtml($targetDocumentId, $fallbackTitle, $fallbackDescription, '', 'unsupported', 'Ce type de document ne peut pas etre integre ici.');
+				return self::buildDocumentEmbedDisplayHtml($targetDocumentId, $fallbackTitle, $fallbackDescription, '', 'unsupported', self::uiMessage('copy.ce_type_de_document_ne_peut_pas_etre_integre_ici'));
 			}
 
 			$targetOrganizationId = (int)$targetDocument->get('IDorganization');
@@ -4523,7 +4553,7 @@
 				$openUrl = $this->buildSpaceDeckOpenUrl();
 				return $openUrl !== ''
 					? $this->renderSpaceDeckFrameForViewer($openUrl)
-					: '<div class="omo-document-spacedeck omo-document-spacedeck--empty">Le tableau blanc collaboratif n est pas disponible.</div>';
+					: ('<div class="omo-document-spacedeck omo-document-spacedeck--empty">' . self::uiMessage('copy.le_tableau_blanc_collaboratif_n_est_pas_disponible') . '</div>');
 			}
 
 			return $this->renderResolvedHtmlForViewer(
@@ -4583,7 +4613,7 @@
 				$renderedContent = $this->renderEthercalcSnapshotForViewer();
 				$contentHashSource = $renderedContent;
 			} elseif ($this->isWhiteboardDocument()) {
-					$renderedContent = '<div class="omo-document-spacedeck-snapshot">Tableau blanc collaboratif a consulter dans OMO.</div>';
+					$renderedContent = ('<div class="omo-document-spacedeck-snapshot">' . self::uiMessage('copy.tableau_blanc_collaboratif_a_consulter_dans_omo') . '</div>');
 				$contentHashSource = $renderedContent;
 			} else {
 				$renderedContent = $this->renderResolvedHtmlForViewer($content, (int)$this->get('IDorganization'));
@@ -4960,9 +4990,7 @@
 		protected function renderPvForViewer(array $renderOptions = array()): string
 		{
 			if (!\dbObject\DocumentPvPoint::hasPointTable()) {
-				return '<div class="omo-document-pv omo-document-pv--empty">'
-					. '<p class="omo-document-pv__empty">La structure PV n est pas encore disponible dans cette base.</p>'
-					. '</div>';
+				return ('<div class="omo-document-pv omo-document-pv--empty">' . '<p class="omo-document-pv__empty">' . self::uiMessage('copy.la_structure_pv_n_est_pas_encore_disponible_dans_cette_base') . '</p>' . '</div>');
 			}
 
 			$organizationId = (int)$this->get('IDorganization');
@@ -5079,7 +5107,7 @@
 			}
 
 			if ($hasActualMinutes) {
-				$html .= self::buildPvSummaryPill('Reel ' . $totalActualMinutes . ' min');
+				$html .= self::buildPvSummaryPill(self::uiMessage('copy.reel_totalactualminutes_min', ['totalActualMinutes' => $totalActualMinutes]));
 			}
 
 			$html .= '</div>';
@@ -5092,7 +5120,7 @@
 					require_once dirname(__DIR__, 2) . '/common/document/pv-report.php';
 					$html .= '<p class="omo-document-pv__empty">' . self::escapeViewerText(\commonPvReportT('pv.report.empty')) . '</p>';
 				} else {
-					$html .= '<p class="omo-document-pv__empty">Aucun point a l ordre du jour pour ce PV.</p>';
+					$html .= ('<p class="omo-document-pv__empty">' . self::uiMessage('copy.aucun_point_a_l_ordre_du_jour_pour_ce_pv') . '</p>');
 				}
 				$html .= '</div>';
 				return $html;
@@ -5128,7 +5156,7 @@
 					: $pointTypeIconMap['information'];
 				$pointFields = '';
 				$pointFields .= self::buildPvFieldHtml('Auteur', (string)($pointData['authorLabel'] ?? ''));
-				$pointFields .= self::buildPvFieldHtml(Organization::formatLexiconText('Holon concerne', Organization::getLexiconForOrganizationId($organizationId)), (string)($pointData['concernedHolonLabel'] ?? ''));
+				$pointFields .= self::buildPvFieldHtml(Organization::formatLexiconText('Holon concerné', Organization::getLexiconForOrganizationId($organizationId)), (string)($pointData['concernedHolonLabel'] ?? ''));
 				$pointChips = '';
 				$pointChips .= self::buildPvChipGroupHtml(Organization::formatLexiconText('Holons adresses', Organization::getLexiconForOrganizationId($organizationId)), (array)($pointData['addressedHolons'] ?? array()), 'holons');
 				$pointChips .= self::buildPvChipGroupHtml('Tensions', (array)($pointData['tensions'] ?? array()), 'tensions');
@@ -5238,14 +5266,14 @@
 			$editingUserName = $this->getEditingUserDisplayName();
 			$isOwnedByCurrentUser = $currentUserId > 0 && $editingUserId === $currentUserId;
 			$message = $isOwnedByCurrentUser
-				? 'Ce document est deja en cours d edition dans votre session.'
-				: 'Ce document est deja en cours d edition.';
+				? self::uiMessage('copy.ce_document_est_deja_en_cours_d_edition_dans_votre_session')
+				: self::uiMessage('copy.ce_document_est_deja_en_cours_d_edition');
 
 			if (!$isOwnedByCurrentUser && $editingUserName !== '') {
 				$message .= ' Utilisateur: ' . $editingUserName . '.';
 			}
 
-			$message .= ' Reessayez dans quelques minutes.';
+			$message .= self::uiMessage('copy.reessayez_dans_quelques_minutes');
 
 			return array(
 				'status' => false,
@@ -6551,18 +6579,18 @@
 			if ($this->isUploadedFile() && $this->hasStoredFile()) {
 				if (!$organization->load((int)$this->get('IDorganization'))) { throw new \RuntimeException('Organisation introuvable.'); }
 				$result = $organization->downloadDocumentFileFromStorage((string)$this->get('storedfilepath'));
-				if (empty($result['status'])) { throw new \RuntimeException('Impossible de conserver le fichier de reference.'); }
+				if (empty($result['status'])) { throw new \RuntimeException(self::uiMessage('copy.impossible_de_conserver_le_fichier_de_reference')); }
 				$blueprint['file'] = ['body' => base64_encode((string)$result['body']), 'name' => $this->getStoredFileDownloadName(), 'type' => $this->getStoredFileMimeType()];
 			} elseif ($this->isEtherpadDocument() && $this->getEtherpadPadId() !== '') {
 				require_once dirname(__DIR__, 2) . '/common/etherpad.php';
 				$organization->load((int)$this->get('IDorganization'));
 				$result = omoEtherpadApiRequest($organization, 'getHTML', ['padID' => $this->getEtherpadPadId()]);
-				if (empty($result['status'])) { throw new \RuntimeException('Impossible de conserver le pad de reference.'); }
+				if (empty($result['status'])) { throw new \RuntimeException(self::uiMessage('copy.impossible_de_conserver_le_pad_de_reference')); }
 				$blueprint['etherpad_html'] = (string)($result['data']['html'] ?? '');
 			} elseif ($this->isEthercalcDocument() && $this->getEthercalcRoomId() !== '') {
 				require_once dirname(__DIR__, 2) . '/common/ethercalc.php';
 				$result = omoEthercalcRequest('GET', '/_/' . rawurlencode($this->getEthercalcRoomId()));
-				if (empty($result['status'])) { throw new \RuntimeException('Impossible de conserver le tableur de reference.'); }
+				if (empty($result['status'])) { throw new \RuntimeException(self::uiMessage('copy.impossible_de_conserver_le_tableur_de_reference')); }
 				$blueprint['ethercalc_snapshot'] = (string)($result['body'] ?? '');
 			}
 			if ($this->isPvDocument()) {
@@ -7441,9 +7469,9 @@
 					$pdo->commit();
 				}
 
-				$message = 'Document deplace.';
+				$message = self::uiMessage('copy.document_deplace');
 				if ($finalVisibilityType !== $previousVisibilityType) {
-					$message = 'Document deplace. La visibilite a ete adaptee.';
+					$message = self::uiMessage('copy.document_deplace_la_visibilite_a_ete_adaptee');
 				}
 
 				return array(
@@ -7531,8 +7559,8 @@
 				return array(
 					'status' => false,
 					'text' => $visibilityType === \dbObject\ObjectVisibility::TYPE_ROLE
-                        ? 'La visibilite role demande un document lie a un role.'
-                        : 'La visibilite cercle demande un document lie a un cercle ou a un role.',
+                        ? self::uiMessage('la_visibilite_role_demande_un_document_lie_a_un_role')
+                        : self::uiMessage('copy.la_visibilite_cercle_demande_un_document_lie_a_un_cercle_ou_a_un_role'),
 				);
 			}
 

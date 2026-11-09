@@ -4,6 +4,20 @@ namespace dbObject;
 /** Outbox with immutable recipient snapshots and conservative retry semantics. */
 final class ObjectMail extends DbObject
 {
+    protected static function uiMessageSourceLang(): array
+    {
+        return parent::uiMessageSourceLang() + [
+            'copy.autorisation_mail_send_absente_expiree_ou_revoquee' => ['text' => 'Autorisation mail:send absente, expirée ou révoquée.', 'context' => 'Interface text in class/dbobject/objectmail.class.php'],
+            'copy.cette_request_key_a_deja_servi_pour_un_autre_message' => ['text' => 'Cette request_key a déjà servi pour un autre message.', 'context' => 'Interface text in class/dbobject/objectmail.class.php'],
+            'copy.les_destinataires_ont_change_relisez_la_liste_avant_de_confirmer_l_env' => ['text' => 'Les destinataires ont change. Relisez la liste avant de confirmer l’envoi.', 'context' => 'Interface text in class/dbobject/objectmail.class.php'],
+            'copy.invitation_pv_non_autorisee' => ['text' => 'Invitation PV non autorisée.', 'context' => 'Interface text in class/dbobject/objectmail.class.php'],
+            'copy.invitation_au_scrutin_non_autorisee' => ['text' => 'Invitation au scrutin non autorisée.', 'context' => 'Interface text in class/dbobject/objectmail.class.php'],
+            'copy.impossible_de_conserver_l_invitation' => ['text' => 'Impossible de conserver l’invitation.', 'context' => 'Interface text in class/dbobject/objectmail.class.php'],
+            'copy.impossible_de_conserver_le_resultat_de_l_envoi' => ['text' => 'Impossible de conserver le résultat de l’envoi.', 'context' => 'Interface text in class/dbobject/objectmail.class.php'],
+            'copy.queued_attend_le_traitement_omo_sent_indique_l_acceptation_smtp_pas_la' => ['text' => 'queued attend le traitement OMO ; sent indique l’acceptation SMTP, pas la réception finale. failed et unknown ne sont jamais relances automatiquement pour éviter les doublons. skipped indique une invitation ou une autorisation devenue invalide. Réutilisez la même request_key pour toute nouvelle tentative du même envoi.', 'context' => 'Interface text in class/dbobject/objectmail.class.php'],
+        ];
+    }
+
     public const MAX_RECIPIENTS = 500;
     public const DIRECT_RECIPIENT_LIMIT = 5;
     public static function tableName() { return 'object_mail'; }
@@ -12,9 +26,9 @@ final class ObjectMail extends DbObject
         [['id', 'object_id', 'recipient_count', 'created_at'], 'integer'],
         [['IDuser', 'IDorganization', 'IDmcp_oauth_grant'], 'fk'],
         [['object_type', 'request_hash', 'payload_hash', 'subject', 'message_format'], 'string'], [['message'], 'text'], [['id'], 'safe']]; }
-    public static function attributeLabels() { return ['IDuser' => 'Expediteur', 'IDorganization' => 'Organisation',
+    public static function attributeLabels() { return ['IDuser' => 'Expéditeur', 'IDorganization' => 'Organisation',
         'IDmcp_oauth_grant' => 'Autorisation assistant', 'object_type' => 'Type', 'object_id' => 'Objet',
-        'subject' => 'Objet du message', 'message' => 'Message', 'message_format' => 'Format du message', 'recipient_count' => 'Destinataires', 'created_at' => 'Creation',
+        'subject' => 'Objet du message', 'message' => 'Message', 'message_format' => 'Format du message', 'recipient_count' => 'Destinataires', 'created_at' => 'Création',
         'request_hash' => 'Identifiant de demande', 'payload_hash' => 'Empreinte du contenu']; }
     public static function attributeLength() { return ['object_type' => 20, 'request_hash' => 64, 'payload_hash' => 64, 'subject' => 250, 'message' => 20000, 'message_format' => 5]; }
     public function canView() { $uid = (int)\commonGetCurrentUserId(); $user = new User(); return $uid > 0
@@ -54,7 +68,7 @@ final class ObjectMail extends DbObject
         }
         $uid = (int)\commonGetCurrentUserId();
         if ($grant !== null && ((int)$grant['IDuser'] !== $uid || (int)$grant['IDorganization'] !== $oid
-            || !McpOauthGrant::hasActiveScopeAuthorization($grant, \OMO_MCP_MAIL_SCOPE))) throw new \DomainException('Autorisation mail:send absente, expiree ou revoquee.');
+            || !McpOauthGrant::hasActiveScopeAuthorization($grant, \OMO_MCP_MAIL_SCOPE))) throw new \DomainException(self::uiMessage('copy.autorisation_mail_send_absente_expiree_ou_revoquee'));
         $audience = ObjectAudience::resolve($oid, $args['object_type'], $args['object_id'], $args['user_ids'] ?? null);
         if (!$audience['can_send']) throw new \DomainException('Une adresse e-mail valide dans votre profil est requise pour envoyer un message.');
         if ($recipientIds !== null) {
@@ -74,18 +88,18 @@ final class ObjectMail extends DbObject
             self::fetchRow('SELECT id FROM organization WHERE id = :id FOR UPDATE', ['id' => $oid]);
             $existing = self::fetchRow('SELECT id, payload_hash FROM object_mail WHERE IDuser = :uid AND IDorganization = :oid AND request_hash = :request', $bindings);
             if ($existing) {
-                if (!hash_equals($existing['payload_hash'], $hash)) throw new \DomainException('Cette request_key a deja servi pour un autre message.');
+                if (!hash_equals($existing['payload_hash'], $hash)) throw new \DomainException(self::uiMessage('copy.cette_request_key_a_deja_servi_pour_un_autre_message'));
                 $pdo->commit(); return self::status($oid, (int)$existing['id']) + ['replayed' => true];
             }
-            if (!hash_equals($audience['audience_token'], $args['audience_token'])) throw new \DomainException('Les destinataires ont change. Relisez la liste avant de confirmer l envoi.');
+            if (!hash_equals($audience['audience_token'], $args['audience_token'])) throw new \DomainException(self::uiMessage('copy.les_destinataires_ont_change_relisez_la_liste_avant_de_confirmer_l_env'));
             $count = count($audience['recipients']);
-            if ($count < 1 || $count > self::MAX_RECIPIENTS) throw new \DomainException('L audience doit contenir entre 1 et 500 destinataires valides.');
+            if ($count < 1 || $count > self::MAX_RECIPIENTS) throw new \DomainException('L’audience doit contenir entre 1 et 500 destinataires valides.');
             $userQuota = self::fetchRow('SELECT COALESCE(SUM(recipient_count), 0) AS recipients,
                 COALESCE(SUM(created_at > :hour), 0) AS requests FROM object_mail WHERE IDuser = :uid AND created_at > :day',
                 ['hour' => time() - 3600, 'uid' => $uid, 'day' => time() - 86400]);
             $orgQuota = (int)self::fetchValue('SELECT COALESCE(SUM(recipient_count), 0) FROM object_mail WHERE IDorganization = :oid AND created_at > :day', ['oid' => $oid, 'day' => time() - 86400]);
             if ((int)$userQuota['requests'] >= 20 || (int)$userQuota['recipients'] + $count > 1000 || $orgQuota + $count > 5000) {
-                throw new \DomainException('Limite d envoi atteinte : 20 messages par heure et 1000 destinataires par jour par compte, 5000 par organisation.');
+                throw new \DomainException('Limite d’envoi atteinte : 20 messages par heure et 1000 destinataires par jour par compte, 5000 par organisation.');
             }
             $mail = new self();
             foreach (['IDuser' => $uid, 'IDorganization' => $oid, 'IDmcp_oauth_grant' => $grant['id'] ?? null,
@@ -125,7 +139,7 @@ final class ObjectMail extends DbObject
         if ($uid <= 0 || !$user->load($uid, true) || !$user->get('active')
             || !UserOrganization::hasActiveMembership($uid, $oid) || !$document->isPvDocument()
             || !$document->canUserSendPvInvitations($oid, $uid)) {
-            throw new \DomainException('Invitation PV non autorisee.');
+            throw new \DomainException(self::uiMessage('copy.invitation_pv_non_autorisee'));
         }
         return self::beginNativeInvitationDelivery($uid, $oid, 'pv_invitation', (int)$document->getId(), $subject, $message, $recipients);
     }
@@ -140,7 +154,7 @@ final class ObjectMail extends DbObject
             || !UserOrganization::hasActiveMembership($uid, $oid)
             || !$decision->canUseManagementPermission('CAN_EDIT_DECISION', $uid)
             || DecisionProcess::normalizeStatus($decision->get('status')) === DecisionProcess::STATUS_DRAFT) {
-            throw new \DomainException('Invitation au scrutin non autorisee.');
+            throw new \DomainException(self::uiMessage('copy.invitation_au_scrutin_non_autorisee'));
         }
         return self::beginNativeInvitationDelivery($uid, $oid, 'decision_invitation', (int)$decision->getId(), $subject, $message, $recipients);
     }
@@ -165,7 +179,7 @@ final class ObjectMail extends DbObject
                 'recipient_count' => count($recipients), 'created_at' => time()] as $field => $value) {
                 $mail->set($field, $value);
             }
-            if (empty($mail->save()['status'])) throw new \RuntimeException('Impossible de conserver l invitation.');
+            if (empty($mail->save()['status'])) throw new \RuntimeException(self::uiMessage('copy.impossible_de_conserver_l_invitation'));
             foreach ($recipients as $recipient) {
                 $email = (string)($recipient['email'] ?? '');
                 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) throw new \InvalidArgumentException('Destinataire invalide.');
@@ -188,14 +202,14 @@ final class ObjectMail extends DbObject
 
     public function recordRecipientDelivery(string $email, string $status): void
     {
-        if (!in_array($status, ['sent', 'failed', 'unknown'], true)) throw new \InvalidArgumentException('Statut d envoi invalide.');
+        if (!in_array($status, ['sent', 'failed', 'unknown'], true)) throw new \InvalidArgumentException('Statut d’envoi invalide.');
         $recipient = new ObjectMailRecipient();
         if (!$recipient->load([['IDobject_mail', (int)$this->getId()], ['email', $email]])) {
-            throw new \RuntimeException('Destinataire de l envoi introuvable.');
+            throw new \RuntimeException('Destinataire de l’envoi introuvable.');
         }
         $recipient->set('status', $status);
         $recipient->set('updated_at', time());
-        if (empty($recipient->save()['status'])) throw new \RuntimeException('Impossible de conserver le resultat de l envoi.');
+        if (empty($recipient->save()['status'])) throw new \RuntimeException(self::uiMessage('copy.impossible_de_conserver_le_resultat_de_l_envoi'));
     }
 
     public static function status(int $oid, int $id): array
@@ -209,7 +223,7 @@ final class ObjectMail extends DbObject
         return ['mail_id' => $id, 'object_type' => $mail['object_type'], 'object_id' => (int)$mail['object_id'],
             'recipient_count' => (int)$mail['recipient_count'], 'delivery' => $counts,
             'complete' => $counts['queued'] + $counts['sending'] === 0,
-            'instructions' => 'queued attend le traitement OMO ; sent indique l acceptation SMTP, pas la reception finale. failed et unknown ne sont jamais relances automatiquement pour eviter les doublons. skipped indique une invitation ou une autorisation devenue invalide. Reutilisez la meme request_key pour toute nouvelle tentative du meme envoi.'];
+            'instructions' => self::uiMessage('copy.queued_attend_le_traitement_omo_sent_indique_l_acceptation_smtp_pas_la')];
     }
 
     /** Sender-owned history, including MCP operations whose grant no longer exists. */

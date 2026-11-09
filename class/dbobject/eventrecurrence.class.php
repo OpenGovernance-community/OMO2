@@ -4,6 +4,25 @@ namespace dbObject;
 /** A series owns its rule and a frozen blueprint, never a live completed PV. */
 class EventRecurrence extends DbObject
 {
+    protected static function uiMessageSourceLang(): array
+    {
+        return parent::uiMessageSourceLang() + [
+            'copy.recurrence_invalide' => ['text' => 'Récurrence invalide.', 'context' => 'Interface text in class/dbobject/eventrecurrence.class.php'],
+            'copy.parametres_de_recurrence_invalides' => ['text' => 'Paramètres de récurrence invalides.', 'context' => 'Interface text in class/dbobject/eventrecurrence.class.php'],
+            'copy.impossible_d_enregistrer_la_recurrence' => ['text' => 'Impossible d’enregistrer la récurrence.', 'context' => 'Interface text in class/dbobject/eventrecurrence.class.php'],
+            'copy.la_reunion_doit_etre_enregistree_dans_la_transaction_de_recurrence' => ['text' => 'La réunion doit être enregistrée dans la transaction de récurrence.', 'context' => 'Interface text in class/dbobject/eventrecurrence.class.php'],
+            'copy.strategie_de_recurrence_invalide' => ['text' => 'Stratégie de récurrence invalide.', 'context' => 'Interface text in class/dbobject/eventrecurrence.class.php'],
+            'copy.une_reunion_passee_ne_peut_pas_commencer_une_nouvelle_serie' => ['text' => 'Une réunion passée ne peut pas commencer une nouvelle série.', 'context' => 'Interface text in class/dbobject/eventrecurrence.class.php'],
+            'copy.recurrence_introuvable' => ['text' => 'Récurrence introuvable.', 'context' => 'Interface text in class/dbobject/eventrecurrence.class.php'],
+            'copy.reunion_de_reference_indisponible' => ['text' => 'Réunion de référence indisponible.', 'context' => 'Interface text in class/dbobject/eventrecurrence.class.php'],
+            'copy.une_occurrence_ne_peut_pas_etre_deplacee_dans_le_passe' => ['text' => 'Une occurrence ne peut pas être déplacée dans le passé.', 'context' => 'Interface text in class/dbobject/eventrecurrence.class.php'],
+            'copy.recurrences_en_echec_value' => ['text' => 'Récurrences en échec : {value}', 'context' => 'Interface text in class/dbobject/eventrecurrence.class.php'],
+            'copy.la_reunion_ne_fait_pas_partie_de_cette_serie' => ['text' => 'La réunion ne fait pas partie de cette série.', 'context' => 'Interface text in class/dbobject/eventrecurrence.class.php'],
+            'copy.une_prochaine_reunion_existe_deja_dans_cette_serie' => ['text' => 'Une prochaine réunion existe déjà dans cette série.', 'context' => 'Interface text in class/dbobject/eventrecurrence.class.php'],
+            'copy.impossible_de_lier_la_prochaine_reunion' => ['text' => 'Impossible de lier la prochaine réunion.', 'context' => 'Interface text in class/dbobject/eventrecurrence.class.php'],
+        ];
+    }
+
     private array $generatedDocuments = [];
     public static function tableName() { return 'event_recurrence'; }
     public static function rules()
@@ -18,10 +37,10 @@ class EventRecurrence extends DbObject
     }
     public static function attributeLabels()
     {
-        return ['IDorganization' => 'Organisation', 'IDreference_event' => 'Reunion de reference', 'frequency' => 'Frequence',
+        return ['IDorganization' => 'Organisation', 'IDreference_event' => 'Réunion de référence', 'frequency' => 'Fréquence',
             'interval_days' => 'Intervalle en jours', 'month_day' => 'Jour du mois', 'weekday' => 'Jour de la semaine',
             'ordinal' => 'Rang dans le mois', 'weekend_shift' => 'Report du week-end', 'horizon_months' => 'Horizon en mois',
-            'anchor_date' => 'Date de reference', 'timezone' => 'Fuseau horaire', 'active' => 'Active'];
+            'anchor_date' => 'Date de référence', 'timezone' => 'Fuseau horaire', 'active' => 'Active'];
     }
     public static function attributeLength() { return ['frequency' => 24, 'weekend_shift' => 16, 'timezone' => 64]; }
 
@@ -31,7 +50,7 @@ class EventRecurrence extends DbObject
         $shift = $values['weekend_shift'] ?? 'none';
         if (!in_array($frequency, ['weekly', 'days', 'monthly_day', 'monthly_weekday', 'on_close'], true)
             || !in_array($shift, ['none', 'previous', 'next'], true)) {
-            throw new \InvalidArgumentException('Recurrence invalide.');
+            throw new \InvalidArgumentException(self::uiMessage('copy.recurrence_invalide'));
         }
         $documentMode = $values['document_mode'] ?? 'copy';
         if (!in_array($documentMode, ['copy', 'reuse'], true)) { throw new \InvalidArgumentException('Mode de documents invalide.'); }
@@ -39,7 +58,7 @@ class EventRecurrence extends DbObject
         foreach (['interval_days' => [1, 366], 'month_day' => [1, 31], 'weekday' => [1, 7], 'ordinal' => [1, 5], 'horizon_months' => [1, 12]] as $key => [$min, $max]) {
             $default = ['interval_days' => 7, 'month_day' => 1, 'weekday' => 1, 'ordinal' => 1, 'horizon_months' => 3][$key];
             $value = filter_var($values[$key] ?? $default, FILTER_VALIDATE_INT);
-            if ($value === false || $value < $min || $value > $max) { throw new \InvalidArgumentException('Parametres de recurrence invalides.'); }
+            if ($value === false || $value < $min || $value > $max) { throw new \InvalidArgumentException(self::uiMessage('copy.parametres_de_recurrence_invalides')); }
             $result[$key] = $value;
         }
         return $result;
@@ -106,7 +125,7 @@ class EventRecurrence extends DbObject
     private static function requireSaved($result): void
     {
         if (!is_array($result) || empty($result['status'])) {
-            throw new \RuntimeException((string)($result['text'] ?? 'Impossible d enregistrer la recurrence.'));
+            throw new \RuntimeException((string)($result['text'] ?? self::uiMessage('copy.impossible_d_enregistrer_la_recurrence')));
         }
     }
 
@@ -156,7 +175,7 @@ class EventRecurrence extends DbObject
     private static function saveEventLink(Event $event): void
     {
         if ((int)$event->getId() <= 0 || !self::getPdo()->inTransaction()) {
-            throw new \RuntimeException('La reunion doit etre enregistree dans la transaction de recurrence.');
+            throw new \RuntimeException(self::uiMessage('copy.la_reunion_doit_etre_enregistree_dans_la_transaction_de_recurrence'));
         }
         self::requireSaved(['status' => self::execute('UPDATE event SET IDeventrecurrence = :series,
             recurrence_position = :position, recurrence_exception = :exception, updated_at = NOW()
@@ -192,7 +211,7 @@ class EventRecurrence extends DbObject
     public static function configure(Event $event, array $settings, bool $applyFollowing, bool $enabled, string $strategy = 'replan', ?array $previousMeetingState = null): void
     {
         if (!in_array($strategy, ['replan', 'after_last', 'stop_keep', 'stop_delete', 'content'], true)) {
-            throw new \InvalidArgumentException('Strategie de recurrence invalide.');
+            throw new \InvalidArgumentException(self::uiMessage('copy.strategie_de_recurrence_invalide'));
         }
         $series = $event->getRecurrence();
         if ($series) {
@@ -230,7 +249,7 @@ class EventRecurrence extends DbObject
         }
         $newSeries = !$series;
         if ($newSeries && $event->get('end_at') < new \DateTimeImmutable()) {
-            throw new \InvalidArgumentException('Une reunion passee ne peut pas commencer une nouvelle serie.');
+            throw new \InvalidArgumentException(self::uiMessage('copy.une_reunion_passee_ne_peut_pas_commencer_une_nouvelle_serie'));
         }
         if (!$series) {
             $series = new self(); $series->set('IDorganization', (int)$event->get('IDorganization'));
@@ -277,7 +296,7 @@ class EventRecurrence extends DbObject
     public function lock(): void
     {
         $row = self::fetchRow('SELECT * FROM event_recurrence WHERE id = :id FOR UPDATE', ['id' => $this->getId()]);
-        if (!$row) { throw new \RuntimeException('Recurrence introuvable.'); }
+        if (!$row) { throw new \RuntimeException(self::uiMessage('copy.recurrence_introuvable')); }
         $this->hydrateFromDatabaseRow($row, true);
     }
 
@@ -346,7 +365,7 @@ class EventRecurrence extends DbObject
     private function applyBlueprint(Event $event, int $position, bool $createDocuments, ?\DateTimeImmutable $chosenStart = null): void
     {
         $blueprint = $this->getParameter('blueprint');
-        if (!is_array($blueprint)) { throw new \RuntimeException('Reunion de reference indisponible.'); }
+        if (!is_array($blueprint)) { throw new \RuntimeException(self::uiMessage('copy.reunion_de_reference_indisponible')); }
         foreach ($blueprint['fields'] as $field => $value) { $event->set($field, $value); }
         $date = $this->occurrenceDate($position);
         [$hour, $minute, $second] = array_map('intval', explode(':', $blueprint['time']));
@@ -356,7 +375,7 @@ class EventRecurrence extends DbObject
         // Wall clock duration keeps ordinary local meetings stable across DST transitions.
         $endWall = (new \DateTimeImmutable($start->format('Y-m-d H:i:s'), new \DateTimeZone('UTC')))->modify('+' . (int)$blueprint['duration_seconds'] . ' seconds');
         $end = new \DateTimeImmutable($endWall->format('Y-m-d H:i:s'), $date->getTimezone());
-        if (!$createDocuments && $start <= new \DateTimeImmutable()) { throw new \RuntimeException('Une occurrence ne peut pas etre deplacee dans le passe.'); }
+        if (!$createDocuments && $start <= new \DateTimeImmutable()) { throw new \RuntimeException(self::uiMessage('copy.une_occurrence_ne_peut_pas_etre_deplacee_dans_le_passe')); }
         $event->set('IDorganization', (int)$this->get('IDorganization')); $event->set('timezone', $this->get('timezone'));
         $event->set('start_at', $start); $event->set('end_at', $end); $event->set('active', 1);
         $event->set('IDeventrecurrence', (int)$this->getId()); $event->set('recurrence_position', $position); $event->set('recurrence_exception', 0);
@@ -466,7 +485,7 @@ class EventRecurrence extends DbObject
                 $failures[] = (int)$row['id'];
             }
         }
-        if ($failures) { throw new \RuntimeException('Recurrences en echec : ' . implode(', ', $failures)); }
+        if ($failures) { throw new \RuntimeException(self::uiMessage('copy.recurrences_en_echec_value', ['value' => implode(', ', $failures)])); }
         return $created;
     }
 
@@ -492,7 +511,7 @@ class EventRecurrence extends DbObject
     public function getDeletionEventsFrom(Event $event): array
     {
         if ((int)$event->get('IDeventrecurrence') !== (int)$this->getId()) {
-            throw new \InvalidArgumentException('La reunion ne fait pas partie de cette serie.');
+            throw new \InvalidArgumentException(self::uiMessage('copy.la_reunion_ne_fait_pas_partie_de_cette_serie'));
         }
         $events = [];
         foreach (self::fetchAll('SELECT * FROM event WHERE IDeventrecurrence = :series
@@ -587,7 +606,7 @@ class EventRecurrence extends DbObject
         // Only the last meeting may extend an on-close chain, even if older links were deleted.
         $later = self::fetchRow('SELECT id FROM event WHERE IDeventrecurrence = :series AND recurrence_position > :position AND active = 1 LIMIT 1',
             ['series' => $this->getId(), 'position' => (int)$closedEvent->get('recurrence_position')]);
-        if ($later) { throw new \InvalidArgumentException('Une prochaine reunion existe deja dans cette serie.'); }
+        if ($later) { throw new \InvalidArgumentException(self::uiMessage('copy.une_prochaine_reunion_existe_deja_dans_cette_serie')); }
         $position = (int)$this->get('next_position'); $next = new Event();
         try {
             $this->applyBlueprint($next, $position, true, $start->setTimezone(new \DateTimeZone($this->get('timezone'))));
@@ -595,7 +614,7 @@ class EventRecurrence extends DbObject
             $this->set('next_position', $position + 1); self::requireSaved($this->save());
             if (!self::execute("UPDATE event SET parameters = JSON_SET(COALESCE(NULLIF(parameters, ''), '{}'), '$.next_meeting_id', :next_id) WHERE id = :id",
                 ['next_id' => (int)$next->getId(), 'id' => (int)$closedEvent->getId()])) {
-                throw new \RuntimeException('Impossible de lier la prochaine reunion.');
+                throw new \RuntimeException(self::uiMessage('copy.impossible_de_lier_la_prochaine_reunion'));
             }
             $closedEvent->load((int)$closedEvent->getId(), true);
             $this->generatedDocuments = [];

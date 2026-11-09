@@ -104,7 +104,24 @@ function faqPopupT(string $key, array $variables = []): string
 		'request.relayed' => ['text' => 'Question relayée aux administrateurs de l’organisation', 'context' => 'Relayed FAQ request heading.'],
 		'request.author' => ['text' => 'Auteur', 'context' => 'FAQ request author label.'],
 		'request.description' => ['text' => 'Description du problème', 'context' => 'FAQ request description label.'],
-	];
+
+	    'copy.faq_generique' => ['text' => 'FAQ générique', 'context' => 'Interface text in common/faq_popup_helper.php'],
+	    'copy.vous_avez_deja_vote_aujourd_hui_vous_pourrez_revoter_demain' => ['text' => 'Vous avez déjà vote aujourd’hui. Vous pourrez revoter demain.', 'context' => 'Interface text in common/faq_popup_helper.php'],
+	    'copy.le_parcours_selectionne_n_appartient_pas_a_l_organisation_selectionnee' => ['text' => 'Le parcours sélectionné n’appartient pas à l’organisation sélectionnée.', 'context' => 'Interface text in common/faq_popup_helper.php'],
+	    'copy.seul_un_super_admin_peut_creer_une_faq_generique' => ['text' => 'Seul un super admin peut créer une FAQ générique.', 'context' => 'Interface text in common/faq_popup_helper.php'],
+	    'copy.le_parcours_selectionne_n_appartient_pas_a_l_organisation_courante' => ['text' => 'Le parcours sélectionné n’appartient pas à l’organisation courante.', 'context' => 'Interface text in common/faq_popup_helper.php'],
+	    'copy.le_parcours_selectionne_est_invalide_dans_cette_organisation' => ['text' => 'Le parcours sélectionné est invalide dans cette organisation.', 'context' => 'Interface text in common/faq_popup_helper.php'],
+	    'copy.vous_ne_pouvez_pas_rattacher_une_faq_a_ce_parcours' => ['text' => 'Vous ne pouvez pas rattacher une FAQ à ce parcours.', 'context' => 'Interface text in common/faq_popup_helper.php'],
+	    'copy.vous_n_avez_pas_le_droit_de_modifier_le_scope_de_cette_faq' => ['text' => 'Vous n’avez pas le droit de modifier le scope de cette FAQ.', 'context' => 'Interface text in common/faq_popup_helper.php'],
+	    'copy.cette_faq_sera_creee_dans_le_contexte_courant' => ['text' => 'Cette FAQ sera créée dans le contexte courant.', 'context' => 'Interface text in popup/faq.php'],
+	    'copy.vous_pouvez_la_rattacher_a_l_organisation_courante_a_un_parcours_lms_o' => ['text' => 'Vous pouvez la rattacher à l’organisation courante, à un parcours LMS, ou la laisser générique.', 'context' => 'Interface text in popup/faq.php'],
+	    'copy.cette_faq_sera_rattachee_a_un_parcours_lms_que_vous_pouvez_gerer' => ['text' => 'Cette FAQ sera rattachée à un parcours LMS que vous pouvez gérer.', 'context' => 'Interface text in popup/faq.php'],
+
+	    'copy.video_non_integrable_automatiquement' => ['text' => 'Vidéo non intégrable automatiquement.', 'context' => 'Interface text rendered by common/faq_popup_helper.php'],
+	    'copy.ouvrir_la_video' => ['text' => 'Ouvrir la vidéo', 'context' => 'Interface text rendered by common/faq_popup_helper.php'],
+	    'copy.negatifs' => ['text' => 'Négatifs', 'context' => 'Interface text rendered by common/faq_popup_helper.php'],
+	    'copy.repartition_indicative_basee_sur_le_signal_actif' => ['text' => 'Répartition indicative basée sur le signal actif.', 'context' => 'Interface text rendered by common/faq_popup_helper.php'],
+];
 	if ($lang === null) {
 		$locale = translationBundleResolveRequestLocale('lang', translationBundleGetSupportedLocales(), 'fr');
 		$lang = loadTranslationBundle('faq_popup', $locale, $sourceLang);
@@ -209,7 +226,7 @@ if (!function_exists('faqPopupDescribeScope')) {
 		$holon = $faq->getContextHolon();
 		$parcours = $faq->getContextParcours();
 		$scopeType = 'generic';
-		$scopeLabel = 'FAQ generique';
+		$scopeLabel = faqPopupT('copy.faq_generique');
 		$organizationLabel = $organization ? trim((string)$organization->getLabel()) : '';
 		$holonLabel = $holon ? trim((string)$holon->getDisplayName()) : '';
 		$parcoursLabel = $parcours ? trim((string)$parcours->get('title')) : '';
@@ -283,13 +300,13 @@ if (!function_exists('faqPopupRenderMediaBlock')) {
 						</div>
 					<?php else: ?>
 						<div class="faq-popup__media-fallback">
-							<span>Video non integrable automatiquement.</span>
+							<span><?= htmlspecialchars(faqPopupT('copy.video_non_integrable_automatiquement'), ENT_QUOTES, 'UTF-8') ?></span>
 							<a
 								class="generic-action-button generic-action-button--secondary"
 								href="<?= htmlspecialchars((string)$media['videoUrl'], ENT_QUOTES, 'UTF-8') ?>"
 								target="_blank"
 								rel="noopener noreferrer"
-							>Ouvrir la video</a>
+							><?= htmlspecialchars(faqPopupT('copy.ouvrir_la_video'), ENT_QUOTES, 'UTF-8') ?></a>
 						</div>
 					<?php endif; ?>
 				</div>
@@ -433,7 +450,7 @@ if (!function_exists('faqPopupRenderVoteBlock')) {
 		$relativeStars = faqPopupCalculateRelativeStars($faq->get('reliability'), $reliabilityRange);
 		$voteMessage = trim((string)($options['message'] ?? ''));
 		if ($voteMessage === '' && $hasVotedToday) {
-			$voteMessage = 'Vous avez deja vote aujourd hui. Vous pourrez revoter demain.';
+			$voteMessage = faqPopupT('copy.vous_avez_deja_vote_aujourd_hui_vous_pourrez_revoter_demain');
 		}
 		?>
 		<div
@@ -459,7 +476,7 @@ if (!function_exists('faqPopupRenderVoteBlock')) {
 						<strong data-faq-score="positive_estimated"><?= (int)$estimatedVoteSplit['positive'] ?></strong>
 					</span>
 					<span class="faq-popup__vote-stat">
-						<span class="faq-popup__vote-label">Negatifs</span>
+						<span class="faq-popup__vote-label"><?= htmlspecialchars(faqPopupT('copy.negatifs'), ENT_QUOTES, 'UTF-8') ?></span>
 						<strong data-faq-score="negative_estimated"><?= (int)$estimatedVoteSplit['negative'] ?></strong>
 					</span>
 					<span class="faq-popup__vote-stat">
@@ -485,7 +502,7 @@ if (!function_exists('faqPopupRenderVoteBlock')) {
 				>👎 Pas utile</button>
 			</div>
 			<?php if (!$isCompact): ?>
-				<div class="faq-popup__vote-note">Repartition indicative basee sur le signal actif.</div>
+				<div class="faq-popup__vote-note"><?= htmlspecialchars(faqPopupT('copy.repartition_indicative_basee_sur_le_signal_actif'), ENT_QUOTES, 'UTF-8') ?></div>
 			<?php endif; ?>
 			<div class="faq-popup__vote-message<?= $voteMessage !== '' ? ' is-visible' : '' ?>" data-faq-vote-message>
 				<?= htmlspecialchars($voteMessage, ENT_QUOTES, 'UTF-8') ?>
@@ -898,7 +915,7 @@ if (!function_exists('faqPopupRenderScopeFields')) {
 							<option value="parcours"<?= $selectedAttachmentType === 'parcours' ? ' selected' : '' ?>>Parcours</option>
 						<?php endif; ?>
 						<?php if ($allowGeneric): ?>
-							<option value="generic"<?= $selectedAttachmentType === 'generic' ? ' selected' : '' ?>>FAQ generique</option>
+							<option value="generic"<?= $selectedAttachmentType === 'generic' ? ' selected' : '' ?>><?= htmlspecialchars(faqPopupT('copy.faq_generique'), ENT_QUOTES, 'UTF-8') ?></option>
 						<?php endif; ?>
 					</select>
 				</div>
@@ -1040,7 +1057,7 @@ if (!function_exists('faqPopupResolveSubmittedScope')) {
 		if ($attachmentType === 'parcours' && $holonId > 0) {
 			return array(
 				'status' => false,
-				'message' => \dbObject\Organization::formatLexiconText('Une FAQ rattachee a un parcours ne peut pas etre rattachee a un holon.'),
+				'message' => \dbObject\Organization::formatLexiconText('Une FAQ rattachée à un parcours ne peut pas être rattachée à un holon.'),
 			);
 		}
 
@@ -1082,7 +1099,7 @@ if (!function_exists('faqPopupResolveSubmittedScope')) {
 			if ($holon && $holon->resolveOrganizationId() !== $organizationId) {
 				return array(
 					'status' => false,
-					'message' => \dbObject\Organization::formatLexiconText('Le holon selectionne n appartient pas a l organisation selectionnee.'),
+					'message' => \dbObject\Organization::formatLexiconText('Le holon sélectionné n’appartient pas à l’organisation sélectionnée.'),
 				);
 			}
 
@@ -1091,7 +1108,7 @@ if (!function_exists('faqPopupResolveSubmittedScope')) {
 				if (!in_array((int)$parcours->getId(), $availableParcoursIds, true)) {
 					return array(
 						'status' => false,
-						'message' => 'Le parcours selectionne n appartient pas a l organisation selectionnee.',
+						'message' => faqPopupT('copy.le_parcours_selectionne_n_appartient_pas_a_l_organisation_selectionnee'),
 					);
 				}
 			}
@@ -1118,14 +1135,14 @@ if (!function_exists('faqPopupResolveSubmittedScope')) {
 			if ($attachmentType === 'generic') {
 				return array(
 					'status' => false,
-					'message' => 'Seul un super admin peut creer une FAQ generique.',
+					'message' => faqPopupT('copy.seul_un_super_admin_peut_creer_une_faq_generique'),
 				);
 			}
 
 			if ($holon && $holon->resolveOrganizationId() !== $contextOrganizationId) {
 				return array(
 					'status' => false,
-					'message' => \dbObject\Organization::formatLexiconText('Le holon selectionne n appartient pas a l organisation courante.'),
+					'message' => \dbObject\Organization::formatLexiconText('Le holon sélectionné n’appartient pas à l’organisation courante.'),
 				);
 			}
 
@@ -1134,7 +1151,7 @@ if (!function_exists('faqPopupResolveSubmittedScope')) {
 				if (!in_array((int)$parcours->getId(), $availableParcoursIds, true)) {
 					return array(
 						'status' => false,
-						'message' => 'Le parcours selectionne n appartient pas a l organisation courante.',
+						'message' => faqPopupT('copy.le_parcours_selectionne_n_appartient_pas_a_l_organisation_courante'),
 					);
 				}
 			}
@@ -1157,7 +1174,7 @@ if (!function_exists('faqPopupResolveSubmittedScope')) {
 			if ($contextOrganizationId <= 0 || $organizationId !== $contextOrganizationId || !$parcours) {
 				return array(
 					'status' => false,
-					'message' => 'Le parcours selectionne est invalide dans cette organisation.',
+					'message' => faqPopupT('copy.le_parcours_selectionne_est_invalide_dans_cette_organisation'),
 				);
 			}
 
@@ -1165,7 +1182,7 @@ if (!function_exists('faqPopupResolveSubmittedScope')) {
 			if (!in_array((int)$parcours->getId(), $availableParcoursIds, true)) {
 				return array(
 					'status' => false,
-					'message' => 'Vous ne pouvez pas rattacher une FAQ a ce parcours.',
+					'message' => faqPopupT('copy.vous_ne_pouvez_pas_rattacher_une_faq_a_ce_parcours'),
 				);
 			}
 
@@ -1203,7 +1220,7 @@ if (!function_exists('faqPopupResolveSubmittedScope')) {
 
 		return array(
 			'status' => false,
-			'message' => 'Vous n avez pas le droit de modifier le scope de cette FAQ.',
+			'message' => faqPopupT('copy.vous_n_avez_pas_le_droit_de_modifier_le_scope_de_cette_faq'),
 		);
 	}
 }

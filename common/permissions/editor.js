@@ -90,7 +90,7 @@
         filterLabel.className = 'generic-form-label';
         const assigned = document.createElement('input');
         assigned.type = 'checkbox';
-        filterLabel.append(assigned, label(document.createElement('span'), 'assigned', 'Attribues'));
+        filterLabel.append(assigned, label(document.createElement('span'), 'assigned', 'Attribués'));
         actions.append(filterLabel);
         const groups = [];
         for (const section of root.querySelectorAll('[data-permission-group]')) {
@@ -121,12 +121,12 @@
                 const main = row.firstElementChild;
                 const info = document.createElement('details');
                 info.className = 'generic-accordion generic-meta generic-meta--compact';
-                info.append(label(document.createElement('summary'), 'details', 'Details'));
+                info.append(label(document.createElement('summary'), 'details', 'Détails'));
                 for (const item of Array.from(main.children).slice(1)) info.append(item);
                 if (inheritedItems.length) {
                     const note = document.createElement('p');
                     note.className = 'generic-meta';
-                    note.append(label(document.createElement('strong'), 'inherited', 'Herite'), document.createTextNode(' : ' + inheritedItems.join(' ; ')));
+                    note.append(label(document.createElement('strong'), 'inherited', 'Hérité'), document.createTextNode(' : ' + inheritedItems.join(' ; ')));
                     main.append(note);
                 }
                 const picker = row.lastElementChild;
@@ -149,7 +149,7 @@
             button.addEventListener('click', () => groups.forEach(group => { if (!group.details.hidden) group.details.open = open; }));
             actions.append(button);
         }
-        const empty = label(document.createElement('p'), 'empty', 'Aucun resultat');
+        const empty = label(document.createElement('p'), 'empty', 'Aucun résultat');
         empty.className = 'generic-description';
         empty.setAttribute('role', 'status');
         toolbar.append(help, search, actions, empty);

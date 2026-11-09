@@ -13,7 +13,7 @@ class McpDocumentCreation extends DbObject
     public static function attributeLabels()
     {
         return ['id' => 'ID', 'IDuser' => 'Personne', 'IDorganization' => 'Organisation', 'IDdocument' => 'Document',
-            'key_hash' => 'Empreinte demande', 'payload_hash' => 'Empreinte contenu', 'created_at' => 'Creation', 'completed' => 'Termine'];
+            'key_hash' => 'Empreinte demande', 'payload_hash' => 'Empreinte contenu', 'created_at' => 'Création', 'completed' => 'Terminé'];
     }
     public static function attributeLength() { return ['key_hash' => 64, 'payload_hash' => 64]; }
     public function canView() { return false; }

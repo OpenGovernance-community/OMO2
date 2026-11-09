@@ -9,8 +9,8 @@ class DocumentPvNotification extends DbObject
         [['IDdocument', 'stage', 'created_at'], 'required'], [['id'], 'integer'], [['IDdocument'], 'fk'],
         [['stage'], 'string'], [['parameters'], 'parameters'], [['created_at', 'processed_at'], 'datetime'], [['id'], 'safe'],
     ]; }
-    public static function attributeLabels() { return ['IDdocument' => 'PV', 'stage' => 'Etape',
-        'parameters' => 'Destinataires', 'created_at' => 'Creation', 'processed_at' => 'Notifications traitees']; }
+    public static function attributeLabels() { return ['IDdocument' => 'PV', 'stage' => 'Étape',
+        'parameters' => 'Destinataires', 'created_at' => 'Création', 'processed_at' => 'Notifications traitees']; }
     public static function attributeLength() { return ['stage' => 30]; }
 
     public function getPayload(): array

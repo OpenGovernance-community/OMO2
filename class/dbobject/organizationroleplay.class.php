@@ -4,6 +4,20 @@ namespace dbObject;
 /** Isolated characters and delivery rules for organization roleplay imports. */
 class OrganizationRoleplay
 {
+        private static function uiMessage(string $key, array $variables = []): string
+{
+    static $sourceLang = [
+        'copy.aucun_administrateur_reel_ne_peut_recevoir_les_e_mails_du_jeu_de_role' => ['text' => 'Aucun administrateur réel ne peut recevoir les e-mails du jeu de rôle.', 'context' => 'Interface text in class/dbobject/organizationroleplay.class.php'],
+        'copy.destinataire_de_jeu_de_role_ambigu_organisation_requise' => ['text' => 'Destinataire de jeu de rôle ambigu : organisation requise.', 'context' => 'Interface text in class/dbobject/organizationroleplay.class.php'],
+    ];
+    require_once __DIR__ . '/../../common/translation_bundles.php';
+    static $bundles = [];
+    $locale = \translationBundleResolveRequestLocale();
+    $bundle = class_exists(\dbObject\TranslationBundle::class)
+        ? ($bundles[$locale] ??= \loadTranslationBundle('class_dbobject_organizationroleplay_class', $locale, $sourceLang)) : $sourceLang;
+    return \t($key, $variables, $bundle, $sourceLang);
+}
+
     public static function isInvalidEmail(string $email): bool
     {
         $domain = strtolower(substr(strrchr($email, '@') ?: '', 1));
@@ -48,7 +62,7 @@ class OrganizationRoleplay
             $email = strtolower(trim((string)$member->getScopedEmail()));
             if (filter_var($email, FILTER_VALIDATE_EMAIL) && !self::isInvalidEmail($email)) { $addresses[$email] = $email; }
         }
-        if ($addresses === []) { throw new \DomainException('Aucun administrateur reel ne peut recevoir les e-mails du jeu de role.'); }
+        if ($addresses === []) { throw new \DomainException(self::uiMessage('copy.aucun_administrateur_reel_ne_peut_recevoir_les_e_mails_du_jeu_de_role')); }
         return array_values($addresses);
     }
 
@@ -73,7 +87,7 @@ class OrganizationRoleplay
             }
         }
         if ($organizations === []) { return 0; }
-        if (count($organizations) !== 1) { throw new \DomainException('Destinataire de jeu de role ambigu : organisation requise.'); }
+        if (count($organizations) !== 1) { throw new \DomainException(self::uiMessage('copy.destinataire_de_jeu_de_role_ambigu_organisation_requise')); }
         return (int)reset($organizations);
     }
 

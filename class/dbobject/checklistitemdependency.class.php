@@ -24,11 +24,11 @@ class ChecklistItemDependency extends DbObject
     {
         return [
             'id' => 'ID',
-            'IDchecklistitem' => 'Etape',
-            'IDchecklistitem_required' => 'Etape requise',
-            'delay_value' => 'Delai',
-            'delay_unit' => 'Unite du delai',
-            'created_at' => 'Creation',
+            'IDchecklistitem' => 'Étape',
+            'IDchecklistitem_required' => 'Étape requise',
+            'delay_value' => 'Délai',
+            'delay_unit' => 'Unité du délai',
+            'created_at' => 'Création',
         ];
     }
 

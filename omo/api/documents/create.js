@@ -496,7 +496,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
                     if (!result || !result.ok || !result.payload || result.payload.status !== true) {
                         const message = result && result.payload && result.payload.message
                             ? result.payload.message
-                            : omoUiText("ce_document_est_desormais_edite_ailleurs", "Ce document est désormais edite ailleurs.");
+                            : omoUiText("ce_document_est_desormais_edite_ailleurs", "Ce document est désormais édité ailleurs.");
                         markEditLockLost(message);
                     }
                 })
@@ -517,7 +517,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
                     if (!result || !result.ok || !result.payload || result.payload.status !== true) {
                         const message = result && result.payload && result.payload.message
                             ? result.payload.message
-                            : omoUiText("ce_document_est_desormais_edite_ailleurs", "Ce document est désormais edite ailleurs.");
+                            : omoUiText("ce_document_est_desormais_edite_ailleurs", "Ce document est désormais édité ailleurs.");
                         markEditLockLost(message);
                         return;
                     }

@@ -8,6 +8,30 @@ Lors du deploiement du rangement des fichiers, publier ensemble les nouveaux fic
 
 ## 1. Cloner le depot dans le dossier du site
 
+### Indexation des installations
+
+Dans les parametres du serveur, onglet Securite, `SEARCH_ENGINE_INDEXING`
+controle l indexation des pages de l application pour cette installation :
+`allow` (par defaut) autorise l indexation sans annuler les exclusions propres
+aux pages. `block` exclut les pages de l installation. Aucun traitement
+particulier ne depend du nom de domaine : pour exclure uniquement beta,
+mettre `SEARCH_ENGINE_INDEXING=block` dans son `.env` et conserver
+`SEARCH_ENGINE_INDEXING=allow` dans celui de production.
+Le reglage est stocke dans le fichier d environnement de l installation,
+pas dans la base partagee avec une autre instance. Acces egalement disponible
+depuis Parametres > Securite lorsque le mode Admin du serveur est actif.
+
+L exclusion utilise l en-tete HTTP `X-Robots-Tag: noindex, nofollow` sur les
+reponses passant par le bootstrap PHP commun et sur les redirections d accueil.
+Les ressources statiques servies directement par le serveur Web ne passent
+pas par ce bootstrap. Ne pas ajouter `Disallow: /` dans `robots.txt` : le moteur
+doit pouvoir relire les pages pour prendre connaissance du `noindex`.
+Le retrait des resultats existants attend un nouveau passage du moteur ;
+une demande de suppression dans Google Search Console peut accelerer leur masquage.
+Cette consigne ne remplace jamais une authentification pour un site prive.
+
+### Recuperer le code
+
 Se placer dans le dossier racine du site web, puis cloner le depot :
 
 ```bash

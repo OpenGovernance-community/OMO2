@@ -54,8 +54,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($recipientCount === 0) {
         $messageText = $sendScope === 'all'
-            ? 'Aucun destinataire avec une adresse e-mail valide n a ete trouve.'
-            : 'Tous les participants avec une adresse e-mail valide ont deja repondu.';
+            ? omoDecisionUiT('copy.aucun_destinataire_avec_une_adresse_e_mail_valide_n_a_ete_trouve')
+            : omoDecisionUiT('copy.tous_les_participants_avec_une_adresse_e_mail_valide_ont_deja_repondu');
         omoDecisionModuleJsonResponse(422, [
             'status' => false,
             'message' => $messageText,
@@ -155,10 +155,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $messageText = $sentCount === 1
-        ? '1 invitation envoyee.'
-        : $sentCount . ' invitations envoyees.';
+        ? omoDecisionUiT('copy.1_invitation_envoyee')
+        : omoDecisionUiT('copy.sentcount_invitations_envoyees', ['sentCount' => $sentCount]);
     if (count($failedRecipients) > 0) {
-        $messageText .= ' ' . count($failedRecipients) . ' envoi(s) ont echoue.';
+        $messageText .= omoDecisionUiT('copy.failedrecipients_envoi_s_ont_echoue', ['failedRecipients' => count($failedRecipients)]);
     }
     if ($unknownCount > 0) {
         $messageText .= ' ' . omoDecisionUiT('invitation_delivery_unknown');
@@ -172,7 +172,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'message' => $messageText,
         'mail_id' => (int)$historyMail->getId(),
         'redirectUrl' => omoDecisionBuildEditorUrl($organizationId, $targetHolonId, (int)$decision->getId(), $method, 'manage'),
-        'drawerTitle' => 'Prises de decision',
+        'drawerTitle' => omoDecisionUiT('prises_de_decision'),
     ]);
 }
 
@@ -203,11 +203,11 @@ $canSendAll = !$isDraft && $allRecipientCount > 0;
 
     <p class="omo-decision-send-invitations-popup__intro generic-description generic-description--relaxed">
         <?php if ($recipientCount > 0): ?>
-        Personnalisez le message qui sera envoye a <?= (int)$recipientCount ?> destinataire<?= (int)$recipientCount === 1 ? '' : 's' ?> n ayant pas encore repondu.
+        Personnalisez le message qui sera envoyé a <?= (int)$recipientCount ?> destinataire<?= (int)$recipientCount === 1 ? '' : 's' ?> n’ayant pas encore répondu.
         <?php elseif ($allRecipientCount > 0): ?>
-        Tous les destinataires avec une adresse e-mail valide ont deja repondu. Utilisez la fleche pour renvoyer le lien a tout le monde.
+        Tous les destinataires avec une adresse e-mail valide ont déjà répondu. Utilisez la fleche pour renvoyer le lien à tout le monde.
         <?php else: ?>
-        Personnalisez le message avant l envoi des invitations.
+        Personnalisez le message avant l’envoi des invitations.
         <?php endif; ?>
     </p>
 
@@ -268,7 +268,7 @@ $canSendAll = !$isDraft && $allRecipientCount > 0;
                     data-send-scope="all"
                     role="menuitem"
                 >
-                    Envoyer a tout le monde (<?= (int)$allRecipientCount ?>)
+                    <?= htmlspecialchars(omoDecisionUiT('copy.envoyer_a_tout_le_monde_value1', ['value1' => (int)$allRecipientCount]), ENT_QUOTES, 'UTF-8') ?>
                 </button>
             </div>
         </div>

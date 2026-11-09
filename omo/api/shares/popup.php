@@ -150,8 +150,8 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
 
     <div class="omo-share-popup__form-panel" id="omoSharePopupFormSection"<?= $hasExistingLinks ? ' hidden' : '' ?>>
         <div class="omo-share-popup__section">
-            <h3 class="omo-share-popup__section-title generic-card-title generic-card-title--large" id="omoSharePopupFormTitle"><?= $hasExistingLinks ? 'Nouveau lien de partage' : 'Creer un lien de partage' ?></h3>
-            <p class="omo-share-popup__section-text generic-description" id="omoSharePopupFormIntro"><?= $hasExistingLinks ? 'Configure un nouveau lien ou modifie un lien existant.' : htmlspecialchars(\dbObject\Organization::formatLexiconText('Aucun lien n existe encore pour ce holon. Creons le premier.'), ENT_QUOTES, 'UTF-8') ?></p>
+            <h3 class="omo-share-popup__section-title generic-card-title generic-card-title--large" id="omoSharePopupFormTitle"><?= $hasExistingLinks ? 'Nouveau lien de partage' : omoSharesUiT('copy.creer_un_lien_de_partage') ?></h3>
+            <p class="omo-share-popup__section-text generic-description" id="omoSharePopupFormIntro"><?= $hasExistingLinks ? 'Configure un nouveau lien ou modifie un lien existant.' : htmlspecialchars(\dbObject\Organization::formatLexiconText('Aucun lien n’existe encore pour ce holon. Créons le premier.'), ENT_QUOTES, 'UTF-8') ?></p>
         </div>
 
         <form class="omo-share-popup__form" id="omoSharePopupForm">

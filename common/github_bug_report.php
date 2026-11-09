@@ -80,7 +80,7 @@ if (!function_exists('githubBugReportGetSourceLang')) {
             'issue_username' => 'Nom d’utilisateur',
             'issue_organization' => 'Organisation',
             'issue_organization_id' => 'Identifiant de l’organisation',
-            'issue_organization_shortname' => 'Identifiant URL de l organisation',
+            'issue_organization_shortname' => 'Identifiant URL de l’organisation',
             'issue_browser' => 'Navigateur',
             'issue_os' => 'Système',
             'issue_user_agent' => 'Agent utilisateur',
@@ -94,7 +94,11 @@ if (!function_exists('githubBugReportGetSourceLang')) {
             'issue_referrer' => 'Page d’origine',
             'issue_client_timestamp' => 'Heure du navigateur',
             'issue_server_timestamp' => 'Heure du serveur',
-        ];
+
+            'copy.la_configuration_github_est_incomplete_extension_php_curl_manquante' => 'La configuration GitHub est incomplète : extension PHP cURL manquante.',
+            'copy.impossible_de_preparer_la_charge_github' => 'Impossible de préparer la charge GitHub.',
+            'copy.erreur_reseau_github_error' => 'Erreur réseau GitHub : {error}',
+    ];
 
         $sourceLang = [];
         foreach ($texts as $key => $text) {
@@ -235,7 +239,7 @@ if (!function_exists('githubBugReportGetDestinationSummary')) {
     {
         $repoOwner = githubBugReportGetRepositoryOwner();
         $repoName = githubBugReportGetRepositoryName();
- 
+
         return [
             'repo' => $repoOwner !== '' && $repoName !== '' ? $repoOwner . '/' . $repoName : '',
             'repoUrl' => $repoOwner !== '' && $repoName !== '' ? 'https://github.com/' . $repoOwner . '/' . $repoName : '',
@@ -265,7 +269,7 @@ if (!function_exists('githubBugReportRequest')) {
     function githubBugReportRequest($method, $url, $payload = null)
     {
         if (!function_exists('curl_init')) {
-            throw new RuntimeException('La configuration GitHub est incomplete : extension PHP cURL manquante.');
+            throw new RuntimeException(githubBugReportT('copy.la_configuration_github_est_incomplete_extension_php_curl_manquante'));
         }
 
         $curl = curl_init((string)$url);
@@ -278,7 +282,7 @@ if (!function_exists('githubBugReportRequest')) {
         if ($payload !== null) {
             $encodedPayload = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             if ($encodedPayload === false) {
-                throw new RuntimeException('Impossible de preparer la charge GitHub.');
+                throw new RuntimeException(githubBugReportT('copy.impossible_de_preparer_la_charge_github'));
             }
 
             curl_setopt($curl, CURLOPT_POSTFIELDS, $encodedPayload);
@@ -287,7 +291,7 @@ if (!function_exists('githubBugReportRequest')) {
         $body = curl_exec($curl);
         if ($body === false) {
             $error = curl_error($curl);
-            throw new RuntimeException('Erreur reseau GitHub : ' . $error);
+            throw new RuntimeException(githubBugReportT('copy.erreur_reseau_github_error', ['error' => $error]));
         }
 
         $status = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);

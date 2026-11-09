@@ -774,6 +774,10 @@ var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; 
                     Array.prototype.forEach.call(proposalList.querySelectorAll('[data-omo-decision-consent-proposal-card]'), bindProposalCard);
                     refreshProposalLabels();
                     syncSettingsSummary();
+                    form.commonDecisionQuestionSettings = {
+                        button: settingsOpenButton, editable: payload.proposalEditable === true,
+                        payload: payload, proposals: proposalList, prefix: 'consent', refreshSummary: syncSettingsSummary
+                    };
 
                     form.addEventListener('submit', function (event) {
                         event.preventDefault();
@@ -900,6 +904,11 @@ var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; 
 
                     form.addEventListener('submit', function (event) {
                         event.preventDefault();
+                        if (payload.evaluationPreview || document.body.hasAttribute('data-omo-decision-evaluation-preview')) {
+                            setFeedback('', false);
+                            if (typeof window.omoDecisionCompleteEvaluationPreview === 'function') window.omoDecisionCompleteEvaluationPreview(form);
+                            return;
+                        }
                         if (!payload.saveUrl) {
                             return;
                         }

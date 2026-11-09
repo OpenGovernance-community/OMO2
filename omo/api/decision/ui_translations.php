@@ -5,9 +5,9 @@ require_once __DIR__ . '/../../translations.php';
 function omoDecisionUiSourceLang(): array
 {
     static $sourceLang = [
-        'invitation_history_error' => ['text' => 'Impossible de creer le journal des envois. Aucune invitation envoyee.', 'context' => 'Decision invitation tracking must be stored before sending.'],
+        'invitation_history_error' => ['text' => 'Impossible de créer le journal des envois. Aucune invitation envoyée.', 'context' => 'Decision invitation tracking must be stored before sending.'],
         'invitation_history_warning' => ['text' => 'Le suivi de certains envois est incomplet. Consultez le journal du bouton mail avant de relancer.', 'context' => 'Decision delivery succeeded or failed but its tracking could not be updated.'],
-        'invitation_delivery_unknown' => ['text' => 'Le resultat de certains envois est incertain. Consultez le journal du bouton mail avant de relancer.', 'context' => 'An interrupted decision invitation may have reached SMTP; avoid duplicate sends.'],
+        'invitation_delivery_unknown' => ['text' => 'Le résultat de certains envois est incertain. Consultez le journal du bouton mail avant de relancer.', 'context' => 'An interrupted decision invitation may have reached SMTP; avoid duplicate sends.'],
         'methode_non_autorisee' => ['text' => 'Méthode non autorisée.', 'context' => 'Validation or action feedback in api/decision/action.php, api/decision/governance/save.php, api/decision/governance/summarize.php, api/decision/import.php, api/decision/modules/consent/respond.php, api/decision/modules/consent/save.php, api/decision/modules/consultation_only/convert.php, api/decision/modules/majority_judgment/respond.php, api/decision/modules/majority_judgment/save.php, api/decision/modules/proposals/calendar.php, api/decision/modules/proposals/consultation_add.php, api/decision/modules/proposals/delete.php, api/decision/modules/proposals/discussion.php, api/decision/modules/proposals/edit.php, api/decision/modules/vote/respond.php, api/decision/modules/vote/save.php, api/decision/save_multi.php'],
         'contexte_de_prise_de_decision_invalide' => ['text' => 'Contexte de prise de décision invalide.', 'context' => 'Validation or action feedback in api/decision/action.php'],
         'prise_de_decision_introuvable' => ['text' => 'Prise de décision introuvable.', 'context' => 'Validation or action feedback in api/decision/action.php, api/decision/save_multi.php'],
@@ -111,7 +111,8 @@ function omoDecisionUiSourceLang(): array
         'le_statut_en_evaluation_doit_correspondre_a_une_date_de_debut_d_evaluation_deja_atteinte' => ['text' => 'Le statut « En évaluation » doit correspondre à une date de début d’évaluation déjà atteinte.', 'context' => 'Validation or action feedback in api/decision/modules/consent/save.php, api/decision/modules/majority_judgment/save.php, api/decision/modules/vote/save.php'],
         'visibilite_invalide_pour_cette_prise_de_decision' => ['text' => 'Visibilité invalide pour cette prise de décision.', 'context' => 'Validation or action feedback in api/decision/modules/consent/save.php, api/decision/modules/majority_judgment/save.php, api/decision/modules/vote/save.php'],
         'les_conditions_d_anonymat_ne_peuvent_plus_etre_modifiees_apres_le_debut_du_vote' => ['text' => 'Les conditions d’anonymat ne peuvent plus être modifiées après le début du vote.', 'context' => 'Validation or action feedback in api/decision/modules/consent/save.php, api/decision/modules/majority_judgment/save.php, api/decision/modules/vote/save.php'],
-        'le_vote_nominatif_ne_peut_plus_etre_active_apres_une_participation' => ['text' => 'Le vote nominatif ne peut plus être activé après une participation.', 'context' => 'Validation or action feedback in api/decision/modules/consent/save.php, api/decision/modules/majority_judgment/save.php, api/decision/modules/vote/save.php'],
+        'le_vote_nominatif_ne_peut_plus_etre_active_apres_une_participation' => ['text' => 'Le vote nominatif ne peut plus être activé après le début de l’évaluation ou l’enregistrement d’une réponse, même partielle.', 'context' => 'Validation or action feedback in api/decision/modules/consent/save.php, api/decision/modules/majority_judgment/save.php, api/decision/modules/vote/save.php'],
+        'vote_nominatif_contributions_precedentes' => ['text' => 'Le passage en nominatif est possible avant le début de l’évaluation. Les propositions et messages publiés anonymement auparavant conservent leur anonymat. Les nouvelles contributions suivent le nouveau réglage. Le réglage est verrouillé dès le début de l’évaluation.', 'context' => 'Shared help for named voting in question settings.'],
         'impossible_d_enregistrer_ce_scrutin_pour_le_moment' => ['text' => 'Impossible d’enregistrer ce scrutin pour le moment.', 'context' => 'Validation or action feedback in api/decision/modules/consent/save.php, api/decision/modules/majority_judgment/save.php, api/decision/modules/vote/save.php'],
         'pas_d_objection' => ['text' => 'Pas d’objection', 'context' => 'Validation or action feedback in api/decision/modules/consent/shared.php'],
         'contexte_de_consultation_invalide' => ['text' => 'Contexte de consultation invalide.', 'context' => 'Validation or action feedback in api/decision/modules/consultation_only/convert.php'],
@@ -192,7 +193,28 @@ function omoDecisionUiSourceLang(): array
         'detail' => ['text' => 'Détail', 'context' => 'Interface text in api/decision/modules/common.php'],
         'modifications_proposees' => ['text' => 'Modifications proposées', 'context' => 'Interface text in api/decision/modules/common.php'],
         'https' => ['text' => 'https://...', 'context' => 'Interface text in api/decision/modules/common.php'],
-    ];
+
+        'copy.choisissez_la_methode_du_nouveau_groupe' => ['text' => 'Choisissez la méthode du nouveau groupe.', 'context' => 'Interface text in omo/api/decision/edit_shared.php'],
+        'copy.acces_refuse_a_cet_export' => ['text' => 'Accès refusé à cet export.', 'context' => 'Interface text in omo/api/decision/export.php'],
+        'copy.cet_export_multi_blocs_demande_pour_l_instant_des_blocs_utilisant_la_m' => ['text' => 'Cet export multi-blocs demande pour l’instant des blocs utilisant la même méthode.', 'context' => 'Interface text in omo/api/decision/export.php'],
+        'copy.export_indisponible_pour_cette_methode' => ['text' => 'Export indisponible pour cette méthode.', 'context' => 'Interface text in omo/api/decision/export.php'],
+        'copy.methode_d_import_non_supportee_method' => ['text' => 'Méthode d’import non supportée: {method}', 'context' => 'Interface text in omo/api/decision/import.php'],
+        'copy.impossible_d_importer_ce_fichier' => ['text' => 'Impossible d’importer ce fichier.', 'context' => 'Interface text in omo/api/decision/import.php'],
+        'copy.du_contexte_courant' => ['text' => 'du contexte courant', 'context' => 'Interface text in omo/api/decision/modules/common.php'],
+        'copy.aucune_ligne_importable_trouvee_dans_ce_csv' => ['text' => 'Aucune ligne importable trouvée dans ce CSV.', 'context' => 'Interface text in omo/api/decision/modules/import_common.php'],
+        'copy.aucune_evaluation_soumise' => ['text' => 'Aucune évaluation soumise', 'context' => 'Interface text in omo/api/decision/modules/majority_judgment/export.php'],
+        'copy.count_propositions_ajoutees_a_la_consultation' => ['text' => '{count} propositions ajoutées à la consultation.', 'context' => 'Interface text in omo/api/decision/modules/proposals/consultation_add.php'],
+        'copy.proposition_ajoutee_a_la_consultation' => ['text' => 'Proposition ajoutée à la consultation.', 'context' => 'Interface text in omo/api/decision/modules/proposals/consultation_add.php'],
+        'copy.toutes_les_propositions_soumises_existent_deja' => ['text' => 'Toutes les propositions soumises existent déjà.', 'context' => 'Interface text in omo/api/decision/modules/proposals/consultation_add.php'],
+        'copy.impossible_de_creer_le_scrutin' => ['text' => 'Impossible de créer le scrutin.', 'context' => 'Interface text in omo/api/decision/save_multi.php'],
+        'copy.aucun_destinataire_avec_une_adresse_e_mail_valide_n_a_ete_trouve' => ['text' => 'Aucun destinataire avec une adresse e-mail valide n’a été trouve.', 'context' => 'Interface text in omo/api/decision/send_invitations_popup.php'],
+        'copy.tous_les_participants_avec_une_adresse_e_mail_valide_ont_deja_repondu' => ['text' => 'Tous les participants avec une adresse e-mail valide ont déjà répondu.', 'context' => 'Interface text in omo/api/decision/send_invitations_popup.php'],
+        'copy.1_invitation_envoyee' => ['text' => '1 invitation envoyée.', 'context' => 'Interface text in omo/api/decision/send_invitations_popup.php'],
+        'copy.sentcount_invitations_envoyees' => ['text' => '{sentCount} invitations envoyées.', 'context' => 'Interface text in omo/api/decision/send_invitations_popup.php'],
+        'copy.failedrecipients_envoi_s_ont_echoue' => ['text' => ' {failedRecipients} envoi(s) ont échoué.', 'context' => 'Interface text in omo/api/decision/send_invitations_popup.php'],
+
+        'copy.envoyer_a_tout_le_monde_value1' => ['text' => 'Envoyer à tout le monde ({value1})', 'context' => 'Interface text rendered by omo/api/decision/send_invitations_popup.php'],
+];
     return $sourceLang;
 }
 

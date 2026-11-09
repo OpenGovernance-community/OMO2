@@ -302,7 +302,7 @@ $sourceLang = [
         'context' => 'Title passed to the Patreon welcome popup configuration.',
     ],
     'app.user.demo' => [
-        'text' => 'Demo',
+        'text' => 'Démo',
         'context' => 'Display name shown for a demo guest user.',
     ],
     'common.back_to_home' => [
@@ -1403,7 +1403,7 @@ window.omoConfig = <?=
 ?>;
 </script>
 <?= $omoPwaBodyEndHtml ?>
-<script src="<?= commonAssetUrl('/omo/assets/js/ui-translations.js') ?>"></script>
+<script src="<?= commonAssetUrl('/common/assets/ui-translations.js') ?>"></script>
 <?php if ($isSiteAdmin) { ?>
 <script src="/omo/assets/js/site-update.js"></script>
 <?php } ?>

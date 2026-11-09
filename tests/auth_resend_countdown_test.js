@@ -51,8 +51,11 @@ function fixture(storage = {}, initialNow = 1000000) {
     first.button.click();
     first.window.document.getElementById('authEmailInput').dispatchEvent(new first.window.KeyboardEvent('keydown', {key:'Enter', bubbles:true}));
     assert.equal(first.requests.length, 1, 'Neither click nor Enter resends during the cooldown');
+    assert.match(first.window.document.getElementById('authStatus').textContent, /1 minute/, 'Blocked keyboard attempts explain the wait');
     first.advance(30000);
     assert.equal(first.button.textContent, 'Envoyer un nouveau code (30 s)');
+    first.window.document.getElementById('authEmailInput').dispatchEvent(new first.window.KeyboardEvent('keydown', {key:'Enter', bubbles:true}));
+    assert.match(first.window.document.getElementById('authStatus').textContent, /30 secondes/, 'Local feedback shows the remaining seconds');
 
     const reloaded = fixture(first.storage(), 1030000);
     await flush();
@@ -76,7 +79,22 @@ function fixture(storage = {}, initialNow = 1000000) {
     reloaded.reply({error:'send_failed'});
     await flush();
     assert.equal(reloaded.button.disabled, false, 'An unsuccessful request does not start a new countdown');
+    reloaded.button.click();
+    reloaded.reply({error:'rate_limited', retry_after:2700, message:'Trop de tentatives. Veuillez patienter 45 minutes avant d’essayer à nouveau.'});
+    await flush();
+    assert.match(reloaded.window.document.getElementById('authStatus').textContent, /45 minutes/, 'Server cooldown message is displayed');
+    assert.equal(reloaded.button.disabled, true, 'Server cooldown disables further delivery');
+    const requestCount = reloaded.requests.length;
+    reloaded.advance(10000);
+    reloaded.window.document.getElementById('authEmailInput').dispatchEvent(new reloaded.window.KeyboardEvent('keydown', {key:'Enter', bubbles:true}));
+    assert.equal(reloaded.requests.length, requestCount, 'Cooldown attempts send no request');
+    const serverReload = fixture(reloaded.storage(), 1135000);
+    await flush();
+    assert.equal(serverReload.button.textContent, 'Envoyer un nouveau code (2690 s)', 'Reload preserves the server deadline without extending it');
+    serverReload.advance(2690000);
+    assert.equal(serverReload.button.disabled, false, 'Resending becomes available at the original deadline');
     first.window.close();
     reloaded.window.close();
-    console.log('auth_resend_countdown_test: OK (60s delay, reload, keyboard, resend, pending delivery, failure)');
+    serverReload.window.close();
+    console.log('auth_resend_countdown_test: OK (60s delay, reload, keyboard, resend, pending delivery, failure, server cooldown)');
 })().catch(error => { console.error(error); process.exitCode = 1; });

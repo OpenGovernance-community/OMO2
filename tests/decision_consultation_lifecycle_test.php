@@ -121,4 +121,12 @@ assertDecisionConsultationLifecycle(
     'The evaluation phase must expose voting without reopening consultation.'
 );
 
+$unstarted = new DecisionProcess();
+$unstarted->set('status', DecisionProcess::STATUS_DRAFT);
+foreach (['-1 day', '+1 day'] as $end) {
+    $unstarted->set('evaluation_end_at', new DateTimeImmutable($end));
+    assertDecisionConsultationLifecycle($unstarted->resolveAutomaticStatus() === DecisionProcess::STATUS_DRAFT,
+        'An evaluation end without a start must neither schedule the scrutiny nor publish its results.');
+}
+
 echo "Decision consultation lifecycle tests passed.\n";

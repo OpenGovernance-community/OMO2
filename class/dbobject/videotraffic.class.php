@@ -6,7 +6,7 @@ class VideoTraffic extends DbObject
 {
     public static function tableName() { return 'video_traffic'; }
     public static function rules() { return [[['endpoint_key', 'room_code'], 'string'], [['IDuser', 'IDorganization'], 'fk'], [['sampled_at'], 'datetime'], [['received_total', 'sent_total', 'received_bytes', 'sent_bytes'], 'integer']]; }
-    public static function attributeLabels() { return ['received_bytes' => 'Octets recus', 'sent_bytes' => 'Octets envoyes']; }
+    public static function attributeLabels() { return ['received_bytes' => 'Octets reçus', 'sent_bytes' => 'Octets envoyés']; }
 
     // Sender branches share one counter. Taking the maximum avoids counting it several times.
     private static function packetBytes(array $tree): ?int
@@ -78,7 +78,7 @@ class VideoTraffic extends DbObject
     }
     public static function dashboard(string $start, string $end, string $group, int $organizationId): array
     {
-        if (!self::tableExists(self::tableName())) return ['available' => false, 'rows' => [], 'status' => []];
+        if (!self::tableExists(self::tableName())) return ['available' => false, 'rows' => [], 'daily' => [], 'status' => []];
         $byOrg = $group === 'organization';
         $field = $byOrg ? 't.IDorganization' : 't.IDuser';
         $name = $byOrg ? 'o.name' : "CONCAT_WS(' ', u.firstname, u.lastname)";
@@ -89,6 +89,10 @@ class VideoTraffic extends DbObject
             SUM(t.sent_bytes) AS sent_bytes, COUNT(DISTINCT t.room_code) AS rooms FROM video_traffic t
             LEFT JOIN user u ON u.id = t.IDuser LEFT JOIN organization o ON o.id = t.IDorganization
             WHERE $where GROUP BY $field, $name ORDER BY sent_bytes DESC", $params);
-        return ['available' => true, 'rows' => $rows ?: [], 'status' => VideoTrafficCollector::status()];
+        // The daily chart is always global, including rooms without an organization.
+        $daily = self::fetchAll('SELECT DATE(sampled_at) AS period_date, SUM(received_bytes) AS received_bytes,
+            SUM(sent_bytes) AS sent_bytes FROM video_traffic WHERE sampled_at >= :start AND sampled_at < :end
+            GROUP BY DATE(sampled_at) ORDER BY period_date', ['start' => $start, 'end' => $end]);
+        return ['available' => true, 'rows' => $rows ?: [], 'daily' => $daily ?: [], 'status' => VideoTrafficCollector::status()];
     }
 }

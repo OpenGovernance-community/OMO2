@@ -1,6 +1,8 @@
 <?php
 
 	require_once __DIR__ . '/common/environment_subdomains.php';
+	require_once __DIR__ . '/common/search_indexing.php';
+	commonSendSearchEngineIndexingHeaders();
 
 	$routes = [
 		'admin'   => '/admin/index.php',
@@ -478,7 +480,7 @@ padding:15px;
 	<div class='tool'><h1 class='box_title omo_title'>OMO 2.0</h1><p>Centralisez les informations de votre organisation dans un seul endroit.</p><p><a href='/omo'>&gt;Découvrez le développement en cours (mais déjà fonctionnel)</a></p></div>
 	<div class='tool'><h1 class='box_title easypv_title'>EasyPV</h1><p>Facilitez vos prises de notes en réunion grâche à cette application permettant de gérer un ordre du jour dynamique!</p><p><a href='/pv'>&gt;Découvrez ce module</a></p></div>
 	<div class='tool'><h1 class='box_title easycircle_title'>EasyCIRCLE</h1><p>Améliorez la lisibilité de la structure de votre organisation grâce à l'affichage des espaces.</p><p><a href='/circle'>&gt;Découvrez ce module</a></p></div>
-	<div class='tool'><h1 class='box_title easymemo_title on_dev'>EasyMEMO</h1><p>Générez facilement des mémos depuis votre téléphone portable, en utilisant l'IA pour retranscrire et formater vos propos.</p><p><a target='_blank' href='https://t.me/SD2_MemoBot'>&gt;Connectez le BOT Telegram</a><br><a target='_blank' href='/memo'>&gt;Gérez vos memos</a></p></div>
+	<div class='tool'><h1 class='box_title easymemo_title on_dev'>EasyMEMO</h1><p>Générez facilement des mémos depuis votre téléphone portable, en utilisant l'IA pour retranscrire et formater vos propos.</p><p><a target='_blank' href='https://t.me/SD2_MemoBot'>&gt;Connectez le BOT Telegram</a><br><a target='_blank' href='/memo'>&gt;Gérez vos mémos</a></p></div>
 	<div class='tool'><h1 class='box_title easymgov_title on_dev'>EasyGOV</h1><p>Définissez des règles de fonctionnement sous la forme d'une constitution claire et accessibles à tous et toutes.</p><p><a target='_blank' href='https://jm.instantz.org/constitution.php'>&gt;Visitez le chantier</a></p></div>
 	<div class='tool'><h1 class='box_title easytask_title on_project'>EasyTASK</h1><p>Augmentez votre productivité grâce à notre application de gestion de tâches pour mobile et PC.</p></div>
 	<div class='tool'><h1 class='box_title easypilot_title on_project'>EasyPILOT</h1><p>Pilotez votre organisation en vous appuyant sur des faits, grâche à un cockpit d'indicateurs visuels de qualité.</p></div>
@@ -497,7 +499,7 @@ padding:15px;
   <img src="/img/down-arrow.png" alt="" class="arrow">
 </a>
 <div class="project-presentation-video" id="content">
-  <iframe src="https://player.vimeo.com/video/1200446731" title="Project presentation video" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>
+  <iframe src="https://player.vimeo.com/video/1200446731" title="Project présentation vidéo" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>
 </div>
 <div class="contentPres">
 
@@ -546,7 +548,7 @@ padding:15px;
   <section class="bloc">
     <img src="/img/ilu_peda.jpg" alt="Illustration pédagogique">
     <div>
-      <h2>Pedagogique</h2>
+      <h2>Pédagogique</h2>
       <p>Nous comprenons les défis auxquels sont confrontés les utilisateurs lorsqu'il s'agit de maîtriser la complexité des informations, c'est pourquoi notre logiciel a été conçu pour rendre cette expérience d'apprentissage aussi accessible et progressive que possible.</p>
       <p>S'appuyant sur les enseignements tirés au cours de ces dix dernières années d'implémentation chez nos clients, notre logiciel intègre une approche pédagogique unique. Nous avons identifié et compris les obstacles que peuvent rencontrer les utilisateurs lors de la prise en main d'un outil complexe, et nous avons mis en place des solutions pour les surmonter.</p>
       <p>Pour faciliter votre apprentissage, nous mettons à votre disposition une documentation complète, claire et concise. Chaque fonctionnalité est expliquée en détail, accompagnée d'exemples concrets pour une compréhension approfondie. De plus, notre approche progressive vous permet d'apprendre pas à pas, sans être submergé par la complexité, vous laissant ainsi la liberté de maîtriser les différentes fonctions à votre rythme.</p>
@@ -556,14 +558,14 @@ padding:15px;
   <?php if (!empty($homepageOrganizationMapRows)): ?>
   <section class="home-organization-map">
     <div class="home-organization-map__header">
-      <h2>Des organisations utilisent deja OMO</h2>
-      <p>Cette carte publique n affiche que des informations d organisation explicitement marquees comme lisibles sans connexion. Les donnees sensibles restent hors de portee.</p>
+      <h2>Des organisations utilisent déjà OMO</h2>
+      <p>Cette carte publique n’affiche que des informations d’organisation explicitement marquées comme lisibles sans connexion. Les données sensibles restent hors de portée.</p>
     </div>
 
     <?php if ($homepageLeafletMapsEnabled): ?>
       <div id="homepageOrganizationMap" class="home-organization-map__canvas"></div>
     <?php else: ?>
-      <div class="home-organization-map__empty">La carte n est pas disponible sur ce serveur pour le moment, mais la liste publique des organisations reste visible ci-dessous.</div>
+      <div class="home-organization-map__empty">La carte n’est pas disponible sur ce serveur pour le moment, mais la liste publique des organisations reste visible ci-dessous.</div>
     <?php endif; ?>
 
   </section>
@@ -572,10 +574,10 @@ padding:15px;
   <?php if ($patreonHomepageEnabled && !empty($homepagePatreonContributors['items'])): ?>
   <section class="home-contributors">
     <div class="home-contributors__header">
-      <h2 class="home-contributors__header-title">Ils soutiennent deja le projet</h2>
+      <h2 class="home-contributors__header-title">Ils soutiennent déjà le projet</h2>
     </div>
     <div class="home-contributors__body">
-      <p class="home-contributors__text">Merci aux contributeurs Patreon qui accompagnent activement le developpement du projet et l'aident a rester ouvert, libre et durable.</p>
+      <p class="home-contributors__text">Merci aux contributeurs Patreon qui accompagnent activement le développement du projet et l'aident a rester ouvert, libre et durable.</p>
       <div class="home-contributors__avatars">
         <?php foreach ($homepagePatreonContributors['items'] as $contributor): ?>
           <?php

@@ -36,6 +36,7 @@ if (!function_exists('omoDecisionMajorityJudgmentImportBlock')) {
 
         $group->set('decision_type', DecisionProcess::normalizeDecisionType((string)($blockBlueprint['decision_type'] ?? DecisionProcess::TYPE_DECISION)));
         $group->set('evaluation_method', DecisionProcess::METHOD_MAJORITY_JUDGMENT);
+        $group->set('short_title', mb_substr(trim((string)($blockBlueprint['short_title'] ?? '')), 0, 190));
         $group->set('title', trim((string)($blockBlueprint['title'] ?? '')) !== '' ? trim((string)$blockBlueprint['title']) : 'Bloc');
         $group->set('description', trim((string)($blockBlueprint['description'] ?? '')) !== '' ? trim((string)$blockBlueprint['description']) : null);
         $group->set('parameters', $parameters);

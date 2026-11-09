@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/calendar/external-translations.php';
+
 
 // The same normalized event cache serves CalDAV reports and subscribed ICS feeds.
 if (!class_exists(\RRule\RRule::class)) {
@@ -26,7 +28,7 @@ function commonExternalCalendarIcsComponents(string $feed): array
         $name = $property['name'];
         $value = strtoupper(trim((string)$property['value']));
         if ($name === 'BEGIN' && $value === 'VEVENT') {
-            if ($current !== null || count($events) >= 10000) { throw new \RuntimeException('Le flux ICS contient trop d evenements.'); }
+            if ($current !== null || count($events) >= 10000) { throw new \RuntimeException(commonExternalCalendarT('copy.le_flux_ics_contient_trop_d_evenements')); }
             $current = [];
             $nested = 0;
             continue;
@@ -75,19 +77,19 @@ function commonExternalCalendarIcsKey(\DateTimeInterface $date, bool $allDay): s
 function commonExternalCalendarIcsDates(array $event, \DateTimeZone $defaultZone): array
 {
     $startProperty = commonExternalCalendarIcsProperty($event, 'DTSTART');
-    if ($startProperty === null) { throw new \RuntimeException('Un evenement ICS n a pas de debut.'); }
+    if ($startProperty === null) { throw new \RuntimeException(commonExternalCalendarT('copy.un_evenement_ics_n_a_pas_de_debut')); }
     $start = commonExternalCalendarIcsDate($startProperty, $defaultZone);
     $endProperty = commonExternalCalendarIcsProperty($event, 'DTEND');
     if ($endProperty !== null) {
         $end = commonExternalCalendarIcsDate($endProperty, $start['timezone']);
-        if ($end['is_all_day'] !== $start['is_all_day']) { throw new \RuntimeException('Une duree ICS est invalide.'); }
+        if ($end['is_all_day'] !== $start['is_all_day']) { throw new \RuntimeException(commonExternalCalendarT('copy.une_duree_ics_est_invalide')); }
         $endAt = $end['value'];
     } elseif (($duration = commonExternalCalendarIcsProperty($event, 'DURATION')) !== null) {
         $endAt = $start['value']->add(new \DateInterval((string)$duration['value']));
     } else {
         $endAt = $start['is_all_day'] ? $start['value']->modify('+1 day') : $start['value']->modify('+1 hour');
     }
-    if ($endAt <= $start['value']) { throw new \RuntimeException('Une duree ICS est invalide.'); }
+    if ($endAt <= $start['value']) { throw new \RuntimeException(commonExternalCalendarT('copy.une_duree_ics_est_invalide')); }
     return [$start['value'], $endAt, (bool)$start['is_all_day']];
 }
 
@@ -105,7 +107,7 @@ function commonExternalCalendarIcsValues(array $event, string $uid, string $key,
         'single_source_prefix' => !isset($event['RRULE']) && !isset($event['RDATE'])
             && !isset($event['RECURRENCE-ID']) ? $uid . '|' : null,
         'source_etag' => '',
-        'title' => $value('SUMMARY') ?: 'Evenement externe',
+        'title' => $value('SUMMARY') ?: commonExternalCalendarT('copy.evenement_externe'),
         'description' => $value('DESCRIPTION'),
         'location' => $value('LOCATION'),
         'timezone' => $start->getTimezone()->getName(),
@@ -127,13 +129,13 @@ function commonExternalCalendarIcsRecurrence(string $rule, \DateTimeImmutable $s
         $pair = explode('=', $part);
         $name = strtoupper(trim($pair[0]));
         if (count($pair) !== 2 || $name === '' || trim($pair[1]) === '' || array_key_exists($name, $parts)) {
-            throw new \RuntimeException('Regle de recurrence ICS invalide.');
+            throw new \RuntimeException(commonExternalCalendarT('copy.regle_de_recurrence_ics_invalide'));
         }
         $value = trim($pair[1]);
         if ($name === 'UNTIL') {
             $until = commonExternalCalendarIcsDate(['value' => $value, 'parameters' => []], $start->getTimezone());
             // Some exporters also use an explicit UTC cutoff for all-day series.
-            if (!$allDay && $until['is_all_day']) { throw new \RuntimeException('Date de fin de recurrence ICS incompatible.'); }
+            if (!$allDay && $until['is_all_day']) { throw new \RuntimeException(commonExternalCalendarT('copy.date_de_fin_de_recurrence_ics_incompatible')); }
             $value = \DateTime::createFromImmutable($until['value']);
         }
         $parts[$name] = $value;
@@ -149,7 +151,7 @@ function commonExternalCalendarParseIcsFeed(string $feed, \DateTimeInterface $ra
         $defaultZone = new \DateTimeZone($document['timezone'] ?: date_default_timezone_get());
         foreach ($document['events'] as $event) {
             $uid = trim((string)(commonExternalCalendarIcsProperty($event, 'UID')['value'] ?? ''));
-            if ($uid === '') { throw new \RuntimeException('Un evenement ICS n a pas d identifiant.'); }
+            if ($uid === '') { throw new \RuntimeException(commonExternalCalendarT('copy.un_evenement_ics_n_a_pas_d_identifiant')); }
             $groups[$uid][] = $event;
         }
         $parsed = [];
@@ -171,13 +173,13 @@ function commonExternalCalendarParseIcsFeed(string $feed, \DateTimeInterface $ra
                 $lookback = $allDay ? min($duration, 366) . ' days' : min($duration, 366 * 86400) . ' seconds';
                 $begin = \DateTimeImmutable::createFromInterface($rangeStart)->modify('-' . $lookback);
                 foreach ($recurrence->getOccurrencesBetween($begin, $rangeEnd, 10001) as $occurrence) {
-                    if (count($starts) >= 10000) { throw new \RuntimeException('Trop d occurrences ICS.'); }
+                    if (count($starts) >= 10000) { throw new \RuntimeException('Trop d’occurrences ICS.'); }
                     $date = \DateTimeImmutable::createFromInterface($occurrence)->setTimezone($zone);
                     $starts[commonExternalCalendarIcsKey($date, $allDay)] = $date;
                 }
             }
             foreach ($master['RDATE'] ?? [] as $property) {
-                if (str_contains((string)$property['value'], '/')) { throw new \RuntimeException('RDATE en periode non pris en charge.'); }
+                if (str_contains((string)$property['value'], '/')) { throw new \RuntimeException(commonExternalCalendarT('copy.rdate_en_periode_non_pris_en_charge')); }
                 foreach (explode(',', (string)$property['value']) as $rawDate) {
                     $date = commonExternalCalendarIcsDate(['value' => $rawDate, 'parameters' => $property['parameters']], $zone);
                     if ($date['is_all_day'] !== $allDay) { throw new \RuntimeException('RDATE incompatible.'); }
@@ -218,16 +220,15 @@ function commonExternalCalendarParseIcsFeed(string $feed, \DateTimeInterface $ra
                 $parsed[$values['source_key']] = $values;
             }
         }
-        if (count($parsed) > 10000) { throw new \RuntimeException('Trop d occurrences ICS.'); }
+        if (count($parsed) > 10000) { throw new \RuntimeException('Trop d’occurrences ICS.'); }
         return ['status' => true, 'events' => array_values($parsed)];
     } catch (\Throwable $exception) {
         $detail = trim(preg_replace('/[\x00-\x1F\x7F]+/', ' ', $exception->getMessage()) ?? '');
         if ($detail === '') {
-            $detail = 'Cause non precisee';
+            $detail = commonExternalCalendarT('copy.cause_non_precisee');
         }
         $detail = function_exists('mb_substr') ? mb_substr($detail, 0, 400, 'UTF-8') : substr($detail, 0, 400);
-        $message = 'Le flux ICS ne peut pas etre lu completement. Detail technique ('
-            . get_class($exception) . ') : ' . $detail;
+        $message = commonExternalCalendarT('copy.le_flux_ics_ne_peut_pas_etre_lu_completement_detail_technique_value_de', ['value' => get_class($exception), 'detail' => $detail]);
         error_log('OMO ICS parsing failed: ' . $message);
         return ['status' => false, 'message' => $message];
     }

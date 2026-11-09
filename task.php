@@ -306,7 +306,7 @@ table.RS img {height:30px;}
 					// Affichage graphique
 					echo "<div style='border:2px solid black; border-radius:5px;overflow:hidden;'>";
 					echo "<div style='display:inline-block; padding:3px; font-size:70%; vertical-align:bottom;width:".(365/(365+$license->get("credit"))*100)."%; background:#FFFF00; overflow:hidden'>365 days (default)</div>";
-					echo "<div style='display:inline-block; padding:3px; font-size:70%; vertical-align:bottom;width:".($license->get("credit")/(365+$license->get("credit"))*100)."%; background:#00FF00; overflow:hidden'>".$license->get("credit")." days (credits)</div>";
+					echo "<div style='display:inline-block; padding:3px; font-size:70%; vertical-align:bottom;width:".($license->get("credit")/(365+$license->get("credit"))*100)."%; background:#00FF00; overflow:hidden'>".$license->get("credit")." days (crédits)</div>";
 					
 					echo "</div>";
 					echo "<div style='font-size:70%; padding:5px; margin:0px 10px;background:#EEEEEE; border-radius:10px; '>Your images will be kept for ".(365+$license->get("credit"))." days. To increase the length of time images remain available, you can earn credits by becoming a Patreon: each day you become a Patreon will increase the number of days your images are kept. If you stop contributing, credits will slowly decrease by 1 per day.</div>";

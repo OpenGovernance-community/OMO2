@@ -18,7 +18,6 @@ use dbObject\DecisionProcess;
 use dbObject\DecisionProposal;
 use dbObject\DeferredProposal;
 use dbObject\Holon;
-use dbObject\ObjectVisibility;
 use dbObject\Project;
 use dbObject\Rule;
 
@@ -505,14 +504,22 @@ if (!$pdo) {
     $respond(500, ['status' => false, 'message' => omoDecisionUiT('connexion_a_la_base_impossible')]);
 }
 
+foreach (['visibility_type', 'edit_visibility_type'] as $scopeKey) {
+    if (!array_key_exists($scopeKey, $_POST)) continue;
+    $scopeType = $_POST[$scopeKey];
+    $resolvedScope = is_string($scopeType) && array_key_exists($scopeType, DecisionProcess::getVisibilityTypeOptions())
+        ? $decision->resolveVisibilityRuleInput($scopeType) : ['status' => false];
+    if (empty($resolvedScope['status'])) {
+        $respond(422, ['status' => false, 'message' => omoDecisionUiT('visibilite_invalide_pour_cette_prise_de_decision')]);
+    }
+}
+
 $newProposalIds = [];
 $previousStatus = $wasExistingDecision ? DecisionProcess::normalizeStatus($decision->get('status')) : null;
 try {
     $pdo->beginTransaction();
 
-    $visibilityType = (int)$targetHolon->get('IDtypeholon') === 1
-        ? ObjectVisibility::TYPE_ROLE
-        : ObjectVisibility::TYPE_CIRCLE;
+    $visibilityType = DecisionProcess::normalizeVisibilityType($_POST['visibility_type'] ?? ($wasExistingDecision ? $decision->get('visibility_type') : DecisionProcess::getDefaultVisibilityType()));
     $decision->set('title', $processTitle);
     $decision->set('description', $processDescription);
     $decision->set('decision_type', DecisionProcess::TYPE_DECISION);
@@ -558,6 +565,8 @@ try {
     if (!is_array($saveDecision) || empty($saveDecision['status'])) {
         throw new RuntimeException('decision_save_failed');
     }
+    $saveVisibility = $decision->saveVisibilityRulesFromInput($_POST, $wasExistingDecision && $decision->hasEvaluationStarted());
+    if (empty($saveVisibility['status'])) throw new RuntimeException('decision_visibility_save_failed');
     $decisionId = (int)$decision->getId();
 
     $group = $decision->ensurePrimaryGroup();
@@ -642,7 +651,7 @@ try {
             }
             if ((string)$existingAction->get('status') === DecisionGovernanceAction::STATUS_PENDING) {
                 $existingAction->set('status', DecisionGovernanceAction::STATUS_REMOVED);
-                $existingAction->set('status_message', 'Modification retiree pendant la consultation.');
+                $existingAction->set('status_message', 'Modification retirée pendant la consultation.');
                 $existingAction->set('updated_at', new DateTimeImmutable('now'));
                 $existingAction->save();
             }

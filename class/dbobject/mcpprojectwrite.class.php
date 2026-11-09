@@ -14,8 +14,8 @@ class McpProjectWrite extends DbObject
     }
     public static function attributeLabels()
     {
-        return ['id' => 'ID', 'created_at' => 'Creation', 'completed' => 'Termine', 'IDuser' => 'Personne',
-            'IDorganization' => 'Organisation', 'IDproject' => 'Projet', 'operation' => 'Operation', 'key_hash' => 'Demande', 'payload_hash' => 'Contenu'];
+        return ['id' => 'ID', 'created_at' => 'Création', 'completed' => 'Terminé', 'IDuser' => 'Personne',
+            'IDorganization' => 'Organisation', 'IDproject' => 'Projet', 'operation' => 'Opération', 'key_hash' => 'Demande', 'payload_hash' => 'Contenu'];
     }
     public static function attributeLength() { return ['operation' => 10, 'key_hash' => 64, 'payload_hash' => 64]; }
     public function canView() { return false; }

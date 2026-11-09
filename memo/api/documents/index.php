@@ -171,11 +171,11 @@ if (!is_string($documentsPayload)) {
         <?php if (count($documentEntries) > 0): ?>
             <div class="omo-panel-view__header-secondary memo-documents__header-actions">
                 <div class="omo-panel-controls memo-documents__controls">
-                    <div class="omo-segmented" role="group" aria-label="Tri des documents memo">
+                    <div class="omo-segmented" role="group" aria-label="Tri des documents mémo">
                         <button type="button" class="omo-segmented__button is-active" data-memo-documents-sort="date" data-omo-segmented-option="temporal" aria-pressed="true"><span class="omo-segmented__text">Date</span></button>
                         <button type="button" class="omo-segmented__button" data-memo-documents-sort="alpha" data-omo-segmented-option="alphabetical" aria-pressed="false"><span class="omo-segmented__text">Alphabétique</span></button>
                     </div>
-                    <div class="omo-segmented" role="group" aria-label="Densité d'affichage des documents memo">
+                    <div class="omo-segmented" role="group" aria-label="Densité d'affichage des documents mémo">
                         <button type="button" class="omo-segmented__button is-active" data-memo-documents-density="detail" data-omo-documents-density="detail" aria-pressed="true">Détail</button>
                         <button type="button" class="omo-segmented__button" data-memo-documents-density="compact" data-omo-documents-density="compact" aria-pressed="false">Compact</button>
                     </div>

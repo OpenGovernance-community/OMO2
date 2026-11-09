@@ -28,7 +28,7 @@ if (
     <div class="omo-import-popup__hero generic-hero-panel accent">
         <div class="omo-import-popup__kicker generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoOrganizationsUiT('import_zip_json'), ENT_QUOTES, 'UTF-8') ?></div>
         <h3 class="omo-import-popup__title generic-card-title generic-card-title--large"><?= htmlspecialchars(omoOrganizationsUiT('importer_une_organisation'), ENT_QUOTES, 'UTF-8') ?></h3>
-        <p class="omo-import-popup__text generic-description"><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Selectionnez un fichier ZIP ou JSON exporte depuis le menu structure. L\'import reconstruit les holons, roles, proprietes et les references internes du sous-arbre.', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></p>
+        <p class="omo-import-popup__text generic-description"><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Sélectionnez un fichier ZIP ou JSON exporte depuis le menu structure. L\'import reconstruit les holons, rôles, propriétés et les références internes du sous-arbre.', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></p>
     </div>
 
     <form class="omo-import-popup__form" data-omo-org-import-form="1" enctype="multipart/form-data">
@@ -140,7 +140,7 @@ if (
                 throw new Error(result.data && result.data.message ? result.data.message : "Impossible d'importer l'organisation.");
             }
 
-            setFeedback(result.data.message || "L'organisation a ete importee.", false);
+            setFeedback(result.data.message || "L'organisation a été importée.", false);
 
             if (typeof window.omoReloadOrganizationPanels === 'function' && organizationId > 0) {
                 window.omoReloadOrganizationPanels(organizationId);

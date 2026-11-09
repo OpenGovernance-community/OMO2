@@ -98,7 +98,7 @@ function initVideoPlayer() {
     try {
         player = new Vimeo.Player(iframe);
     } catch (error) {
-        console.warn('Impossible d initialiser le lecteur Vimeo.', error);
+        console.warn('Impossible d’initialiser le lecteur Vimeo.', error);
         disableVideoControls();
         return null;
     }

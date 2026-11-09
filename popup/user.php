@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../common/team/profile-translations.php';
+
 require_once dirname(__DIR__) . '/omo/api/bootstrap.php';
 require_once dirname(__DIR__) . '/common/user_competence_ui.php';
 require_once dirname(__DIR__) . '/common/user_profile_ui.php';
@@ -24,7 +26,7 @@ function omoUserContextT(string $key, array $replace = []): string
             'availability_heading' => 'Disponibilités',
             'availability_hint' => 'Les créneaux sont calculés à partir des agendas OMO et des calendriers externes connectés.',
             'book_meeting' => 'Prendre rendez-vous',
-            'book_meeting_hint' => 'Ouvrir la prise de rendez-vous dans une nouvelle fenetre',
+            'book_meeting_hint' => 'Ouvrir la prise de rendez-vous dans une nouvelle fenêtre',
             'select_day' => 'Choisissez un jour',
             'select_day_hint' => 'Sélectionnez une date dans le mois pour afficher les heures.',
             'free' => 'Libre',
@@ -177,7 +179,7 @@ function omoUserContextRenderRoleAssignment(array $assignment, $userId, $returnP
 {
     $roleId = (int)($assignment['holonId'] ?? 0);
     $roleName = (string)($assignment['displayName'] ?? ($assignment['name'] ?? ''));
-    $roleLabel = $roleName !== '' ? $roleName : ('Role ' . $roleId);
+    $roleLabel = $roleName !== '' ? $roleName : (commonUserProfileT('copy.role_roleid', ['roleId' => $roleId]));
     $assignmentLabels = [$roleLabel];
     if (!empty($assignment['isAdmin'])) {
         $assignmentLabels[] = $adminLabel;
@@ -197,7 +199,7 @@ function omoUserContextRenderRoleAssignment(array $assignment, $userId, $returnP
             type="button"
             class="omo-user-context__role-link"
             data-user-role-cid="<?= $roleId ?>"
-            aria-label="<?= omoApiEscape('Ouvrir le role ' . $roleLabel) ?>"
+            aria-label="<?= omoApiEscape(commonUserProfileT('copy.ouvrir_le_role_rolelabel', ['roleLabel' => $roleLabel])) ?>"
         >
             <div class="omo-user-context__role-head">
                 <div>
@@ -225,7 +227,7 @@ function omoUserContextRenderRoleAssignment(array $assignment, $userId, $returnP
                         data-user-role-menu-toggle="1"
                         aria-haspopup="menu"
                         aria-expanded="false"
-                        aria-label="<?= omoApiEscape('Actions pour le role ' . $roleLabel) ?>"
+                        aria-label="<?= omoApiEscape(commonUserProfileT('copy.actions_pour_le_role_rolelabel', ['roleLabel' => $roleLabel])) ?>"
                     >...</button>
                     <div class="generic-menu-panel generic-menu-panel--wide" data-user-role-menu-panel="1" role="menu" hidden>
                         <button
@@ -463,7 +465,7 @@ function omoUserContextRenderPendingInvitationFragment(array $context)
         </div>
 
         <section class="omo-user-pending-invitation__section generic-section generic-section--stack">
-            <h3 class="generic-card-title generic-card-title--medium">Etat du profil</h3>
+            <h3 class="generic-card-title generic-card-title--medium">État du profil</h3>
             <p class="omo-user-pending-invitation__detail"><?= omoApiEscape($detailCopy !== '' ? $detailCopy : 'Le profil détaillé n’est pas encore accessible.') ?></p>
         </section>
 
@@ -509,18 +511,18 @@ function omoUserContextRenderPendingInvitationFragment(array $context)
         <section class="omo-user-pending-invitation__section generic-section generic-section--stack">
             <h3 class="generic-card-title generic-card-title--medium">Actions</h3>
             <?php if (!$canManageInvitation): ?>
-                <p class="omo-user-pending-invitation__detail"><?= omoApiEscape($manageRestrictedCopy !== '' ? $manageRestrictedCopy : 'Vous pouvez voir que cette invitation est en attente, mais seuls les responsables du contexte peuvent la gerer.') ?></p>
+                <p class="omo-user-pending-invitation__detail"><?= omoApiEscape($manageRestrictedCopy !== '' ? $manageRestrictedCopy : commonUserProfileT('copy.vous_pouvez_voir_que_cette_invitation_est_en_attente_mais_seuls_les_re')) ?></p>
             <?php elseif (!$hasPendingInvitation && !$canResendInvitation): ?>
-                <p class="omo-user-pending-invitation__detail">Il n y a plus d invitation active a ouvrir ou a renvoyer pour ce membre.</p>
+                <p class="omo-user-pending-invitation__detail">Il n’y a plus d’invitation active a ouvrir ou a renvoyer pour ce membre.</p>
             <?php else: ?>
-                <p class="omo-user-pending-invitation__detail"><?= omoApiEscape($manageCopy !== '' ? $manageCopy : 'Vous pouvez renvoyer le message d invitation a cette adresse e-mail.') ?></p>
+                <p class="omo-user-pending-invitation__detail"><?= omoApiEscape($manageCopy !== '' ? $manageCopy : commonUserProfileT('copy.vous_pouvez_renvoyer_le_message_d_invitation_a_cette_adresse_e_mail')) ?></p>
                 <div class="omo-user-pending-invitation__actions">
                     <?php if ($canResendInvitation): ?>
                         <button
                             type="button"
                             class="omo-user-pending-invitation__action generic-action-button generic-action-button--main"
                             data-pending-invitation-resend="1"
-                        ><?= omoApiEscape($invitationActionLabel !== '' ? $invitationActionLabel : 'Renvoyer l e-mail') ?></button>
+                        ><?= omoApiEscape($invitationActionLabel !== '' ? $invitationActionLabel : 'Renvoyer l’e-mail') ?></button>
                     <?php endif; ?>
                 </div>
             <?php endif; ?>
@@ -686,9 +688,9 @@ if ($hasUninvitedPendingMembership) {
         'contextName' => trim((string)$currentHolon->getDisplayName()),
         'stateTitle' => 'À inviter',
         'stateBadge' => 'À inviter',
-        'invitationSectionTitle' => 'Invitation non envoyee',
+        'invitationSectionTitle' => commonUserProfileT('copy.invitation_non_envoyee'),
         'statusCopy' => 'Cette personne a été importée sans recevoir d’e-mail. Son profil reste masqué tant qu’une invitation n’a pas été envoyée et acceptée.',
-        'detailCopy' => 'Le compte est prepare dans cette organisation, sans que la personne ait encore ete informee de son existence.',
+        'detailCopy' => commonUserProfileT('copy.le_compte_est_prepare_dans_cette_organisation_sans_que_la_personne_ait'),
         'manageCopy' => 'Vous pouvez créer puis envoyer une invitation à cette adresse e-mail.',
         'manageRestrictedCopy' => \dbObject\Organization::formatLexiconText('Le compte reste en attente. Seules les personnes ayant le droit CAN_ADD_MEMBER sur ce holon peuvent envoyer une invitation.'),
         'missingInvitationCopy' => 'Aucune invitation n’a encore été créée pour cette personne.',
@@ -758,7 +760,7 @@ if (!$userLoaded) {
             'statusCopy' => 'Ce membre a bien une invitation en attente, mais son profil complet n’est pas encore disponible.',
             'detailCopy' => 'Pour le moment, seuls les éléments liés à l’invitation peuvent être affichés. Les informations détaillées du profil seront visibles après acceptation.',
             'manageCopy' => 'Vous pouvez renvoyer le message d’invitation à cette adresse e-mail.',
-            'manageRestrictedCopy' => \dbObject\Organization::formatLexiconText('Vous pouvez voir que cette invitation existe, mais seul un role avec le droit CAN_ADD_MEMBER sur ce holon peut renvoyer le message.'),
+            'manageRestrictedCopy' => \dbObject\Organization::formatLexiconText('Vous pouvez voir que cette invitation existe, mais seul un rôle avec le droit CAN_ADD_MEMBER sur ce holon peut renvoyer le message.'),
             'invitationTypeLabel' => $pendingInvitation->isAdminInitiatedInvitation() ? 'Invitation admin' : 'Demande d’accès',
             'pendingHolons' => $pendingInvitationHolons,
             'hasPendingInvitation' => true,
@@ -1131,13 +1133,13 @@ foreach ($competenceRows as $competenceRow) {
                                 </div>
                             </div>
 
-               
+
 
                             <?php if ($competenceCount === 0): ?>
-                                <div class="omo-user-context__empty">Aucune competence visible pour le moment.</div>
+                                <div class="omo-user-context__empty">Aucune compétence visible pour le moment.</div>
                             <?php else: ?>
                                 <div class="omo-user-context__competence-labels" aria-hidden="true">
-                                    <div>Competence</div>
+                                    <div>Compétence</div>
                                     <div>Niveau et recommandations</div>
                                 </div>
 
@@ -1226,11 +1228,11 @@ foreach ($competenceRows as $competenceRow) {
                                                         <div class="omo-user-context__competence-menu" data-user-competence-menu="1" hidden>
                                                             <div class="omo-user-context__competence-menu-title"><?= omoApiEscape($competenceName) ?></div>
                                                             <p class="omo-user-context__competence-menu-copy">
-                                                                <?= (int)$competenceRow['currentViewerValidationLevel'] > 0 ? 'Modifier votre recommandation.' : 'Ajouter une recommandation discrete.' ?>
+                                                                <?= (int)$competenceRow['currentViewerValidationLevel'] > 0 ? commonUserProfileT('copy.modifier_votre_recommandation') : commonUserProfileT('copy.ajouter_une_recommandation_discrete') ?>
                                                             </p>
                                                             <form class="omo-user-context__competence-form" data-user-competence-validate-form="1">
                                                                 <input type="hidden" name="id" value="<?= (int)$competenceRow['id'] ?>">
-                                                                <select name="level" class="generic-form-control" title="Votre reconnaissance pour cette competence">
+                                                                <select name="level" class="generic-form-control" title="Votre reconnaissance pour cette compétence">
                                                                     <?php omoRenderCompetenceLevelOptions((int)$competenceRow['currentViewerValidationLevel'], true); ?>
                                                                 </select>
                                                                 <button type="submit" class="generic-action-button generic-action-button--main">

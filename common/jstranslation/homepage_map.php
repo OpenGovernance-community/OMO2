@@ -3,10 +3,10 @@ require_once dirname(__DIR__, 2) . '/shared_functions.php';
 require_once dirname(__DIR__) . '/translation_bundles.php';
 
 $sourceLang = [
-    'current' => ['text' => 'Etat actuel', 'context' => 'Current organization maturity mean in a public map popup.'],
+    'current' => ['text' => 'État actuel', 'context' => 'Current organization maturity mean in a public map popup.'],
     'desired' => ['text' => 'Ambition', 'context' => 'Desired organization maturity mean in a public map popup.'],
     'maturity' => ['text' => "Maturit\u{00E9} organisationnelle", 'context' => 'Title above the public organization maturity scores and in the chart dialog.'],
-    'open' => ['text' => 'Voir le graphique et sa legende', 'context' => 'Accessible action for the organization maturity scores in the map.'],
+    'open' => ['text' => 'Voir le graphique et sa légende', 'context' => 'Accessible action for the organization maturity scores in the map.'],
     'close' => ['text' => 'Fermer', 'context' => 'Accessible action to close the organization maturity chart dialog.'],
     'cluster' => ['text' => '{count} organisations : cliquer pour zoomer', 'context' => 'Tooltip and accessible label for a cluster containing at least two organizations on the public map.'],
 ];

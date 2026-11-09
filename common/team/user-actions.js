@@ -36,7 +36,7 @@
             } catch (error) {
                 return {
                     status: false,
-                    message: 'Reponse serveur invalide.'
+                    message: (window.omoUiText || function (key, fallback) { return fallback; })("copy_reponse_serveur_invalide", "Réponse serveur invalide.")
                 };
             }
         });
@@ -155,7 +155,7 @@
                         return;
                     }
 
-                    setFeedback(result.message || 'Validation enregistree.', 'success');
+                    setFeedback(result.message || (window.omoUiText || function (key, fallback) { return fallback; })("copy_validation_enregistree", "Validation enregistrée."), 'success');
                     closeMenu(form.closest('[data-user-competence-menu="1"]'));
                     reloadPopup();
                 })

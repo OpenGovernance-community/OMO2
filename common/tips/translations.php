@@ -17,7 +17,7 @@ function commonTipsT(string $key): string
         'removeImage' => ['text' => 'Retirer l’image', 'context' => 'Remove the optional tip illustration.'],
         'saved' => ['text' => 'Astuce enregistrée.', 'context' => 'Tip saved successfully.'],
         'invalid' => ['text' => 'Indiquez un texte de 500 caractères maximum et un lien interne ou HTTP(S) valide.', 'context' => 'Invalid tip form content.'],
-        'forbidden' => ['text' => 'Accès reserve au mode super administrateur.', 'context' => 'Global tip administration access denied.'],
+        'forbidden' => ['text' => 'Accès réservé au mode super administrateur.', 'context' => 'Global tip administration access denied.'],
         'empty' => ['text' => 'Aucune astuce disponible.', 'context' => 'Empty tip catalog.'],
         'unavailable' => ['text' => 'Appliquez la migration SQL des trucs et astuces pour activer ce catalogue.', 'context' => 'Missing tips table.'],
         'published' => ['text' => 'Publiée', 'context' => 'Tip publication status.'],

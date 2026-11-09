@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/ai_translations.php';
+
 
 require_once __DIR__ . '/ai_access.php';
 
@@ -16,7 +18,7 @@ function commonOpenAiGetDefaultTranscriptionPrompt()
         }
     }
 
-    return 'Transcription en francais d une dictee pour un document. Rends la ponctuation naturelle et garde les retours a la ligne evidents.';
+    return commonAiUiT('copy.transcription_en_francais_d_une_dictee_pour_un_document_rends_la_ponct');
 }
 
 function commonOpenAiDetectUploadedAudioMimeType(array $uploadedFile)
@@ -136,7 +138,7 @@ function commonOpenAiRequestAudioTranscription($apiKey, $tmpName, $mimeType, $fi
     if ($curl === false) {
         return array(
             'status' => false,
-            'message' => 'Impossible de preparer la requete de transcription.',
+            'message' => commonAiUiT('copy.impossible_de_preparer_la_requete_de_transcription'),
         );
     }
 
@@ -178,7 +180,7 @@ function commonOpenAiRequestAudioTranscription($apiKey, $tmpName, $mimeType, $fi
     if ($response === false) {
         return array(
             'status' => false,
-            'message' => $curlError !== '' ? $curlError : 'La requete de transcription a echoue.',
+            'message' => $curlError !== '' ? $curlError : commonAiUiT('copy.la_requete_de_transcription_a_echoue'),
             'http_code' => $httpCode,
         );
     }
@@ -194,7 +196,7 @@ function commonOpenAiRequestAudioTranscription($apiKey, $tmpName, $mimeType, $fi
     }
 
     if ($httpCode < 200 || $httpCode >= 300) {
-        return ['status' => false, 'http_code' => $httpCode, 'message' => 'La requete de transcription a echoue.'];
+        return ['status' => false, 'http_code' => $httpCode, 'message' => commonAiUiT('copy.la_requete_de_transcription_a_echoue')];
     }
 
     $text = is_array($decodedResponse)
@@ -204,7 +206,7 @@ function commonOpenAiRequestAudioTranscription($apiKey, $tmpName, $mimeType, $fi
     if ($text === '') {
         return array(
             'status' => false,
-            'message' => 'Le service a renvoye une transcription vide.',
+            'message' => commonAiUiT('copy.le_service_a_renvoye_une_transcription_vide'),
             'http_code' => $httpCode,
         );
     }
@@ -221,19 +223,19 @@ function commonInfomaniakTranscriptionGet(string $path, string $apiKey, int $tim
 {
     if (!commonAiOrganizationAllows(commonAiRequestOrganization())) throw new RuntimeException(commonAiOrganizationBlockedMessage());
     $curl = curl_init('https://api.infomaniak.com' . $path);
-    if ($curl === false) throw new RuntimeException('Impossible de preparer le suivi de transcription Infomaniak.');
+    if ($curl === false) throw new RuntimeException(commonAiUiT('copy.impossible_de_preparer_le_suivi_de_transcription_infomaniak'));
     curl_setopt_array($curl, [CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => false,
         CURLOPT_CONNECTTIMEOUT => min(5, $timeout), CURLOPT_TIMEOUT => $timeout,
         CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $apiKey]]);
     $body = curl_exec($curl);
     $code = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
     if ($body === false || $code < 200 || $code >= 300) {
-        throw new RuntimeException('Impossible de recuperer la transcription Infomaniak (HTTP ' . $code . ').');
+        throw new RuntimeException(commonAiUiT('copy.impossible_de_recuperer_la_transcription_infomaniak_http_code', ['code' => $code]));
     }
     $decoded = json_decode($body, true);
     if (is_array($decoded)) return $decoded;
     if (str_ends_with($path, '/download')) return $body;
-    throw new RuntimeException('Reponse de suivi Infomaniak invalide.');
+    throw new RuntimeException(commonAiUiT('copy.reponse_de_suivi_infomaniak_invalide'));
 }
 
 function commonInfomaniakWaitForTranscription(string $batchId, string $apiKey, string $productId, float $deadline, ?callable $get = null): array
@@ -244,7 +246,7 @@ function commonInfomaniakWaitForTranscription(string $batchId, string $apiKey, s
     $path = '/1/ai/' . $productId . '/results/' . rawurlencode($batchId);
     while (($remaining = (int)ceil($deadline - microtime(true))) > 0) {
         $result = $get($path, $apiKey, min(10, $remaining));
-        if (!is_array($result)) throw new RuntimeException('Reponse de suivi Infomaniak invalide.');
+        if (!is_array($result)) throw new RuntimeException(commonAiUiT('copy.reponse_de_suivi_infomaniak_invalide'));
         $status = $result['status'] ?? '';
         if ($status === 'success') {
             $data = $result['data'] ?? null;
@@ -255,14 +257,14 @@ function commonInfomaniakWaitForTranscription(string $batchId, string $apiKey, s
             }
             if (is_string($data)) $data = json_decode($data, true) ?? $data;
             $text = is_array($data) ? trim((string)($data['text'] ?? '')) : (is_string($data) ? trim($data) : '');
-            if ($text === '') throw new RuntimeException('Infomaniak a renvoye une transcription vide.');
+            if ($text === '') throw new RuntimeException(commonAiUiT('copy.infomaniak_a_renvoye_une_transcription_vide'));
             return ['text' => $text];
         }
-        if (in_array($status, ['failed', 'cancelled'], true)) throw new RuntimeException('La transcription Infomaniak a echoue ou a ete annulee.');
-        if (!in_array($status, ['pending', 'processing'], true)) throw new RuntimeException('Etat de transcription Infomaniak invalide.');
+        if (in_array($status, ['failed', 'cancelled'], true)) throw new RuntimeException(commonAiUiT('copy.la_transcription_infomaniak_a_echoue_ou_a_ete_annulee'));
+        if (!in_array($status, ['pending', 'processing'], true)) throw new RuntimeException(commonAiUiT('copy.etat_de_transcription_infomaniak_invalide'));
         usleep(500000);
     }
-    throw new RuntimeException('La transcription Infomaniak n est pas terminee dans le delai imparti. Essayez un enregistrement plus court.');
+    throw new RuntimeException(commonAiUiT('copy.la_transcription_infomaniak_n_est_pas_terminee_dans_le_delai_imparti_e'));
 }
 
 function commonOpenAiTranscribeUploadedAudio(array $uploadedFile, array $options = array())
@@ -284,7 +286,7 @@ function commonOpenAiTranscribeUploadedAudio(array $uploadedFile, array $options
     if ($tmpName === '' || !is_file($tmpName)) {
         return array(
             'status' => false,
-            'message' => 'Le fichier audio recu est invalide.',
+            'message' => commonAiUiT('copy.le_fichier_audio_recu_est_invalide'),
         );
     }
 
@@ -299,7 +301,7 @@ function commonOpenAiTranscribeUploadedAudio(array $uploadedFile, array $options
     if ($size > 25 * 1024 * 1024) {
         return array(
             'status' => false,
-            'message' => 'Le fichier audio depasse la limite de 25 Mo.',
+            'message' => commonAiUiT('copy.le_fichier_audio_depasse_la_limite_de_25_mo'),
         );
     }
 

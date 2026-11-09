@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../omo/api/parameters/translation.php';
+
 require_once dirname(__DIR__) . '/common/site_update/news.php';
 
 function siteUpdateChangelogRepository(string $url): ?string
@@ -95,7 +97,7 @@ function siteUpdateChangelogPreparedDescription(array $entry, ?array $pull = nul
 function siteUpdateAdminReadChangelog(array $context, string $from, string $to): array
 {
     if (!preg_match('/^[a-f0-9]{40,64}$/', $from) || !preg_match('/^[a-f0-9]{40,64}$/', $to)) {
-        throw new InvalidArgumentException('Versions de mise a jour invalides.');
+        throw new InvalidArgumentException(omoSiteUpdateT('copy.versions_de_mise_a_jour_invalides'));
     }
     $output = siteUpdateAdminRunCommand(['git', 'log', '--first-parent', '-z', '--format=%H%x00%s%x00%b%x00%P', $from . '..' . $to, '--'],
         $context['repoRoot'], $exitCode, true);

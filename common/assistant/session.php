@@ -1,5 +1,14 @@
 <?php
 
+/** Same throttle for browser conversations and Telegram identities. */
+function commonAssistantConsumeRate(array &$rate, ?int $now = null): void
+{
+    $now ??= time();
+    $rate = array_values(array_filter($rate, static fn ($time) => $time > $now - 600));
+    if (count($rate) >= 20) throw new DomainException('rate');
+    $rate[] = $now;
+}
+
 /** Shared by the page and endpoint so restored chats keep their original access context. */
 function commonAssistantSessionIdentity(array $grant): string
 {

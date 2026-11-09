@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../omo/api/parameters/translation.php';
+
 require_once __DIR__ . '/env.php';
 require_once dirname(__DIR__) . '/common/ai_config.php';
 require_once dirname(__DIR__) . '/omo/api/parameters/server_env_fields.php';
@@ -56,8 +58,8 @@ function serverEnvAdminGetEditableSections()
 
     $sections = [
         'general' => [
-            'title' => serverEnvAdminT('parameters.server_env.section.general.title', 'Parametres generaux'),
-            'intro' => serverEnvAdminT('parameters.server_env.section.general.intro', 'Reglages globaux du site visibles sur plusieurs pages.'),
+            'title' => serverEnvAdminT('parameters.server_env.section.general.title', 'Paramètres généraux'),
+            'intro' => serverEnvAdminT('parameters.server_env.section.general.intro', 'Réglages globaux du site visibles sur plusieurs pages.'),
             'fields' => [
                 [
                     'key' => 'SITE_TITLE',
@@ -66,12 +68,12 @@ function serverEnvAdminGetEditableSections()
                 ],
                 [
                     'key' => 'HOME_TITLE',
-                    'label' => serverEnvAdminT('parameters.server_env.field.HOME_TITLE.label', 'Titre de la page d accueil'),
+                    'label' => serverEnvAdminT('parameters.server_env.field.HOME_TITLE.label', 'Titre de la page d’accueil'),
                     'type' => 'text',
                 ],
                 [
                     'key' => 'APP_LANG',
-                    'label' => serverEnvAdminT('parameters.server_env.field.APP_LANG.label', 'Langue par defaut'),
+                    'label' => serverEnvAdminT('parameters.server_env.field.APP_LANG.label', 'Langue par défaut'),
                     'type' => 'select',
                     'options' => [
                         'FR' => 'FR',
@@ -86,11 +88,11 @@ function serverEnvAdminGetEditableSections()
                         'true' => serverEnvAdminT('parameters.server_env.option.boolean.true', 'Oui'),
                         'false' => serverEnvAdminT('parameters.server_env.option.boolean.false', 'Non'),
                     ],
-                    'help' => serverEnvAdminT('parameters.server_env.field.ORGANIZATION_SUBDOMAIN_ROUTING.help', 'Active les URL du type orgname.domaine.com. Cela demande une configuration speciale de l hebergement, avec DNS wildcard et serveur web capable d accepter les sous-domaines.'),
+                    'help' => serverEnvAdminT('parameters.server_env.field.ORGANIZATION_SUBDOMAIN_ROUTING.help', 'Active les URL du type orgname.domaine.com. Cela demande une configuration spéciale de l’hébergement, avec DNS wildcard et serveur web capable d’accepter les sous-domaines.'),
                 ],
                 [
                     'key' => 'COOKIE_SCOPE_MODE',
-                    'label' => serverEnvAdminT('parameters.server_env.field.COOKIE_SCOPE_MODE.label', 'Portee des cookies'),
+                    'label' => serverEnvAdminT('parameters.server_env.field.COOKIE_SCOPE_MODE.label', 'Portée des cookies'),
                     'type' => 'select',
                     'options' => [
                         'auto' => 'Auto',
@@ -98,20 +100,20 @@ function serverEnvAdminGetEditableSections()
                         'environment' => 'Environment',
                         'parent' => 'Parent',
                     ],
-                    'help' => serverEnvAdminT('parameters.server_env.field.COOKIE_SCOPE_MODE.help', 'Auto isole par defaut dev, beta et deploy en host-only. Environment partage dans *.dev.domaine.tld. Parent partage dans *.domaine.tld. Host force un cookie limite au host courant.'),
+                    'help' => serverEnvAdminT('parameters.server_env.field.COOKIE_SCOPE_MODE.help', 'Auto isole par défaut dev, bêta et deploy en host-only. Environment partage dans *.dev.domaine.tld. Parent partage dans *.domaine.tld. Host force un cookie limite au host courant.'),
                 ],
                 [
                     'key' => 'COOKIE_ROOT_HOST',
                     'label' => serverEnvAdminT('parameters.server_env.field.COOKIE_ROOT_HOST.label', 'Racine cookies'),
                     'type' => 'text',
                     'placeholder' => 'dev.opengov.tools',
-                    'help' => serverEnvAdminT('parameters.server_env.field.COOKIE_ROOT_HOST.help', 'Optionnel. Si renseigne, force le partage des cookies a cette racine exacte, par exemple dev.opengov.tools pour partager entre dev.opengov.tools et *.dev.opengov.tools sans toucher a la prod.'),
+                    'help' => serverEnvAdminT('parameters.server_env.field.COOKIE_ROOT_HOST.help', 'Optionnel. Si renseigne, force le partage des cookies à cette racine exacte, par exemple dev.opengov.tools pour partager entre dev.opengov.tools et *.dev.opengov.tools sans toucher à la prod.'),
                 ],
             ],
         ],
         'github' => [
             'title' => serverEnvAdminT('parameters.server_env.section.github.title', 'GitHub'),
-            'intro' => serverEnvAdminT('parameters.server_env.section.github.intro', 'Depot et identite technique utilises pour envoyer les signalements de bugs.'),
+            'intro' => serverEnvAdminT('parameters.server_env.section.github.intro', 'Dépôt et identité technique utilises pour envoyer les signalements de bugs.'),
             'fields' => [
                 [
                     'key' => 'GITHUB_BUGREPORT_TOKEN',
@@ -143,7 +145,7 @@ function serverEnvAdminGetEditableSections()
                 ],
                 [
                     'key' => 'SITE_UPDATE_GITHUB_TOKEN',
-                    'label' => serverEnvAdminT('parameters.server_env.field.SITE_UPDATE_GITHUB_TOKEN.label', 'Token GitHub pour les descriptions des mises a jour'),
+                    'label' => serverEnvAdminT('parameters.server_env.field.SITE_UPDATE_GITHUB_TOKEN.label', 'Token GitHub pour les descriptions des mises à jour'),
                     'type' => 'password',
                     'secret' => true,
                 ],
@@ -151,13 +153,13 @@ function serverEnvAdminGetEditableSections()
         ],
         'patreon' => [
             'title' => serverEnvAdminT('parameters.server_env.section.patreon.title', 'Patreon'),
-            'intro' => serverEnvAdminT('parameters.server_env.section.patreon.intro', 'Connexion des comptes Patreon, campagne soutenue et acces du createur.'),
+            'intro' => serverEnvAdminT('parameters.server_env.section.patreon.intro', 'Connexion des comptes Patreon, campagne soutenue et accès du créateur.'),
             'fields' => [
                 [
                     'key' => 'PATREON_CLIENT_ID',
                     'label' => serverEnvAdminT('parameters.server_env.field.PATREON_CLIENT_ID.label', 'Client ID Patreon'),
                     'type' => 'text',
-                    'help' => serverEnvAdminT('parameters.server_env.field.PATREON_CLIENT_ID.help', 'Dans Patreon, ouvrez la page Clients & API Keys et selectionnez votre application OAuth v2. Copiez son Client ID. Il identifie l application, pas votre compte ni votre campagne. Configurez ces acces sur le serveur central de connexion.'),
+                    'help' => serverEnvAdminT('parameters.server_env.field.PATREON_CLIENT_ID.help', 'Dans Patreon, ouvrez la page Clients & API Keys et sélectionnez votre application OAuth v2. Copiez son Client ID. Il identifie l’application, pas votre compte ni votre campagne. Configurez ces accès sur le serveur central de connexion.'),
                     'help_url' => 'https://docs.patreon.com/#clients-and-api-keys',
                 ],
                 [
@@ -165,52 +167,52 @@ function serverEnvAdminGetEditableSections()
                     'label' => serverEnvAdminT('parameters.server_env.field.PATREON_CLIENT_SECRET.label', 'Client secret Patreon'),
                     'type' => 'password',
                     'secret' => true,
-                    'help' => serverEnvAdminT('parameters.server_env.field.PATREON_CLIENT_SECRET.help', 'Sur la page Patreon Clients & API Keys, ouvrez la meme application que pour le Client ID et copiez son Client Secret. Gardez ce secret prive. Laissez vide pour conserver la valeur actuelle.'),
+                    'help' => serverEnvAdminT('parameters.server_env.field.PATREON_CLIENT_SECRET.help', 'Sur la page Patreon Clients & API Keys, ouvrez la même application que pour le Client ID et copiez son Client Secret. Gardez ce secret privé. Laissez vide pour conserver la valeur actuelle.'),
                     'help_url' => 'https://docs.patreon.com/#clients-and-api-keys',
                 ],
                 [
                     'key' => 'PATREON_CONNECT_URL',
                     'label' => serverEnvAdminT('parameters.server_env.field.PATREON_CONNECT_URL.label', 'URL centrale de connexion Patreon'),
                     'type' => 'text',
-                    'help' => serverEnvAdminT('parameters.server_env.field.PATREON_CONNECT_URL.help', 'Adresse OMO du serveur qui gere les connexions Patreon, par exemple https://omo2.org/common/patreon_connect.php. Utilisez la meme URL sur les sites qui partagent cette connexion. Ce n est pas l adresse de votre page Patreon.'),
+                    'help' => serverEnvAdminT('parameters.server_env.field.PATREON_CONNECT_URL.help', 'Adresse OMO du serveur qui gère les connexions Patreon, par exemple https://omo2.org/common/patreon_connect.php. Utilisez la même URL sur les sites qui partagent cette connexion. Ce n’est pas l’adresse de votre page Patreon.'),
                 ],
                 [
                     'key' => 'PATREON_CONNECT_ALLOWED_ORIGINS',
                     'label' => serverEnvAdminT('parameters.server_env.field.PATREON_CONNECT_ALLOWED_ORIGINS.label', 'Domaines de retour Patreon autorisés'),
                     'type' => 'text',
-                    'help' => serverEnvAdminT('parameters.server_env.field.PATREON_CONNECT_ALLOWED_ORIGINS.help', 'Liste d origines HTTPS séparées par des virgules. https://*.dev.opengov.tools autorise ses sous-domaines ; ajoutez aussi https://dev.opengov.tools pour le domaine principal.'),
+                    'help' => serverEnvAdminT('parameters.server_env.field.PATREON_CONNECT_ALLOWED_ORIGINS.help', 'Liste d’origines HTTPS séparées par des virgules. https://*.dev.opengov.tools autorise ses sous-domaines ; ajoutez aussi https://dev.opengov.tools pour le domaine principal.'),
                 ],
                 [
                     'key' => 'PATREON_REDIRECT_URI',
                     'label' => serverEnvAdminT('parameters.server_env.field.PATREON_REDIRECT_URI.label', 'Redirect URI Patreon'),
                     'type' => 'text',
-                    'help' => serverEnvAdminT('parameters.server_env.field.PATREON_REDIRECT_URI.help', 'Adresse de retour a declarer aussi dans votre application Patreon, par exemple https://omo2.org/common/patreon_callback.php. Si l URL centrale de connexion est renseignee, OMO utilise automatiquement /common/patreon_callback.php sur ce domaine. Les deux adresses doivent correspondre.'),
+                    'help' => serverEnvAdminT('parameters.server_env.field.PATREON_REDIRECT_URI.help', 'Adresse de retour a déclarer aussi dans votre application Patreon, par exemple https://omo2.org/common/patreon_callback.php. Si l’URL centrale de connexion est renseignée, OMO utilise automatiquement /common/patreon_callback.php sur ce domaine. Les deux adresses doivent correspondre.'),
                     'help_url' => 'https://docs.patreon.com/#clients-and-api-keys',
                 ],
                 [
                     'key' => 'PATREON_CREATOR_CAMPAIGN_ID',
                     'label' => serverEnvAdminT('parameters.server_env.field.PATREON_CREATOR_CAMPAIGN_ID.label', 'Campaign ID Patreon'),
                     'type' => 'text',
-                    'help' => serverEnvAdminT('parameters.server_env.field.PATREON_CREATOR_CAMPAIGN_ID.help', 'Code numerique de la campagne soutenue. Il est renvoye comme id par l API Patreon /api/oauth2/v2/campaigns avec le jeton du createur. Ce n est ni le nom de la page Patreon, ni l ID utilisateur du createur. Conservez la valeur existante si la campagne ne change pas.'),
+                    'help' => serverEnvAdminT('parameters.server_env.field.PATREON_CREATOR_CAMPAIGN_ID.help', 'Code numérique de la campagne soutenue. Il est renvoyé comme id par l’API Patreon /api/oauth2/v2/campaigns avec le jeton du créateur. Ce n’est ni le nom de la page Patreon, ni l’ID utilisateur du créateur. Conservez la valeur existante si la campagne ne change pas.'),
                     'help_url' => 'https://docs.patreon.com/#get-api-oauth2-v2-campaigns',
                 ],
                 [
                     'key' => 'PATREON_CREATOR_USER_ID',
-                    'label' => serverEnvAdminT('parameters.server_env.field.PATREON_CREATOR_USER_ID.label', 'ID utilisateur Patreon du createur'),
+                    'label' => serverEnvAdminT('parameters.server_env.field.PATREON_CREATOR_USER_ID.label', 'ID utilisateur Patreon du créateur'),
                     'type' => 'text',
-                    'help' => serverEnvAdminT('parameters.server_env.field.PATREON_CREATOR_USER_ID.help', 'Dans OMO, ouvrez Mon profil > Patreon, connectez votre compte puis cliquez sur Synchroniser si necessaire. Copiez le code affiche sous ID utilisateur Patreon. Ce n est ni votre nom public, ni votre e-mail, ni l ID de campagne ou l ID OMO. Ce compte relie aura acces a l IA sans contribution. Vide : aucune exception.'),
+                    'help' => serverEnvAdminT('parameters.server_env.field.PATREON_CREATOR_USER_ID.help', 'Dans OMO, ouvrez Mon profil > Patreon, connectez votre compte puis cliquez sur Synchroniser si nécessaire. Copiez le code affiche sous ID utilisateur Patreon. Ce n’est ni votre nom public, ni votre e-mail, ni l’ID de campagne ou l’ID OMO. Ce compte relié aura accès à l’IA sans contribution. Vide : aucune exception.'),
                 ],
                 [
                     'key' => 'PATREON_USER_AGENT',
                     'label' => serverEnvAdminT('parameters.server_env.field.PATREON_USER_AGENT.label', 'User-Agent Patreon'),
                     'type' => 'text',
-                    'help' => serverEnvAdminT('parameters.server_env.field.PATREON_USER_AGENT.help', 'Nom technique transmis a Patreon pour identifier les appels de votre site, par exemple OMO Patreon Sync. Vous choisissez ce texte ; aucune cle ni aucun identifiant Patreon n est necessaire ici.'),
+                    'help' => serverEnvAdminT('parameters.server_env.field.PATREON_USER_AGENT.help', 'Nom technique transmis a Patreon pour identifier les appels de votre site, par exemple OMO Patreon Sync. Vous choisissez ce texte ; aucune clé ni aucun identifiant Patreon n’est nécessaire ici.'),
                 ],
             ],
         ],
         'telegram' => [
             'title' => serverEnvAdminT('parameters.server_env.section.telegram.title', 'Telegram'),
-            'intro' => serverEnvAdminT('parameters.server_env.section.telegram.intro', 'Identite du bot et protection des appels entrants du webhook.'),
+            'intro' => serverEnvAdminT('parameters.server_env.section.telegram.intro', 'Identité du bot et protection des appels entrants du webhook.'),
             'fields' => [
                 [
                     'key' => 'TELEGRAM_BOT_TOKEN',
@@ -224,7 +226,7 @@ function serverEnvAdminGetEditableSections()
                     'label' => serverEnvAdminT('parameters.server_env.field.TELEGRAM_WEBHOOK_SECRET.label', 'Secret du webhook Telegram'),
                     'type' => 'password',
                     'secret' => true,
-                    'help' => serverEnvAdminT('parameters.server_env.field.TELEGRAM_WEBHOOK_SECRET.help', 'Secret choisi pour proteger les appels du bot : 32 a 256 caracteres, lettres, chiffres, tirets ou underscores. La meme valeur doit etre enregistree aupres de Telegram avec setWebhook et son parametre secret_token. Modifier ce champ ne reenregistre pas le webhook. Laissez vide pour conserver le secret actuel.'),
+                    'help' => serverEnvAdminT('parameters.server_env.field.TELEGRAM_WEBHOOK_SECRET.help', 'Secret choisi pour protéger les appels du bot : 32 à 256 caractères, lettres, chiffres, tirets ou underscores. La même valeur doit être enregistrée auprès de Telegram avec setWebhook et son paramètre secret_token. Modifier ce champ ne reenregistre pas le webhook. Laissez vide pour conserver le secret actuel.'),
                 ],
             ],
         ],
@@ -244,11 +246,11 @@ function serverEnvAdminGetEditableSections()
                     'label' => serverEnvAdminT('parameters.server_env.field.ETHERCALC_INTERNAL_URL.label', 'URL interne EtherCalc'),
                     'type' => 'url',
                     'placeholder' => 'http://ethercalc:8000',
-                    'help' => serverEnvAdminT('parameters.server_env.field.ETHERCALC_INTERNAL_URL.help', 'Optionnel. Utilisee uniquement par le serveur OMO pour joindre EtherCalc dans le meme reseau. Laissez vide dans les autres cas.'),
+                    'help' => serverEnvAdminT('parameters.server_env.field.ETHERCALC_INTERNAL_URL.help', 'Optionnel. Utilisée uniquement par le serveur OMO pour joindre EtherCalc dans le même réseau. Laissez vide dans les autres cas.'),
                 ],
                 [
                     'key' => 'ETHERCALC_KEY',
-                    'label' => serverEnvAdminT('parameters.server_env.field.ETHERCALC_KEY.label', 'Cle EtherCalc'),
+                    'label' => serverEnvAdminT('parameters.server_env.field.ETHERCALC_KEY.label', 'Clé EtherCalc'),
                     'type' => 'password',
                     'secret' => true,
                     'help' => serverEnvAdminT('parameters.server_env.field.secret_keep.help', 'Laissez vide pour conserver la valeur actuelle.'),
@@ -268,17 +270,17 @@ function serverEnvAdminGetEditableSections()
                 ],
                 [
                     'key' => 'ETHERPAD_API_KEY',
-                    'label' => serverEnvAdminT('parameters.server_env.field.ETHERPAD_API_KEY.label', 'Cle API Etherpad'),
+                    'label' => serverEnvAdminT('parameters.server_env.field.ETHERPAD_API_KEY.label', 'Clé API Etherpad'),
                     'type' => 'password',
                     'secret' => true,
                     'help' => serverEnvAdminT('parameters.server_env.field.secret_keep.help', 'Laissez vide pour conserver la valeur actuelle.'),
                 ],
                 [
                     'key' => 'ETHERPAD_API_VERSION',
-                    'label' => serverEnvAdminT('parameters.server_env.field.ETHERPAD_API_VERSION.label', 'Version de l API Etherpad'),
+                    'label' => serverEnvAdminT('parameters.server_env.field.ETHERPAD_API_VERSION.label', 'Version de l’API Etherpad'),
                     'type' => 'text',
                     'placeholder' => '1.3.1',
-                    'help' => serverEnvAdminT('parameters.server_env.field.ETHERPAD_API_VERSION.help', 'Version renvoyee par le point d entree /api du serveur Etherpad.'),
+                    'help' => serverEnvAdminT('parameters.server_env.field.ETHERPAD_API_VERSION.help', 'Version renvoyée par le point d’entrée /api du serveur Etherpad.'),
                 ],
                 [
                     'key' => 'ETHERPAD_COOKIE_DOMAIN',
@@ -305,27 +307,27 @@ function serverEnvAdminGetEditableSections()
                     'label' => serverEnvAdminT('parameters.server_env.field.SPACEDECK_INTERNAL_URL.label', 'URL interne SpaceDeck'),
                     'type' => 'url',
                     'placeholder' => 'https://board.opengov.tools',
-                    'help' => serverEnvAdminT('parameters.server_env.field.SPACEDECK_INTERNAL_URL.help', 'Optionnel. Utilisee par OMO pour creer et supprimer les tableaux. Laissez vide pour utiliser l URL publique.'),
+                    'help' => serverEnvAdminT('parameters.server_env.field.SPACEDECK_INTERNAL_URL.help', 'Optionnel. Utilisée par OMO pour créer et supprimer les tableaux. Laissez vide pour utiliser l’URL publique.'),
                 ],
                 [
                     'key' => 'SPACEDECK_PROVISIONING_TOKEN',
                     'label' => serverEnvAdminT('parameters.server_env.field.SPACEDECK_PROVISIONING_TOKEN.label', 'Jeton de provisioning SpaceDeck'),
                     'type' => 'password',
                     'secret' => true,
-                    'help' => serverEnvAdminT('parameters.server_env.field.SPACEDECK_PROVISIONING_TOKEN.help', 'Jeton prive configure sur le VPS. Il permet a OMO de creer et supprimer les tableaux.'),
+                    'help' => serverEnvAdminT('parameters.server_env.field.SPACEDECK_PROVISIONING_TOKEN.help', 'Jeton privé configure sur le VPS. Il permet a OMO de créer et supprimer les tableaux.'),
                 ],
                 [
                     'key' => 'SPACEDOCK_EXTERNAL_ACCESS_SECRET',
-                    'label' => serverEnvAdminT('parameters.server_env.field.SPACEDOCK_EXTERNAL_ACCESS_SECRET.label', 'Cle de signature des acces'),
+                    'label' => serverEnvAdminT('parameters.server_env.field.SPACEDOCK_EXTERNAL_ACCESS_SECRET.label', 'Clé de signature des accès'),
                     'type' => 'password',
                     'secret' => true,
-                    'help' => serverEnvAdminT('parameters.server_env.field.SPACEDOCK_EXTERNAL_ACCESS_SECRET.help', 'Cle privee longue et aleatoire, utilisee par OMO pour signer les acces de lecture et d edition.'),
+                    'help' => serverEnvAdminT('parameters.server_env.field.SPACEDOCK_EXTERNAL_ACCESS_SECRET.help', 'Clé privée longue et aléatoire, utilisée par OMO pour signer les accès de lecture et d’édition.'),
                 ],
             ],
         ],
         'mail' => [
             'title' => serverEnvAdminT('parameters.server_env.section.mail.title', 'E-mail'),
-            'intro' => serverEnvAdminT('parameters.server_env.section.mail.intro', 'Configuration SMTP generale du serveur.'),
+            'intro' => serverEnvAdminT('parameters.server_env.section.mail.intro', 'Configuration SMTP générale du serveur.'),
             'fields' => [
                 [
                     'key' => 'MAIL_HOST',
@@ -341,7 +343,7 @@ function serverEnvAdminGetEditableSections()
                 ],
                 [
                     'key' => 'MAIL_SECURE',
-                    'label' => serverEnvAdminT('parameters.server_env.field.MAIL_SECURE.label', 'Securite SMTP'),
+                    'label' => serverEnvAdminT('parameters.server_env.field.MAIL_SECURE.label', 'Sécurité SMTP'),
                     'type' => 'text',
                     'placeholder' => serverEnvAdminT('parameters.server_env.field.MAIL_SECURE.placeholder', 'SSL, tls ou vide'),
                 ],
@@ -356,7 +358,7 @@ function serverEnvAdminGetEditableSections()
                 ],
                 [
                     'key' => 'MAIL_CHARSET',
-                    'label' => serverEnvAdminT('parameters.server_env.field.MAIL_CHARSET.label', 'Jeu de caracteres e-mail'),
+                    'label' => serverEnvAdminT('parameters.server_env.field.MAIL_CHARSET.label', 'Jeu de caractères e-mail'),
                     'type' => 'text',
                 ],
                 [
@@ -375,11 +377,11 @@ function serverEnvAdminGetEditableSections()
         ],
         'maps' => [
             'title' => serverEnvAdminT('parameters.server_env.section.maps.title', 'Cartographie'),
-            'intro' => serverEnvAdminT('parameters.server_env.section.maps.intro', 'Cle utilisee pour afficher les fonds de carte Stadia Maps.'),
+            'intro' => serverEnvAdminT('parameters.server_env.section.maps.intro', 'Clé utilisée pour afficher les fonds de carte Stadia Maps.'),
             'fields' => [
                 [
                     'key' => 'STADIA_MAPS_API_KEY',
-                    'label' => serverEnvAdminT('parameters.server_env.field.STADIA_MAPS_API_KEY.label', 'Cle Stadia Maps'),
+                    'label' => serverEnvAdminT('parameters.server_env.field.STADIA_MAPS_API_KEY.label', 'Clé Stadia Maps'),
                     'type' => 'password',
                     'secret' => true,
                     'help' => serverEnvAdminT('parameters.server_env.field.secret_keep.help', 'Laissez vide pour conserver la valeur actuelle.'),
@@ -735,7 +737,7 @@ function serverEnvAdminValidateValues(array $values, ?array $currentValues = nul
                 $destinationChanged = $destinationChanged || $baseUrl !== $currentBaseUrl;
             }
         } catch (InvalidArgumentException $error) {
-            $errors[] = serverEnvAdminT('parameters.server_env.error.ai_base_url', 'Indiquez une adresse de base HTTPS valide, sans identifiants, parametres ni suffixe /chat/completions.');
+            $errors[] = serverEnvAdminT('parameters.server_env.error.ai_base_url', 'Indiquez une adresse de base HTTPS valide, sans identifiants, paramètres ni suffixe /chat/completions.');
         }
     }
     if ($currentValues !== null
@@ -744,7 +746,7 @@ function serverEnvAdminValidateValues(array $values, ?array $currentValues = nul
         && trim((string)($currentValues['AI_API_KEY'] ?? '')) !== ''
         && trim((string)($submittedValues['AI_API_KEY'] ?? '')) === ''
         && ($values['AI_API_KEY'] ?? '') === ($currentValues['AI_API_KEY'] ?? '')) {
-        $errors[] = serverEnvAdminT('parameters.server_env.error.ai_provider_key', 'Saisissez la cle API du fournisseur choisi lorsque vous changez de fournisseur de texte ou d adresse API.');
+        $errors[] = serverEnvAdminT('parameters.server_env.error.ai_provider_key', 'Saisissez la clé API du fournisseur choisi lorsque vous changez de fournisseur de texte ou d’adresse API.');
     }
     $audioProvider = ($values['TRANSCRIPTION_PROVIDER'] ?? '') ?: 'openai';
     if ($audioProvider === 'infomaniak') {
@@ -763,18 +765,18 @@ function serverEnvAdminValidateValues(array $values, ?array $currentValues = nul
         && trim((string)($currentValues['TRANSCRIPTION_API_KEY'] ?? '')) !== ''
         && trim((string)($submittedValues['TRANSCRIPTION_API_KEY'] ?? '')) === ''
         && ($values['TRANSCRIPTION_API_KEY'] ?? '') === ($currentValues['TRANSCRIPTION_API_KEY'] ?? '')) {
-        $errors[] = serverEnvAdminT('parameters.server_env.error.transcription_provider_key', 'Saisissez la cle API du service choisi lorsque vous changez de fournisseur de transcription.');
+        $errors[] = serverEnvAdminT('parameters.server_env.error.transcription_provider_key', 'Saisissez la clé API du service choisi lorsque vous changez de fournisseur de transcription.');
     }
     if ($provider === 'infomaniak') {
         try { commonAiGetInfomaniakBaseUrl((string)($values['AI_INFOMANIAK_PRODUCT_ID'] ?? '')); }
         catch (InvalidArgumentException $error) {
-            $errors[] = serverEnvAdminT('parameters.server_env.infomaniak.product_required', 'Saisissez le Product ID Infomaniak, puis cliquez sur Actualiser les modeles sous le token avant d enregistrer.');
+            $errors[] = serverEnvAdminT('parameters.server_env.infomaniak.product_required', 'Saisissez le Product ID Infomaniak, puis cliquez sur Actualiser les modèles sous le token avant d’enregistrer.');
         }
     }
     if (in_array($provider, ['anthropic', 'mistral', 'infomaniak', 'openai_compatible'], true)
         && trim((string)($values['AI_API_KEY'] ?? '')) !== ''
         && trim((string)($values['AI_MODEL'] ?? '')) === '') {
-        $errors[] = serverEnvAdminT('parameters.server_env.error.ai_model_required', 'Indiquez le modele principal du fournisseur de texte choisi.');
+        $errors[] = serverEnvAdminT('parameters.server_env.error.ai_model_required', 'Indiquez le modèle principal du fournisseur de texte choisi.');
     }
 
     $fieldMap = serverEnvAdminGetFieldMap();
@@ -806,21 +808,21 @@ function serverEnvAdminValidateValues(array $values, ?array $currentValues = nul
         if (($field['type'] ?? '') === 'number' && (preg_match('/^[0-9]+$/D', $value) !== 1
             || (isset($field['min']) && (float)$value < $field['min'])
             || (isset($field['max']) && (float)$value > $field['max']))) {
-            $errors[] = serverEnvAdminT('parameters.server_env.error.invalid_numeric_field', 'La valeur numerique de {label} est invalide.', ['label' => $field['label']]);
+            $errors[] = serverEnvAdminT('parameters.server_env.error.invalid_numeric_field', 'La valeur numérique de {label} est invalide.', ['label' => $field['label']]);
         }
         if (($field['type'] ?? '') === 'email' && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
-            $errors[] = serverEnvAdminT('parameters.server_env.error.invalid_email_field', 'L adresse e-mail de {label} est invalide.', ['label' => $field['label']]);
+            $errors[] = serverEnvAdminT('parameters.server_env.error.invalid_email_field', 'L’adresse e-mail de {label} est invalide.', ['label' => $field['label']]);
         }
     }
 
     $publicUrl = (string)($values['AUTH_PUBLIC_URL'] ?? '');
     if ($publicUrl !== '' && !serverEnvAdminIsValidPublicOrigin($publicUrl)) {
-        $errors[] = serverEnvAdminT('parameters.server_env.error.invalid_public_url', 'L adresse publique doit etre une origine HTTPS sans chemin ni parametre. HTTP est reserve a localhost et 127.0.0.1.');
+        $errors[] = serverEnvAdminT('parameters.server_env.error.invalid_public_url', 'L’adresse publique doit être une origine HTTPS sans chemin ni paramètre. HTTP est réservé à localhost et 127.0.0.1.');
     }
     foreach (['NOMINATIM_SEARCH_URL', 'MCP_PUBLIC_URL'] as $key) {
         $url = (string)($values[$key] ?? '');
         if ($url !== '' && !serverEnvAdminIsHttpUrl($url)) {
-            $errors[] = serverEnvAdminT('parameters.server_env.error.invalid_url_field', 'L adresse de {label} est invalide.', ['label' => $fieldMap[$key]['label']]);
+            $errors[] = serverEnvAdminT('parameters.server_env.error.invalid_url_field', 'L’adresse de {label} est invalide.', ['label' => $fieldMap[$key]['label']]);
         }
     }
 
@@ -828,7 +830,7 @@ function serverEnvAdminValidateValues(array $values, ?array $currentValues = nul
     if ($telegramWebhookSecret !== '' && preg_match('/^[A-Za-z0-9_-]{32,256}$/D', $telegramWebhookSecret) !== 1) {
         $errors[] = serverEnvAdminT(
             'parameters.server_env.error.invalid_telegram_webhook_secret',
-            'Le secret du webhook Telegram doit contenir 32 a 256 lettres, chiffres, tirets ou underscores.'
+            'Le secret du webhook Telegram doit contenir 32 à 256 lettres, chiffres, tirets ou underscores.'
         );
     }
 
@@ -836,30 +838,30 @@ function serverEnvAdminValidateValues(array $values, ?array $currentValues = nul
     if ($patreonCreatorUserId !== '' && preg_match('/^[1-9][0-9]*$/D', $patreonCreatorUserId) !== 1) {
         $errors[] = serverEnvAdminT(
             'parameters.server_env.error.invalid_patreon_creator_user_id',
-            'L ID utilisateur Patreon du createur doit etre un identifiant numerique strictement positif.'
+            'L’ID utilisateur Patreon du créateur doit être un identifiant numérique strictement positif.'
         );
     }
 
     $serverUrlFields = array(
         'ETHERPAD_URL' => array(
             'translationKey' => 'parameters.server_env.error.invalid_etherpad_url',
-            'fallback' => 'L URL Etherpad doit etre une adresse http ou https valide.',
+            'fallback' => omoServerEnvT('copy.l_url_etherpad_doit_etre_une_adresse_http_ou_https_valide'),
         ),
         'ETHERCALC_URL' => array(
             'translationKey' => 'parameters.server_env.error.invalid_ethercalc_url',
-            'fallback' => 'L URL EtherCalc doit etre une adresse http ou https valide.',
+            'fallback' => omoServerEnvT('copy.l_url_ethercalc_doit_etre_une_adresse_http_ou_https_valide'),
         ),
         'ETHERCALC_INTERNAL_URL' => array(
             'translationKey' => 'parameters.server_env.error.invalid_ethercalc_url',
-            'fallback' => 'L URL EtherCalc doit etre une adresse http ou https valide.',
+            'fallback' => omoServerEnvT('copy.l_url_ethercalc_doit_etre_une_adresse_http_ou_https_valide'),
         ),
         'SPACEDECK_URL' => array(
             'translationKey' => 'parameters.server_env.error.invalid_spacedeck_url',
-            'fallback' => 'L URL SpaceDeck doit etre une adresse http ou https valide.',
+            'fallback' => omoServerEnvT('copy.l_url_spacedeck_doit_etre_une_adresse_http_ou_https_valide'),
         ),
         'SPACEDECK_INTERNAL_URL' => array(
             'translationKey' => 'parameters.server_env.error.invalid_spacedeck_url',
-            'fallback' => 'L URL SpaceDeck doit etre une adresse http ou https valide.',
+            'fallback' => omoServerEnvT('copy.l_url_spacedeck_doit_etre_une_adresse_http_ou_https_valide'),
         ),
     );
 
@@ -885,25 +887,25 @@ function serverEnvAdminValidateValues(array $values, ?array $currentValues = nul
     if ($etherpadApiVersion !== '' && preg_match('/^[0-9]+(?:\.[0-9]+)*$/', $etherpadApiVersion) !== 1) {
         $errors[] = serverEnvAdminT(
             'parameters.server_env.error.invalid_etherpad_api_version',
-            'La version de l API Etherpad doit etre numerique, par exemple 1.3.1.'
+            'La version de l’API Etherpad doit être numérique, par exemple 1.3.1.'
         );
     }
 
     $patreonRedirect = trim((string)($values['PATREON_REDIRECT_URI'] ?? ''));
     if ($patreonRedirect !== '' && preg_match('#^https?://#i', $patreonRedirect) !== 1) {
-        $errors[] = 'La Redirect URI Patreon doit etre une URL absolue.';
+        $errors[] = omoServerEnvT('copy.la_redirect_uri_patreon_doit_etre_une_url_absolue');
     }
 
     $patreonConnectUrl = trim((string)($values['PATREON_CONNECT_URL'] ?? ''));
     if ($patreonConnectUrl !== '' && preg_match('~^https://[^/?#]+/common/patreon_connect\.php$~i', $patreonConnectUrl) !== 1) {
-        $errors[] = 'L URL centrale Patreon doit se terminer par /common/patreon_connect.php et utiliser HTTPS.';
+        $errors[] = 'L’URL centrale Patreon doit se terminer par /common/patreon_connect.php et utiliser HTTPS.';
     }
 
     $envPath = serverEnvAdminGetEnvPath();
     $targetLabel = serverEnvAdminGetEnvTargetLabel();
     $directory = dirname($envPath);
     if (!is_dir($directory) || !is_writable($directory)) {
-        $errors[] = 'Le dossier contenant le fichier ' . $targetLabel . ' n est pas accessible en ecriture.';
+        $errors[] = omoServerEnvT('copy.le_dossier_contenant_le_fichier_targetlabel_n_est_pas_accessible_en_ec', ['targetLabel' => $targetLabel]);
     }
 
     return $errors;
@@ -973,7 +975,7 @@ function serverEnvAdminRequest($method, $url, array $options = array())
             'httpCode' => $httpCode,
             'text' => $curlError !== '' ? $curlError : serverEnvAdminT(
                 'parameters.server_env.error.connection_request_failed',
-                'La requete a echoue.'
+                'La requête a échoué.'
             ),
         ];
     }
@@ -1009,7 +1011,7 @@ function serverEnvAdminTestEtherpadConnection(array $values)
     if (preg_match('/^[0-9]+(?:\.[0-9]+)*$/', $apiVersion) !== 1) {
         return [
             'status' => false,
-            'message' => serverEnvAdminT('parameters.server_env.error.invalid_etherpad_api_version', 'La version de l API Etherpad doit etre numerique, par exemple 1.3.1.'),
+            'message' => serverEnvAdminT('parameters.server_env.error.invalid_etherpad_api_version', 'La version de l’API Etherpad doit être numérique, par exemple 1.3.1.'),
         ];
     }
 
@@ -1056,7 +1058,7 @@ function serverEnvAdminTestEthercalcConnection(array $values)
     if (!serverEnvAdminIsHttpUrl($publicBaseUrl) || ($internalBaseUrl !== '' && !serverEnvAdminIsHttpUrl($internalBaseUrl))) {
         return [
             'status' => false,
-            'message' => serverEnvAdminT('parameters.server_env.error.invalid_ethercalc_url', 'L URL EtherCalc doit etre une adresse http ou https valide.'),
+            'message' => serverEnvAdminT('parameters.server_env.error.invalid_ethercalc_url', 'L’URL EtherCalc doit être une adresse http ou https valide.'),
         ];
     }
     if ($key === '') {
@@ -1064,7 +1066,7 @@ function serverEnvAdminTestEthercalcConnection(array $values)
             'status' => false,
             'message' => serverEnvAdminT(
                 'parameters.server_env.error.ethercalc_connection_incomplete',
-                'Renseignez l URL publique et la cle EtherCalc avant le test.'
+                'Renseignez l’URL publique et la clé EtherCalc avant le test.'
             ),
         ];
     }
@@ -1107,7 +1109,7 @@ function serverEnvAdminTestEthercalcConnection(array $values)
         'status' => true,
         'message' => serverEnvAdminT(
             'parameters.server_env.status.ethercalc_connection_ok',
-            'Connexion EtherCalc verifiee : URL publique, URL interne et cle sont valides.'
+            'Connexion EtherCalc vérifiée : URL publique, URL interne et clé sont valides.'
         ),
     ];
 }
@@ -1122,7 +1124,7 @@ function serverEnvAdminTestSpacedeckConnection(array $values)
     if (!serverEnvAdminIsHttpUrl($publicBaseUrl) || ($internalBaseUrl !== '' && !serverEnvAdminIsHttpUrl($internalBaseUrl))) {
         return array(
             'status' => false,
-            'message' => serverEnvAdminT('parameters.server_env.error.invalid_spacedeck_url', 'L URL SpaceDeck doit etre une adresse http ou https valide.'),
+            'message' => serverEnvAdminT('parameters.server_env.error.invalid_spacedeck_url', 'L’URL SpaceDeck doit être une adresse http ou https valide.'),
         );
     }
     if ($provisioningToken === '') {
@@ -1130,7 +1132,7 @@ function serverEnvAdminTestSpacedeckConnection(array $values)
             'status' => false,
             'message' => serverEnvAdminT(
                 'parameters.server_env.error.spacedeck_connection_incomplete',
-                'Renseignez l URL publique et le jeton de provisioning SpaceDeck avant le test.'
+                'Renseignez l’URL publique et le jeton de provisioning SpaceDeck avant le test.'
             ),
         );
     }
@@ -1159,7 +1161,7 @@ function serverEnvAdminTestSpacedeckConnection(array $values)
     if ($spaceId === '') {
         return array(
             'status' => false,
-            'message' => serverEnvAdminConnectionTestError('spacedeck', 'reponse de creation invalide'),
+            'message' => serverEnvAdminConnectionTestError('spacedeck', omoServerEnvT('copy.reponse_de_creation_invalide')),
         );
     }
 
@@ -1180,7 +1182,7 @@ function serverEnvAdminTestSpacedeckConnection(array $values)
         'status' => true,
         'message' => serverEnvAdminT(
             'parameters.server_env.status.spacedeck_connection_ok',
-            'Connexion SpaceDeck verifiee : URL et jeton de provisioning sont valides.'
+            'Connexion SpaceDeck vérifiée : URL et jeton de provisioning sont valides.'
         ),
     );
 }
@@ -1303,7 +1305,7 @@ function serverEnvAdminWriteValues(array $values)
     if (@file_put_contents($envPath, $content, LOCK_EX) === false) {
         throw new RuntimeException(serverEnvAdminT(
             'parameters.server_env.error.write_failed',
-            'Impossible d ecrire le fichier {target}. Verifiez les permissions ou un montage Docker en lecture seule.',
+            'Impossible d’écrire le fichier {target}. Vérifiez les permissions ou un montage Docker en lecture seule.',
             ['target' => $targetLabel]
         ));
     }

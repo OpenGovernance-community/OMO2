@@ -11,8 +11,8 @@ class EventPublicLink extends DbObject
     }
     public static function attributeLabels()
     {
-        return ['id' => 'ID', 'IDevent' => 'Evenement', 'token' => 'Lien',
-            'enabled' => 'Inscription publique', 'created_at' => 'Creation'];
+        return ['id' => 'ID', 'IDevent' => 'Événement', 'token' => 'Lien',
+            'enabled' => 'Inscription publique', 'created_at' => 'Création'];
     }
     public static function attributeLength() { return ['token' => 64]; }
 

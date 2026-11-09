@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/account-translations.php';
+
 
 require_once dirname(__DIR__) . '/config.php';
 
@@ -741,7 +743,7 @@ function patreonSyncLockedConnection(\dbObject\UserPatreon $connection)
 
 		$profile = patreonExtractProfile($identity);
         if ((string)$profile['patreon_user_id'] !== (string)$connection->get('patreon_user_id')) {
-            throw new RuntimeException('Identite Patreon inattendue. Reconnectez le compte.');
+            throw new RuntimeException(commonAccountUiT('copy.identite_patreon_inattendue_reconnectez_le_compte'));
         }
 		$connection->applyPatreonProfile($profile);
 		$connection->markSyncSuccess();

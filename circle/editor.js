@@ -523,7 +523,7 @@
 				  
 				var mystyles= [
 					'p','h1', 'h2','h3',
-					{ title: 'Decision', tag: 'div', className: 'monstyledemenu', value: 'h4' },
+					{ title: 'Décision', tag: 'div', className: 'monstyledemenu', value: 'h4' },
 					{ title: 'Tâche/action', tag: 'div', className: 'monstyledemenu', value: 'h5' },
 					   
 				];

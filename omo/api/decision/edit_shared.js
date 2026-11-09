@@ -42,6 +42,42 @@ window.commonPageScripts["/omo/api/decision/edit_shared.js"] = function (pageCon
     const unsavedQuestionLabel = pageConfig.unsavedQuestionLabel;
     const questionItemTemplate = pageConfig.questionItemTemplate;
 
+    document.querySelectorAll('[data-omo-decision-interrupt]').forEach(function (button) {
+        if (button.dataset.interruptReady === '1') return;
+        button.dataset.interruptReady = '1';
+        button.addEventListener('click', async function () {
+            if (button.disabled || !window.confirm(pageConfig.interruptConfirm)) return;
+            const label = button.textContent;
+            button.disabled = true;
+            button.textContent = pageConfig.interruptPending;
+            try {
+                const data = new FormData();
+                const payload = JSON.parse(button.getAttribute('data-request-payload'));
+                Object.keys(payload).forEach(function (key) { data.append(key, String(payload[key])); });
+                let url = button.getAttribute('data-request-url');
+                if (typeof window.omoResolveAppUrl === 'function') url = window.omoResolveAppUrl(url);
+                const response = await fetch(url, {method: 'POST', body: data, credentials: 'same-origin',
+                    headers: {'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'}});
+                const result = await response.json();
+                if (!response.ok || !result.status) throw new Error(result.message || pageConfig.interruptError);
+                const editor = button.closest('.omo-decision-edit');
+                if (editor) {
+                    if (typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(editor);
+                    editor.querySelectorAll('[data-omo-decision-multi-editor]').forEach(function (root) {
+                        root.dataset.multiInitialSignature = getMultiEditorSignature(root);
+                    });
+                }
+                notifyQuestionSwitch(result.message, 'success');
+                openEditorUrl(result.redirectUrl);
+            } catch (error) {
+                notifyQuestionSwitch(error && error.message ? error.message : pageConfig.interruptError, 'error');
+            } finally {
+                button.disabled = false;
+                button.textContent = label;
+            }
+        });
+    });
+
     function getCompleteFormData(form) {
         const data = new FormData(form);
         form.querySelectorAll('[name]:disabled').forEach(function (field) {
@@ -89,6 +125,203 @@ window.commonPageScripts["/omo/api/decision/edit_shared.js"] = function (pageCon
         return panel ? panel.getAttribute('data-question-key') || '' : '';
     }
 
+    let questionActions = null;
+
+    function closeQuestionActions(restoreFocus) {
+        if (!questionActions) return;
+        const current = questionActions;
+        questionActions = null;
+        current.menu.remove();
+        current.button.setAttribute('aria-expanded', 'false');
+        if (restoreFocus) current.button.focus();
+    }
+
+    function removeLocalQuestion(root, link, panel) {
+        const panels = Array.from(root.querySelectorAll('[data-omo-decision-question-panel]'));
+        if (panels.length < 2 || root.dataset.canRenameQuestions !== '1' || root.getAttribute('aria-busy') === 'true') return;
+        const label = link.firstElementChild.textContent;
+        if (!window.confirm(pageConfig.questionDeleteConfirm.replace('__NAME__', label))) return;
+        const processId = root.querySelector('[data-omo-decision-process-form] [name="id"]');
+        const groupId = panel.querySelector('[name="gid"]');
+        if (Number(processId && processId.value) > 0 && Number(groupId && groupId.value) > 0) {
+            root.deletedQuestionIds = root.deletedQuestionIds || new Set();
+            root.deletedQuestionIds.add(groupId.value);
+        }
+        const index = panels.indexOf(panel);
+        const next = panels[index + 1] || panels[index - 1];
+        closeQuestionActions(false);
+        panel.remove();
+        link.parentElement.remove();
+        switchLocalQuestion(root, next.dataset.questionKey);
+        initQuestionNames(root);
+        if (typeof window.commonDecisionInitQuestionSettingsCopy === 'function') {
+            window.commonDecisionInitQuestionSettingsCopy(root, pageConfig.settingsCopy);
+        }
+        const active = root.querySelector('[data-omo-decision-question-link][aria-current="page"]');
+        if (active) active.focus();
+    }
+
+    function openQuestionActions(root, link, panel, event) {
+        const control = link.questionNameControl;
+        const wasOpen = questionActions && questionActions.button === control.button;
+        closeQuestionActions(false);
+        if (wasOpen || root.getAttribute('aria-busy') === 'true' || root.dataset.canRenameQuestions !== '1') return;
+        event.preventDefault();
+        const menu = document.createElement('div');
+        menu.className = 'generic-menu-panel generic-menu-panel--floating';
+        menu.setAttribute('role', 'menu');
+        menu.setAttribute('aria-label', pageConfig.questionActionsLabel);
+        const edit = document.createElement('button');
+        edit.type = 'button';
+        edit.className = 'generic-menu-item';
+        edit.setAttribute('role', 'menuitem');
+        edit.textContent = pageConfig.questionEditLabel;
+        edit.addEventListener('click', function (editEvent) {
+            closeQuestionActions(false);
+            control.start(editEvent);
+        });
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'generic-menu-item generic-menu-item--danger';
+        remove.setAttribute('role', 'menuitem');
+        remove.textContent = pageConfig.questionDeleteLabel;
+        remove.disabled = root.querySelectorAll('[data-omo-decision-question-panel]').length < 2;
+        remove.title = remove.disabled ? pageConfig.questionDeleteLast : '';
+        remove.addEventListener('click', function () { removeLocalQuestion(root, link, panel); });
+        menu.append(edit, remove);
+        document.body.appendChild(menu);
+        const anchor = control.button.getBoundingClientRect();
+        const bounds = menu.getBoundingClientRect();
+        menu.style.left = Math.max(12, Math.min(anchor.right - bounds.width, window.innerWidth - bounds.width - 12)) + 'px';
+        menu.style.top = (anchor.bottom + bounds.height + 6 <= window.innerHeight ? anchor.bottom + 6 : Math.max(12, anchor.top - bounds.height - 6)) + 'px';
+        questionActions = {menu: menu, button: control.button};
+        control.button.setAttribute('aria-expanded', 'true');
+        menu.addEventListener('keydown', function (keyEvent) {
+            if (keyEvent.key === 'Escape') {
+                keyEvent.preventDefault(); keyEvent.stopPropagation(); closeQuestionActions(true);
+            } else if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(keyEvent.key)) {
+                keyEvent.preventDefault();
+                const items = Array.from(menu.querySelectorAll('button:not(:disabled)'));
+                const index = items.indexOf(document.activeElement);
+                const next = keyEvent.key === 'Home' ? 0 : keyEvent.key === 'End' ? items.length - 1
+                    : (index + (keyEvent.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+                items[next].focus();
+            }
+        });
+        edit.focus();
+    }
+
+    document.addEventListener('click', function (event) {
+        if (questionActions && !questionActions.menu.contains(event.target) && !questionActions.button.contains(event.target)) closeQuestionActions(false);
+    });
+    window.addEventListener('wheel', function () { closeQuestionActions(false); }, true);
+    window.addEventListener('resize', function () { closeQuestionActions(false); });
+
+    function initQuestionNames(root) {
+        const links = root.querySelectorAll('[data-omo-decision-question-link]');
+        links.forEach(function (link, index) {
+            const panel = Array.from(root.querySelectorAll('[data-omo-decision-question-panel]')).find(function (item) {
+                return item.getAttribute('data-question-key') === link.getAttribute('data-question-key');
+            });
+            const field = panel && panel.querySelector('input[name="short_title"]');
+            if (!field) return;
+            if (!link.questionNameControl) {
+                const wrapper = document.createElement('span');
+                wrapper.className = 'omo-decision-edit__question-tab-item';
+                link.before(wrapper);
+                wrapper.appendChild(link);
+                const label = document.createElement('span');
+                // Keep the unsaved badge separate from the editable title.
+                Array.from(link.childNodes).filter(function (node) { return node.nodeType === Node.TEXT_NODE; }).forEach(function (node) { node.remove(); });
+                link.prepend(label);
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'generic-action-button generic-action-button--quiet-icon generic-action-button--icon-only';
+                button.setAttribute('data-omo-decision-question-actions', '');
+                button.setAttribute('aria-label', pageConfig.questionActionsLabel);
+                button.setAttribute('aria-haspopup', 'menu');
+                button.setAttribute('aria-expanded', 'false');
+                button.title = pageConfig.questionActionsLabel;
+                button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="19" r="1.5" fill="currentColor"/></svg>';
+                wrapper.appendChild(button);
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'generic-form-control generic-form-control--compact omo-decision-edit__question-name';
+                input.maxLength = field.maxLength > 0 ? field.maxLength : 190;
+                input.setAttribute('aria-label', pageConfig.questionRenameLabel);
+                input.title = pageConfig.questionRenameHelp;
+                input.hidden = true;
+                wrapper.appendChild(input);
+                const measure = document.createElement('canvas').getContext('2d');
+                const resizeInput = function () {
+                    const style = window.getComputedStyle(input);
+                    measure.font = [style.fontWeight, style.fontSize, style.fontFamily].join(' ');
+                    const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)
+                        + parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth);
+                    input.style.width = Math.ceil(measure.measureText(input.value || ' ').width + padding + 3) + 'px';
+                };
+                const control = {input: input, button: button, field: field};
+                link.questionNameControl = control;
+                const sync = function () {
+                    const position = Array.from(root.querySelectorAll('[data-omo-decision-question-link]')).indexOf(link) + 1;
+                    const fallback = String(questionItemTemplate).replace('__INDEX__', String(position));
+                    label.textContent = field.value || fallback;
+                    link.title = field.value || fallback;
+                };
+                field.addEventListener('input', sync);
+                field.addEventListener('change', sync);
+                const updateField = function (value) {
+                    field.value = value;
+                    field.dispatchEvent(new Event('input', {bubbles: true}));
+                    field.dispatchEvent(new Event('change', {bubbles: true}));
+                };
+                control.finish = function (cancel) {
+                    if (input.hidden) return;
+                    updateField(cancel ? control.original : input.value.trim());
+                    input.hidden = true;
+                    link.hidden = false;
+                    button.hidden = !link.classList.contains('is-active');
+                };
+                const start = function (event) {
+                    if (root.dataset.canRenameQuestions !== '1' || field.readOnly || field.disabled || root.getAttribute('aria-busy') === 'true') return;
+                    event.preventDefault();
+                    switchLocalQuestion(root, link.getAttribute('data-question-key'));
+                    control.original = field.value;
+                    input.value = field.value;
+                    link.hidden = true;
+                    button.hidden = true;
+                    input.hidden = false;
+                    resizeInput();
+                    input.focus();
+                    input.select();
+                };
+                control.start = start;
+                control.sync = sync;
+                button.addEventListener('click', function (event) { openQuestionActions(root, link, panel, event); });
+                button.addEventListener('keydown', function (event) {
+                    if (event.key === 'ArrowDown') openQuestionActions(root, link, panel, event);
+                });
+                link.addEventListener('dblclick', start);
+                input.addEventListener('input', function () { updateField(input.value); resizeInput(); });
+                input.addEventListener('blur', function () { control.finish(false); });
+                input.addEventListener('keydown', function (event) {
+                    if (event.key === 'Enter' || event.key === 'Escape') {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        control.finish(event.key === 'Escape');
+                        button.focus();
+                    }
+                });
+                sync();
+            }
+            link.questionNameControl.sync();
+            link.questionNameControl.button.hidden = root.dataset.canRenameQuestions !== '1'
+                || field.readOnly || field.disabled || !link.questionNameControl.input.hidden;
+            link.questionNameControl.button.style.visibility = link.classList.contains('is-active') ? '' : 'hidden';
+            link.questionNameControl.button.tabIndex = link.classList.contains('is-active') ? 0 : -1;
+        });
+    }
+
     function switchLocalQuestion(root, questionKey) {
         let matched = false;
         root.querySelectorAll('[data-omo-decision-question-panel]').forEach(function (panel) {
@@ -106,6 +339,14 @@ window.commonPageScripts["/omo/api/decision/edit_shared.js"] = function (pageCon
                 link.setAttribute('aria-current', 'page');
             } else {
                 link.removeAttribute('aria-current');
+            }
+            const control = link.questionNameControl;
+            if (control) {
+                if (!active) control.finish(false);
+                control.button.hidden = root.dataset.canRenameQuestions !== '1'
+                    || control.field.readOnly || control.field.disabled || !control.input.hidden;
+                control.button.style.visibility = active ? '' : 'hidden';
+                control.button.tabIndex = active ? 0 : -1;
             }
         });
         return true;
@@ -139,6 +380,7 @@ window.commonPageScripts["/omo/api/decision/edit_shared.js"] = function (pageCon
         badge.textContent = unsavedQuestionLabel;
         link.appendChild(badge);
         tabs.appendChild(link);
+        initQuestionNames(root);
     }
 
     function addLocalQuestion(root, button) {
@@ -181,6 +423,11 @@ window.commonPageScripts["/omo/api/decision/edit_shared.js"] = function (pageCon
                 switchLocalQuestion(root, questionKey);
                 return executeQuestionScripts(source);
             })
+            .then(function () {
+                if (typeof window.commonDecisionInitQuestionSettingsCopy === 'function') {
+                    window.commonDecisionInitQuestionSettingsCopy(root, pageConfig.settingsCopy);
+                }
+            })
             .catch(function (error) {
                 notifyQuestionSwitch(error && error.message ? error.message : errorMessage, 'error');
             })
@@ -217,6 +464,9 @@ window.commonPageScripts["/omo/api/decision/edit_shared.js"] = function (pageCon
     }
 
     function saveMultiEditor(root) {
+        root.querySelectorAll('[data-omo-decision-question-link]').forEach(function (link) {
+            if (link.questionNameControl) link.questionNameControl.finish(false);
+        });
         if (root.getAttribute('aria-busy') === 'true' || !validateMultiEditor(root)) {
             return;
         }
@@ -235,6 +485,7 @@ window.commonPageScripts["/omo/api/decision/edit_shared.js"] = function (pageCon
             return (panel.getAttribute('data-question-key') || '') === activeQuestionKey;
         });
         const batchData = new FormData();
+        (root.deletedQuestionIds || []).forEach(function (id) { batchData.append('deleted_groups[]', id); });
         let activeRedirectUrl = '';
         let lastRedirectUrl = '';
 
@@ -285,6 +536,7 @@ window.commonPageScripts["/omo/api/decision/edit_shared.js"] = function (pageCon
                         activeRedirectUrl = String(result && result.redirectUrl ? result.redirectUrl : '');
                     }
                 });
+                root.deletedQuestionIds = new Set();
                 root.dataset.multiInitialSignature = getMultiEditorSignature(root);
                 notifyQuestionSwitch(root.getAttribute('data-saved-message') || 'Scrutin enregistré.', 'success');
                 openEditorUrl(activeRedirectUrl || lastRedirectUrl, omoUiText("prises_de_decision", "Prises de décision"));
@@ -299,7 +551,7 @@ window.commonPageScripts["/omo/api/decision/edit_shared.js"] = function (pageCon
                 root.removeAttribute('aria-busy');
                 if (saveButton) {
                     saveButton.disabled = false;
-                    saveButton.textContent = root.getAttribute('data-save-label') || 'Enregistrer le scrutin';
+                    saveButton.textContent = root.getAttribute('data-save-label') || 'Enregistrer';
                 }
             });
     }
@@ -329,6 +581,10 @@ window.commonPageScripts["/omo/api/decision/edit_shared.js"] = function (pageCon
             }
         });
         root.dataset.multiInitialSignature = getMultiEditorSignature(root);
+        initQuestionNames(root);
+        if (typeof window.commonDecisionInitQuestionSettingsCopy === 'function') {
+            window.commonDecisionInitQuestionSettingsCopy(root, pageConfig.settingsCopy);
+        }
 
         root.setAttribute('data-common-drawer-editor', '');
         root.commonDrawerHasUnsavedChanges = function () {

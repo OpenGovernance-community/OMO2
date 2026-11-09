@@ -9,27 +9,27 @@ use dbObject\VideoRoom;
 use dbObject\AuthRateLimit;
 
 $sourceLang = [
-    'contributor_required' => ['text' => 'La creation de salles est reservee aux personnes ou organisations contributrices sur Patreon. Connectez une contribution personnelle valable ou choisissez une organisation contributrice dont vous etes membre.', 'context' => 'Video creation contribution requirement'],
-    'room_inactive' => ['text' => 'Cette salle n est plus valide : la contribution Patreon de son createur ou de l organisation associee ne permet plus son utilisation.', 'context' => 'Inactive room explanation shown to owners and guests'],
+    'contributor_required' => ['text' => 'La création de salles est réservée aux personnes ou organisations contributrices sur Patreon. Connectez une contribution personnelle valable ou choisissez une organisation contributrice dont vous êtes membre.', 'context' => 'Video creation contribution requirement'],
+    'room_inactive' => ['text' => 'Cette salle n’est plus valide : la contribution Patreon de son créateur ou de l’organisation associée ne permet plus son utilisation.', 'context' => 'Inactive room explanation shown to owners and guests'],
     'organization_select' => ['text' => 'Choisir une organisation', 'context' => 'Video organization select placeholder'],
     'organization_required' => ['text' => 'Organisation contributrice (obligatoire)', 'context' => 'Organization-funded video creation'],
-    'organization_optional' => ['text' => 'Organisation associee (facultatif)', 'context' => 'Personally-funded video creation'],
-    'organization_policy' => ['text' => 'Sans contribution personnelle valable, une organisation contributrice dont vous etes membre est obligatoire. Avec une contribution personnelle valable, l organisation est facultative et toutes vos organisations sont disponibles.', 'context' => 'Video organization selection policy'],
+    'organization_optional' => ['text' => 'Organisation associée (facultatif)', 'context' => 'Personally-funded video creation'],
+    'organization_policy' => ['text' => 'Sans contribution personnelle valable, une organisation contributrice dont vous êtes membre est obligatoire. Avec une contribution personnelle valable, l’organisation est facultative et toutes vos organisations sont disponibles.', 'context' => 'Video organization selection policy'],
     'rejoin' => ['text' => 'Rejoindre de nouveau', 'context' => 'Reload video room after leaving'],
-    'audio_muted_on' => ['text' => 'Micro coupe au demarrage', 'context' => 'Meeting list option status'],
-    'audio_muted_off' => ['text' => 'Micro actif au demarrage', 'context' => 'Meeting list option status'],
-    'video_muted_on' => ['text' => 'Camera eteinte au demarrage', 'context' => 'Meeting list option status'],
-    'video_muted_off' => ['text' => 'Camera active au demarrage', 'context' => 'Meeting list option status'],
-    'camera_restricted_on' => ['text' => 'Activation de la camera bloquee', 'context' => 'Meeting list option status'],
-    'camera_restricted_off' => ['text' => 'Activation de la camera autorisee', 'context' => 'Meeting list option status'],
-    'screen_restricted_on' => ['text' => 'Partage ecran sur autorisation individuelle', 'context' => 'Meeting list option status'],
-    'screen_restricted_off' => ['text' => 'Partage ecran libre', 'context' => 'Meeting list option status'],
-    'lobby_on' => ['text' => 'Salle attente activee', 'context' => 'Meeting list option status'],
-    'lobby_off' => ['text' => 'Salle attente desactivee', 'context' => 'Meeting list option status'],
-    'password_on' => ['text' => 'Mot de passe defini', 'context' => 'Meeting list option status'],
-    'password_off' => ['text' => 'Mot de passe indefini', 'context' => 'Meeting list option status'],
+    'audio_muted_on' => ['text' => 'Micro coupé au démarrage', 'context' => 'Meeting list option status'],
+    'audio_muted_off' => ['text' => 'Micro actif au démarrage', 'context' => 'Meeting list option status'],
+    'video_muted_on' => ['text' => 'Caméra éteinte au démarrage', 'context' => 'Meeting list option status'],
+    'video_muted_off' => ['text' => 'Caméra active au démarrage', 'context' => 'Meeting list option status'],
+    'camera_restricted_on' => ['text' => 'Activation de la caméra bloquée', 'context' => 'Meeting list option status'],
+    'camera_restricted_off' => ['text' => 'Activation de la caméra autorisée', 'context' => 'Meeting list option status'],
+    'screen_restricted_on' => ['text' => 'Partage d’écran sur autorisation individuelle', 'context' => 'Meeting list option status'],
+    'screen_restricted_off' => ['text' => 'Partage d’écran libre', 'context' => 'Meeting list option status'],
+    'lobby_on' => ['text' => 'Salle d’attente activée', 'context' => 'Meeting list option status'],
+    'lobby_off' => ['text' => 'Salle d’attente désactivée', 'context' => 'Meeting list option status'],
+    'password_on' => ['text' => 'Mot de passe défini', 'context' => 'Meeting list option status'],
+    'password_off' => ['text' => 'Mot de passe indéfini', 'context' => 'Meeting list option status'],
     'delete' => ['text' => 'Supprimer', 'context' => 'Delete owned meeting'],
-    'delete_confirm' => ['text' => 'Supprimer cette reunion et son lien definitivement ?', 'context' => 'Deletion confirmation'],
+    'delete_confirm' => ['text' => 'Supprimer cette réunion et son lien définitivement ?', 'context' => 'Deletion confirmation'],
     'title' => ['text' => 'Visioconférence OMO2', 'context' => 'Standalone video room page title'],
     'intro' => ['text' => 'Créez une réunion vidéo avec votre identité OMO2, puis partagez son lien.', 'context' => 'Video room creation introduction'],
     'login' => ['text' => 'Se connecter avec OMO2', 'context' => 'Video room login action'],
@@ -184,7 +184,7 @@ $messages = ['copied' => $vt('copied'), 'copyFailed' => $vt('copy_failed'), 'end
 $client = ['messages' => $messages, 'saved' => $saved];
 if ($access) {
     // Ancestor policy prevents camera capture even in Jitsi's prejoin/lobby screen.
-    if (!empty($access['settings']['camera_restricted'])) header('Permissions-Policy: camera=()');
+    if (!empty($access['settings']['camera_restricted'])) header('Permissions-Policy: caméra=()');
     $parsedJitsi = parse_url($config['url']);
     $client = ['domain' => $parsedJitsi['host'] . (isset($parsedJitsi['port']) ? ':' . $parsedJitsi['port'] : ''),
         'room' => $room->jitsiRoomName(), 'title' => (string)$room->get('title'), 'access' => $access,

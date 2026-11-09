@@ -90,7 +90,7 @@ $typeLabel = strtolower((string)$holon->getTemplateLabel(true));
 
         <?php if ($descendantCount > 0): ?>
             <div class="omo-holon-delete__warning">
-                Attention : <?= (int)$descendantCount ?> element<?= $descendantCount > 1 ? 's seront aussi supprimes.' : ' sera aussi supprime.' ?>
+                Attention : <?= (int)$descendantCount ?> element<?= $descendantCount > 1 ? omoHolonsUiT('copy.s_seront_aussi_supprimes') : omoHolonsUiT('copy.sera_aussi_supprime') ?>
             </div>
         <?php endif; ?>
 

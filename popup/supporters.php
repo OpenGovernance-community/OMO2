@@ -18,7 +18,7 @@ $sourceLang = [
     'tier.4000' => ['text' => 'Nous utilisons et soutenons (social)', 'context' => 'Patreon tier starting at 40 euros.'],
     'tier.8000' => ['text' => 'Nous utilisons et soutenons', 'context' => 'Patreon tier starting at 80 euros.'],
     'tier.16000' => ['text' => 'Nous integrons et diffusons', 'context' => 'Patreon tier starting at 160 euros.'],
-    'tier.30000' => ['text' => 'J’accelere le projet', 'context' => 'Patreon tier starting at 300 euros.'],
+    'tier.30000' => ['text' => 'J’accélère le projet', 'context' => 'Patreon tier starting at 300 euros.'],
 ];
 $locale = translationBundleResolveRequestLocale();
 $lang = loadTranslationBundle('public_supporters', $locale, $sourceLang);

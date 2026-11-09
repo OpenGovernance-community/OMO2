@@ -6,8 +6,17 @@ class Authority extends DbObject
         protected static function uiMessageSourceLang(): array
         {
             return [
-                'une_delegation_complete_est_impossible_car_une_partie_de_cette_autorite_est_deja_deleguee' => ['text' => 'Une délégation complete est impossible car une partie de cette autorité est déjà déléguée à un autre espace.', 'context' => 'Validation or action feedback for authority.'],
-            ];
+                'une_delegation_complete_est_impossible_car_une_partie_de_cette_autorite_est_deja_deleguee' => ['text' => 'Une délégation complète est impossible car une partie de cette autorité est déjà déléguée à un autre espace.', 'context' => 'Validation or action feedback for authority.'],
+
+                'copy.une_autorite_a_convertir_est_introuvable' => ['text' => 'Une autorité à convertir est introuvable.', 'context' => 'Interface text in class/dbobject/authority.class.php'],
+                'copy.les_instances_du_modele_ne_peuvent_pas_etre_chargees' => ['text' => 'Les instances du modèle ne peuvent pas être chargées.', 'context' => 'Interface text in class/dbobject/authority.class.php'],
+                'copy.les_references_aux_autorites_ne_peuvent_pas_etre_verifiees' => ['text' => 'Les références aux autorités ne peuvent pas être vérifiées.', 'context' => 'Interface text in class/dbobject/authority.class.php'],
+                'copy.une_autorite_est_aussi_utilisee_dans_une_autre_liste_retirez_cette_ref' => ['text' => 'Une autorité est aussi utilisée dans une autre liste. Retirez cette référence avant la conversion.', 'context' => 'Interface text in class/dbobject/authority.class.php'],
+                'copy.une_regle_ne_peut_pas_etre_detachee' => ['text' => 'Une règle ne peut pas être détachée.', 'context' => 'Interface text in class/dbobject/authority.class.php'],
+                'copy.une_sous_autorite_ne_peut_pas_etre_detachee' => ['text' => 'Une sous-autorité ne peut pas être détachée.', 'context' => 'Interface text in class/dbobject/authority.class.php'],
+                'copy.l_autorite_parente_ne_peut_pas_etre_reactivee' => ['text' => 'L’autorité parente ne peut pas être réactivée.', 'context' => 'Interface text in class/dbobject/authority.class.php'],
+                'copy.une_autorite_ne_peut_pas_etre_supprimee' => ['text' => 'Une autorité ne peut pas être supprimée.', 'context' => 'Interface text in class/dbobject/authority.class.php'],
+    ];
         }
 
 	public const IMPORT_NEEDS_PARENT_MARKER = '[OMO1_IMPORT_NEEDS_PARENT]';
@@ -181,7 +190,7 @@ class Authority extends DbObject
             'IDauthority_template' => 'Autorité source du template',
             'label' => 'Autorité',
             'description' => 'Description',
-            'is_shell' => 'Coquille de délégation complete',
+            'is_shell' => 'Coquille de délégation complète',
             'is_local' => 'Autorité locale',
             'template_origin_lost' => 'Origine template perdue',
             'created_at' => 'Date de création',
@@ -192,14 +201,14 @@ class Authority extends DbObject
     public static function attributeDescriptions()
     {
         return [
-            'IDholon' => 'Holon auquel cette autorité est confiee.',
+            'IDholon' => 'Holon auquel cette autorité est confiée.',
             'IDauthority_parent' => 'Domaine plus large dont cette autorité est issue.',
-            'IDauthority_template' => 'Autorité du template ayant cree cette instance.',
-            'label' => 'Domaine precis sur lequel le holon peut exercer son autorité.',
-            'description' => 'Description plus detaillee du domaine couvert par cette autorité.',
-            'is_shell' => 'Marqué une autorité conservée uniquement comme jalon après une délégation complete.',
-            'is_local' => 'Permet a une autorité de démarrer une hiérarchie locale au holon.',
-            'template_origin_lost' => 'Indique qu’une instance conservée n’est plus reliee a son autorité source.',
+            'IDauthority_template' => 'Autorité du template ayant créé cette instance.',
+            'label' => 'Domaine précis sur lequel le holon peut exercer son autorité.',
+            'description' => 'Description plus détaillée du domaine couvert par cette autorité.',
+            'is_shell' => 'Marque une autorité conservée uniquement comme jalon après une délégation complète.',
+            'is_local' => 'Permet à une autorité de démarrer une hiérarchie locale au holon.',
+            'template_origin_lost' => 'Indique qu’une instance conservée n’est plus reliée à son autorité source.',
         ];
     }
 
@@ -1082,10 +1091,10 @@ class Authority extends DbObject
             $id = (int)$ids[$index];
             if (isset($authorities[$id])) { continue; }
             $authority = new self();
-            if (!$authority->load($id)) { throw new \RuntimeException('Une autorite a convertir est introuvable.'); }
+            if (!$authority->load($id)) { throw new \RuntimeException(self::uiMessage('copy.une_autorite_a_convertir_est_introuvable')); }
             $authorities[$id] = $authority;
             $instances = self::fetchAll('SELECT id FROM authority WHERE IDauthority_template = :id', ['id' => $id]);
-            if (!is_array($instances)) { throw new \RuntimeException('Les instances du modele ne peuvent pas etre chargees.'); }
+            if (!is_array($instances)) { throw new \RuntimeException(self::uiMessage('copy.les_instances_du_modele_ne_peuvent_pas_etre_chargees')); }
             foreach ($instances as $instance) { $ids[] = (int)$instance['id']; }
         }
 
@@ -1095,12 +1104,12 @@ class Authority extends DbObject
              WHERE p.listitemtype = :type AND p.id <> :property_id',
             ['type' => Property::LIST_ITEM_AUTHORITY, 'property_id' => (int)$propertyId]
         );
-        if (!is_array($references)) { throw new \RuntimeException('Les references aux autorites ne peuvent pas etre verifiees.'); }
+        if (!is_array($references)) { throw new \RuntimeException(self::uiMessage('copy.les_references_aux_autorites_ne_peuvent_pas_etre_verifiees')); }
         foreach ($references as $reference) {
             foreach (Property::listConversionParts($reference['value'], (int)$reference['IDpropertyformat'])['items'] as $item) {
                 $id = Property::listAuthorityReferenceId($item);
                 if (isset($authorities[$id])) {
-                    throw new \RuntimeException('Une autorite est aussi utilisee dans une autre liste. Retirez cette reference avant la conversion.');
+                    throw new \RuntimeException(self::uiMessage('copy.une_autorite_est_aussi_utilisee_dans_une_autre_liste_retirez_cette_ref'));
                 }
             }
         }
@@ -1110,25 +1119,25 @@ class Authority extends DbObject
                 $rule->set('IDauthority', null);
                 $rule->set('IDholon', (int)$authority->get('IDholon'));
                 $result = $rule->save();
-                if (empty($result['status'])) { throw new \RuntimeException($result['text'] ?? 'Une regle ne peut pas etre detachee.'); }
+                if (empty($result['status'])) { throw new \RuntimeException($result['text'] ?? self::uiMessage('copy.une_regle_ne_peut_pas_etre_detachee')); }
             }
             foreach ($authority->getChildren() as $child) {
                 $child->set('IDauthority_parent', null);
                 $child->set('is_local', true);
                 $result = $child->save();
-                if (empty($result['status'])) { throw new \RuntimeException($result['text'] ?? 'Une sous-autorite ne peut pas etre detachee.'); }
+                if (empty($result['status'])) { throw new \RuntimeException($result['text'] ?? self::uiMessage('copy.une_sous_autorite_ne_peut_pas_etre_detachee')); }
             }
             $parent = $authority->getParent();
             if ($parent && $parent->isShell() && !isset($authorities[(int)$parent->getId()])) {
                 $parent->set('is_shell', false);
                 $result = $parent->save();
-                if (empty($result['status'])) { throw new \RuntimeException($result['text'] ?? 'L autorite parente ne peut pas etre reactivee.'); }
+                if (empty($result['status'])) { throw new \RuntimeException($result['text'] ?? self::uiMessage('copy.l_autorite_parente_ne_peut_pas_etre_reactivee')); }
             }
         }
         foreach ($authorities as $id => $authority) {
             // The ordinary deletion plan moves rules to the parent; conversion keeps them here.
             if (!self::execute('DELETE FROM authority WHERE id = :id', ['id' => $id])) {
-                throw new \RuntimeException('Une autorite ne peut pas etre supprimee.');
+                throw new \RuntimeException(self::uiMessage('copy.une_autorite_ne_peut_pas_etre_supprimee'));
             }
             unset(self::$preload['authority_' . $id]);
         }

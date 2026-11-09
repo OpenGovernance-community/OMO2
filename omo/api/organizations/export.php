@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
+
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 use dbObject\Organization;
@@ -28,7 +30,7 @@ if (!$organization->load($organizationId)) {
 $canExportOrganization = commonCurrentUserCanUseAdminMode($organizationId)
     || commonCurrentUserIsSiteAdminModeEnabled();
 if (!$canExportOrganization) {
-    omoOrganizationExportError(403, 'Acces reserve aux administrateurs de cette organisation.');
+    omoOrganizationExportError(403, omoOrganizationsUiT('copy.acces_reserve_aux_administrateurs_de_cette_organisation'));
 }
 
 $requestedModules = array_key_exists('modules', $_GET) ? $_GET['modules'] : OrganizationExport::MODULES;
@@ -55,7 +57,7 @@ try {
     $name = $name !== '' ? $name : 'organisation';
     $filename = 'omo2-export-' . $name . '-' . date('Ymd-His') . '.zip';
     $temporary = tempnam(sys_get_temp_dir(), 'omo-export-');
-    if ($temporary === false) { throw new \RuntimeException('Impossible de creer le fichier temporaire.'); }
+    if ($temporary === false) { throw new \RuntimeException(omoOrganizationsUiT('copy.impossible_de_creer_le_fichier_temporaire')); }
     try {
         \dbObject\OrganizationArchive::create($payload, $temporary);
         header('Content-Type: application/zip');

@@ -1,5 +1,28 @@
 <?php
 
+function commonRenderObjectVisibilityCapsule(array $visibility, array $editVisibility, string $extraClass = ''): string
+{
+    static $lang = null;
+    $sourceLang = [
+        'view' => ['text' => 'Voir', 'context' => 'Read scope in the shared visibility capsule.'],
+        'edit' => ['text' => 'Éditer', 'context' => 'Edit scope in the shared visibility capsule.'],
+    ];
+    $lang ??= omoLoadTranslationBundle('common_object_visibility_capsule', $sourceLang);
+    $icons = commonObjectVisibilitySelectorIconMap();
+    $readLabel = (string)($visibility['badgeText'] ?? '');
+    $editLabel = (string)($editVisibility['badgeText'] ?? '');
+    if ($readLabel === '' || $editLabel === '') return '';
+    $label = t('view', [], $lang, $sourceLang) . ': ' . $readLabel . ' | ' . t('edit', [], $lang, $sourceLang) . ': ' . $editLabel;
+    $escape = static fn($value) => htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $html = '<span class="generic-visibility-capsule' . ($extraClass !== '' ? ' ' . $escape($extraClass) : '') . '" role="img" title="' . $escape($label) . '" aria-label="' . $escape($label) . '">';
+    foreach ([$visibility, $editVisibility] as $index => $scope) {
+        if ($index > 0) $html .= '<span class="generic-visibility-capsule__separator" aria-hidden="true"></span>';
+        $icon = $icons[$scope['type'] ?? ''] ?? $icons[\dbObject\ObjectVisibility::TYPE_ORGANIZATION];
+        $html .= '<span class="generic-visibility-capsule__icon" aria-hidden="true"><img src="' . $escape($icon) . '" alt="" class="black-icon" loading="lazy"></span>';
+    }
+    return $html . '</span>';
+}
+
 if (!function_exists('commonObjectVisibilitySelectorIconMap')) {
     function commonObjectVisibilitySelectorIconMap(): array
     {

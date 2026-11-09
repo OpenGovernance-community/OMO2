@@ -28,9 +28,9 @@
 				'status' => 'Statut',
 				'query' => 'Recherche',
 				'scopesjson' => 'Scopes',
-				'timerangejson' => 'Periode',
+				'timerangejson' => 'Période',
 				'viewercontextjson' => 'Contexte viewer',
-				'resultjson' => 'Resultat JSON',
+				'resultjson' => 'Résultat JSON',
 				'errormessage' => 'Erreur',
 				'requesttoken' => 'Token public',
 				'IDorganization' => 'Organisation',
@@ -38,9 +38,9 @@
 				'viewertype' => 'Type viewer',
 				'viewerref' => 'Reference viewer',
 				'attempts' => 'Tentatives',
-				'datecreation' => 'Creation',
+				'datecreation' => 'Création',
 				'datemodification' => 'Modification',
-				'datestarted' => 'Debut',
+				'datestarted' => 'Début',
 				'datefinished' => 'Fin',
 			];
 		}

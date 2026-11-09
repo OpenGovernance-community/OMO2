@@ -22,7 +22,9 @@ class DecisionProposal extends DbObject
                 'le_contexte_de_la_proposition_est_invalide' => ['text' => 'Le contexte de la proposition est invalide.', 'context' => 'Validation or action feedback for decisionproposal.'],
                 'la_proposition_ne_peut_pas_etre_enregistree_pour_le_moment' => ['text' => 'La proposition ne peut pas être enregistrée pour le moment.', 'context' => 'Validation or action feedback for decisionproposal.'],
                 'proposition_modifiee' => ['text' => 'Proposition modifiée.', 'context' => 'Validation or action feedback for decisionproposal.'],
-            ];
+
+                'copy.proposition_retiree_pendant_la_consultation' => ['text' => 'Proposition retirée pendant la consultation.', 'context' => 'Interface text in class/dbobject/decisionproposal.class.php'],
+    ];
         }
 
     protected $decisionMethodParametersCache = null;
@@ -89,6 +91,19 @@ class DecisionProposal extends DbObject
     public static function getOrder()
     {
         return 'position ASC, id ASC';
+    }
+
+    public static function preserveAnonymousAuthorsForGroup(int $groupId): bool
+    {
+        return self::execute(
+            'UPDATE decision_proposal
+             SET parameters = JSON_SET(
+                 CASE WHEN JSON_VALID(parameters) AND JSON_TYPE(parameters) = \'OBJECT\'
+                      THEN parameters ELSE JSON_OBJECT() END,
+                 \'$.anonymous_author\', 1)
+             WHERE IDdecision_group = :group_id',
+            ['group_id' => $groupId]
+        );
     }
 
     public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
@@ -233,6 +248,20 @@ class DecisionProposal extends DbObject
             $this->set('IDdecision_process', $groupProcessId);
         }
 
+        // Persist the author's anonymity independently of later question settings.
+        $parameters = $this->get('parameters');
+        if (!is_array($parameters)) $parameters = json_decode((string)$parameters, true) ?: [];
+        if ((int)$this->getId() > 0) {
+            $storedParameters = self::fetchValue('SELECT parameters FROM decision_proposal WHERE id = :id FOR UPDATE',
+                ['id' => (int)$this->getId()]);
+            if ($storedParameters === false) throw new \RuntimeException('proposal_anonymity_load_failed');
+            $storedParameters = is_array($storedParameters) ? $storedParameters : json_decode((string)$storedParameters, true);
+            if (!empty($storedParameters['anonymous_author'])) $parameters['anonymous_author'] = 1;
+        } elseif ($this->isDiscussionAnonymous()) {
+            $parameters['anonymous_author'] = 1;
+        }
+        $this->set('parameters', $parameters);
+
         return parent::save();
     }
 
@@ -309,6 +338,13 @@ class DecisionProposal extends DbObject
     }
 
     public function isAnonymous()
+    {
+        $parameters = $this->get('parameters');
+        if (!is_array($parameters)) $parameters = json_decode((string)$parameters, true) ?: [];
+        return !empty($parameters['anonymous_author']) || $this->isDiscussionAnonymous();
+    }
+
+    public function isDiscussionAnonymous(): bool
     {
         $parameters = $this->getDecisionMethodParameters();
         return !empty($parameters['is_anonymous']);
@@ -426,7 +462,7 @@ class DecisionProposal extends DbObject
             \dbObject\DecisionGovernanceAction::setProposalActionStatus(
                 $this,
                 \dbObject\DecisionGovernanceAction::STATUS_REMOVED,
-                'Proposition retiree pendant la consultation.',
+                self::uiMessage('copy.proposition_retiree_pendant_la_consultation'),
                 \dbObject\DecisionGovernanceAction::STATUS_PENDING
             );
             foreach ($this->getDeferredProposals(true) as $deferredProposal) {
@@ -591,7 +627,7 @@ class DecisionProposal extends DbObject
                 $displayName = $userId > 0
                     ? trim((string)$user->getScopedDisplayName($organizationId))
                     : trim((string)$participant->getIdentityLabel($organizationId));
-                $systemContent = !$this->isAnonymous() && $displayName !== ''
+                $systemContent = !$this->isDiscussionAnonymous() && $displayName !== ''
                     ? $displayName . ' a modifié la proposition.'
                     : 'La proposition a été modifiée.';
                 $message = \dbObject\ChatMessage::createSystemMessage(
@@ -600,6 +636,7 @@ class DecisionProposal extends DbObject
                     $userId,
                     [
                         'action' => 'decision_proposal_updated',
+                        'is_anonymous' => $this->isDiscussionAnonymous() ? 1 : 0,
                         'proposal_id' => (int)$this->getId(),
                         'old' => $oldValues,
                         'new' => $newValues,

@@ -30,7 +30,7 @@
 				'expires_at' => 'Expire le',
 				'request_ip' => 'IP de demande',
 				'attempt_count' => 'Essais',
-				'created_at' => 'Cree le',
+				'created_at' => 'Créé le',
 				'last_attempt_at' => 'Dernier essai',
 				'used' => 'Utilise',
 				'remember' => 'Se souvenir',

@@ -16,12 +16,12 @@ if (!function_exists('omoSearchPopupGetScopeLabels')) {
             'calendar' => 'Calendrier',
             'documents' => 'Documents',
             'pv' => 'PV',
-            'rules' => 'Regles',
-            'decision' => 'Decisions',
+            'rules' => omoInterfaceUiT('copy.regles'),
+            'decision' => omoInterfaceUiT('copy.decisions'),
             'projects' => 'Projets',
             'stats' => 'Indicateurs',
             'processus' => 'Processus',
-            'activities' => 'Taches recurrentes',
+            'activities' => omoInterfaceUiT('copy.taches_recurrentes'),
             'faq' => 'FAQ',
             'tutorials' => 'Tutoriels',
         );
@@ -249,7 +249,7 @@ if (!function_exists('omoSearchPopupRenderContent')) {
             <?php elseif ($status === 'failed'): ?>
                 <div class="omo-search-popup__status-card generic-section is-error">
                     <strong class="omo-search-popup__status-title"><?= htmlspecialchars(omoInterfaceUiT('recherche_indisponible'), ENT_QUOTES, 'UTF-8') ?></strong>
-                    <p class="omo-search-popup__status-text"><?= $escape($error !== '' ? $error : 'Le worker de recherche n a pas pu terminer correctement.') ?></p>
+                    <p class="omo-search-popup__status-text"><?= $escape($error !== '' ? $error : omoInterfaceUiT('copy.le_worker_de_recherche_n_a_pas_pu_terminer_correctement')) ?></p>
                 </div>
             <?php elseif (count($results) === 0): ?>
                 <div class="omo-search-popup__empty"><?= htmlspecialchars(omoInterfaceUiT('aucun_resultat_trouve_pour_cette_selection_de_modules'), ENT_QUOTES, 'UTF-8') ?></div>
@@ -311,7 +311,7 @@ if (!function_exists('omoSearchPopupRenderContent')) {
                             </div>
 
                             <div class="omo-search-popup__result-body">
-                                <h4><?= omoSearchPopupHighlightTerms((string)($result['title'] ?? 'Resultat'), $query, $escape) ?></h4>
+                                <h4><?= omoSearchPopupHighlightTerms((string)($result['title'] ?? omoInterfaceUiT('copy.resultat')), $query, $escape) ?></h4>
                                 <?php if ($subtitle !== ''): ?>
                                     <div class="omo-search-popup__subtitle"><?= omoSearchPopupHighlightTerms($subtitle, $query, $escape) ?></div>
                                 <?php endif; ?>

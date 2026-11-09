@@ -23,13 +23,13 @@ class AuthRateLimit extends DbObject
     {
         return [
             'id' => 'ID',
-            'scope' => 'Perimetre',
-            'key_hash' => 'Cle anonymisee',
-            'window_started_at' => 'Debut de fenetre',
+            'scope' => 'Périmètre',
+            'key_hash' => 'Clé anonymisée',
+            'window_started_at' => 'Début de fenêtre',
             'attempt_count' => 'Tentatives',
             'blocked_until' => 'Bloque jusqu au',
-            'created_at' => 'Cree le',
-            'updated_at' => 'Mis a jour le',
+            'created_at' => 'Créé le',
+            'updated_at' => 'Mis à jour le',
         ];
     }
 
@@ -62,6 +62,52 @@ class AuthRateLimit extends DbObject
             true,
             false
         );
+    }
+
+    // Check every delivery quota under the same locks before counting an accepted request.
+    public static function consumeBuckets(array $buckets, $inspectOnly = false)
+    {
+        $pdo = self::getPdo();
+        if (!$pdo instanceof \PDO) {
+            return self::storageErrorResult();
+        }
+        $ownsTransaction = !$pdo->inTransaction();
+        try {
+            if ($ownsTransaction) {
+                $pdo->beginTransaction();
+            }
+            $combined = ['available' => true, 'allowed' => true, 'retry_after' => 0];
+            foreach ($buckets as $bucket) {
+                $result = self::updateBucket(
+                    $bucket['scope'], $bucket['key_hash'], $bucket['maximum'],
+                    $bucket['window'], $bucket['block'], false, false, true
+                );
+                $combined['available'] = $combined['available'] && $result['available'];
+                $combined['allowed'] = $combined['allowed'] && $result['allowed'];
+                $combined['retry_after'] = max($combined['retry_after'], $result['retry_after']);
+            }
+            if (!$inspectOnly && $combined['allowed']) {
+                foreach ($buckets as $bucket) {
+                    $result = self::consume(
+                        $bucket['scope'], $bucket['key_hash'], $bucket['maximum'],
+                        $bucket['window'], $bucket['block']
+                    );
+                    if (!$result['available'] || !$result['allowed']) {
+                        throw new \RuntimeException('Cannot consume checked authentication quota.');
+                    }
+                }
+            }
+            if ($ownsTransaction) {
+                $pdo->commit();
+            }
+            return $combined;
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            error_log('Authentication delivery rate limit storage error: ' . $exception->getMessage());
+            return self::storageErrorResult();
+        }
     }
 
     public static function recordFailure($scope, $keyHash, $maximum, $windowSeconds, $blockSeconds = null)
@@ -113,7 +159,8 @@ class AuthRateLimit extends DbObject
         $windowSeconds,
         $blockSeconds,
         $increment,
-        $blockAtLimit
+        $blockAtLimit,
+        $checkCapacity = false
     ) {
         $scope = self::normalizeScope($scope);
         $keyHash = self::normalizeKeyHash($keyHash);
@@ -210,6 +257,23 @@ class AuthRateLimit extends DbObject
             $attemptCount = $windowExpired ? 0 : max(0, (int)($row['attempt_count'] ?? 0));
             $windowStartedAt = $windowExpired ? $now : $windowStartedAt;
             $blockedUntil = null;
+
+            // Delivery limits expire from the accepted request, never from a rejected click.
+            if (!$blockAtLimit && ($increment || $checkCapacity) && $attemptCount >= $maximum) {
+                if ($ownsTransaction) {
+                    $pdo->commit();
+                }
+                return self::blockedResult(
+                    $attemptCount, $maximum,
+                    $windowSeconds - ($now->getTimestamp() - $windowStartedAt->getTimestamp())
+                );
+            }
+            if (!$increment) {
+                if ($ownsTransaction) {
+                    $pdo->commit();
+                }
+                return self::allowedResult($attemptCount, $maximum, 0);
+            }
 
             if ($increment) {
                 $attemptCount++;

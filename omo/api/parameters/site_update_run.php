@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../../ui_translations.php';
+
 require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/translation.php';
 require_once dirname(__DIR__, 3) . '/includes/site_update_admin.php';
@@ -39,7 +41,7 @@ try {
     exit;
 } catch (RuntimeException $exception) {
     $message = $exception->getMessage();
-    $statusCode = stripos($message, 'deja en cours') !== false ? 423 : 409;
+    $statusCode = stripos($message, omoInterfaceUiT('copy.deja_en_cours')) !== false ? 423 : 409;
 
     http_response_code($statusCode);
     echo json_encode([

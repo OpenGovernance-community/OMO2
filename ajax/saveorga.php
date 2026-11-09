@@ -159,7 +159,7 @@
 				// Si oui, il s'agit d'une mise à jour
 				$holon->load($node['IDdb']);
 				$holon->set("active",true); // Le réactive, puisqu'ils ont tous été désactivés au préalable
-				// En principe, rien à faire du côté des tables de conversion: un noeud sauvé n'a pas pu changer de type ou de template
+				// En principe, rien à faire du côté des tables de conversion: un nœud sauvé n'a pas pu changer de type ou de template
 				// Faut-il mettre à jour ses infos en fonction d'éventuelles modification de ses templates entre temps ?
 			} else {
 				// Est-ce que le noeud a un ID numérique, auquel cas il faut dupliquer le noeud de base
@@ -169,7 +169,7 @@
 					
 					// Adapte le template
 					// Nouveau noeud, donc forte chance de devoir l'adapter... cela ne se fait pas systématiquement
-					// A voir dans un deuxième temps s'il est nécessaire de pouvoir "convertir" un noeud existant (dans le bloc en dessous)
+					// A voir dans un deuxième temps s'il est nécessaire de pouvoir "convertir" un nœud existant (dans le bloc en dessous)
 					if (isset($node['t']) && is_numeric($node['t']) && $node['t']>0) {
 						$node['t']=updateTemplate($node['t'],$root);
 					}
@@ -221,7 +221,7 @@
 			|| !is_array($data) || !\dbObject\Holon::validateLegacyCircleInput($data, (int)$_SESSION['currentUser'])) {
 			http_response_code(403);
 			header('Content-Type: application/json; charset=UTF-8');
-			echo json_encode(['status' => 'error', 'message' => 'Structure non autorisee.']);
+			echo json_encode(['status' => 'error', 'message' => 'Structure non autorisée.']);
 			exit;
 		}
 

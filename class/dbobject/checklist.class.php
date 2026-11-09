@@ -32,14 +32,14 @@ class Checklist extends DbObject
             'id' => 'ID',
             'IDorganization' => 'Organisation',
             'IDuser_responsible' => 'Personne en charge',
-            'IDchecklist_previous' => 'Processus precedent',
-            'IDproject_template_root' => 'Projet modele racine',
+            'IDchecklist_previous' => 'Processus précédent',
+            'IDproject_template_root' => 'Projet modèle racine',
             'IDdocument' => 'Documentation',
             'status' => 'Statut',
-            'revision_note' => 'Note de revision',
+            'revision_note' => 'Note de révision',
             'active' => 'Active',
-            'created_at' => 'Creation',
-            'updated_at' => 'Mise a jour',
+            'created_at' => 'Création',
+            'updated_at' => 'Mise à jour',
             'published_at' => 'Publication',
         ];
     }
@@ -54,8 +54,8 @@ class Checklist extends DbObject
         return [
             'status' => [
                 [self::STATUS_DRAFT, 'Brouillon'],
-                [self::STATUS_PUBLISHED, 'Publiee'],
-                [self::STATUS_RETIRED, 'Desactivee'],
+                [self::STATUS_PUBLISHED, 'Publiée'],
+                [self::STATUS_RETIRED, 'Désactivée'],
             ],
         ];
     }

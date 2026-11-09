@@ -16,6 +16,34 @@ $sourceLang = [
     'forms.description' => ['text' => 'Description', 'context' => 'Example textarea label.'],
     'forms.label' => ['text' => 'Libellé', 'context' => 'Example editable select label.'],
     'forms.hint' => ['text' => 'Placez les explications complémentaires dans une aide contextuelle pour garder le formulaire lisible.', 'context' => 'Example contextual help.'],
+
+    'copy.styleguide_generique' => ['text' => 'Styleguide générique', 'context' => 'Interface text rendered by common/styleguide.php'],
+    'copy.reference_partagee' => ['text' => 'Référence partagée', 'context' => 'Interface text rendered by common/styleguide.php'],
+    'copy.styleguide_des_composants_generiques' => ['text' => 'Styleguide des composants génériques', 'context' => 'Interface text rendered by common/styleguide.php'],
+    'copy.cette_page_montre_les_primitives_communes_definies_dans' => ['text' => 'Cette page montre les primitives communes définies dans', 'context' => 'Interface text rendered by common/styleguide.php'],
+    'copy.l_objectif_est_de_reutiliser_d_abord_ces_objets_avant_d_ecrire_de_nouveaux_style' => ['text' => '.
+                L\'objectif est de réutiliser d\'abord ces objets avant d\'écrire de nouveaux styles locaux.', 'context' => 'Interface text rendered by common/styleguide.php'],
+    'copy.libelle_de_formulaire' => ['text' => 'Libellé de formulaire', 'context' => 'Interface text rendered by common/styleguide.php'],
+    'copy.texte_d_aide_plus_compact_pour_un_formulaire' => ['text' => 'Texte d’aide plus compact pour un formulaire.', 'context' => 'Interface text rendered by common/styleguide.php'],
+    'copy.sous_bloc_interieur_ou_zone_de_details' => ['text' => 'Sous-bloc intérieur ou zone de détails.', 'context' => 'Interface text rendered by common/styleguide.php'],
+    'copy.etat_desactive' => ['text' => 'État désactivé', 'context' => 'Interface text rendered by common/styleguide.php'],
+    'copy.poignees' => ['text' => 'Poignées', 'context' => 'Interface text rendered by common/styleguide.php'],
+    'copy.utiliser_cette_primitive_pour_les_listes_reordonnables_au_lieu_de_recreer_une_po' => ['text' => 'Utiliser cette primitive pour les listes réordonnables au lieu de recréer une poignée locale.', 'context' => 'Interface text rendered by common/styleguide.php'],
+    'copy.texte_multi_lignes_de_demonstration' => ['text' => 'Texte multi-lignes de démonstration.', 'context' => 'Interface text rendered by common/styleguide.php'],
+    'copy.cette_aide_reste_automatiquement_dans_la_fenetre_et_peut_s_ouvrir_au_dessus_si_l' => ['text' => 'Cette aide reste automatiquement dans la fenêtre et peut s’ouvrir au-dessus si la place manque en dessous.', 'context' => 'Interface text rendered by common/styleguide.php'],
+    'copy.apercu' => ['text' => 'Aperçu', 'context' => 'Interface text rendered by common/styleguide.php'],
+    'copy.le_systeme_se_contente_d_afficher_le_bon_bloc_et_de_masquer_les_autres' => ['text' => 'Le système se contente d’afficher le bon bloc et de masquer les autres.', 'context' => 'Interface text rendered by common/styleguide.php'],
+    'copy.conserver_le_style_dans_le_css_partage_et_utiliser_seulement_des_ids_de_panneaux' => ['text' => 'Conserver le style dans le CSS partagé et utiliser seulement des IDs de panneaux côté HTML.', 'context' => 'Interface text rendered by common/styleguide.php'],
+    'copy.si_un_bloc_est_injecte_apres_un_fetch_les_clics_sont_maintenant_captes_par_deleg' => ['text' => 'Si un bloc est injecté après un fetch, les clics sont maintenant captés par délégation. En cas de besoin, on peut aussi appeler', 'context' => 'Interface text rendered by common/styleguide.php'],
+    'copy.le_header_la_carte_et_le_comportement_pliable_viennent_des_classes_generiques' => ['text' => 'Le header, la carte et le comportement pliable viennent des classes génériques.', 'context' => 'Interface text rendered by common/styleguide.php'],
+    'copy.un_accordion_peut_aussi_contenir_d_autres_primitives_partagees' => ['text' => 'Un accordion peut aussi contenir d\'autres primitives partagées.', 'context' => 'Interface text rendered by common/styleguide.php'],
+    'copy.modifie_le' => ['text' => 'Modifié le', 'context' => 'Interface text rendered by common/styleguide.php'],
+    'copy.3_elements' => ['text' => '3 éléments', 'context' => 'Interface text rendered by common/styleguide.php'],
+    'copy.organisation_gt_equipe_produit' => ['text' => 'Organisation &gt; Équipe produit', 'context' => 'Interface text rendered by common/styleguide.php'],
+    'copy.regle_de_travail' => ['text' => 'Règle de travail', 'context' => 'Interface text rendered by common/styleguide.php'],
+    'copy.quand_une_page_combine_deja_bordure_rayon_surface_spacing_et_typo_avec_les_memes' => ['text' => 'Quand une page combine déjà bordure, rayon, surface, spacing et typo avec les mêmes tokens, il faut d\'abord se demander si l\'objet existe déjà ici.', 'context' => 'Interface text rendered by common/styleguide.php'],
+    'copy.si_la_reponse_est_non_mais_que_le_motif_revient_a_plusieurs_endroits_il_vaut_mie' => ['text' => 'Si la réponse est non mais que le motif revient à plusieurs endroits, il vaut mieux étendre la bibliothèque générique que recopier le CSS.', 'context' => 'Interface text rendered by common/styleguide.php'],
+    'copy.deplacer' => ['text' => 'Déplacer', 'context' => 'Interface text rendered by common/styleguide.php'],
 ];
 $locale = translationBundleResolveRequestLocale('lang', translationBundleGetSupportedLocales(), 'fr');
 $lang = loadTranslationBundle('styleguide', $locale, $sourceLang);
@@ -26,7 +54,7 @@ $styleguideT = static fn(string $key): string => htmlspecialchars(t($key, [], $l
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Styleguide generique</title>
+    <title><?= htmlspecialchars(t('copy.styleguide_generique', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></title>
     <link rel="stylesheet" href="<?= commonAssetUrl('/common/assets/components.css') ?>">
     <script src="<?= commonAssetUrl('/common/assets/components.js') ?>" defer></script>
     <link rel="stylesheet" href="<?= commonAssetUrl('/common/assets/styleguide.css') ?>">
@@ -34,11 +62,10 @@ $styleguideT = static fn(string $key): string => htmlspecialchars(t($key, [], $l
 <body>
     <main class="generic-page-shell generic-stack generic-stack--roomy">
         <section class="generic-section generic-section--stack generic-section--roomy">
-            <div class="generic-card-title generic-card-title--eyebrow">Reference partagee</div>
-            <h1 class="generic-card-title generic-card-title--large">Styleguide des composants generiques</h1>
+            <div class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(t('copy.reference_partagee', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></div>
+            <h1 class="generic-card-title generic-card-title--large"><?= htmlspecialchars(t('copy.styleguide_des_composants_generiques', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></h1>
             <p class="generic-description generic-description--relaxed">
-                Cette page montre les primitives communes definies dans <code>/common/assets/components.css</code>.
-                L'objectif est de reutiliser d'abord ces objets avant d'ecrire de nouveaux styles locaux.
+                <?= htmlspecialchars(t('copy.cette_page_montre_les_primitives_communes_definies_dans', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?> <code>/common/assets/components.css</code><?= htmlspecialchars(t('copy.l_objectif_est_de_reutiliser_d_abord_ces_objets_avant_d_ecrire_de_nouveaux_style', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?>
             </p>
             <div class="generic-action-row generic-action-row--start">
                 <span class="generic-badge">generic-section</span>
@@ -76,8 +103,8 @@ $styleguideT = static fn(string $key): string => htmlspecialchars(t($key, [], $l
                         <span class="generic-meta-label">Contexte</span>
                         <span class="generic-meta-value">Information secondaire</span>
                     </div>
-                    <label class="generic-form-label">Libelle de formulaire</label>
-                    <p class="generic-help-text">Texte d aide plus compact pour un formulaire.</p>
+                    <label class="generic-form-label"><?= htmlspecialchars(t('copy.libelle_de_formulaire', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></label>
+                    <p class="generic-help-text"><?= htmlspecialchars(t('copy.texte_d_aide_plus_compact_pour_un_formulaire', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></p>
                 </div>
                 <pre class="styleguide-code">generic-title
 generic-title--eyebrow
@@ -124,7 +151,7 @@ generic-card-title reste un alias compatible.</pre>
                 </div>
                 <div class="generic-soft-panel generic-soft-panel--stack">
                     <div class="generic-card-title generic-card-title--small">Soft panel</div>
-                    <div class="generic-description">Sous-bloc interieur ou zone de details.</div>
+                    <div class="generic-description"><?= htmlspecialchars(t('copy.sous_bloc_interieur_ou_zone_de_details', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></div>
                 </div>
                 <label class="generic-choice-card">
                     <input type="radio" name="styleguide-choice" checked>
@@ -150,7 +177,7 @@ generic-choice-card</pre>
                 <button type="button" class="generic-action-button generic-action-button--main">Action principale</button>
                 <button type="button" class="generic-action-button generic-action-button--secondary">Action secondaire</button>
                 <button type="button" class="generic-action-button generic-action-button--danger">Action danger</button>
-                <button type="button" class="generic-action-button generic-action-button--main" disabled>Etat desactive</button>
+                <button type="button" class="generic-action-button generic-action-button--main" disabled><?= htmlspecialchars(t('copy.etat_desactive', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></button>
             </div>
             <pre class="styleguide-code">generic-action-button generic-action-button--main
 generic-action-button generic-action-button--secondary
@@ -158,15 +185,15 @@ generic-action-button generic-action-button--danger</pre>
         </section>
 
         <section class="generic-section generic-section--stack generic-section--roomy">
-            <div class="generic-card-title generic-card-title--eyebrow">Poignees</div>
+            <div class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(t('copy.poignees', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></div>
             <div class="generic-form-grid styleguide-grid">
                 <div class="generic-soft-panel generic-soft-panel--stack">
                     <div class="generic-action-row generic-action-row--start">
-                        <button type="button" class="generic-drag-handle" aria-label="Deplacer">::</button>
-                        <button type="button" class="generic-drag-handle generic-drag-handle--stretch" aria-label="Deplacer">::</button>
+                        <button type="button" class="generic-drag-handle" aria-label="<?= htmlspecialchars(t('copy.deplacer', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?>">::</button>
+                        <button type="button" class="generic-drag-handle generic-drag-handle--stretch" aria-label="<?= htmlspecialchars(t('copy.deplacer', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?>">::</button>
                         <span class="generic-drag-handle generic-drag-handle--static">::</span>
                     </div>
-                    <div class="generic-description">Utiliser cette primitive pour les listes reordonnables au lieu de recreer une poignee locale.</div>
+                    <div class="generic-description"><?= htmlspecialchars(t('copy.utiliser_cette_primitive_pour_les_listes_reordonnables_au_lieu_de_recreer_une_po', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></div>
                 </div>
                 <pre class="styleguide-code">button.generic-drag-handle
 button.generic-drag-handle.generic-drag-handle--stretch
@@ -205,7 +232,7 @@ span.generic-drag-handle.generic-drag-handle--static</pre>
                         </div>
                         <label class="generic-form-field">
                             <span class="generic-form-label"><?= $styleguideT('forms.description') ?></span>
-                            <textarea class="generic-form-control generic-form-control--compact" rows="4">Texte multi-lignes de demonstration.</textarea>
+                            <textarea class="generic-form-control generic-form-control--compact" rows="4"><?= htmlspecialchars(t('copy.texte_multi_lignes_de_demonstration', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></textarea>
                         </label>
                         <label class="generic-form-field">
                             <span class="generic-form-label"><?= $styleguideT('forms.label') ?></span>
@@ -259,7 +286,7 @@ Les variables de configuration utilisent --param-*.
 Exemple : --param-form-grid-min: 280px.
 Ne pas redéfinir les variables internes --generic-*.
 
-JS disponible apres injection dynamique:
+JS disponible après injection dynamique:
 window.initGenericEditableSelects(container);</pre>
             </div>
         </section>
@@ -321,15 +348,15 @@ Associez un label ou aria-label à chaque champ.</pre>
                     <div class="generic-heading-with-help">
                         <span class="generic-card-title generic-card-title--small">Titre du champ</span>
                         <details class="generic-context-help">
-                            <summary aria-label="Afficher l aide">?</summary>
-                            <div class="generic-context-help__content">Cette aide reste automatiquement dans la fenetre et peut s ouvrir au-dessus si la place manque en dessous.</div>
+                            <summary aria-label="Afficher l’aide">?</summary>
+                            <div class="generic-context-help__content"><?= htmlspecialchars(t('copy.cette_aide_reste_automatiquement_dans_la_fenetre_et_peut_s_ouvrir_au_dessus_si_l', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></div>
                         </details>
                     </div>
                 </div>
                 <pre class="styleguide-code">&lt;div class="generic-heading-with-help"&gt;
     &lt;span class="generic-card-title generic-card-title--small"&gt;Titre&lt;/span&gt;
     &lt;details class="generic-context-help"&gt;
-        &lt;summary aria-label="Afficher l aide"&gt;?&lt;/summary&gt;
+        &lt;summary aria-label="Afficher l’aide"&gt;?&lt;/summary&gt;
         &lt;div class="generic-context-help__content"&gt;Texte d aide&lt;/div&gt;
     &lt;/details&gt;
 &lt;/div&gt;
@@ -344,15 +371,15 @@ window.initGenericContextHelps(container);</pre>
             <div class="generic-form-grid styleguide-grid">
                 <div class="generic-stack">
                     <div class="generic-tabs" data-generic-tabs>
-                        <div class="generic-tabs__list" aria-label="Exemple d onglets">
-                            <button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="styleguide-tab-overview">Apercu</button>
+                        <div class="generic-tabs__list" aria-label="Exemple d’onglets">
+                            <button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="styleguide-tab-overview"><?= htmlspecialchars(t('copy.apercu', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></button>
                             <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="styleguide-tab-form">Formulaire</button>
                             <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="styleguide-tab-notes">Notes</button>
                         </div>
                         <div class="generic-tabs__panels">
                             <div id="styleguide-tab-overview" class="generic-tabs__panel generic-stack" data-generic-tab-panel>
                                 <div class="generic-card-title generic-card-title--small">Container libre</div>
-                                <div class="generic-description">Le systeme se contente d afficher le bon bloc et de masquer les autres.</div>
+                                <div class="generic-description"><?= htmlspecialchars(t('copy.le_systeme_se_contente_d_afficher_le_bon_bloc_et_de_masquer_les_autres', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></div>
                                 <div class="generic-action-row generic-action-row--start">
                                     <span class="generic-badge">JS minimal</span>
                                     <span class="generic-badge">sans jQuery</span>
@@ -366,8 +393,8 @@ window.initGenericContextHelps(container);</pre>
                             </div>
                             <div id="styleguide-tab-notes" class="generic-tabs__panel generic-stack" data-generic-tab-panel hidden>
                                 <div class="generic-card-title generic-card-title--small">Usage recommande</div>
-                                <div class="generic-description">Conserver le style dans le CSS partage et utiliser seulement des IDs de panneaux cote HTML.</div>
-                                <div class="generic-description">Si un bloc est injecte apres un fetch, les clics sont maintenant captes par delegation. En cas de besoin, on peut aussi appeler <code>window.initGenericTabs(container)</code>.</div>
+                                <div class="generic-description"><?= htmlspecialchars(t('copy.conserver_le_style_dans_le_css_partage_et_utiliser_seulement_des_ids_de_panneaux', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></div>
+                                <div class="generic-description"><?= htmlspecialchars(t('copy.si_un_bloc_est_injecte_apres_un_fetch_les_clics_sont_maintenant_captes_par_deleg', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?> <code>window.initGenericTabs(container)</code>.</div>
                             </div>
                         </div>
                     </div>
@@ -390,7 +417,7 @@ window.initGenericContextHelps(container);</pre>
     &lt;/div&gt;
 &lt;/div&gt;
 
-Apres injection dynamique facultatif:
+Après injection dynamique facultatif:
 window.initGenericTabs(container);</pre>
             </div>
         </section>
@@ -404,7 +431,7 @@ window.initGenericTabs(container);</pre>
                         <button type="button" class="generic-accordion__toggle" data-generic-accordion-toggle aria-label="Ouvrir ou fermer">&#9662;</button>
                     </div>
                     <div class="generic-accordion__content">
-                        <div class="generic-description">Le header, la carte et le comportement pliable viennent des classes generiques.</div>
+                        <div class="generic-description"><?= htmlspecialchars(t('copy.le_header_la_carte_et_le_comportement_pliable_viennent_des_classes_generiques', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></div>
                     </div>
                 </div>
 
@@ -416,7 +443,7 @@ window.initGenericTabs(container);</pre>
                     <div class="generic-accordion__content">
                         <div class="generic-soft-panel generic-soft-panel--stack">
                             <div class="generic-card-title generic-card-title--eyebrow">Sous-contenu</div>
-                            <div class="generic-description">Un accordion peut aussi contenir d'autres primitives partagees.</div>
+                            <div class="generic-description"><?= htmlspecialchars(t('copy.un_accordion_peut_aussi_contenir_d_autres_primitives_partagees', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></div>
                         </div>
                     </div>
                 </div>
@@ -435,7 +462,7 @@ window.initGenericTabs(container);</pre>
                                     <div class="generic-file-list__header-cell">Nom</div>
                                     <div class="generic-file-list__header-cell">Type</div>
                                     <div class="generic-file-list__header-cell">Tags</div>
-                                    <div class="generic-file-list__header-cell">Modifie le</div>
+                                    <div class="generic-file-list__header-cell"><?= htmlspecialchars(t('copy.modifie_le', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></div>
                                 </div>
 
                                 <article class="generic-file-list__item-shell generic-file-list__item-shell--folder generic-file-list__item-shell--with-menu">
@@ -449,9 +476,9 @@ window.initGenericTabs(container);</pre>
                                                             <div class="generic-file-list__title-block">
                                                                 <div class="generic-file-list__title-row">
                                                                     <strong class="generic-file-list__title">Mon dossier</strong>
-                                                                    <span class="generic-file-list__count">3 elements</span>
+                                                                    <span class="generic-file-list__count"><?= htmlspecialchars(t('copy.3_elements', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></span>
                                                                 </div>
-                                                                <div class="generic-file-list__meta-line">Organisation &gt; Equipe produit</div>
+                                                                <div class="generic-file-list__meta-line"><?= htmlspecialchars(t('copy.organisation_gt_equipe_produit', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></div>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -482,7 +509,7 @@ window.initGenericTabs(container);</pre>
                                                                     <div class="generic-file-list__title-row">
                                                                         <strong class="generic-file-list__title">Bilan annuel</strong>
                                                                     </div>
-                                                                    <div class="generic-file-list__meta-line">Organisation &gt; Equipe produit</div>
+                                                                    <div class="generic-file-list__meta-line"><?= htmlspecialchars(t('copy.organisation_gt_equipe_produit', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></div>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -511,7 +538,7 @@ window.initGenericTabs(container);</pre>
                                                                     <div class="generic-file-list__title-row">
                                                                         <strong class="generic-file-list__title">Processus budget</strong>
                                                                     </div>
-                                                                    <div class="generic-file-list__meta-line">Organisation &gt; Equipe produit</div>
+                                                                    <div class="generic-file-list__meta-line"><?= htmlspecialchars(t('copy.organisation_gt_equipe_produit', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></div>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -572,7 +599,7 @@ window.initGenericTabs(container);</pre>
                                     <div class="generic-file-list__header-cell">Nom</div>
                                     <div class="generic-file-list__header-cell">Type</div>
                                     <div class="generic-file-list__header-cell">Tags</div>
-                                    <div class="generic-file-list__header-cell">Modifie le</div>
+                                    <div class="generic-file-list__header-cell"><?= htmlspecialchars(t('copy.modifie_le', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></div>
                                 </div>
 
                                 <article class="generic-file-list__item-shell generic-file-list__item-shell--with-menu">
@@ -584,7 +611,7 @@ window.initGenericTabs(container);</pre>
                                                     <div class="generic-file-list__title-row">
                                                         <strong class="generic-file-list__title">Compte rendu retro</strong>
                                                     </div>
-                                                    <div class="generic-file-list__meta-line">Organisation &gt; Equipe produit</div>
+                                                    <div class="generic-file-list__meta-line"><?= htmlspecialchars(t('copy.organisation_gt_equipe_produit', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></div>
                                                 </div>
                                             </div>
                                         </div>
@@ -636,10 +663,10 @@ window.syncGenericFileLists(container)</pre>
         </section>
 
         <section class="generic-section generic-section--stack generic-section--roomy">
-            <div class="generic-card-title generic-card-title--eyebrow">Regle de travail</div>
+            <div class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(t('copy.regle_de_travail', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></div>
             <div class="generic-stack generic-stack--compact">
-                <div class="generic-description">Quand une page combine deja bordure, rayon, surface, spacing et typo avec les memes tokens, il faut d'abord se demander si l'objet existe deja ici.</div>
-                <div class="generic-description">Si la reponse est non mais que le motif revient a plusieurs endroits, il vaut mieux etendre la bibliotheque generique que recopier le CSS.</div>
+                <div class="generic-description"><?= htmlspecialchars(t('copy.quand_une_page_combine_deja_bordure_rayon_surface_spacing_et_typo_avec_les_memes', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></div>
+                <div class="generic-description"><?= htmlspecialchars(t('copy.si_la_reponse_est_non_mais_que_le_motif_revient_a_plusieurs_endroits_il_vaut_mie', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></div>
             </div>
         </section>
     </main>

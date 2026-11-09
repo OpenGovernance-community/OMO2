@@ -18,7 +18,7 @@
 	if (!is_array($data) || !array_key_exists('id', $data)) {
 		echo json_encode([
 			'status' => 'error',
-			'message' => T_('Les donnees fournies sont invalides.')
+			'message' => T_('Les données fournies sont invalides.')
 		]);
 		exit;
 	}
@@ -38,7 +38,7 @@
 		if ((int)$pv->get("IDuser") !== (int)$_SESSION["currentUser"]) {
 			echo json_encode([
 				'status' => 'error',
-				'message' => T_('Acces refuse')
+				'message' => T_('Accès refusé')
 			]);
 			exit;
 		}
@@ -58,7 +58,7 @@
 		$dbError = \dbObject\DbObject::getLastDbError();
 		$message = is_array($saveResult) && !empty($saveResult['text'])
 			? (string)$saveResult['text']
-			: T_('La sauvegarde a echoue.');
+			: T_('La sauvegarde a échoué.');
 
 		echo json_encode([
 			'status' => 'error',

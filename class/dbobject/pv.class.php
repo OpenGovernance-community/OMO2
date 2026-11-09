@@ -29,10 +29,10 @@
 			return [
 				'id' => 'ID',
 				'data' => 'JSON data',
-				'datecreation' => 'Date de creation',
+				'datecreation' => 'Date de création',
 				'datemodification' => 'Date de modification',
 				'codeaffichage' => 'Code affichage',
-				'codeedition' => 'Code edition',
+				'codeedition' => 'Code édition',
 				'IDuser' => 'Auteur',
 			];
 		}

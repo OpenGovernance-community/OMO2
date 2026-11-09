@@ -32,15 +32,15 @@ class ChecklistRunItem extends DbObject
     {
         return [
             'id' => 'ID',
-            'IDchecklistrun' => 'Execution',
-            'IDchecklistitem' => 'Etape modele',
-            'IDproject' => 'Projet genere',
-            'activation_at' => 'Activation prevue',
-            'state' => 'Etat',
-            'created_at' => 'Creation',
-            'updated_at' => 'Mise a jour',
+            'IDchecklistrun' => 'Exécution',
+            'IDchecklistitem' => 'Étape modèle',
+            'IDproject' => 'Projet généré',
+            'activation_at' => 'Activation prévue',
+            'state' => 'État',
+            'created_at' => 'Création',
+            'updated_at' => 'Mise à jour',
             'activated_at' => 'Activation',
-            'completed_at' => 'Terminee le',
+            'completed_at' => 'Terminée le',
         ];
     }
 
@@ -55,10 +55,10 @@ class ChecklistRunItem extends DbObject
             'state' => [
                 [self::STATE_WAITING, 'En attente'],
                 [self::STATE_AVAILABLE, 'Disponible'],
-                [self::STATE_CREATED, 'Projet cree'],
-                [self::STATE_COMPLETED, 'Terminee'],
-                [self::STATE_SKIPPED, 'Ignoree'],
-                [self::STATE_BLOCKED, 'Bloquee'],
+                [self::STATE_CREATED, 'Projet créé'],
+                [self::STATE_COMPLETED, 'Terminée'],
+                [self::STATE_SKIPPED, 'Ignorée'],
+                [self::STATE_BLOCKED, 'Bloquée'],
                 [self::STATE_ERROR, 'Erreur'],
             ],
         ];

@@ -163,6 +163,11 @@ window.commonPageScripts["/omo/api/documents/params/index.js"] = function (pageC
                         status: false,
                         message: omoUiText("invalid_response", "Réponse invalide.")
                     };
+                }).then(function (payload) {
+                    if (!response.ok && !(payload && payload.confirmationRequired)) {
+                        throw new Error(payload && payload.message ? payload.message : pageConfig.documentsParamsErrorSaveFailed);
+                    }
+                    return payload;
                 });
             });
         }
@@ -189,6 +194,7 @@ window.commonPageScripts["/omo/api/documents/params/index.js"] = function (pageC
                 return payload;
             }).then(function (payload) {
                 var status = !!(payload && payload.status);
+                if (status && typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(form);
                 renderFeedback(payload && payload.message ? payload.message : (status ? idleLabel : omoUiText("erreur", "Erreur")), !status);
             }).catch(function () {
                 renderFeedback(pageConfig.documentsParamsErrorSaveFailed, true);

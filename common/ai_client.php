@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/ai_translations.php';
+
 
 require_once __DIR__ . '/ai_config.php';
 require_once __DIR__ . '/ai_usage.php';
@@ -57,7 +59,7 @@ function commonAiBuildTextRequest(string $apiKey, array $payload): array
 function commonAiDecodeTextResponse(array $response, int $httpCode): array
 {
     if ($httpCode < 200 || $httpCode >= 300 || isset($response['error'])) {
-        return ['status' => false, 'http_code' => $httpCode, 'message' => (string)($response['error']['message'] ?? 'La requete IA a echoue.')];
+        return ['status' => false, 'http_code' => $httpCode, 'message' => (string)($response['error']['message'] ?? commonAiUiT('copy.la_requete_ia_a_echoue'))];
     }
     if (commonAiGetProvider() === 'anthropic') {
         $parts = [];
@@ -71,7 +73,7 @@ function commonAiDecodeTextResponse(array $response, int $httpCode): array
         $truncated = ($response['choices'][0]['finish_reason'] ?? '') === 'length';
     }
     if ($content === '' || $truncated) {
-        return ['status' => false, 'http_code' => $httpCode, 'message' => $truncated ? 'La reponse IA est incomplete.' : 'La reponse IA est vide.'];
+        return ['status' => false, 'http_code' => $httpCode, 'message' => $truncated ? commonAiUiT('copy.la_reponse_ia_est_incomplete') : commonAiUiT('copy.la_reponse_ia_est_vide')];
     }
     return ['status' => true, 'content' => $content, 'http_code' => $httpCode];
 }
@@ -85,7 +87,7 @@ function commonAiRequestText(string $apiKey, array $payload, int $timeout = 120)
         $request = commonAiBuildTextRequest($apiKey, $payload);
         $result = commonAiRequestJson($request, $timeout);
     } catch (Throwable $error) {
-        return ['status' => false, 'message' => 'Configuration ou requete IA invalide.'];
+        return ['status' => false, 'message' => commonAiUiT('copy.configuration_ou_requete_ia_invalide')];
     }
     if (empty($result['status'])) return $result;
     return commonAiDecodeTextResponse($result['response'], $result['http_code']);
@@ -99,7 +101,7 @@ function commonAiRequestJson(array $request, int $timeout = 120): array
     }
     $encoded = json_encode($request['payload'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
     $curl = curl_init($request['url']);
-    if ($curl === false) return ['status' => false, 'message' => 'Impossible de preparer la requete IA.'];
+    if ($curl === false) return ['status' => false, 'message' => commonAiUiT('copy.impossible_de_preparer_la_requete_ia')];
     curl_setopt_array($curl, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_POST => true,
@@ -115,7 +117,7 @@ function commonAiRequestJson(array $request, int $timeout = 120): array
     $modelOutput = is_array($decoded) ? ($decoded['choices'][0]['message'] ?? $decoded['content'] ?? $decoded['output'] ?? '') : '';
     commonAiRecordUsage('model', commonAiGetProvider(), (string)($request['payload']['model'] ?? ''),
         $request['payload'], $modelOutput, is_array($decoded) ? $decoded : ['error' => true], $httpCode);
-    if ($response === false) return ['status' => false, 'http_code' => $httpCode, 'message' => curl_error($curl) ?: 'La requete IA a echoue.'];
-    if (!is_array($decoded)) return ['status' => false, 'http_code' => $httpCode, 'message' => 'La reponse IA est invalide.'];
+    if ($response === false) return ['status' => false, 'http_code' => $httpCode, 'message' => curl_error($curl) ?: commonAiUiT('copy.la_requete_ia_a_echoue')];
+    if (!is_array($decoded)) return ['status' => false, 'http_code' => $httpCode, 'message' => commonAiUiT('copy.la_reponse_ia_est_invalide')];
     return ['status' => true, 'response' => $decoded, 'http_code' => $httpCode];
 }

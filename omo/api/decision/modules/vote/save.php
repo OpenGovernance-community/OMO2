@@ -58,7 +58,7 @@ $title = trim((string)($_POST['title'] ?? ''));
 $description = trim((string)($_POST['description'] ?? ''));
 $decisionType = DecisionProcess::normalizeDecisionType((string)($_POST['decision_type'] ?? DecisionProcess::TYPE_DECISION));
 $decisionType = $consultationOnly ? DecisionProcess::TYPE_CONSULTATION : $decisionType;
-$visibilityType = DecisionProcess::normalizeVisibilityType((string)($_POST['visibility_type'] ?? DecisionProcess::getDefaultVisibilityType()));
+$visibilityType = DecisionProcess::normalizeVisibilityType((string)($_POST['visibility_type'] ?? ($decision instanceof DecisionProcess ? $decision->get('visibility_type') : DecisionProcess::getDefaultVisibilityType())));
 $status = DecisionProcess::normalizeStatus((string)($_POST['status'] ?? DecisionProcess::STATUS_DRAFT));
 $consultationStartAt = trim((string)($_POST['consultation_start_at'] ?? ''));
 $consultationEndAt = trim((string)($_POST['consultation_end_at'] ?? ''));
@@ -172,6 +172,16 @@ if ($evaluationStartConflict instanceof \DateTimeInterface || ($status === Decis
         'message' => omoDecisionUiT('le_statut_en_evaluation_doit_correspondre_a_une_date_de_debut_d_evaluation_deja_atteinte'),
         'requiresLifecycleConfirmation' => true,
     ]);
+}
+
+foreach (['visibility_type', 'edit_visibility_type'] as $scopeKey) {
+    if ($coreLocked || !array_key_exists($scopeKey, $_POST)) continue;
+    $scopeType = $_POST[$scopeKey];
+    $resolvedScope = is_string($scopeType) && array_key_exists($scopeType, DecisionProcess::getVisibilityTypeOptions())
+        ? $decision->resolveVisibilityRuleInput($scopeType) : ['status' => false];
+    if (empty($resolvedScope['status'])) {
+        omoDecisionModuleJsonResponse(400, ['status' => false, 'message' => omoDecisionUiT('visibilite_invalide_pour_cette_prise_de_decision')]);
+    }
 }
 
 $resolvedVisibility = $decision->resolveVisibilityRuleInput($visibilityType);
@@ -337,6 +347,11 @@ try {
         throw new RuntimeException('decision_save_failed');
     }
 
+    $saveVisibility = $decision->saveVisibilityRulesFromInput($_POST, $coreLocked);
+    if (empty($saveVisibility['status'])) {
+        throw new RuntimeException('decision_visibility_save_failed');
+    }
+
     $decisionId = (int)$decision->getId();
     if (!$decisionGroup instanceof DecisionGroup) {
         if ($createAdditionalGroup) {
@@ -352,6 +367,9 @@ try {
     }
     if (!$coreLocked) {
         $decisionGroup->set('title', $title);
+        if (array_key_exists('short_title', $_POST)) {
+            $decisionGroup->set('short_title', mb_substr(trim((string)$_POST['short_title']), 0, 190));
+        }
         $decisionGroup->set('description', $description !== '' ? $description : null);
         $decisionGroup->set('decision_type', $decisionType);
     }

@@ -577,7 +577,7 @@ var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; 
 					list.appendChild(createElement(
 						'div',
 						'omo-holon-history-popup__diff-list-item omo-holon-history-popup__diff-list-item--muted',
-						unchangedCount + ' element(s) inchanges'
+						omoUiText('copy.unchanged_items', unchangedCount + (unchangedCount === 1 ? ' élément inchangé' : ' éléments inchangés'), {count: unchangedCount})
 					));
 				}
 			}

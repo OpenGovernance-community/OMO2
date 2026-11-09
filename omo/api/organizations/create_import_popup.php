@@ -1,10 +1,12 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
+
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 $sourceLang = array(
     'organization_import.roleplay' => ['text' => 'Importer comme jeu de rôle', 'context' => 'Date shift option on import.'],
     'organization_import.roleplay_help' => ['text' => 'Décale les dates du nombre de jours entre la date d’export et aujourd’hui. Les heures et les intervalles sont conservés. Sans cette option, les dates du fichier sont conservées.', 'context' => 'Explanation of roleplay import.'],
-    'organization_import.roleplay_characters_help' => ['text' => 'En mode jeu de role, les membres deviennent des personnages actifs, sans invitation ni connexion directe, avec des adresses suffixees par .invalid. Leurs e-mails sont transmis aux administrateurs de cette organisation. Vous devenez administrateur ; les droits d administration des membres du fichier ne sont pas repris.', 'context' => 'Character accounts, mail routing and administrator rights when importing a roleplay organization.'],
+    'organization_import.roleplay_characters_help' => ['text' => 'En mode jeu de rôle, les membres deviennent des personnages actifs, sans invitation ni connexion directe, avec des adresses suffixées par .invalid. Leurs e-mails sont transmis aux administrateurs de cette organisation. Vous devenez administrateur ; les droits d’administration des membres du fichier ne sont pas repris.', 'context' => 'Character accounts, mail routing and administrator rights when importing a roleplay organization.'],
     'organization_import.action.cancel' => array('text' => 'Annuler', 'context' => 'Cancel button in the organization import popup.'),
     'organization_import.action.close' => ['text' => 'Fermer', 'context' => 'Close the completed organization import.'],
     'organization_import.action.open' => ['text' => 'Ouvrir l’organisation', 'context' => 'Open the successfully imported organization.'],
@@ -19,9 +21,9 @@ $sourceLang = array(
     'organization_import.field.name' => array('text' => 'Nom de la nouvelle organisation', 'context' => 'Organization name label in the organization import popup.'),
     'organization_import.field.name_hint' => array('text' => 'Laissez vide pour reprendre le nom de l’export.', 'context' => 'Organization name hint in the organization import popup.'),
     'organization_import.field.template' => array('text' => 'Modèle d’organisation de référence', 'context' => 'Organization template selector label in the organization import popup.'),
-    'organization_import.field.template_empty' => array('text' => 'Conserver les modèles du fichier importe', 'context' => 'Empty option in the organization template selector.'),
+    'organization_import.field.template_empty' => array('text' => 'Conserver les modèles du fichier importé', 'context' => 'Empty option in the organization template selector.'),
     'organization_import.field.template_hint' => array('text' => 'Associez ensuite les rôles structurels importés aux modèles de cette organisation.', 'context' => 'Hint below the organization template selector.'),
-    'organization_import.mapping.empty' => array('text' => 'Conserver le modèle importe', 'context' => 'Empty option in a template mapping selector.'),
+    'organization_import.mapping.empty' => array('text' => 'Conserver le modèle importé', 'context' => 'Empty option in a template mapping selector.'),
     'organization_import.mapping.exclude' => array('text' => 'Ne pas importer ce modèle, ses instances ni leurs descendants', 'context' => 'Option excluding an imported holon template, its instances and their descendants.'),
     'organization_import.mapping.help' => array('text' => 'Pour chaque modèle OMO 1, conservez sa définition, remplacez-la par un modèle du modèle ou excluez-la. Les propriétés à faire correspondre apparaissent sous le modèle choisi.', 'context' => 'Help text for template mappings.'),
     'organization_import.mapping.duplicate' => array('text' => 'Un modèle de référence ne peut être associé qu’à un seul modèle importé.', 'context' => 'Validation error when a target template is mapped twice.'),
@@ -39,7 +41,7 @@ $sourceLang = array(
     'organization_import.field.member_invitation_email_choice_send' => array('text' => 'Envoyer maintenant les e-mails d’invitation', 'context' => 'Option sending invitation emails to imported members.'),
     'organization_import.field.member_invitation_email_choice_skip' => array('text' => 'Ne pas envoyer les e-mails d’invitation', 'context' => 'Option not sending invitation emails to imported members.'),
     'organization_import.field.member_invitation_email_choice_hint' => array('text' => 'Ce choix est obligatoire afin de confirmer le traitement des invitations des membres importés.', 'context' => 'Help text for the required member invitation email selector.'),
-    'organization_import.help' => array('text' => 'Cree une nouvelle organisation depuis un export OMO. La structure est toujours importée ; choisissez les autres contenus à reprendre. Les images locales du ZIP sont restaurées avec leurs objets.', 'context' => 'Help text in the organization import popup.'),
+    'organization_import.help' => array('text' => 'Crée une nouvelle organisation depuis un export OMO. La structure est toujours importée ; choisissez les autres contenus à reprendre. Les images locales du ZIP sont restaurées avec leurs objets.', 'context' => 'Help text in the organization import popup.'),
     'organization_import.kicker' => ['text' => 'Export OMO : ZIP / JSON', 'context' => 'Organization import file formats.'],
     'organization_import.module.checklists' => array('text' => 'Tâches récurrentes', 'context' => 'Recurring tasks module label in the organization import popup.'),
     'organization_import.loading' => array('text' => 'Import en cours...', 'context' => 'Loading label shown during organization import.'),
@@ -115,7 +117,7 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
             <select name="organization_template_id" class="generic-form-control" data-omo-create-import-template="1">
                 <option value="0"><?= htmlspecialchars(t('organization_import.field.template_empty', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></option>
                 <?php foreach ($templateCatalog as $template): ?>
-                    <option value="<?= (int)($template['id'] ?? 0) ?>"><?= htmlspecialchars((string)($template['name'] ?? 'Modele'), ENT_QUOTES, 'UTF-8') ?></option>
+                    <option value="<?= (int)($template['id'] ?? 0) ?>"><?= htmlspecialchars((string)($template['name'] ?? omoOrganizationsUiT('copy.modele')), ENT_QUOTES, 'UTF-8') ?></option>
                 <?php endforeach; ?>
             </select>
             <small><?= htmlspecialchars(t('organization_import.field.template_hint', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></small>

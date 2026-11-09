@@ -73,7 +73,7 @@ if (!function_exists('omoDecisionMajorityJudgmentBuildExportRows')) {
                     : 'Aucune mention',
                 'detail' => count($detailParts) > 0
                     ? implode(' | ', $detailParts)
-                    : 'Aucune evaluation soumise',
+                    : omoDecisionUiT('copy.aucune_evaluation_soumise'),
                 'stats' => [
                     'count' => (int)($stat['count'] ?? 0),
                     'counted_count' => (int)($stat['counted_count'] ?? 0),

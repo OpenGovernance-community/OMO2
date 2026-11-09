@@ -3,6 +3,19 @@ namespace dbObject;
 
 class OrganizationExport
 {
+        private static function uiMessage(string $key, array $variables = []): string
+{
+    static $sourceLang = [
+        'copy.aucune_structure_exportable_n_a_ete_trouvee_pour_cette_organisation' => ['text' => 'Aucune structure exportable n’a été trouvée pour cette organisation.', 'context' => 'Interface text in class/dbobject/organizationexport.class.php'],
+    ];
+    require_once __DIR__ . '/../../common/translation_bundles.php';
+    static $bundles = [];
+    $locale = \translationBundleResolveRequestLocale();
+    $bundle = class_exists(\dbObject\TranslationBundle::class)
+        ? ($bundles[$locale] ??= \loadTranslationBundle('class_dbobject_organizationexport_class', $locale, $sourceLang)) : $sourceLang;
+    return \t($key, $variables, $bundle, $sourceLang);
+}
+
     public const FORMAT = 'openmyorganization-structure-export';
     public const VERSION = 4;
 
@@ -24,7 +37,7 @@ class OrganizationExport
         $organizationId = (int)$organization->getId();
         $rootHolon = $organization->getStructuralRootHolon();
         if ($organizationId <= 0 || !($rootHolon instanceof Holon)) {
-            throw new \RuntimeException('Aucune structure exportable n a ete trouvee pour cette organisation.');
+            throw new \RuntimeException(self::uiMessage('copy.aucune_structure_exportable_n_a_ete_trouvee_pour_cette_organisation'));
         }
 
         $selected = [];

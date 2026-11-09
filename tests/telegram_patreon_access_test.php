@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/mcp_test_helpers.php';
 require_once dirname(__DIR__) . '/common/ai_access.php';
+require_once dirname(__DIR__) . '/shared/telegram_addressing.php';
 use dbObject\{User, UserPatreon, OrganizationPatreon, Project, TelegramChatDestination};
 
 // Exercise the actual bot handlers and dbObjects, stopping before audio download or any external call.
@@ -28,6 +29,9 @@ function saveLocalSession($data, $actorId) { $GLOBALS['telegramTestSessions'][$a
 function sendMessage($chatId, $text, $markup = null, $threadId = null) { $GLOBALS['telegramTestMessages'][] = ['text' => $text, 'buttons' => $markup]; }
 function editMessageText(...$args) { return true; }
 function answerCallbackQuery(...$args) {}
+function telegramApiRequest($method, $params = []) {
+    return ['ok' => true, 'result' => ['id' => 123456, 'is_bot' => true, 'username' => 'OMOTestBot']];
+}
 
 function telegramCheckVoice(User $user, array $message, bool $expected, string $label, int $organizationId = 0): void
 {
@@ -55,7 +59,8 @@ try {
     $outsider = $items['outsider']; $unknown = new User();
     $items['project'] = mcpFixture(Project::class, ['IDorganization' => $oid, 'IDholon' => $hid, 'title' => 'Telegram destination', 'active' => 1]);
     $chatId = -random_int(100000000, 999999999); $actor = random_int(100000000, 999999999);
-    $message = ['from' => ['id' => $actor], 'chat' => ['id' => $chatId, 'type' => 'supergroup'], 'message_id' => 42];
+    $message = ['from' => ['id' => $actor], 'chat' => ['id' => $chatId, 'type' => 'supergroup'], 'message_id' => 42,
+        'reply_to_message' => ['from' => ['id' => 123456, 'is_bot' => true]]];
 
     $GLOBALS['telegramTestMode'] = 'connect';
     handleTextMessage(array_replace($message, ['chat' => ['id' => $actor], 'text' => '/connect']), $owner);

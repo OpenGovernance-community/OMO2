@@ -3,6 +3,42 @@
 
 	class Invitation extends DbObject
 	{
+    protected static function uiMessageSourceLang(): array
+    {
+        return parent::uiMessageSourceLang() + [
+            'copy.le_jeton_d_invitation_n_a_pas_pu_etre_genere' => ['text' => 'Le jeton d\'invitation n\'a pas pu être généré.', 'context' => 'Interface text in class/dbobject/invitation.class.php'],
+            'copy.l_invitation_demandee_est_invalide' => ['text' => 'L\'invitation demandée est invalide.', 'context' => 'Interface text in class/dbobject/invitation.class.php'],
+            'copy.le_statut_admin_demande_n_a_pas_pu_etre_memorise' => ['text' => 'Le statut admin demande n\'a pas pu être mémorisé.', 'context' => 'Interface text in class/dbobject/invitation.class.php'],
+            'copy.l_invitation_n_a_pas_pu_etre_creee' => ['text' => 'L\'invitation n\'a pas pu être créée.', 'context' => 'Interface text in class/dbobject/invitation.class.php'],
+            'copy.l_organisation_invitee_est_introuvable' => ['text' => 'L\'organisation invitée est introuvable.', 'context' => 'Interface text in class/dbobject/invitation.class.php'],
+            'copy.les_contraintes_d_admins_ne_sont_pas_respectees' => ['text' => 'Les contraintes d’admins ne sont pas respectées.', 'context' => 'Interface text in class/dbobject/invitation.class.php'],
+            'copy.le_statut_admin_n_a_pas_pu_etre_applique' => ['text' => 'Le statut admin n\'a pas pu être applique.', 'context' => 'Interface text in class/dbobject/invitation.class.php'],
+            'copy.l_invitation_ne_peut_pas_etre_envoyee' => ['text' => 'L\'invitation ne peut pas être envoyée.', 'context' => 'Interface text in class/dbobject/invitation.class.php'],
+            'copy.acces_en_attente' => ['text' => 'Accès en attente', 'context' => 'Interface text in class/dbobject/invitation.class.php'],
+            'copy.vous_etes_invite_a_rejoindre_cette_organisation' => ['text' => 'Vous êtes invite a rejoindre cette organisation.', 'context' => 'Interface text in class/dbobject/invitation.class.php'],
+            'copy.ouvrez_ce_lien_pour_accepter_ou_refuser_l_invitation' => ['text' => 'Ouvrez ce lien pour accepter ou refuser l’invitation.', 'context' => 'Interface text in class/dbobject/invitation.class.php'],
+            'copy.l_invitation_n_a_pas_pu_etre_envoyee' => ['text' => 'L\'invitation n\'a pas pu être envoyée.', 'context' => 'Interface text in class/dbobject/invitation.class.php'],
+            'copy.nouvelle_demande_d_acces' => ['text' => 'Nouvelle demande d’accès', 'context' => 'Interface text in class/dbobject/invitation.class.php'],
+            'copy.demande_d_acces_a_organizationname' => ['text' => 'Demande d’accès a {organizationName}', 'context' => 'Interface text in class/dbobject/invitation.class.php'],
+            'copy.la_demande_n_a_pas_pu_etre_envoyee_aux_administrateurs' => ['text' => 'La demande n\'a pas pu être envoyée aux administrateurs.', 'context' => 'Interface text in class/dbobject/invitation.class.php'],
+            'copy.la_confirmation_ne_peut_pas_etre_envoyee' => ['text' => 'La confirmation ne peut pas être envoyée.', 'context' => 'Interface text in class/dbobject/invitation.class.php'],
+            'copy.votre_inscription_est_validee' => ['text' => 'Votre inscription est validée', 'context' => 'Interface text in class/dbobject/invitation.class.php'],
+            'copy.votre_demande_pour_rejoindre_value_a_ete_acceptee' => ['text' => 'Votre demande pour rejoindre {value} a été acceptée.', 'context' => 'Interface text in class/dbobject/invitation.class.php'],
+            'copy.vous_pouvez_maintenant_acceder_a_cet_espace_et_a_ses_outils' => ['text' => 'Vous pouvez maintenant accéder à cet espace et à ses outils.', 'context' => 'Interface text in class/dbobject/invitation.class.php'],
+            'copy.entrer_dans_l_organisation' => ['text' => 'Entrer dans l’organisation', 'context' => 'Interface text in class/dbobject/invitation.class.php'],
+            'copy.inscription_validee_dans_organizationname' => ['text' => 'Inscription validée dans {organizationName}', 'context' => 'Interface text in class/dbobject/invitation.class.php'],
+            'copy.l_e_mail_de_confirmation_n_a_pas_pu_etre_envoye' => ['text' => 'L\'e-mail de confirmation n\'a pas pu être envoyé.', 'context' => 'Interface text in class/dbobject/invitation.class.php'],
+            'copy.la_connexion_a_la_base_de_donnees_est_indisponible' => ['text' => 'La connexion à la base de données est indisponible.', 'context' => 'Interface text in class/dbobject/invitation.class.php'],
+            'copy.le_profil_utilisateur_n_a_pas_pu_etre_active' => ['text' => 'Le profil utilisateur n\'a pas pu être active.', 'context' => 'Interface text in class/dbobject/invitation.class.php'],
+            'copy.l_adhesion_a_l_organisation_n_a_pas_pu_etre_confirmee' => ['text' => 'L\'adhésion à l\'organisation n\'a pas pu être confirmée.', 'context' => 'Interface text in class/dbobject/invitation.class.php'],
+            'copy.un_lien_de_contexte_n_a_pas_pu_etre_active' => ['text' => 'Un lien de contexte n\'a pas pu être active.', 'context' => 'Interface text in class/dbobject/invitation.class.php'],
+            'copy.l_invitation_n_a_pas_pu_etre_mise_a_jour' => ['text' => 'L\'invitation n\'a pas pu être mise à jour.', 'context' => 'Interface text in class/dbobject/invitation.class.php'],
+            'copy.demande_validee' => ['text' => 'Demande validée.', 'context' => 'Interface text in class/dbobject/invitation.class.php'],
+            'copy.le_retrait_de_l_invitation_n_a_pas_pu_etre_finalise' => ['text' => 'Le retrait de l\'invitation n\'a pas pu être finalisé.', 'context' => 'Interface text in class/dbobject/invitation.class.php'],
+            'copy.invitation_refusee' => ['text' => 'Invitation refusée.', 'context' => 'Interface text in class/dbobject/invitation.class.php'],
+        ];
+    }
+
 		const REQUEST_ORIGIN_ADMIN = 'admin';
 		const REQUEST_ORIGIN_MEMBER = 'member';
 
@@ -35,10 +71,10 @@
 				'token' => 'Jeton',
 				'request_origin' => 'Origine de la demande',
 				'status' => 'Statut',
-				'parameters' => 'Parametres',
-				'datecreation' => 'Creation',
+				'parameters' => 'Paramètres',
+				'datecreation' => 'Création',
 				'dateexpiration' => 'Expiration',
-				'dateresponse' => 'Reponse',
+				'dateresponse' => 'Réponse',
 				'active' => 'Actif',
 			];
 		}
@@ -280,7 +316,7 @@
 				}
 			}
 
-			throw new \RuntimeException("Le jeton d'invitation n'a pas pu etre genere.");
+			throw new \RuntimeException(self::uiMessage('copy.le_jeton_d_invitation_n_a_pas_pu_etre_genere'));
 		}
 
 		public static function issue($organizationId, $userId, $senderUserId = 0, $email = '', array $options = [])
@@ -294,7 +330,7 @@
 			$holonAdminId = (int)($options['holonAdminId'] ?? 0);
 
 			if ($organizationId <= 0 || $userId <= 0) {
-				throw new \RuntimeException("L'invitation demandee est invalide.");
+				throw new \RuntimeException(self::uiMessage('copy.l_invitation_demandee_est_invalide'));
 			}
 
 			$existing = self::findPendingForOrganizationUser($organizationId, $userId);
@@ -302,7 +338,7 @@
 				if ($holonAdminId > 0) {
 					$requestedAdminResult = $existing->addRequestedHolonAdmin($holonAdminId);
 					if (!is_array($requestedAdminResult) || empty($requestedAdminResult['status'])) {
-						throw new \RuntimeException("Le statut admin demande n'a pas pu etre memorise.");
+						throw new \RuntimeException(self::uiMessage('copy.le_statut_admin_demande_n_a_pas_pu_etre_memorise'));
 					}
 				}
 				if ($requestOrigin === self::REQUEST_ORIGIN_MEMBER && $existing->isMemberInitiatedRequest() && $requestMessage !== '') {
@@ -347,7 +383,7 @@
 
 			$saveResult = $item->save();
 			if (!is_array($saveResult) || empty($saveResult['status']) || (int)$item->getId() <= 0) {
-				throw new \RuntimeException("L'invitation n'a pas pu etre creee.");
+				throw new \RuntimeException(self::uiMessage('copy.l_invitation_n_a_pas_pu_etre_creee'));
 			}
 
 			return [
@@ -448,7 +484,7 @@
 
 			$organization = $this->getOrganizationObject();
 			if (!$organization) {
-				throw new \RuntimeException("L'organisation invitee est introuvable.");
+				throw new \RuntimeException(self::uiMessage('copy.l_organisation_invitee_est_introuvable'));
 			}
 
 			foreach ((array)($parameters['holon_admin_ids'] ?? array()) as $requestedHolonId) {
@@ -471,7 +507,7 @@
 						'organizationId' => (int)$organizationId,
 					));
 					if (empty($constraintResult['status'])) {
-						throw new \RuntimeException((string)($constraintResult['message'] ?? 'Les contraintes d admins ne sont pas respectees.'));
+						throw new \RuntimeException((string)($constraintResult['message'] ?? self::uiMessage('copy.les_contraintes_d_admins_ne_sont_pas_respectees')));
 					}
 
 					$membership = new \dbObject\UserOrganization();
@@ -488,7 +524,7 @@
 						'organizationId' => (int)$organizationId,
 					));
 					if (empty($constraintResult['status'])) {
-						throw new \RuntimeException((string)($constraintResult['message'] ?? 'Les contraintes d admins ne sont pas respectees.'));
+						throw new \RuntimeException((string)($constraintResult['message'] ?? self::uiMessage('copy.les_contraintes_d_admins_ne_sont_pas_respectees')));
 					}
 
 					$link = new \dbObject\UserHolon();
@@ -504,7 +540,7 @@
 				}
 
 				if (!is_array($saveResult) || empty($saveResult['status'])) {
-					throw new \RuntimeException("Le statut admin n'a pas pu etre applique.");
+					throw new \RuntimeException(self::uiMessage('copy.le_statut_admin_n_a_pas_pu_etre_applique'));
 				}
 			}
 		}
@@ -705,7 +741,7 @@
 			$user = $this->getInvitedUserObject();
 
 			if (!$organization || !$user) {
-				throw new \RuntimeException("L'invitation ne peut pas etre envoyee.");
+				throw new \RuntimeException(self::uiMessage('copy.l_invitation_ne_peut_pas_etre_envoyee'));
 			}
 
 			$email = trim((string)$this->get('email'));
@@ -725,7 +761,7 @@
 			$holons = $this->getPendingHolons();
 			$detailsHtml = '';
 			if (count($holons) > 0) {
-				$detailsHtml .= '<div style="font-weight:700; margin:0 0 10px;">Acces en attente</div>';
+				$detailsHtml .= ('<div style="font-weight:700; margin:0 0 10px;">' . self::uiMessage('copy.acces_en_attente') . '</div>');
 				$detailsHtml .= '<ul style="margin:0; padding-left:18px; color:#334155;">';
 				foreach ($holons as $holon) {
 					$detailsHtml .= '<li style="margin:0 0 8px;">'
@@ -742,10 +778,10 @@
 				'logo_url' => commonBuildAbsoluteAssetUrl((string)$organization->get('logo')),
 				'banner_url' => commonBuildAbsoluteAssetUrl((string)$organization->get('banner')),
 				'heading' => 'Invitation a rejoindre ' . $organizationName,
-				'intro_html' => '<p style="margin:0 0 14px; color:#475569; line-height:1.7;">Vous etes invite a rejoindre cette organisation.</p>',
-				'body_html' => '<p style="margin:0; color:#475569; line-height:1.7;">Ouvrez ce lien pour accepter ou refuser l invitation.</p>',
+				'intro_html' => ('<p style="margin:0 0 14px; color:#475569; line-height:1.7;">' . self::uiMessage('copy.vous_etes_invite_a_rejoindre_cette_organisation') . '</p>'),
+				'body_html' => ('<p style="margin:0; color:#475569; line-height:1.7;">' . self::uiMessage('copy.ouvrez_ce_lien_pour_accepter_ou_refuser_l_invitation') . '</p>'),
 				'details_html' => $detailsHtml,
-				'button_label' => 'Consulter l invitation',
+				'button_label' => 'Consulter l’invitation',
 				'button_url' => $this->getInvitationUrl(),
 				'footer_html' => '<p style="margin:0;">Ce lien reste valable jusqu au '
 					. \commonMailEscape(($this->get('dateexpiration') instanceof \DateTimeInterface ? $this->get('dateexpiration')->format('d.m.Y H:i') : 'prochaines semaines'))
@@ -759,7 +795,7 @@
 			}
 
 			if (!myHTMLMail([$fromAddress, (string)$organization->get('name')], $email, 'Invitation a rejoindre ' . $organizationName, $message, organizationId: (int)$organization->getId())) {
-				throw new \RuntimeException("L'invitation n'a pas pu etre envoyee.");
+				throw new \RuntimeException(self::uiMessage('copy.l_invitation_n_a_pas_pu_etre_envoyee'));
 			}
 
 			return true;
@@ -812,7 +848,7 @@
 				'brand_color' => trim((string)$organization->get('color')),
 				'logo_url' => commonBuildAbsoluteAssetUrl((string)$organization->get('logo')),
 				'banner_url' => commonBuildAbsoluteAssetUrl((string)$organization->get('banner')),
-				'heading' => 'Nouvelle demande d acces',
+				'heading' => self::uiMessage('copy.nouvelle_demande_d_acces'),
 				'intro_html' => '<p style="margin:0 0 14px; color:#475569; line-height:1.7;">'
 					. \commonMailEscape($requesterLabel)
 					. ' souhaite rejoindre '
@@ -820,7 +856,7 @@
 					. '.</p>',
 				'body_html' => '<p style="margin:0; color:#475569; line-height:1.7;">Un clic sur le bouton ci-dessous validera directement son inscription.</p>',
 				'details_html' => $detailsHtml,
-				'button_label' => 'Valider l inscription',
+				'button_label' => 'Valider l’inscription',
 				'button_url' => $this->getApprovalUrl(),
 				'footer_html' => '<p style="margin:0;">Ce lien reste valable jusqu au '
 					. \commonMailEscape(($this->get('dateexpiration') instanceof \DateTimeInterface ? $this->get('dateexpiration')->format('d.m.Y H:i') : 'prochaines semaines'))
@@ -837,8 +873,8 @@
 				return (string)$recipient['email'];
 			}, $recipients);
 
-			if (!myHTMLMail([$fromAddress, (string)$organization->get('name')], $recipientEmails, 'Demande d acces a ' . $organizationName, $message, organizationId: (int)$organization->getId())) {
-				throw new \RuntimeException("La demande n'a pas pu etre envoyee aux administrateurs.");
+			if (!myHTMLMail([$fromAddress, (string)$organization->get('name')], $recipientEmails, self::uiMessage('copy.demande_d_acces_a_organizationname', ['organizationName' => $organizationName]), $message, organizationId: (int)$organization->getId())) {
+				throw new \RuntimeException(self::uiMessage('copy.la_demande_n_a_pas_pu_etre_envoyee_aux_administrateurs'));
 			}
 
 			return true;
@@ -852,7 +888,7 @@
 			$user = $this->getInvitedUserObject();
 
 			if (!$organization || !$user) {
-				throw new \RuntimeException("La confirmation ne peut pas etre envoyee.");
+				throw new \RuntimeException(self::uiMessage('copy.la_confirmation_ne_peut_pas_etre_envoyee'));
 			}
 
 			$email = trim((string)$this->get('email'));
@@ -880,12 +916,10 @@
 				'brand_color' => trim((string)$organization->get('color')),
 				'logo_url' => commonBuildAbsoluteAssetUrl((string)$organization->get('logo')),
 				'banner_url' => commonBuildAbsoluteAssetUrl((string)$organization->get('banner')),
-				'heading' => 'Votre inscription est validee',
-				'intro_html' => '<p style="margin:0 0 14px; color:#475569; line-height:1.7;">Votre demande pour rejoindre '
-					. \commonMailEscape($organizationName)
-					. ' a ete acceptee.</p>',
-				'body_html' => '<p style="margin:0; color:#475569; line-height:1.7;">Vous pouvez maintenant acceder a cet espace et a ses outils.</p>',
-				'button_label' => 'Entrer dans l organisation',
+				'heading' => self::uiMessage('copy.votre_inscription_est_validee'),
+				'intro_html' => ('<p style="margin:0 0 14px; color:#475569; line-height:1.7;">' . self::uiMessage('copy.votre_demande_pour_rejoindre_value_a_ete_acceptee', ['value' => \commonMailEscape($organizationName)]) . '</p>'),
+				'body_html' => ('<p style="margin:0; color:#475569; line-height:1.7;">' . self::uiMessage('copy.vous_pouvez_maintenant_acceder_a_cet_espace_et_a_ses_outils') . '</p>'),
+				'button_label' => self::uiMessage('copy.entrer_dans_l_organisation'),
 				'button_url' => $targetUrl,
 			]);
 
@@ -895,8 +929,8 @@
 				$fromAddress = 'noreply@' . ($host !== '' ? $host : 'localhost');
 			}
 
-			if (!myHTMLMail([$fromAddress, (string)$organization->get('name')], $email, 'Inscription validee dans ' . $organizationName, $message, organizationId: (int)$organization->getId())) {
-				throw new \RuntimeException("L'e-mail de confirmation n'a pas pu etre envoye.");
+			if (!myHTMLMail([$fromAddress, (string)$organization->get('name')], $email, self::uiMessage('copy.inscription_validee_dans_organizationname', ['organizationName' => $organizationName]), $message, organizationId: (int)$organization->getId())) {
+				throw new \RuntimeException(self::uiMessage('copy.l_e_mail_de_confirmation_n_a_pas_pu_etre_envoye'));
 			}
 
 			return true;
@@ -949,7 +983,7 @@
 			if (!$pdo) {
 				return [
 					'status' => false,
-					'message' => 'La connexion a la base de donnees est indisponible.',
+					'message' => self::uiMessage('copy.la_connexion_a_la_base_de_donnees_est_indisponible'),
 				];
 			}
 
@@ -968,7 +1002,7 @@
 					$user->set('active', true);
 					$saveUser = $user->save();
 					if (!is_array($saveUser) || empty($saveUser['status'])) {
-						throw new \RuntimeException("Le profil utilisateur n'a pas pu etre active.");
+						throw new \RuntimeException(self::uiMessage('copy.le_profil_utilisateur_n_a_pas_pu_etre_active'));
 					}
 				}
 
@@ -988,7 +1022,7 @@
 				$membership->set('active', true);
 				$saveMembership = $membership->save();
 				if (!is_array($saveMembership) || empty($saveMembership['status'])) {
-					throw new \RuntimeException("L'adhesion a l'organisation n'a pas pu etre confirmee.");
+					throw new \RuntimeException(self::uiMessage('copy.l_adhesion_a_l_organisation_n_a_pas_pu_etre_confirmee'));
 				}
 
 				self::execute(
@@ -1007,7 +1041,7 @@
 						$link->set('active', true);
 						$saveLink = $link->save();
 						if (!is_array($saveLink) || empty($saveLink['status'])) {
-							throw new \RuntimeException("Un lien de contexte n'a pas pu etre active.");
+							throw new \RuntimeException(self::uiMessage('copy.un_lien_de_contexte_n_a_pas_pu_etre_active'));
 						}
 					}
 				}
@@ -1029,7 +1063,7 @@
 							'organizationId' => $organizationId,
 						));
 						if (empty($constraintResult['status'])) {
-							throw new \RuntimeException((string)($constraintResult['message'] ?? 'Les contraintes d admins ne sont pas respectees.'));
+							throw new \RuntimeException((string)($constraintResult['message'] ?? self::uiMessage('copy.les_contraintes_d_admins_ne_sont_pas_respectees')));
 						}
 					}
 				}
@@ -1053,7 +1087,7 @@
 				$this->set('active', false);
 				$saveInvitation = $this->save();
 				if (!is_array($saveInvitation) || empty($saveInvitation['status'])) {
-					throw new \RuntimeException("L'invitation n'a pas pu etre mise a jour.");
+					throw new \RuntimeException(self::uiMessage('copy.l_invitation_n_a_pas_pu_etre_mise_a_jour'));
 				}
 
 				$this->updateSiblingPendingInvitations('accepted');
@@ -1064,7 +1098,7 @@
 
 				return [
 					'status' => true,
-					'message' => $this->isMemberInitiatedRequest() ? 'Demande validee.' : 'Invitation acceptee.',
+					'message' => $this->isMemberInitiatedRequest() ? self::uiMessage('copy.demande_validee') : 'Invitation acceptee.',
 					'userId' => $userId,
 					'organizationId' => $organizationId,
 				];
@@ -1113,7 +1147,7 @@
 			if ($pdo === false) {
 				return [
 					'status' => false,
-					'message' => 'La connexion a la base de donnees est indisponible.',
+					'message' => self::uiMessage('copy.la_connexion_a_la_base_de_donnees_est_indisponible'),
 				];
 			}
 
@@ -1125,7 +1159,7 @@
 				}
 				$departureResult = $organization->disconnectUserPreservingHistory($userId);
 				if (empty($departureResult['status'])) {
-					throw new \RuntimeException((string)($departureResult['message'] ?? "Le retrait de l'invitation n'a pas pu etre finalise."));
+					throw new \RuntimeException((string)($departureResult['message'] ?? self::uiMessage('copy.le_retrait_de_l_invitation_n_a_pas_pu_etre_finalise')));
 				}
 
 				if ($rootHolonId > 0) {
@@ -1176,7 +1210,7 @@
 				$this->set('active', false);
 				$saveInvitation = $this->save();
 				if (!is_array($saveInvitation) || empty($saveInvitation['status'])) {
-					throw new \RuntimeException("L'invitation n'a pas pu etre mise a jour.");
+					throw new \RuntimeException(self::uiMessage('copy.l_invitation_n_a_pas_pu_etre_mise_a_jour'));
 				}
 
 				$this->updateSiblingPendingInvitations($status);
@@ -1203,7 +1237,7 @@
 
 		public function decline()
 		{
-			return $this->closePendingInvitation('declined', 'Invitation refusee.');
+			return $this->closePendingInvitation('declined', self::uiMessage('copy.invitation_refusee'));
 		}
 
 		public function cancelByAdmin(array $options = [])

@@ -79,6 +79,7 @@ window.commonPageScripts["/omo/api/parameters/lexicon/index.js"] = function (pag
                 });
             })
             .then(function () {
+                if (typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(form);
                 setFeedback(pageConfig.parametersLexiconStatusSaved, 'success');
                 window.setTimeout(function () {
                     window.location.reload();

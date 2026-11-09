@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/document/service-translations.php';
+
 
 if (!function_exists('omoCollaboraNormalizeBaseUrl')) {
     function omoCollaboraNormalizeBaseUrl(string $baseUrl): string
@@ -355,7 +357,7 @@ if (!function_exists('omoCollaboraFetchDiscovery')) {
         if ($response === false || $httpCode < 200 || $httpCode >= 300) {
             return array(
                 'status' => false,
-                'text' => $error !== '' ? $error : 'Impossible de charger la decouverte Collabora.',
+                'text' => $error !== '' ? $error : commonDocumentServiceT('copy.impossible_de_charger_la_decouverte_collabora'),
                 'httpCode' => $httpCode,
             );
         }

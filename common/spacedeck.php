@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/document/service-translations.php';
+
 
 if (!function_exists('omoSpacedeckBase64UrlEncode')) {
     function omoSpacedeckBase64UrlEncode(string $value): string
@@ -132,7 +134,7 @@ if (!function_exists('omoSpacedeckApiRequest')) {
         if ($responseBody === false || $httpCode < 200 || $httpCode >= 300) {
             return array(
                 'status' => false,
-                'text' => $error !== '' ? $error : 'La requete SpaceDeck a echoue.',
+                'text' => $error !== '' ? $error : commonDocumentServiceT('copy.la_requete_spacedeck_a_echoue'),
                 'httpCode' => $httpCode,
             );
         }

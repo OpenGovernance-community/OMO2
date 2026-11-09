@@ -352,7 +352,7 @@
 				<div class='title'><?=T_("Bienvenue");?></div>
 
 				<div class='buttons'>
-				<button class='edit' data='1'><?=T_("Editer");?></button>
+				<button class='edit' data='1'><?=T_("Éditer");?></button>
 				<button class='delete' data='1'><?=T_("Supprimer");?></button>
 				<button class='save' style='display:none' data='1'><?=T_("Sauver");?></button>
 				<button class='cancel' style='display:none' data='1'><?=T_("Annuler");?></button>

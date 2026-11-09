@@ -40,10 +40,10 @@ class TranslationLanguage extends DbObject
     public static function attributeDescriptions()
     {
         return [
-            'locale' => 'Code de langue BCP 47 utilise pour la traduction.',
+            'locale' => 'Code de langue BCP 47 utilisé pour la traduction.',
             'name' => 'Nom de la langue dans la langue source du site.',
-            'native_name' => 'Nom affiche dans la langue elle-même.',
-            'sort_order' => 'Ordre d’affichage dans les selecteurs.',
+            'native_name' => 'Nom affiché dans la langue elle-même.',
+            'sort_order' => 'Ordre d’affichage dans les sélecteurs.',
             'active' => 'Autorise cette langue sur cette instance.',
             'is_source' => 'Indique la langue source du contenu.',
         ];

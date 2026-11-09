@@ -3,6 +3,31 @@
 
 	class user extends DbObject
 	{
+    protected static function uiMessageSourceLang(): array
+    {
+        return parent::uiMessageSourceLang() + [
+            'copy.le_compte_historique_n_a_pas_pu_etre_cree' => ['text' => 'Le compte historique n’a pas pu être créé.', 'context' => 'Interface text in class/dbobject/user.class.php'],
+            'copy.impossible_de_charger_les_destinataires_des_nouveautes' => ['text' => 'Impossible de charger les destinataires des nouveautés.', 'context' => 'Interface text in class/dbobject/user.class.php'],
+            'copy.vous_ne_pouvez_pas_modifier_ces_competences' => ['text' => 'Vous ne pouvez pas modifier ces compétences.', 'context' => 'Interface text in class/dbobject/user.class.php'],
+            'copy.vous_ne_pouvez_pas_supprimer_ces_competences' => ['text' => 'Vous ne pouvez pas supprimer ces compétences.', 'context' => 'Interface text in class/dbobject/user.class.php'],
+            'copy.le_profil_a_supprimer_est_introuvable' => ['text' => 'Le profil à supprimer est introuvable.', 'context' => 'Interface text in class/dbobject/user.class.php'],
+            'copy.les_organisations_du_profil_n_ont_pas_pu_etre_analysees' => ['text' => 'Les organisations du profil n\'ont pas pu être analysées.', 'context' => 'Interface text in class/dbobject/user.class.php'],
+            'copy.vous_etes_le_dernier_administrateur_de_organizationname_nommez_un_autr' => ['text' => 'Vous êtes le dernier administrateur de {organizationName}. Nommez un autre administrateur avant de supprimer ce profil.', 'context' => 'Interface text in class/dbobject/user.class.php'],
+            'copy.la_base_de_donnees_est_indisponible' => ['text' => 'La base de données est indisponible.', 'context' => 'Interface text in class/dbobject/user.class.php'],
+            'copy.le_profil_a_supprimer_n_existe_plus' => ['text' => 'Le profil à supprimer n’existe plus.', 'context' => 'Interface text in class/dbobject/user.class.php'],
+            'copy.les_consequences_de_la_suppression_ont_change_verifiez_a_nouveau_le_te' => ['text' => 'Les conséquences de la suppression ont change. Vérifiez à nouveau le texte de confirmation.', 'context' => 'Interface text in class/dbobject/user.class.php'],
+            'copy.l_organisation_value_n_a_pas_pu_etre_supprimee' => ['text' => 'L\'organisation {value} n\'a pas pu être supprimée.', 'context' => 'Interface text in class/dbobject/user.class.php'],
+            'copy.le_depart_de_l_organisation_n_a_pas_pu_etre_finalise' => ['text' => 'Le départ de l\'organisation n\'a pas pu être finalisé.', 'context' => 'Interface text in class/dbobject/user.class.php'],
+            'copy.le_profil_a_ete_supprime_les_references_historiques_sont_conservees_av' => ['text' => 'Le profil a été supprimé. Les références historiques sont conservées avec le profil historique.', 'context' => 'Interface text in class/dbobject/user.class.php'],
+            'copy.l_historique_de_suppression_n_a_pas_pu_etre_enregistre' => ['text' => 'L\'historique de suppression n\'a pas pu être enregistré.', 'context' => 'Interface text in class/dbobject/user.class.php'],
+            'copy.un_compte_historique_technique_ne_peut_pas_etre_fusionne' => ['text' => 'Un compte historique technique ne peut pas être fusionne.', 'context' => 'Interface text in class/dbobject/user.class.php'],
+            'copy.une_reference_a_l_ancien_compte_subsiste_dans_table_name' => ['text' => 'Une référence à l’ancien compte subsiste dans {TABLE_NAME}.', 'context' => 'Interface text in class/dbobject/user.class.php'],
+            'copy.reponses_conservees_lors_de_la_fusion_de_deux_comptes' => ['text' => 'Réponses conservées lors de la fusion de deux comptes.', 'context' => 'Interface text in class/dbobject/user.class.php'],
+            'copy.l_archivage_des_reponses_en_conflit_a_echoue' => ['text' => 'L’archivage des réponses en conflit a échoué.', 'context' => 'Interface text in class/dbobject/user.class.php'],
+            'copy.l_ecriture_de_l_historique_de_fusion_a_echoue' => ['text' => 'L’écriture de l’historique de fusion a échoué.', 'context' => 'Interface text in class/dbobject/user.class.php'],
+        ];
+    }
+
 	    public static function tableName()
 		{
 			return 'user';
@@ -49,7 +74,7 @@
 
 		public static function attributeDescriptions() {
 			return [
-				'username' => 'Un nom d\'utilisateur utilise pour vous identifier dans une équipe, comme des initiales.',
+				'username' => 'Un nom d\'utilisateur utilisé pour vous identifier dans une équipe, comme des initiales.',
 				'firstname' => 'Simplement votre prénom.',
 				'lastname' => 'Simplement votre nom de famille.',
 				'presentation' => 'Petit texte de présentation partage entre les organisations, sauf si une organisation le remplacé localement.',
@@ -57,7 +82,7 @@
 				'birthdate' => 'Date de naissance facultative, utilisée pour afficher le prochain anniversaire.',
 				'email' => 'L\'adresse e-mail utilisée pour vous connecter et pour vous envoyer les messages du système.',
 				'phone' => 'Numéro de téléphone partagé entre les organisations, sauf si une organisation le remplacé localement.',
-				'telegramID' => 'Identifiant numérique utilise pour associer votre compte Telegram.',
+				'telegramID' => 'Identifiant numérique utilisé pour associer votre compte Telegram.',
 				'siteadmin' => 'Donne un accès global à l’administration du serveur.',
 			];
 		}
@@ -121,7 +146,7 @@
 			$placeholder->set('parameters', array('historical_placeholder' => true));
 			$saveResult = $placeholder->save();
 			if (!is_array($saveResult) || empty($saveResult['status']) || (int)$placeholder->getId() <= 0) {
-				throw new \RuntimeException('Le compte historique n a pas pu etre cree.');
+				throw new \RuntimeException(self::uiMessage('copy.le_compte_historique_n_a_pas_pu_etre_cree'));
 			}
 
 			return $placeholder;
@@ -140,7 +165,7 @@
 		public static function getSiteUpdateRecipientIds(): array
 		{
 			$rows = self::fetchAll('SELECT id, parameters FROM `user` WHERE active = 1');
-			if (!is_array($rows)) { throw new \RuntimeException('Impossible de charger les destinataires des nouveautes.'); }
+			if (!is_array($rows)) { throw new \RuntimeException(self::uiMessage('copy.impossible_de_charger_les_destinataires_des_nouveautes')); }
 			$ids = [];
 			foreach ($rows as $row) {
 				$user = new self();
@@ -845,7 +870,7 @@
 			if (!$this->canEdit()) {
 				return [
 					'status' => false,
-					'message' => "Vous ne pouvez pas modifier ces competences.",
+					'message' => self::uiMessage('copy.vous_ne_pouvez_pas_modifier_ces_competences'),
 				];
 			}
 
@@ -857,7 +882,7 @@
 			if (!$this->canEdit()) {
 				return [
 					'status' => false,
-					'message' => "Vous ne pouvez pas supprimer ces competences.",
+					'message' => self::uiMessage('copy.vous_ne_pouvez_pas_supprimer_ces_competences'),
 				];
 			}
 
@@ -1651,7 +1676,7 @@
 			$userId = (int)$userId;
 			$user = new self();
 			if ($userId <= 0 || !$user->load($userId) || $user->isHistoricalPlaceholder()) {
-				return array('status' => false, 'message' => 'Le profil a supprimer est introuvable.');
+				return array('status' => false, 'message' => self::uiMessage('copy.le_profil_a_supprimer_est_introuvable'));
 			}
 
 			$plan = array(
@@ -1676,7 +1701,7 @@
 				array('user_id' => $userId)
 			);
 			if ($memberships === false) {
-				return array('status' => false, 'message' => "Les organisations du profil n'ont pas pu etre analysees.");
+				return array('status' => false, 'message' => self::uiMessage('copy.les_organisations_du_profil_n_ont_pas_pu_etre_analysees'));
 			}
 
 			foreach ($memberships as $membership) {
@@ -1708,7 +1733,7 @@
 				if ($isActive && $isOrganizationAdmin) {
 					$organization = new Organization();
 					if (!$organization->load($organizationId) || $organization->countActiveAdminMemberships($userId) === 0) {
-						$plan['blockers'][] = "Vous etes le dernier administrateur de " . $organizationName . '. Nommez un autre administrateur avant de supprimer ce profil.';
+						$plan['blockers'][] = self::uiMessage('copy.vous_etes_le_dernier_administrateur_de_organizationname_nommez_un_autr', ['organizationName' => $organizationName]);
 						continue;
 					}
 				}
@@ -1748,18 +1773,18 @@
 
 			$user = new self();
 			if (!$user->load($userId) || $user->isHistoricalPlaceholder()) {
-				return array('status' => false, 'message' => 'Le profil a supprimer est introuvable.');
+				return array('status' => false, 'message' => self::uiMessage('copy.le_profil_a_supprimer_est_introuvable'));
 			}
 			$pdo = self::getPdo();
 			if (!$pdo instanceof \PDO) {
-				return array('status' => false, 'message' => 'La base de donnees est indisponible.');
+				return array('status' => false, 'message' => self::uiMessage('copy.la_base_de_donnees_est_indisponible'));
 			}
 
 			try {
 				$pdo->beginTransaction();
 				$lockedUserRows = self::accountMergeFetchAll($pdo, 'SELECT id FROM `user` WHERE id = :user_id FOR UPDATE', array('user_id' => $userId));
 				if (count($lockedUserRows) !== 1) {
-					throw new \RuntimeException('Le profil a supprimer n existe plus.');
+					throw new \RuntimeException(self::uiMessage('copy.le_profil_a_supprimer_n_existe_plus'));
 				}
 				$organizationIds = array();
 				if ($user->isSiteAdmin()) {
@@ -1783,7 +1808,7 @@
 					throw new \RuntimeException((string)($plan['message'] ?? ($plan['blockers'][0] ?? 'Les conditions de suppression ont change.')));
 				}
 				if (!hash_equals((string)$plan['confirmation_text'], trim((string)$confirmationText))) {
-					throw new \RuntimeException('Les consequences de la suppression ont change. Verifiez a nouveau le texte de confirmation.');
+					throw new \RuntimeException(self::uiMessage('copy.les_consequences_de_la_suppression_ont_change_verifiez_a_nouveau_le_te'));
 				}
 				$deletedOrganizationIds = array();
 				foreach ($plan['deleted_organizations'] as $organizationData) {
@@ -1791,7 +1816,7 @@
 					$organization = new Organization();
 					if (!$organization->load($organizationId) || !$organization->deleteForAccountDeletion($userId)) {
 						$error = $organization->getLastDeleteError();
-						throw new \RuntimeException($error !== '' ? $error : "L'organisation " . (string)($organizationData['name'] ?? '') . " n'a pas pu etre supprimee.");
+						throw new \RuntimeException($error !== '' ? $error : self::uiMessage('copy.l_organisation_value_n_a_pas_pu_etre_supprimee', ['value' => (string)($organizationData['name'] ?? '')]));
 					}
 					$deletedOrganizationIds[] = $organizationId;
 				}
@@ -1804,19 +1829,19 @@
 					}
 					$departure = $organization->disconnectUserPreservingHistory($userId);
 					if (empty($departure['status'])) {
-						throw new \RuntimeException((string)($departure['message'] ?? "Le depart de l'organisation n'a pas pu etre finalise."));
+						throw new \RuntimeException((string)($departure['message'] ?? self::uiMessage('copy.le_depart_de_l_organisation_n_a_pas_pu_etre_finalise')));
 					}
 					$history = History::createEntry(
 						$organizationId,
 						(int)($departure['ghostUserId'] ?? 0),
 						'account_deleted',
-						'Le profil a ete supprime. Les references historiques sont conservees avec le profil historique.',
+						self::uiMessage('copy.le_profil_a_ete_supprime_les_references_historiques_sont_conservees_av'),
 						array('deleted_user_id' => $userId),
 						'user',
 						(int)($departure['ghostUserId'] ?? 0)
 					);
 					if (!is_array($history) || empty($history['status'])) {
-						throw new \RuntimeException("L'historique de suppression n'a pas pu etre enregistre.");
+						throw new \RuntimeException(self::uiMessage('copy.l_historique_de_suppression_n_a_pas_pu_etre_enregistre'));
 					}
 				}
 
@@ -1854,7 +1879,7 @@
 
 			$pdo = self::getPdo();
 			if (!$pdo instanceof \PDO) {
-				return array('status' => false, 'message' => 'La base de donnees est indisponible.');
+				return array('status' => false, 'message' => self::uiMessage('copy.la_base_de_donnees_est_indisponible'));
 			}
 
 			$summary = array(
@@ -1876,14 +1901,14 @@
 					array('kept_user_id' => $keptUserId, 'removed_user_id' => $removedUserId)
 				);
 				if (count($users) !== 2) {
-					throw new \RuntimeException('Un des deux comptes n existe plus.');
+					throw new \RuntimeException('Un des deux comptes n’existe plus.');
 				}
 				$usersById = array();
 				foreach ($users as $userRow) {
 					$usersById[(int)$userRow['id']] = $userRow;
 					$userParameters = json_decode((string)($userRow['parameters'] ?? ''), true);
 					if (is_array($userParameters) && !empty($userParameters['historical_placeholder'])) {
-						throw new \RuntimeException('Un compte historique technique ne peut pas etre fusionne.');
+						throw new \RuntimeException(self::uiMessage('copy.un_compte_historique_technique_ne_peut_pas_etre_fusionne'));
 					}
 				}
 				$superAdminForced = false;
@@ -1997,7 +2022,7 @@
 						array('removed_user_id' => $removedUserId)
 					);
 					if (count($remaining) > 0) {
-						throw new \RuntimeException('Une reference a l ancien compte subsiste dans ' . (string)$ownershipColumn['TABLE_NAME'] . '.');
+						throw new \RuntimeException(self::uiMessage('copy.une_reference_a_l_ancien_compte_subsiste_dans_table_name', ['TABLE_NAME' => (string)$ownershipColumn['TABLE_NAME']]));
 					}
 				}
 
@@ -2006,7 +2031,7 @@
 						0,
 						$keptUserId,
 						'account_merge_response_archive',
-						'Reponses conservees lors de la fusion de deux comptes.',
+						self::uiMessage('copy.reponses_conservees_lors_de_la_fusion_de_deux_comptes'),
 						array(
 							'removed_user_id' => $removedUserId,
 							'responses' => $responseArchive,
@@ -2015,7 +2040,7 @@
 						$keptUserId
 					);
 					if (!is_array($historyResult) || empty($historyResult['status'])) {
-						throw new \RuntimeException('L archivage des reponses en conflit a echoue.');
+						throw new \RuntimeException(self::uiMessage('copy.l_archivage_des_reponses_en_conflit_a_echoue'));
 					}
 				}
 
@@ -2034,7 +2059,7 @@
 						$organizationId
 					);
 					if (!is_array($historyResult) || empty($historyResult['status'])) {
-						throw new \RuntimeException('L ecriture de l historique de fusion a echoue.');
+						throw new \RuntimeException(self::uiMessage('copy.l_ecriture_de_l_historique_de_fusion_a_echoue'));
 					}
 					$summary['organization_history_entries']++;
 				}

@@ -3,7 +3,7 @@
 require_once dirname(__DIR__) . '/shared_functions.php';
 
 if (PHP_SAPI !== 'cli') {
-	fwrite(STDERR, "Ce script doit etre execute en CLI.\n");
+	fwrite(STDERR, "Ce script doit être exécuté en CLI.\n");
 	exit(1);
 }
 

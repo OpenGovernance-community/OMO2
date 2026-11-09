@@ -1,5 +1,19 @@
 <?php
 require_once __DIR__ . '/ui_translations.php';
+
+function omoShareUiT(string $key, array $variables = []): string
+{
+    static $sourceLang = [
+        'copy.invite' => ['text' => 'Invité', 'context' => 'Interface text in omo/share.php'],
+    ];
+    require_once __DIR__ . '/../common/translation_bundles.php';
+    static $bundles = [];
+    $locale = translationBundleResolveRequestLocale();
+    $bundle = class_exists(\dbObject\TranslationBundle::class)
+        ? ($bundles[$locale] ??= loadTranslationBundle('omo_share', $locale, $sourceLang)) : $sourceLang;
+    return t($key, $variables, $bundle, $sourceLang);
+}
+
 require_once dirname(__DIR__) . '/shared_functions.php';
 require_once dirname(__DIR__) . '/common/auth.php';
 require_once dirname(__DIR__) . '/common/omo_public_pages.php';
@@ -273,7 +287,7 @@ window.omoConfig = <?= json_encode(array(
     'structureEnabled' => $isStructureApplicationEnabled,
     'orgLookupError' => null,
     'isDemo' => false,
-    'currentUserName' => 'Invite',
+    'currentUserName' => omoShareUiT('copy.invite'),
     'userProfile' => array(
         'displayName' => '',
         'email' => '',
@@ -287,7 +301,7 @@ window.omoConfig = <?= json_encode(array(
     'shareAllowsPeopleDetail' => $shareLink->allowsPeopleDetail(),
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 </script>
-<script src="<?= commonAssetUrl('/omo/assets/js/ui-translations.js') ?>"></script>
+<script src="<?= commonAssetUrl('/common/assets/ui-translations.js') ?>"></script>
 <script src="<?= commonAssetUrl('/omo/assets/js/app.js') ?>"></script>
 <script>
 $(document).ready(function () {

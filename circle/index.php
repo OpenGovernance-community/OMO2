@@ -15,7 +15,7 @@
 		<!-- stats -->
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/stats.js/r14/Stats.js"></script>
 		
-		<?writeHeadContent(T_("Dessinez votre organization !"),"EasyCIRCLE");?>
+		<?writeHeadContent(T_("Dessinez votre organisation !"),"EasyCIRCLE");?>
 	
 		<!-- Script spécifique à la page -->
 		<?= commonPageScriptTags('/circle/editor.js', [
@@ -23,9 +23,9 @@
     'text' => T_("Nouvelle structure"),
     'text2' => T_("Charger un schéma"),
     'text3' => T_("Soutenez-nous !"),
-    'text4' => T_("Ajouter un noeud"),
+    'text4' => T_("Ajouter un nœud"),
     'text5' => T_("Modifier un nœud"),
-    'text6' => T_("Déplacer un noeud"),
+    'text6' => T_("Déplacer un nœud"),
 ], 'circleEditorConfig') ?>
 
 

@@ -27,7 +27,7 @@
 				'IDorganization' => 'Organisation',
 				'IDapplication' => 'Application',
 				'position' => 'Position',
-				'parameters' => 'Parametres',
+				'parameters' => 'Paramètres',
 				'active' => 'Actif',
 			];
 		}
@@ -36,10 +36,10 @@
 		{
 			return [
 				'IDorganization' => 'Organisation concernee',
-				'IDapplication' => 'Application activee pour cette organisation',
-				'position' => 'Surcharge locale de l ordre d affichage',
-				'parameters' => 'Parametres specifiques a cette application dans cette organisation.',
-				'active' => 'Activation locale de l application',
+				'IDapplication' => 'Application activée pour cette organisation',
+				'position' => 'Surcharge locale de l’ordre d’affichage',
+				'parameters' => 'Paramètres spécifiques à cette application dans cette organisation.',
+				'active' => 'Activation locale de l’application',
 			];
 		}
 

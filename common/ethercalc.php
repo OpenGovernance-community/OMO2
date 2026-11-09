@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/document/service-translations.php';
+
 
 if (!function_exists('omoEthercalcNormalizeBaseUrl')) {
     function omoEthercalcNormalizeBaseUrl(string $baseUrl): string
@@ -148,7 +150,7 @@ if (!function_exists('omoEthercalcRequest')) {
         $curlError = trim((string)curl_error($curl));
         $httpCode = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
         if ($response === false) {
-            return array('status' => false, 'text' => $curlError !== '' ? $curlError : 'La requete EtherCalc a echoue.');
+            return array('status' => false, 'text' => $curlError !== '' ? $curlError : commonDocumentServiceT('copy.la_requete_ethercalc_a_echoue'));
         }
 
         if ($httpCode < 200 || $httpCode >= 300) {

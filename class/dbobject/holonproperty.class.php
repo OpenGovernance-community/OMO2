@@ -32,13 +32,13 @@
 			return [
 				'id' => 'ID',
 				'IDholon' => 'Holon',
-				'IDproperty' => 'Propriete',
+				'IDproperty' => 'Propriété',
 				'value' => 'Valeur',
 				'position' => 'Position',
 				'datemodification' => 'Date de modification',
 				'IDusermodification' => 'Utilisateur de modification',
 				'mandatory' => 'Obligatoire',
-				'locked' => 'Verrouille',
+				'locked' => 'Verrouillé',
 				'active' => 'Actif ?',
 			];
 		}

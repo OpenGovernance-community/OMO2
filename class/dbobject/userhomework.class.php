@@ -25,7 +25,7 @@
 				'IDmission' => 'Mission',
 				'IDhomework' => 'Homework',
 				'IDparcours' => 'Parcours',
-				'done' => 'Termine le',
+				'done' => 'Terminé le',
 				'datecreation' => 'Date de création',
 				'dateupdate' => 'Date de mise à jour',
 			];

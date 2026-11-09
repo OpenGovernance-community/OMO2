@@ -14,7 +14,7 @@ class DecisionGroup extends DbObject
             [['IDdecision_process', 'decision_type', 'evaluation_method', 'title'], 'required'],
             [['id', 'position'], 'integer'],
             [['IDdecision_process'], 'fk'],
-            [['decision_type', 'evaluation_method', 'title'], 'string'],
+            [['decision_type', 'evaluation_method', 'title', 'short_title'], 'string'],
             [['description'], 'text'],
             [['parameters'], 'parameters'],
             [['active'], 'boolean'],
@@ -31,6 +31,7 @@ class DecisionGroup extends DbObject
             'decision_type' => 'Type',
             'evaluation_method' => 'Méthode',
             'title' => 'Titre',
+            'short_title' => 'Nom court du bloc',
             'description' => 'Description',
             'parameters' => 'Paramètres',
             'position' => 'Ordre',
@@ -45,7 +46,8 @@ class DecisionGroup extends DbObject
         return [
             'decision_type' => 'Nature du groupe: décision engageante ou consultation.',
             'evaluation_method' => 'Méthode de participation utilisée par ce groupe.',
-            'parameters' => 'Configuration propre à ce groupe et a sa méthode.',
+            'short_title' => 'Nom court affiché dans les onglets et la table des matières, indépendant de la question.',
+            'parameters' => 'Configuration propre à ce groupe et à sa méthode.',
         ];
     }
 
@@ -55,6 +57,7 @@ class DecisionGroup extends DbObject
             'decision_type' => 20,
             'evaluation_method' => 40,
             'title' => 190,
+            'short_title' => 190,
         ];
     }
 
@@ -90,7 +93,45 @@ class DecisionGroup extends DbObject
         $this->set('decision_type', DecisionProcess::normalizeDecisionType($this->get('decision_type')));
         $this->set('evaluation_method', DecisionProcess::normalizeEvaluationMethod($this->get('evaluation_method')));
 
-        return parent::save();
+        $pdo = self::getPdo();
+        $ownsTransaction = !$pdo->inTransaction();
+        try {
+            if ($ownsTransaction) $pdo->beginTransaction();
+            if ((int)$this->getId() > 0) {
+                $previous = self::fetchRow('SELECT evaluation_method, parameters FROM decision_group WHERE id = :id FOR UPDATE',
+                    ['id' => (int)$this->getId()]);
+                if (!is_array($previous)) throw new \RuntimeException('decision_group_load_failed');
+                $previousConfig = self::methodParameters($previous['parameters'] ?? [], $previous['evaluation_method'] ?? '');
+                $nextConfig = self::methodParameters($this->get('parameters'), $this->get('evaluation_method'));
+                $wasAnonymous = !array_key_exists('is_anonymous', $previousConfig) || !empty($previousConfig['is_anonymous']);
+                $willBeNamed = array_key_exists('is_anonymous', $nextConfig) && empty($nextConfig['is_anonymous']);
+                if ($wasAnonymous && $willBeNamed) {
+                    if (!DecisionProposal::preserveAnonymousAuthorsForGroup((int)$this->getId())
+                        || !ChatMessage::preserveDecisionDiscussionAnonymityForGroup((int)$this->getId())) {
+                        throw new \RuntimeException('contribution_anonymity_preservation_failed');
+                    }
+                }
+            }
+            $result = parent::save();
+            if (empty($result['status'])) {
+                if ($ownsTransaction) $pdo->rollBack();
+                return $result;
+            }
+            if ($ownsTransaction) $pdo->commit();
+            return $result;
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+            error_log('decision_group_save_failed: ' . $exception->getMessage());
+            return ['status' => false];
+        }
+    }
+
+    private static function methodParameters($parameters, $method): array
+    {
+        if (!is_array($parameters)) $parameters = json_decode((string)$parameters, true);
+        $parameters = is_array($parameters) ? $parameters : [];
+        $config = $parameters[$method] ?? $parameters;
+        return is_array($config) ? $config : [];
     }
 
     public function getDecisionProcess()

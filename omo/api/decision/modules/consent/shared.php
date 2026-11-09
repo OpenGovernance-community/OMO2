@@ -18,7 +18,7 @@ if (!function_exists('omoDecisionConsentGetChoices')) {
     {
         return [
             'favor' => 'Pour',
-            'no_objection' => 'Pas d objection',
+            'no_objection' => 'Pas d’objection',
             'objection' => 'Objection',
         ];
     }

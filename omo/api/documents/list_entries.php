@@ -1,4 +1,5 @@
 <?php
+require_once dirname(__DIR__, 3) . '/common/object_visibility_selector.php';
 
 if (!function_exists('omoDocumentsGetListGroupSourceLang')) {
     function omoDocumentsGetListGroupSourceLang(): array
@@ -206,6 +207,7 @@ if (!function_exists('omoDocumentsBuildListEntries')) {
                 'visibilityType' => (string)($visibility['type'] ?? ''),
                 'visibilityIconUrl' => $resolveDocumentVisibilityIconUrl((string)($visibility['type'] ?? '')),
                 'editVisibilityBadge' => (string)($editVisibility['badgeText'] ?? ''),
+                'visibilityCapsuleHtml' => commonRenderObjectVisibilityCapsule($visibility, $editVisibility, 'omo-documents__scope-capsule'),
                 'editVisibilityType' => (string)($editVisibility['type'] ?? ''),
                 'editVisibilityIconUrl' => $resolveDocumentVisibilityIconUrl((string)($editVisibility['type'] ?? '')),
                 'dateLabel' => $formatDate($resolvedUpdatedAt, in_array($updatedGroupKey, array('earlier', 'too_far'), true)),

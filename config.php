@@ -9,6 +9,9 @@ foreach (envGetRuntimeEnvPaths() as $runtimeEnvPath) {
     loadEnv($runtimeEnvPath);
 }
 
+require_once __DIR__ . '/common/search_indexing.php';
+commonSendSearchEngineIndexingHeaders();
+
 // Identite du site
 $GLOBALS['siteTitle'] = envValue('SITE_TITLE', 'EasyPV');
 $GLOBALS['homeTitle'] = envValue('HOME_TITLE', 'Home');

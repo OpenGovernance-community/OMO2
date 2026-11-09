@@ -44,6 +44,16 @@ function omoOrganizationsUiSourceLang(): array
         'choisissez_un_modele_public' => ['text' => 'Choisissez un modèle public.', 'context' => 'Validation or action feedback in api/organizations/model_create.php'],
         'la_creation_depuis_le_modele_a_echoue' => ['text' => 'La création depuis le modèle a échoué.', 'context' => 'Validation or action feedback in api/organizations/model_create.php'],
         'organisation_creee_depuis_le_modele_public' => ['text' => 'Organisation créée depuis le modèle public.', 'context' => 'Validation or action feedback in api/organizations/model_create.php'],
+
+        'copy.organisation_partagee_comme_modele_public' => ['text' => 'Organisation partagée comme modèle public.', 'context' => 'Interface text in omo/api/organizations/card_action.php'],
+        'copy.organisation_retiree_des_modeles_publics' => ['text' => 'Organisation retirée des modèles publics.', 'context' => 'Interface text in omo/api/organizations/card_action.php'],
+        'copy.value_a_ete_supprimee' => ['text' => '{value} a été supprimée.', 'context' => 'Interface text in omo/api/organizations/card_action.php'],
+        'copy.l_organisation_n_a_pas_pu_etre_supprimee' => ['text' => 'L\'organisation n\'a pas pu être supprimée.', 'context' => 'Interface text in omo/api/organizations/card_action.php'],
+        'copy.reference_du_journal_journalreference' => ['text' => ' Référence du journal : {journalReference}.', 'context' => 'Interface text in omo/api/organizations/create_import.php'],
+        'copy.modele' => ['text' => 'Modèle', 'context' => 'Interface text in omo/api/organizations/create_import_popup.php'],
+        'copy.acces_reserve_aux_administrateurs_de_cette_organisation' => ['text' => 'Accès réservé aux administrateurs de cette organisation.', 'context' => 'Interface text in omo/api/organizations/export.php'],
+        'copy.impossible_de_creer_le_fichier_temporaire' => ['text' => 'Impossible de créer le fichier temporaire.', 'context' => 'Interface text in omo/api/organizations/export.php'],
+        'copy.le_fichier_n_a_pas_pu_etre_televerse' => ['text' => 'Le fichier n’a pas pu être televerse.', 'context' => 'Interface text in omo/api/organizations/import_preview.php'],
     ];
     return $sourceLang;
 }

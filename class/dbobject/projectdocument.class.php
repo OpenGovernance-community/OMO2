@@ -25,7 +25,7 @@ class ProjectDocument extends DbObject
             'id' => 'ID',
             'IDproject' => 'Projet',
             'IDdocument' => 'Document',
-            'datecreation' => 'Date d ajout',
+            'datecreation' => 'Date d’ajout',
         ];
     }
 

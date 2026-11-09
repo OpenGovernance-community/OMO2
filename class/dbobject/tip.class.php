@@ -22,8 +22,8 @@ class Tip extends DbObject
     public static function attributeLength() { return ['text' => 500, 'link' => 1000, 'image' => [[480, 270], [240, 135]]]; }
     public static function attributeDescriptions()
     {
-        return ['link' => 'Lien interne commencant par / ou #, ou adresse externe https://...',
-            'active' => 'Les astuces publiées sont proposées a tous les membres du logiciel.'];
+        return ['link' => 'Lien interne commençant par / ou #, ou adresse externe https://...',
+            'active' => 'Les astuces publiées sont proposées à tous les membres du logiciel.'];
     }
     public static function getOrder() { return 'id DESC'; }
     public static function isAvailable(): bool { return self::tableExists('tip'); }

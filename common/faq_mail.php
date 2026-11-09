@@ -2,6 +2,20 @@
 
 require_once __DIR__ . '/email_layout.php';
 
+function commonFaqMailUiT(string $key, array $variables = []): string
+{
+    static $sourceLang = [
+        'copy.question_faq_a_traiter' => ['text' => 'Question FAQ à traiter', 'context' => 'Interface text in common/faq_mail.php'],
+    ];
+    require_once __DIR__ . '/translation_bundles.php';
+    static $bundles = [];
+    $locale = translationBundleResolveRequestLocale();
+    $bundle = class_exists(\dbObject\TranslationBundle::class)
+        ? ($bundles[$locale] ??= loadTranslationBundle('common_faq_mail', $locale, $sourceLang)) : $sourceLang;
+    return t($key, $variables, $bundle, $sourceLang);
+}
+
+
 function faqMailBrandOptions($organization)
 {
 	$brandName = $organization instanceof \dbObject\Organization
@@ -70,7 +84,7 @@ function faqMailRenderOrganizationRelay(\dbObject\FAQ $faq, $faqUrl, $organizati
 	$organizationName = $organizationName !== '' ? $organizationName : 'votre organisation';
 
 	return commonRenderMailLayout(faqMailBrandOptions($organization) + [
-		'heading' => 'Question FAQ a traiter',
+		'heading' => commonFaqMailUiT('copy.question_faq_a_traiter'),
 		'intro_html' => '<p style="margin:0 0 16px;color:#475569;line-height:1.7;">Un administrateur vous a relayé une question qui concerne ' . commonMailEscape($organizationName) . '.</p>',
 		'body_html' => '<p style="margin:0;color:#475569;line-height:1.7;">Ouvrez la demande, puis utilisez le bouton « Éditer » pour rédiger et sauver la réponse dans la FAQ de votre organisation.</p>',
 		'details_html' => '<p style="margin:0 0 6px;color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">Question</p>'

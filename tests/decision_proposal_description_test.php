@@ -56,8 +56,8 @@ try {
     descriptionCheck(str_contains($rendered, '<strong>bold &amp; clear</strong>') && str_contains($rendered, '<em>vide</em>'),
         'Shared consultation, ballot and result renderer preserves formatting.');
     descriptionCheck(!str_contains($rendered, '<script>') && !str_contains($rendered, '&lt;p&gt;'), 'Render safe HTML without visible tags.');
-    $csv = omoDecisionExportFlattenCsvRow(['detail_question' => $html], '', '');
-    descriptionCheck($csv[11] === $plain, 'CSV descriptions contain readable text.');
+    $csv = array_combine(omoDecisionExportGetCsvHeader(), omoDecisionExportFlattenCsvRow(['detail_question' => $html], '', ''));
+    descriptionCheck($csv['detail_question'] === $plain, 'CSV descriptions contain readable text.');
     descriptionCheck(str_contains(PropertyFormat::sanitizeHtml($summary), '<em>vide</em>'), 'Italic empty marker survives persistence sanitization.');
     $notice = "Consultez le d\u{00E9}tail ci-dessous pour lire le texte complet de la r\u{00E8}gle.";
     $shortRule = ['title' => 'Short rule', 'intention' => '<p>Purpose</p>',

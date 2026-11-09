@@ -9,7 +9,7 @@
             return [
                 'vous_n_avez_pas_le_droit_de_gerer_le_statut_admin_dans_ce_contexte' => ['text' => 'Vous n\'avez pas le droit de gérer le statut admin dans ce contexte.', 'context' => 'Validation or action feedback for holon.'],
                 'le_membre_ou_le_contexte_est_invalide' => ['text' => 'Le membre ou le contexte est invalide.', 'context' => 'Validation or action feedback for holon.'],
-                'le_dernier_admin_de_l_organisation_ne_peut_pas_etre_retire' => ['text' => 'Le dernier admin de l\'organisation ne peut pas être retire.', 'context' => 'Validation or action feedback for holon.'],
+                'le_dernier_admin_de_l_organisation_ne_peut_pas_etre_retire' => ['text' => 'Le dernier admin de l\'organisation ne peut pas être retiré.', 'context' => 'Validation or action feedback for holon.'],
                 'la_connexion_a_la_base_de_donnees_est_indisponible' => ['text' => 'La connexion à la base de données est indisponible.', 'context' => 'Validation or action feedback for holon.'],
                 'aucune_mise_a_jour_necessaire' => ['text' => 'Aucune mise à jour nécessaire.', 'context' => 'Validation or action feedback for holon.'],
                 'vous_n_avez_pas_le_droit_de_modifier_ce_contexte' => ['text' => 'Vous n\'avez pas le droit de modifier ce contexte.', 'context' => 'Validation or action feedback for holon.'],
@@ -21,7 +21,18 @@
         'admin_minimum_denied' => ['text' => 'Ce rôle exige au moins {count} administrateur(s) avant de pouvoir ajouter un membre, et vous ne pouvez pas désigner cet administrateur.', 'context' => 'Translated interface feedback with named interpolation variables.'],
         'admin_member_minimum' => ['text' => 'Cet administrateur ne peut pas devenir membre tant que le rôle ne compte pas au moins {count} administrateur(s).', 'context' => 'Translated interface feedback with named interpolation variables.'],
         'admin_removal_minimum' => ['text' => 'Ce retrait laisserait moins de {count} administrateur(s) alors que ce rôle compte encore des membres. Nommez ou conservez un administrateur avant ce retrait.', 'context' => 'Translated interface feedback with named interpolation variables.'],
-            ];
+
+                'copy.le_membre_ne_peut_pas_etre_retire_de_ce_contexte' => ['text' => 'Le membre ne peut pas être retiré de ce contexte.', 'context' => 'Interface text in class/dbobject/holon.class.php'],
+                'copy.les_liens_du_membre_ne_peuvent_pas_etre_verifies' => ['text' => 'Les liens du membre ne peuvent pas être vérifiés.', 'context' => 'Interface text in class/dbobject/holon.class.php'],
+                'copy.le_membre_ne_peut_pas_etre_retire_de_l_organisation' => ['text' => 'Le membre ne peut pas être retiré de l’organisation.', 'context' => 'Interface text in class/dbobject/holon.class.php'],
+                'copy.l_invitation_ne_peut_pas_etre_annulee' => ['text' => 'L’invitation ne peut pas être annulée.', 'context' => 'Interface text in class/dbobject/holon.class.php'],
+                'copy.les_portees_des_documents_lies_a_ce_membre_n_ont_pas_pu_etre_mises_a_j' => ['text' => 'Les portées des documents lies à ce membre n\'ont pas pu être mises à jour.', 'context' => 'Interface text in class/dbobject/holon.class.php'],
+                'copy.impossible_de_mettre_a_jour_les_documents_de_cette_personne' => ['text' => 'Impossible de mettre à jour les documents de cette personne.', 'context' => 'Interface text in class/dbobject/holon.class.php'],
+                'copy.les_contraintes_d_admins_ne_sont_pas_respectees' => ['text' => 'Les contraintes d’admins ne sont pas respectées.', 'context' => 'Interface text in class/dbobject/holon.class.php'],
+                'copy.le_statut_admin_demande_n_a_pas_pu_etre_memorise' => ['text' => 'Le statut admin demande n\'a pas pu être mémorisé.', 'context' => 'Interface text in class/dbobject/holon.class.php'],
+                'copy.l_ajout_en_attente_n_a_pas_pu_etre_finalise' => ['text' => 'L\'ajout en attente n\'a pas pu être finalisé.', 'context' => 'Interface text in class/dbobject/holon.class.php'],
+                'copy.le_statut_admin_n_a_pas_pu_etre_enregistre' => ['text' => 'Le statut admin n\'a pas pu être enregistré.', 'context' => 'Interface text in class/dbobject/holon.class.php'],
+    ];
         }
 
 	    public static function tableName()
@@ -36,7 +47,7 @@
 				array('ghost_user_id' => (int)$ghostUserId, 'organization_id' => (int)$organizationId, 'user_id' => (int)$userId)
 			);
 		}
-		
+
 		// Defini le contenu de la table
 		public static function rules()
 		{
@@ -54,7 +65,7 @@
 				[['id'], 'safe'],								// Champs proteges (n'apparaissent pas dans les formulaires)
 			];
 		}
-		
+
 		// Defini les labels standarts pour cet objet, affiches dans les formulaires automatiques
 		public static function attributeLabels()
 		{
@@ -70,7 +81,7 @@
 				'archived_at' => 'Date d’archivage',
 				'visible' => 'Visible ?',
 				'color' => 'Couleur',
-				'color_unassigned' => 'Couleur non attribuee',
+				'color_unassigned' => 'Couleur non attribuée',
 				'templatename' => 'Nom de template',
 				'IDorganization' => 'Organisation',
 				'IDtypeholon' => 'Type d’espace',
@@ -99,8 +110,8 @@
 		public static function attributeDescriptions()
 		{
 			return [
-				'name' => 'Nom court utilise dans la représentation graphique, les chemins et les choix de contexte.',
-				'nomcomplet' => 'Nom complet facultatif utilise dans les vues textuelles.',
+				'name' => 'Nom court utilisé dans la représentation graphique, les chemins et les choix de contexte.',
+				'nomcomplet' => 'Nom complet facultatif utilisé dans les vues textuelles.',
 				'time_budget_hours' => 'Temps prévu directement pour cet espace, exprimé en heures.',
 				'money_budget' => 'Montant prévu directement pour cet espace.',
 				'parameters' => 'Paramètres techniques de l’espace.',
@@ -360,7 +371,7 @@
 
 			return $this->getTypeLabel();
 		}
-		
+
 		// Resout organisation liee
 		public function getPropertyTypeLexicon(): array
 		{
@@ -760,7 +771,7 @@
 				return $children;	
 			} else return null;		
 		}
-		
+
 		public function setPropertyValue($key,$value) {
 			// Charge la propriete avec cette cle et cette reference au noeud
 			$property=new \dbObject\HolonProperty();
@@ -774,7 +785,7 @@
 				$property->set("value",$rawValue);
 				$property->set("active",true);
 			} else {
-				
+
 				// Si pas trouve, la cree et l'initialise
 				$property->set("IDholon",$this->getId());
 				$property->set("IDproperty",$key);
@@ -782,9 +793,9 @@
 			}
 			// Sauve la valeur
 			$property->save();
-				
+
 		}
-		
+
 		// Retourne les proprietes de l'objet, incluant celles associees a l'objet et celles associees a ses templates
 		// Pour l'instant, uniquement celles de l'objet
 		public function getProperties() {
@@ -800,9 +811,9 @@
 				],
 			]);
 			return $properties;	
-			
+
 		}
-		
+
 		public function getHolonProperties() {
 			// Recupere la liste des proprietes specifiques au noeud
 			$properties=new \dbObject\ArrayHolonProperty();
@@ -815,15 +826,15 @@
 				],
 			]);
 			return $properties;	
-			
+
 		}
-		
+
 		public function getPropertiesValue() {
 			// Recupere l'ensemble des proprietes et leurs valeurs
 			$values=new \dbObject\ArrayHolonProperty();
 			$values->loadAllValues($this);
 			return $values;
-			
+
 		}
 
 		protected function propertyHasInheritedDefinition(\dbObject\HolonProperty $property)
@@ -3429,7 +3440,7 @@
 							if ($hasPendingOrganizationMembership) {
 								$removedHolonId = (int)$link->get('IDholon');
 								if (!$link->delete()) {
-									throw new \RuntimeException('Le membre ne peut pas etre retire de ce contexte.');
+									throw new \RuntimeException(self::uiMessage('copy.le_membre_ne_peut_pas_etre_retire_de_ce_contexte'));
 								}
 
 								$updatedLinkCount += 1;
@@ -3469,13 +3480,13 @@
 						)
 					);
 					if ($remainingLinkCount === false) {
-						throw new \RuntimeException('Les liens du membre ne peuvent pas etre verifies.');
+						throw new \RuntimeException(self::uiMessage('copy.les_liens_du_membre_ne_peuvent_pas_etre_verifies'));
 					}
 					$remainingLinkCount = (int)$remainingLinkCount;
 
 					if ($remainingLinkCount === 0) {
 						if (!$organizationMembership->delete()) {
-							throw new \RuntimeException('Le membre ne peut pas etre retire de l organisation.');
+							throw new \RuntimeException(self::uiMessage('copy.le_membre_ne_peut_pas_etre_retire_de_l_organisation'));
 						}
 
 						$pendingInvitation = \dbObject\Invitation::findPendingForOrganizationUser($organizationId, $userId);
@@ -3485,7 +3496,7 @@
 							$pendingInvitation->set('active', false);
 							$invitationSaveResult = $pendingInvitation->save();
 							if (!is_array($invitationSaveResult) || empty($invitationSaveResult['status'])) {
-								throw new \RuntimeException('L invitation ne peut pas etre annulee.');
+								throw new \RuntimeException(self::uiMessage('copy.l_invitation_ne_peut_pas_etre_annulee'));
 							}
 						}
 
@@ -3495,7 +3506,7 @@
 
 				if ($this->isOrganizationHolon() && $hasPendingOrganizationMembership && !$membershipUpdated) {
 					if (!$organizationMembership->delete()) {
-						throw new \RuntimeException('Le membre ne peut pas etre retire de l organisation.');
+						throw new \RuntimeException(self::uiMessage('copy.le_membre_ne_peut_pas_etre_retire_de_l_organisation'));
 					}
 
 					$membershipUpdated = true;
@@ -3521,7 +3532,7 @@
 
 				$scopeUpdateResult = \dbObject\Document::normalizeSelfScopedDocumentsForAuthorContext($organizationId, $userId);
 				if (!is_array($scopeUpdateResult) || empty($scopeUpdateResult['status'])) {
-					throw new \RuntimeException("Les portees des documents lies a ce membre n'ont pas pu etre mises a jour.");
+					throw new \RuntimeException(self::uiMessage('copy.les_portees_des_documents_lies_a_ce_membre_n_ont_pas_pu_etre_mises_a_j'));
 				}
 
 				$this->recordMemberRemovedHistory($memberUser, $organizationId, array_values($removedHolonIds), $membershipUpdated);
@@ -3599,7 +3610,7 @@
 			if (!$isActive) {
 				$scopeUpdateResult = \dbObject\Document::normalizeSelfScopedDocumentsForAuthorContext($this->resolveOrganizationId(), (int)$user->getId());
 				if (!is_array($scopeUpdateResult) || empty($scopeUpdateResult['status'])) {
-					throw new \RuntimeException("Impossible de mettre a jour les documents de cette personne.");
+					throw new \RuntimeException(self::uiMessage('copy.impossible_de_mettre_a_jour_les_documents_de_cette_personne'));
 				}
 			}
 
@@ -3792,7 +3803,7 @@
 
 			if (count($holonTokens) === 1) {
 				$content = \dbObject\History::buildReferenceToken('user', (int)$memberUser->getId(), $memberLabel)
-					. ' a ete retire du '
+					. ' a été retiré du '
 					. $holonTokens[0]
 					. ' par '
 					. \dbObject\History::buildReferenceToken('user', $authorUserId, $authorLabel)
@@ -3807,7 +3818,7 @@
 			}
 
 			if (!empty($membershipUpdated) && $this->isOrganizationHolon()) {
-				$content .= ' Son adhesion a aussi ete retiree de l organisation.';
+				$content .= ' Son adhésion a aussi été retirée de l’organisation.';
 			}
 
 			$saveResult = \dbObject\History::createEntry(
@@ -3827,7 +3838,7 @@
 			);
 
 			if (!is_array($saveResult) || empty($saveResult['status'])) {
-				throw new \RuntimeException("L'historique du retrait n'a pas pu etre enregistre.");
+				throw new \RuntimeException("L'historique du retrait n'a pas pu être enregistré.");
 			}
 		}
 
@@ -3917,7 +3928,7 @@
 					)
 				);
 				if (empty($adminConstraintResult['status'])) {
-					throw new \RuntimeException((string)($adminConstraintResult['message'] ?? 'Les contraintes d admins ne sont pas respectees.'));
+					throw new \RuntimeException((string)($adminConstraintResult['message'] ?? self::uiMessage('copy.les_contraintes_d_admins_ne_sont_pas_respectees')));
 				}
 
 				$invitationIssue = array();
@@ -3925,7 +3936,7 @@
 				if ($isAdmin && $pendingInvitation instanceof \dbObject\Invitation) {
 					$requestedAdminResult = $pendingInvitation->addRequestedHolonAdmin((int)$this->getId());
 					if (!is_array($requestedAdminResult) || empty($requestedAdminResult['status'])) {
-						throw new \RuntimeException("Le statut admin demande n'a pas pu etre memorise.");
+						throw new \RuntimeException(self::uiMessage('copy.le_statut_admin_demande_n_a_pas_pu_etre_memorise'));
 					}
 				}
 				$hasActiveOrganizationMembership = $this->hasActiveOrganizationMembership($user, $organizationId);
@@ -3944,7 +3955,7 @@
 						'sendConfirmationEmail' => false,
 					]);
 					if (!($approvalResult['status'] ?? false)) {
-						throw new \RuntimeException((string)($approvalResult['message'] ?? "L'ajout en attente n'a pas pu etre finalise."));
+						throw new \RuntimeException((string)($approvalResult['message'] ?? self::uiMessage('copy.l_ajout_en_attente_n_a_pas_pu_etre_finalise')));
 					}
 
 					$this->ensureOrganizationMembership($user, $organizationId, true);
@@ -3978,7 +3989,7 @@
 							? $organizationMembership->setOrganizationAdmin(true)
 							: $holonMembership->setHolonAdmin(true);
 						if (!is_array($saveResult) || empty($saveResult['status'])) {
-							throw new \RuntimeException("Le statut admin n'a pas pu etre enregistre.");
+							throw new \RuntimeException(self::uiMessage('copy.le_statut_admin_n_a_pas_pu_etre_enregistre'));
 						}
 					}
 				}
@@ -5188,9 +5199,9 @@
 				$children->set("active",false);
 				$children->save();
 			}					
-			
+
 		}
-		
+
 	}
-	
+
 ?>

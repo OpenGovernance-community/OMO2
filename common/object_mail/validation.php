@@ -1,10 +1,12 @@
 <?php
+require_once __DIR__ . '/translations.php';
+
 function omoObjectMailValidateSelection(array $args): void
 {
     if (!array_key_exists('user_ids', $args)) return;
     $ids = $args['user_ids'];
     if (($args['object_type'] ?? null) !== 'organization' || !is_array($ids) || !array_is_list($ids)
-        || count($ids) < 1 || count($ids) > 500) throw new InvalidArgumentException('Selection de membres invalide.');
+        || count($ids) < 1 || count($ids) > 500) throw new InvalidArgumentException(commonObjectMailT('copy.selection_de_membres_invalide'));
     foreach ($ids as $id) {
         if (!is_int($id) || $id <= 0) throw new InvalidArgumentException('Identifiant de membre invalide.');
     }

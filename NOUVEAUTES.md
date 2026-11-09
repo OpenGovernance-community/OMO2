@@ -1,8 +1,46 @@
 # Journal des nouveautés
 
-Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
+Ce fichier garde une vue d'ensemble courte des évolutions récentes, avec un angle plus fonctionnel que technique.
 
-Les dates deja indiquees sont conservees. Les dates manquantes sont reconstituees a partir de la premiere apparition des entrees dans l historique GitHub, en heure Europe/Zurich ; elles correspondent a leur ajout au journal, pas necessairement a leur mise en production.
+Les dates déjà indiquées sont conservées. Les dates manquantes sont reconstituées à partir de la première apparition des entrées dans l'historique GitHub, en heure Europe/Zurich ; elles correspondent à leur ajout au journal, pas nécessairement à leur mise en production.
+
+## 2026-11-09
+
+- Scrutins / anonymat : passage en vote nominatif possible avant l’évaluation, même après une élaboration à plusieurs. Les anciennes propositions gardent leur auteur anonyme et les anciens messages conservent leur anonymat, y compris dans les résumés des discussions. Les nouvelles propositions et les nouveaux messages suivent le réglage courant ; l’anonymat des évaluations reste verrouillé dès leur démarrage.
+
+- Connexion / envoi des codes : affichage du délai restant en secondes ou en minutes en cas de limite atteinte. Les demandes refusées pendant l’attente n’envoient aucun e-mail, ne consomment aucun autre quota et ne prolongent plus le délai ; le renvoi reste espacé d’au moins une minute. Même correction pour les demandes de réinitialisation du mot de passe.
+
+- Scrutins / suppression des questions : menu « ⋮ » dans l’onglet sélectionné pour éditer son nom ou supprimer la question et toutes ses propositions après confirmation. Suppression appliquée avec l’enregistrement du scrutin ; dernière question protégée dans l’interface et sur le serveur, suppression bloquée après le début de l’évaluation et nettoyage des événements associés aux propositions supprimées.
+
+- Scrutins / paramètres des questions : flèche à côté de « Configurer » pour copier les réglages d’un autre bloc du même type de scrutin, y compris les mentions personnalisées et la pondération. Les noms, textes et propositions restent propres à chaque bloc ; la copie est prise en compte lors de l’enregistrement du scrutin et reste verrouillée après le début de l’évaluation.
+
+- Scrutins / blocs : nom court distinct du texte de la question, modifiable dans les onglets par double-clic ou avec le crayon de l’onglet sélectionné. Champ ajusté à son contenu et onglets sans défilement vertical. Entrée valide, Échap annule ; le nom est sauvegardé avec le scrutin et affiché dans la table des matières publique. Sans nom court, l’onglet affiche « Bloc 1 », « Bloc 2 », etc. Renommage verrouillé après le début de l’évaluation ; noms conservés dans les duplications et les exports/imports.
+
+- Scrutins / navigation publique : table des matières sous la description dans la colonne de gauche, uniquement pour les questionnaires à plusieurs blocs, avec un espace sous son titre. Liens directs vers chaque bloc et coche identique à celle du jugement majoritaire lorsque toutes ses réponses nécessaires sont renseignées, y compris pendant la prévisualisation locale.
+
+- Scrutins / prévisualisation : bouton gris « Prévisualiser » dans l’en-tête de gestion, à côté du bouton de couleur « Enregistrer ». Il ouvre le questionnaire enregistré dans une fenêtre séparée, avec le rendu public et une évaluation simulée quel que soit le statut réel. Choix et navigation restent locaux, sans sauvegarde ni brouillon automatique ; accès réservé aux gestionnaires, connexion SQL en lecture seule, soumissions et requêtes d’enregistrement bloquées dans cette fenêtre.
+
+- Scrutins / dates et interruption : le démarrage de l’évaluation ne remplit plus une fin d’élaboration sans début d’élaboration. Depuis la gestion, un scrutin en évaluation sans aucune réponse, même partielle, peut revenir en préparation ; seule sa date de début d’évaluation est effacée, la fin reste conservée sans redémarrage automatique. Contrôle serveur des droits et protection contre une réponse simultanée.
+
+- Scrutins : sélecteurs de visibilité et d’édition identiques à ceux des documents, avec une capsule commune à deux icônes dans les listes et les cartes. Lecture par l’organisation et édition par l’auteur par défaut ; les invitations conservent l’accès, les autres lecteurs consultent sans participer et plusieurs personnes peuvent gérer le scrutin selon la portée choisie. Le contexte reste verrouillé après le début du vote. Lecture publique des scrutins ouverts à tout le monde et conservation des droits dans les exports et imports.
+
+- OMO / traductions : raccordement des textes corrigés aux bundles des modules et des composants communs, avec paramètres nommés et pluriels. Libellés des choix traduits sans changer les valeurs SQL ; sources françaises d'adminEdit préservées quelle que soit la langue affichée.
+
+- Telegram / assistant : questions textuelles en privé avec le même moteur de consultation que le chat interne, les droits du compte lié et les contrôles IA de l’organisation. Choix par /organization, historique isolé par compte et organisation, remise à zéro par /new. Réponses sans tableaux, liens vers OMO et découpage des messages longs. Dans un groupe, seuls une mention du bot, une réponse à l’un de ses messages ou une commande explicitement adressée à son nom déclenchent le traitement ; les réponses de l’assistant restent privées et les échanges ordinaires sont ignorés.
+
+- Textes français : correction des accents, apostrophes, fautes et accords dans les libellés, aides et messages des différents modules. Consignes AGENTS.md clarifiées pour imposer un français correctement orthographié et préserver l'UTF-8.
+
+- Paramètres / suivi des sauvegardes : suppression des fausses alertes de perte de données après enregistrement des notifications, du dictionnaire, de l’affichage de la structure, des trucs et astuces et des réglages Projets, Décisions et Documents. Les échecs de sauvegarde et les modifications suivantes restent protégés.
+
+## 2026-11-08
+
+- Securite / indexation : reglage propre a chaque installation dans les parametres du serveur, accessible depuis Securite. Choix explicite dans le .env : SEARCH_ENGINE_INDEXING=allow (par defaut) ou block, sans detection du domaine. Consigne HTTP noindex et maintien des exclusions propres aux pages. Le retrait des resultats existants depend du prochain passage des moteurs.
+
+- Statistiques / trafic visio quotidien (2026-11-08) : graphique des volumes recus et envoyes par jour UTC, toutes organisations confondues et salles sans organisation comprises. Periode choisie conservee, jours sans trafic enregistre a zero et valeurs en Mo avec decimales ; le filtre Organisation continue de s appliquer au tableau, mais pas au graphique global.
+
+- Statistiques / tendance STL (2026-11-08) : courbes de tendance robustes superposees aux graphiques quotidiens, avec separation du cycle hebdomadaire et option pour les masquer. Calcul sur au moins 21 jours complets, sans le jour UTC en cours ni les profils horaires ; regroupement des tendances quotidiennes sur les semaines completes dans la vue annuelle. Aucune projection future.
+
+- Visio / collecte du trafic VPS (2026-11-08) : collecteur autonome toutes les 30 secondes et reception HTTPS signee dans la base OMO commune aux trois domaines. Comptage sans duplication lors des retransmissions, file locale pour les envois en attente et diagnostic des echecs ; aucun acces SQL distant ni API JVB publique. Dates des tentatives affichees en cas d erreur. Les appels P2P et le trafic anterieur a l activation restent exclus.
 
 ## 2026-11-07
 

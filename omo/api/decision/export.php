@@ -16,21 +16,21 @@ function omoDecisionExportFail($statusCode, $message)
 }
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
-    omoDecisionExportFail(405, 'Methode non autorisee.');
+    omoDecisionExportFail(405, omoDecisionUiT('methode_non_autorisee'));
 }
 
 $context = omoDecisionResolveEditorContext($_GET);
 if (empty($context['status'])) {
-    omoDecisionExportFail((int)($context['code'] ?? 400), 'Contexte de prise de decision invalide.');
+    omoDecisionExportFail((int)($context['code'] ?? 400), omoDecisionUiT('contexte_de_prise_de_decision_invalide'));
 }
 
 if (($context['accessMode'] ?? '') === 'public' || empty($context['canManage'])) {
-    omoDecisionExportFail(403, 'Acces refuse a cet export.');
+    omoDecisionExportFail(403, omoDecisionUiT('copy.acces_refuse_a_cet_export'));
 }
 
 $decision = $context['decision'] ?? null;
 if (!($decision instanceof DecisionProcess) || (int)$decision->getId() <= 0) {
-    omoDecisionExportFail(404, 'Prise de decision introuvable.');
+    omoDecisionExportFail(404, omoDecisionUiT('prise_de_decision_introuvable'));
 }
 
 $requestedGroupId = (int)($_GET['gid'] ?? 0);
@@ -57,7 +57,7 @@ foreach ($bundleList as $bundleItem) {
 }
 
 if (count($methods) > 1) {
-    omoDecisionExportFail(422, 'Cet export multi-blocs demande pour l instant des blocs utilisant la meme methode.');
+    omoDecisionExportFail(422, omoDecisionUiT('copy.cet_export_multi_blocs_demande_pour_l_instant_des_blocs_utilisant_la_m'));
 }
 
 $method = count($methods) > 0
@@ -66,7 +66,7 @@ $method = count($methods) > 0
 
 $definition = omoDecisionEnsureMethodExportLoaded($method);
 if (!$definition || empty($definition['export_function']) || !function_exists((string)$definition['export_function'])) {
-    omoDecisionExportFail(501, 'Export indisponible pour cette methode.');
+    omoDecisionExportFail(501, omoDecisionUiT('copy.export_indisponible_pour_cette_methode'));
 }
 
 $format = trim((string)($_GET['format'] ?? ''));
@@ -75,7 +75,7 @@ if (!in_array($format, ['csv', 'json', 'xml'], true)) {
         omoDecisionExportFail(501, 'Export PDF non disponible pour le moment.');
     }
 
-    omoDecisionExportFail(400, 'Format d export invalide.');
+    omoDecisionExportFail(400, 'Format d’export invalide.');
 }
 
 $bundle = count($bundleList) === 1

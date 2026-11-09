@@ -13,7 +13,22 @@
                 'objet_de_visibilite_invalide' => ['text' => 'Objet de visibilité invalide.', 'context' => 'Validation or action feedback for objectvisibility.'],
                 'impossible_de_mettre_a_jour_les_anciennes_regles_de_visibilite' => ['text' => 'Impossible de mettre à jour les anciennes règles de visibilité.', 'context' => 'Validation or action feedback for objectvisibility.'],
                 'visibilite_enregistree' => ['text' => 'Visibilité enregistrée.', 'context' => 'Validation or action feedback for objectvisibility.'],
-            ];
+
+                'copy.role' => ['text' => 'Rôle', 'context' => 'Interface text in class/dbobject/objectvisibility.class.php'],
+                'copy.visible_ou_editable_depuis_l_exterieur_sans_appartenance_a_l_organisat' => ['text' => 'Visible ou éditable depuis l’extérieur, sans appartenance à l’organisation.', 'context' => 'Interface text in class/dbobject/objectvisibility.class.php'],
+                'copy.reserve_aux_membres_de_l_organisation' => ['text' => 'Réservé aux membres de l’organisation.', 'context' => 'Interface text in class/dbobject/objectvisibility.class.php'],
+                'copy.reserve_aux_membres_du_cercle_concerne' => ['text' => 'Réservé aux membres du cercle concerné.', 'context' => 'Interface text in class/dbobject/objectvisibility.class.php'],
+                'copy.reserve_aux_membres_du_role_concerne' => ['text' => 'Réservé aux membres du rôle concerné.', 'context' => 'Interface text in class/dbobject/objectvisibility.class.php'],
+                'copy.reserve_a_la_personne_proprietaire_du_document' => ['text' => 'Réservé à la personne propriétaire.', 'context' => 'Help for owner-only visibility, shared by documents and other objects.'],
+                'copy.la_visibilite_cercle_attend_un_cercle' => ['text' => 'La visibilité cercle attend un cercle.', 'context' => 'Interface text in class/dbobject/objectvisibility.class.php'],
+                'copy.la_visibilite_role_attend_un_role' => ['text' => 'La visibilité rôle attend un rôle.', 'context' => 'Interface text in class/dbobject/objectvisibility.class.php'],
+                'copy.impossible_de_sauvegarder_la_visibilite' => ['text' => 'Impossible de sauvegarder la visibilité.', 'context' => 'Interface text in class/dbobject/objectvisibility.class.php'],
+
+                'option.tout_le_monde' => ['text' => 'Tout le monde', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+                'option.organisation' => ['text' => 'Organisation', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+                'option.cercle' => ['text' => 'Cercle', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+                'option.proprietaire_uniquement' => ['text' => 'Propriétaire uniquement', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+        ];
         }
 
 		const OBJECT_TYPE_DOCUMENT = 'document';
@@ -78,22 +93,22 @@
 		public static function getVisibilityTypeOptions(): array
 		{
 			return [
-				self::TYPE_EVERYONE => 'Tout le monde',
-				self::TYPE_ORGANIZATION => 'Organisation',
-				self::TYPE_CIRCLE => 'Cercle',
-				self::TYPE_ROLE => 'Role',
-				self::TYPE_SELF => 'Propriétaire uniquement',
+				self::TYPE_EVERYONE => self::uiMessage('option.tout_le_monde'),
+				self::TYPE_ORGANIZATION => self::uiMessage('option.organisation'),
+				self::TYPE_CIRCLE => self::uiMessage('option.cercle'),
+				self::TYPE_ROLE => self::uiMessage('copy.role'),
+				self::TYPE_SELF => self::uiMessage('option.proprietaire_uniquement'),
 			];
 		}
 
 		public static function getVisibilityTypeDescriptions(): array
 		{
 			return [
-				self::TYPE_EVERYONE => 'Visible ou editable depuis l exterieur, sans appartenance a l organisation.',
-				self::TYPE_ORGANIZATION => 'Reserve aux membres de l organisation.',
-				self::TYPE_CIRCLE => 'Reserve aux membres du cercle concerne.',
-				self::TYPE_ROLE => 'Reserve aux membres du role concerne.',
-				self::TYPE_SELF => 'Reserve a la personne proprietaire du document.',
+				self::TYPE_EVERYONE => self::uiMessage('copy.visible_ou_editable_depuis_l_exterieur_sans_appartenance_a_l_organisat'),
+				self::TYPE_ORGANIZATION => self::uiMessage('copy.reserve_aux_membres_de_l_organisation'),
+				self::TYPE_CIRCLE => self::uiMessage('copy.reserve_aux_membres_du_cercle_concerne'),
+				self::TYPE_ROLE => self::uiMessage('copy.reserve_aux_membres_du_role_concerne'),
+				self::TYPE_SELF => self::uiMessage('copy.reserve_a_la_personne_proprietaire_du_document'),
 			];
 		}
 
@@ -172,8 +187,8 @@
 				return [
 					'status' => false,
 					'text' => $visibilityType === self::TYPE_CIRCLE
-						? 'La visibilite cercle attend un cercle.'
-						: 'La visibilite role attend un role.',
+						? self::uiMessage('copy.la_visibilite_cercle_attend_un_cercle')
+						: self::uiMessage('copy.la_visibilite_role_attend_un_role'),
 				];
 			}
 
@@ -241,7 +256,7 @@
 			if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
 				return [
 					'status' => false,
-					'text' => trim((string)($saveResult['text'] ?? 'Impossible de sauvegarder la visibilite.')),
+					'text' => trim((string)($saveResult['text'] ?? self::uiMessage('copy.impossible_de_sauvegarder_la_visibilite'))),
 				];
 			}
 

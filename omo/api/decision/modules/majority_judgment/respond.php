@@ -148,11 +148,11 @@ if (!$response) {
 $response->set('status', $draftRequested ? DecisionResponse::STATUS_DRAFT : DecisionResponse::STATUS_SUBMITTED);
 $response->set('parameters', omoDecisionMajorityJudgmentBuildResponseParameters($scoreMap, $proposalMeta, $config, $_POST['vote_weight'] ?? null, $responseIsAnonymous));
 
-$saveResult = $response->save();
+$saveResult = $response->saveForParticipation();
 if (empty($saveResult['status'])) {
-    omoDecisionModuleJsonResponse(500, [
+    omoDecisionModuleJsonResponse((int)($saveResult['code'] ?? 500), [
         'status' => false,
-        'message' => omoDecisionUiT('impossible_d_enregistrer_votre_vote_pour_le_moment'),
+        'message' => ($saveResult['code'] ?? 0) === 409 ? $saveResult['text'] : omoDecisionUiT('impossible_d_enregistrer_votre_vote_pour_le_moment'),
     ]);
 }
 
@@ -160,5 +160,5 @@ omoDecisionModuleJsonResponse(200, [
     'status' => true,
     'message' => $draftRequested ? 'Brouillon enregistre.' : 'Vote enregistre.',
     'redirectUrl' => omoDecisionBuildContextualEditorUrl($context, 'participate'),
-    'drawerTitle' => 'Prises de decision',
+    'drawerTitle' => omoDecisionUiT('prises_de_decision'),
 ]);

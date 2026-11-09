@@ -30,7 +30,7 @@ const markup = data => '<details data-omo-change-details-payload="' + encode(dat
     assert.equal(scopeChanges[0].after, 'Cercle');
     const settle = () => new Promise(resolve => window.setTimeout(resolve, 0));
     const authorityChange = window.omoChoiceChangeDetails.governanceChanges({type: 'holon.delete', before: {name: 'Role'}, after: {authority_choice: 'delete_keep_rules'}});
-    assert(authorityChange.some(change => change.before === 'Supprimer les autorites et remonter les regles'), 'Voters must see the selected authority disposition');
+    assert(authorityChange.some(change => change.before === 'Supprimer les autorités et remonter les règles'), 'Voters must see the selected authority disposition');
     const first = document.querySelector('details');
     assert.equal(first.querySelectorAll('.omo-change-details__absence').length, 1, 'Late script must hydrate existing content');
     assert(first.textContent.includes('Règle créée'), 'UTF-8 payload must survive decoding');
@@ -246,5 +246,14 @@ const markup = data => '<details data-omo-change-details-payload="' + encode(dat
     deleteRoot.querySelector('[data-edit]').click();
     assert.equal(modal.querySelector('select').value, 'delete_keep_rules', 'Reopening keeps the selected disposition');
     dom.window.close();
+    const translated = new JSDOM('<!doctype html><body></body>', {runScripts:'outside-only'});
+    translated.window.fetch = async () => ({ok:true, json:async () => ({copy_debut_planifie:'Geplanter Beginn'})});
+    translated.window.eval(script);
+    await new Promise(resolve => translated.window.setTimeout(resolve, 0));
+    const translatedChanges = translated.window.omoChoiceChangeDetails.governanceChanges({type:'project.update',
+        before:{planned_start_date:'2026-01-01'}, after:{planned_start_date:'2026-01-02'}}, []);
+    assert.equal(translatedChanges[0].label, 'Geplanter Beginn', 'New field labels must use the fetched shared bundle.');
+    assert.equal(translatedChanges[0].before, '2026-01-01', 'Translating a field label keeps its data intact.');
+    translated.window.close();
     console.log('change_details_dom_test: OK');
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../common/faq_popup_helper.php';
+
 require_once("../config.php");
 require_once("../shared_functions.php");
 commonEnableReadOnlyCaches();
@@ -116,7 +118,7 @@ $newFaq->set('isactive', true);
 $editorTitle = 'Nouvelle FAQ locale';
 $editorStatus = $contextHolon
 	? \dbObject\Organization::formatLexiconText('Cette FAQ sera rattachée au holon courant.')
-	: 'Cette FAQ sera creee dans le contexte courant.';
+	: faqPopupT('copy.cette_faq_sera_creee_dans_le_contexte_courant');
 $editorAllowScopeEditing = false;
 $editorAllowGeneric = false;
 $editorAllowParcoursAttachment = false;
@@ -131,7 +133,7 @@ $editorFields = array(
 
 if ($canManageAllFaqs) {
 	$editorTitle = 'Nouvelle FAQ';
-	$editorStatus = 'Vous pouvez la rattacher a l organisation courante, a un parcours LMS, ou la laisser generique.';
+	$editorStatus = faqPopupT('copy.vous_pouvez_la_rattacher_a_l_organisation_courante_a_un_parcours_lms_o');
 	$editorAllowScopeEditing = true;
 	$editorAllowGeneric = true;
 	$editorFields[] = 'displayorder';
@@ -144,7 +146,7 @@ if ($canManageAllFaqs) {
 	$editorFields[] = 'isactive';
 } elseif ($canCreateParcoursFaqs) {
 	$editorTitle = 'Nouvelle FAQ de parcours';
-	$editorStatus = 'Cette FAQ sera rattachee a un parcours LMS que vous pouvez gerer.';
+	$editorStatus = faqPopupT('copy.cette_faq_sera_rattachee_a_un_parcours_lms_que_vous_pouvez_gerer');
 	$editorAllowScopeEditing = true;
 	$editorAllowParcoursAttachment = true;
 	$editorAllowContextualAttachment = $canCreateContextualFaq;
@@ -197,7 +199,7 @@ if (!$canManageFaqCollection && $canCreateContextualFaq) {
 								<?php endforeach; ?>
 							</div>
 						<?php endif; ?>
-						
+
 					</div>
 					<div class="faq-popup__toolbar-actions generic-action-row">
 						<?php if ($canAddFaq): ?>

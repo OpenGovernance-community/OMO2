@@ -70,10 +70,10 @@
 		public static function attributeDescriptions()
 		{
 			return [
-				'focus' => 'Specificite de la participation de cette personne dans ce holon.',
+				'focus' => 'Spécificité de la participation de cette personne dans ce holon.',
 				'time_budget_hours' => 'Temps prévu pour cette affectation, exprime en heures.',
 				'money_budget' => 'Montant prévu pour cette affectation.',
-				'assignment_review_date' => 'Date a laquelle l’affectation doit être reconfirmée ou arrêtée.',
+				'assignment_review_date' => 'Date à laquelle l’affectation doit être reconfirmée ou arrêtée.',
 				'is_membership' => 'Distingue une affectation au holon d’une ligne technique utilisée uniquement pour stocker des préférences.',
 			];
 		}

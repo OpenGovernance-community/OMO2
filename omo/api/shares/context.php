@@ -59,7 +59,7 @@ function omoShareResolveManageContext(array $input)
             return array(
                 'status' => false,
                 'code' => 403,
-                'message' => \dbObject\Organization::formatLexiconText('Acces refuse a ce holon.'),
+                'message' => \dbObject\Organization::formatLexiconText('Accès refusé à ce holon.'),
             );
         }
 

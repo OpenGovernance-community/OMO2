@@ -5,7 +5,7 @@ require_once dirname(__DIR__) . '/bootstrap.php';
 $sourceLang = [
     'organization_export.title' => ['text' => 'Exporter l’organisation', 'context' => 'Title of the organization export popup.'],
     'organization_export.error.auth' => ['text' => 'Connexion requise.', 'context' => 'Authentication message in the organization export popup.'],
-    'organization_export.help' => ['text' => 'Choisissez les éléments a inclure. Le ZIP contient les données JSON et les images locales : profils, logo et illustrations. Les images distantes ne sont pas copiees ; les images indisponibles sont signalées dans le JSON.', 'context' => 'Introductory text of the organization export popup.'],
+    'organization_export.help' => ['text' => 'Choisissez les éléments a inclure. Le ZIP contient les données JSON et les images locales : profils, logo et illustrations. Les images distantes ne sont pas copiées ; les images indisponibles sont signalées dans le JSON.', 'context' => 'Introductory text of the organization export popup.'],
     'organization_export.module.members' => ['text' => 'Membres et rôles', 'context' => 'Members module label in the organization export popup.'],
     'organization_export.module.rules' => ['text' => 'Règles', 'context' => 'Rules module label in the organization export popup.'],
     'organization_export.module.documents' => ['text' => 'Documents', 'context' => 'Documents module label in the organization export popup.'],

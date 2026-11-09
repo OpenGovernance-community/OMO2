@@ -3,6 +3,12 @@ window.commonPageScripts['/omo/api/parameters/security/index.js'] = function (pa
     var root = document.querySelector('[data-omo-security]');
     if (!root || root.dataset.ready === '1') { return; }
     root.dataset.ready = '1';
+    var indexingButton = root.querySelector('[data-omo-security-indexing]');
+    if (indexingButton) indexingButton.addEventListener('click', function () {
+        if (typeof window.commonTopbarOpenModal === 'function') {
+            window.commonTopbarOpenModal(indexingButton.textContent.trim(), '/omo/api/parameters/server_env_popup.php?tab=security', 'fetch');
+        }
+    });
     var form = root.querySelector('form');
     var button = root.querySelector('[data-omo-security-save]');
     var backupButton = root.querySelector('[data-omo-security-backup-now]');

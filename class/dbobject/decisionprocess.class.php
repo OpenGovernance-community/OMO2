@@ -3,6 +3,26 @@ namespace dbObject;
 
 class DecisionProcess extends DbObject
 {
+    private static bool $readOnlyEvaluationPreview = false;
+
+    public static function beginReadOnlyEvaluationPreview(): void
+    {
+        $pdo = self::getPdo();
+        if (!$pdo || $pdo->inTransaction()) throw new \RuntimeException('evaluation_preview_connection_unavailable');
+        // Session-level protection also survives an accidental commit in a rendering helper.
+        $pdo->exec('SET SESSION TRANSACTION READ ONLY');
+        $pdo->beginTransaction();
+        self::$readOnlyEvaluationPreview = true;
+        register_shutdown_function(static function () use ($pdo): void {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+        });
+    }
+
+    public static function isReadOnlyEvaluationPreview(): bool
+    {
+        return self::$readOnlyEvaluationPreview;
+    }
+
         protected static function uiMessageSourceLang(): array
         {
             return [
@@ -12,6 +32,14 @@ class DecisionProcess extends DbObject
                 'impossible_de_sauvegarder_la_decision_et_son_agenda' => ['text' => 'Impossible de sauvegarder la décision et son agenda.', 'context' => 'Validation or action feedback for decisionprocess.'],
                 'destination_invalide' => ['text' => 'Destination invalide.', 'context' => 'Validation or action feedback for decisionprocess.'],
                 'acces_refuse' => ['text' => 'Accès refusé.', 'context' => 'Validation or action feedback for decisionprocess.'],
+                'questions_suppression_verrouillee' => ['text' => 'Les questions ne peuvent plus être supprimées après le début de l’évaluation.', 'context' => 'Question deletion rejected once evaluation has started.'],
+                'question_suppression_invalide' => ['text' => 'La question à supprimer n’appartient pas à ce scrutin.', 'context' => 'Question deletion ownership validation.'],
+                'derniere_question_protegee' => ['text' => 'Le scrutin doit conserver au moins une question.', 'context' => 'Reject deleting the last questionnaire block.'],
+                'questions_suppression_echec' => ['text' => 'Impossible de supprimer les questions et leurs propositions.', 'context' => 'Question deletion transaction failure.'],
+                'visibilite_invalide' => ['text' => 'Visibilité invalide pour ce scrutin.', 'context' => 'Invalid decision read or edit scope.'],
+                'scrutin_interrompu' => ['text' => 'Scrutin interrompu. Il est de nouveau en préparation.', 'context' => 'Successful interruption before any evaluation response.'],
+                'interruption_impossible' => ['text' => 'Le scrutin peut être interrompu uniquement pendant l’évaluation, tant qu’aucune réponse, même partielle, n’a été enregistrée.', 'context' => 'Refused interruption after a response or outside evaluation.'],
+                'interruption_echec' => ['text' => 'Impossible d’interrompre le scrutin pour le moment.', 'context' => 'Failed interruption transaction.'],
                 'acces_refuse_pour_cette_destination' => ['text' => 'Accès refusé pour cette destination.', 'context' => 'Validation or action feedback for decisionprocess.'],
                 'cette_prise_de_decision_est_deja_a_cette_destination' => ['text' => 'Cette prise de décision est déjà à cette destination.', 'context' => 'Validation or action feedback for decisionprocess.'],
                 'prise_de_decision_deplacee' => ['text' => 'Prise de décision déplacée.', 'context' => 'Validation or action feedback for decisionprocess.'],
@@ -26,7 +54,9 @@ class DecisionProcess extends DbObject
                 'impossible_de_supprimer_cette_prise_de_decision_pour_le_moment' => ['text' => 'Impossible de supprimer cette prise de décision pour le moment.', 'context' => 'Validation or action feedback for decisionprocess.'],
                 'la_prise_de_decision_doit_etre_enregistree_avant_de_synchroniser_les_participants' => ['text' => 'La prise de décision doit être enregistrée avant de synchroniser les participants.', 'context' => 'Validation or action feedback for decisionprocess.'],
                 'impossible_de_synchroniser_les_participants_a_la_prise_de_decision' => ['text' => 'Impossible de synchroniser les participants à la prise de décision.', 'context' => 'Validation or action feedback for decisionprocess.'],
-            ];
+
+                'copy.resultats_disponibles' => ['text' => 'Résultats disponibles.', 'context' => 'Interface text in class/dbobject/decisionprocess.class.php'],
+    ];
         }
 
     private bool $participantRefreshLocked = false;
@@ -250,7 +280,26 @@ class DecisionProcess extends DbObject
             return false;
         }
         $organizationId = (int)$this->get('IDorganization');
+        if ((int)$this->get('IDuser') === $userId) return true;
         if (function_exists('commonUserHasAdminOverride') && \commonUserHasAdminOverride($userId, $organizationId)) return true;
+        if ($permissionKey === 'CAN_EDIT_DECISION') {
+            $viewerContext = ObjectVisibility::buildCurrentViewerContext($organizationId, $userId);
+            $objectContext = ['organizationId' => $organizationId, 'ownerUserId' => (int)$this->get('IDuser')];
+            if (!ObjectVisibility::viewerCanAccessRule($this->getPrimaryVisibilityRuleRow(), $viewerContext, $objectContext)) {
+                $participant = DecisionParticipant::findByDecisionAndUser((int)$this->getId(), $userId);
+                if (!$participant || !(bool)$participant->get('active')) {
+                    $user = new User();
+                    $email = $user->load($userId) ? trim((string)$user->getScopedEmail($organizationId)) : '';
+                    $participant = $email !== '' ? DecisionParticipant::findByDecisionAndEmail((int)$this->getId(), $email) : null;
+                }
+                if (!$participant || !(bool)$participant->get('active')
+                    || in_array($participant->get('status'), [DecisionParticipant::STATUS_DECLINED, DecisionParticipant::STATUS_REVOKED], true)) return false;
+            }
+            return $viewerContext['type'] === 'user' && ObjectVisibility::viewerCanAccessRule(
+                $this->getPrimaryEditVisibilityRuleRow(), $viewerContext,
+                $objectContext
+            );
+        }
         if ($organizationId <= 0) {
             return (int)$this->get('IDuser') === $userId;
         }
@@ -323,8 +372,8 @@ class DecisionProcess extends DbObject
 
         $animals = [
             'Renard', 'Lynx', 'Hibou', 'Faucon', 'Castor', 'Panda', 'Koala', 'Jaguar',
-            'Bison', 'Dauphin', 'Gecko', 'Lama', 'Manchot', 'Pelican', 'Blaireau', 'Chamois',
-            'Corbeau', 'Ecureuil', 'Heron', 'Leopard', 'Morse', 'Orque', 'Puma', 'Toucan',
+            'Bison', 'Dauphin', 'Gecko', 'Lama', 'Manchot', 'Pélican', 'Blaireau', 'Chamois',
+            'Corbeau', 'Écureuil', 'Héron', 'Léopard', 'Morse', 'Orque', 'Puma', 'Toucan',
         ];
         $traits = [
             'serein', 'curieux', 'vaillant', 'patient', 'inventif', 'attentif', 'jovial', 'paisible',
@@ -360,6 +409,58 @@ class DecisionProcess extends DbObject
     public static function getDefaultVisibilityType(): string
     {
         return \dbObject\ObjectVisibility::getDefaultVisibilityType();
+    }
+
+    public static function getDefaultEditVisibilityType(): string
+    {
+        return ObjectVisibility::TYPE_SELF;
+    }
+
+    public static function getEditVisibilityObjectType(): string
+    {
+        return 'decision_process_edit';
+    }
+
+    public function getPrimaryEditVisibilityRuleRow(): array
+    {
+        return ObjectVisibility::loadActiveRuleRow(self::getEditVisibilityObjectType(), (int)$this->getId(), (int)$this->get('IDorganization'))
+            ?: array_replace(ObjectVisibility::buildFallbackRuleData((int)$this->get('IDorganization')),
+                ['visibility_type' => self::getDefaultEditVisibilityType()]);
+    }
+
+    public function saveVisibilityRulesFromInput(array $input, bool $locked = false): array
+    {
+        if ($locked) return ['status' => true];
+        $rules = [];
+        foreach (['visibility_type' => self::getVisibilityObjectType(), 'edit_visibility_type' => self::getEditVisibilityObjectType()] as $key => $objectType) {
+            if (!array_key_exists($key, $input)) continue;
+            if (!is_string($input[$key]) || !array_key_exists($input[$key], self::getVisibilityTypeOptions())) {
+                return ['status' => false, 'text' => self::uiMessage('visibilite_invalide')];
+            }
+            $resolved = $this->resolveVisibilityRuleInput($input[$key]);
+            if (empty($resolved['status'])) return $resolved;
+            $rules[$objectType] = $resolved;
+        }
+        if (!$rules) return ['status' => true];
+        $pdo = self::getPdo();
+        $ownsTransaction = !$pdo->inTransaction();
+        try {
+            if ($ownsTransaction) $pdo->beginTransaction();
+            foreach ($rules as $objectType => $resolved) {
+                $result = ObjectVisibility::saveSingleRule($objectType, (int)$this->getId(), (int)$this->get('IDorganization'), $resolved['type'], $resolved['holonId']);
+                if (empty($result['status'])) throw new \RuntimeException('decision_visibility_save_failed');
+            }
+            if (isset($rules[self::getVisibilityObjectType()]) && $this->get('visibility_type') !== $input['visibility_type']) {
+                $this->set('visibility_type', $input['visibility_type']);
+                if (empty($this->save()['status'])) throw new \RuntimeException('decision_visibility_save_failed');
+            }
+            if ($ownsTransaction) $pdo->commit();
+            return ['status' => true];
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+            error_log('decision_visibility_save_failed: ' . $exception->getMessage());
+            return ['status' => false, 'text' => self::uiMessage('visibilite_invalide')];
+        }
     }
 
     public static function getVisibilityTypeOptions(): array
@@ -610,10 +711,23 @@ class DecisionProcess extends DbObject
         $this->set('status', self::normalizeStatus($this->get('status')));
         $this->set('evaluation_method', self::normalizeEvaluationMethod($this->get('evaluation_method')));
         $this->set('visibility_type', self::normalizeVisibilityType($this->get('visibility_type')));
+        $parameters = $this->getRootParametersArray();
+        if (isset($parameters['evaluation_interruption']) && !$this->isInterruptedEvaluationDraft()) {
+            unset($parameters['evaluation_interruption']);
+            $this->set('parameters', $parameters);
+        }
 
         $saveResult = parent::save();
         if (empty($saveResult['status']) || (int)$this->getId() <= 0) {
             return $saveResult;
+        }
+
+        $storedRule = ObjectVisibility::loadActiveRuleRow(self::getVisibilityObjectType(), (int)$this->getId(), (int)$this->get('IDorganization'));
+        if ($storedRule && $storedRule['visibility_type'] !== $this->get('visibility_type')) {
+            $resolved = $this->resolveVisibilityRuleInput($this->get('visibility_type'));
+            if (empty($resolved['status'])) return $resolved;
+            $result = ObjectVisibility::saveSingleRule(self::getVisibilityObjectType(), (int)$this->getId(), (int)$this->get('IDorganization'), $resolved['type'], $resolved['holonId']);
+            if (empty($result['status'])) return $result;
         }
 
         $groups = $this->getDecisionGroups(false);
@@ -687,6 +801,7 @@ class DecisionProcess extends DbObject
         }
 
         $previousVisibilityType = self::normalizeVisibilityType($this->get('visibility_type'));
+        $previousEditVisibilityType = (string)$this->getPrimaryEditVisibilityRuleRow()['visibility_type'];
         $this->set('IDholon', $targetHolonId);
         $resolvedVisibility = $this->resolveVisibilityRuleInput($previousVisibilityType);
         if (($resolvedVisibility['status'] ?? false) !== true) {
@@ -724,6 +839,12 @@ class DecisionProcess extends DbObject
                 throw new \RuntimeException(trim((string)($visibilityResult['text'] ?? 'decision_move_visibility_failed')));
             }
 
+            $editScope = $this->resolveVisibilityRuleInput($previousEditVisibilityType);
+            $editResult = $this->saveVisibilityRulesFromInput([
+                'edit_visibility_type' => !empty($editScope['status']) ? $previousEditVisibilityType : self::getDefaultEditVisibilityType(),
+            ]);
+            if (empty($editResult['status'])) throw new \RuntimeException('decision_move_edit_visibility_failed');
+
             if ($ownsTransaction) {
                 $pdo->commit();
             }
@@ -753,6 +874,7 @@ class DecisionProcess extends DbObject
 
     public function resolveAutomaticStatus($referenceDateTime = null)
     {
+        if ($this->isInterruptedEvaluationDraft()) return self::STATUS_DRAFT;
         $currentStatus = self::normalizeStatus($this->get('status'));
         $derivedStatus = $currentStatus;
         $referenceDateTime = self::normalizeDateTimeValue($referenceDateTime);
@@ -769,7 +891,6 @@ class DecisionProcess extends DbObject
 
         $hasFutureOrCurrentSchedule = $consultationStart instanceof \DateTimeInterface
             || $evaluationStart instanceof \DateTimeInterface
-            || $evaluationEnd instanceof \DateTimeInterface
             || $resultsPublishedAt instanceof \DateTimeInterface
             || $archivedAt instanceof \DateTimeInterface;
 
@@ -786,7 +907,7 @@ class DecisionProcess extends DbObject
         }
 
         if (
-            ($evaluationEnd instanceof \DateTimeInterface && $evaluationEnd <= $referenceDateTime)
+            ($evaluationStart instanceof \DateTimeInterface && $evaluationEnd instanceof \DateTimeInterface && $evaluationEnd <= $referenceDateTime)
             || ($resultsPublishedAt instanceof \DateTimeInterface && $resultsPublishedAt <= $referenceDateTime)
         ) {
             $derivedStatus = self::STATUS_RESULTS;
@@ -803,8 +924,7 @@ class DecisionProcess extends DbObject
             $consultationEndedWithoutCurrentEvaluation
             && in_array($currentStatus, [self::STATUS_DRAFT, self::STATUS_SCHEDULED, self::STATUS_CONSULTATION], true)
         ) {
-            $hasUpcomingEvaluation = ($evaluationStart instanceof \DateTimeInterface && $evaluationStart > $referenceDateTime)
-                || ($evaluationEnd instanceof \DateTimeInterface && $evaluationEnd > $referenceDateTime);
+            $hasUpcomingEvaluation = $evaluationStart instanceof \DateTimeInterface && $evaluationStart > $referenceDateTime;
             return $hasUpcomingEvaluation ? self::STATUS_SCHEDULED : self::STATUS_DRAFT;
         }
 
@@ -1169,10 +1289,15 @@ class DecisionProcess extends DbObject
         $organizationId = (int)$organizationId > 0
             ? (int)$organizationId
             : (int)$this->get('IDorganization');
+        $ruleRow = is_array($ruleRow) ? $ruleRow : $this->getPrimaryVisibilityRuleRow();
+        $owner = new User();
+        $ownerLabel = ($ruleRow['visibility_type'] ?? '') === ObjectVisibility::TYPE_SELF && $owner->load((int)$this->get('IDuser'))
+            ? $owner->getScopedDisplayName($organizationId) : '';
 
         return \dbObject\ObjectVisibility::buildDisplayData(
-            is_array($ruleRow) ? $ruleRow : $this->getPrimaryVisibilityRuleRow(),
-            $organizationId
+            $ruleRow,
+            $organizationId,
+            ['ownerLabel' => $ownerLabel]
         );
     }
 
@@ -1246,6 +1371,62 @@ class DecisionProcess extends DbObject
         $this->applyLegacyProcessFieldsToGroup($group);
         $saveResult = $group->save();
         return !empty($saveResult['status']) ? $group : null;
+    }
+
+    public function deleteDecisionGroupsForManager(array $groupIds, int $userId): array
+    {
+        $pdo = self::getPdo();
+        $ownsTransaction = !$pdo->inTransaction();
+        try {
+            if ($ownsTransaction) $pdo->beginTransaction();
+            $row = self::fetchRow('SELECT * FROM decision_process WHERE id = :id FOR UPDATE', ['id' => (int)$this->getId()]);
+            if (!$row) throw new \RuntimeException('decision_not_found');
+            $this->hydrateFromDatabaseRow($row, true);
+            $error = null;
+            if (!$this->canUseManagementPermission('CAN_EDIT_DECISION', $userId)) {
+                $error = ['status' => false, 'code' => 403, 'message' => self::uiMessage('acces_refuse')];
+            } elseif ($this->hasEvaluationStarted() || $this->hasEvaluationResponses()) {
+                $error = ['status' => false, 'code' => 409, 'message' => self::uiMessage('questions_suppression_verrouillee')];
+            }
+            $groups = $this->getDecisionGroups(false)->getArrayCopy();
+            $groupIds = array_values(array_unique(array_map('intval', $groupIds)));
+            $ownedIds = array_map(static fn($group) => (int)$group->getId(), $groups);
+            $remaining = array_filter($groups, static fn($group) => !in_array((int)$group->getId(), $groupIds, true));
+            if (!$error && array_diff($groupIds, $ownedIds)) {
+                $error = ['status' => false, 'code' => 400, 'message' => self::uiMessage('question_suppression_invalide')];
+            }
+            if (!$error && !array_filter($remaining, static fn($group) => (int)$group->get('active') === 1)) {
+                $error = ['status' => false, 'code' => 409, 'message' => self::uiMessage('derniere_question_protegee')];
+            }
+            if ($error) {
+                if ($ownsTransaction) $pdo->rollBack();
+                return $error;
+            }
+            foreach ($groups as $group) {
+                if (!in_array((int)$group->getId(), $groupIds, true)) continue;
+                foreach ($group->getProposals(false) as $proposal) {
+                    $event = Event::findByDecisionProposal((int)$proposal->getId());
+                    if ($event && !$event->delete()) throw new \RuntimeException('decision_question_calendar_delete_failed');
+                }
+                // Foreign keys remove every proposal, response and result belonging to this group.
+                if (!$group->delete()) throw new \RuntimeException('decision_question_delete_failed');
+            }
+            $primary = $this->getPrimaryGroup(false);
+            $parameters = $this->getRootParametersArray();
+            $primaryParameters = DecisionGovernanceAction::normalizeState($primary->get('parameters'));
+            $method = self::normalizeEvaluationMethod($primary->get('evaluation_method'));
+            $parameters[$method] = $primaryParameters[$method] ?? [];
+            $this->set('parameters', $parameters);
+            $this->set('evaluation_method', $method);
+            $this->set('decision_type', $primary->get('decision_type'));
+            if (empty($this->save()['status'])) throw new \RuntimeException('decision_question_mirror_save_failed');
+            if ($ownsTransaction) $pdo->commit();
+            return ['status' => true];
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+            error_log('decision_questions_delete_failed: ' . $exception->getMessage());
+            return ['status' => false, 'code' => 500, 'message' => self::uiMessage('questions_suppression_echec')];
+        }
     }
 
     public function buildNextDecisionGroupTitle()
@@ -1582,6 +1763,63 @@ class DecisionProcess extends DbObject
         );
     }
 
+    public function hasEvaluationResponses(): bool
+    {
+        return (int)self::fetchValue('SELECT COUNT(*) FROM `decision_response` WHERE `IDdecision_process` = :decision_id',
+            ['decision_id' => (int)$this->getId()]) > 0;
+    }
+
+    public function canInterruptEvaluation(): bool
+    {
+        return (int)$this->getId() > 0 && $this->resolveAutomaticStatus() === self::STATUS_EVALUATION
+            && !$this->hasEvaluationResponses();
+    }
+
+    protected function isInterruptedEvaluationDraft(): bool
+    {
+        // Keep the old elaboration dates without reopening that phase after interruption.
+        // A new start date or an explicit status change resumes normal scheduling.
+        $interruption = $this->getRootParametersArray()['evaluation_interruption'] ?? null;
+        $consultationStart = self::normalizeDateTimeValue($this->get('consultation_start_at'));
+        return is_array($interruption) && self::normalizeStatus($this->get('status')) === self::STATUS_DRAFT
+            && self::normalizeDateTimeValue($this->get('evaluation_start_at')) === null
+            && ($interruption['consultation_start_at'] ?? '') === ($consultationStart ? $consultationStart->format('Y-m-d H:i:s') : '');
+    }
+
+    public function interruptEvaluationForManager(int $userId): array
+    {
+        $pdo = self::getPdo();
+        $ownsTransaction = !$pdo->inTransaction();
+        try {
+            if ($ownsTransaction) $pdo->beginTransaction();
+            // Ballot writes acquire this same lock before saving any partial or complete response.
+            $row = self::fetchRow('SELECT * FROM `decision_process` WHERE `id` = :id FOR UPDATE', ['id' => (int)$this->getId()]);
+            if (!$row) throw new \RuntimeException('decision_not_found');
+            $this->hydrateFromDatabaseRow($row, true);
+            if (!$this->canUseManagementPermission('CAN_EDIT_DECISION', $userId)) {
+                if ($ownsTransaction) $pdo->rollBack();
+                return ['status' => false, 'code' => 403, 'message' => self::uiMessage('acces_refuse')];
+            }
+            if (!$this->canInterruptEvaluation()) {
+                if ($ownsTransaction) $pdo->rollBack();
+                return ['status' => false, 'code' => 409, 'message' => self::uiMessage('interruption_impossible')];
+            }
+            $parameters = $this->getRootParametersArray();
+            $consultationStart = self::normalizeDateTimeValue($this->get('consultation_start_at'));
+            $parameters['evaluation_interruption'] = ['consultation_start_at' => $consultationStart ? $consultationStart->format('Y-m-d H:i:s') : ''];
+            $this->set('parameters', $parameters);
+            $this->set('evaluation_start_at', null);
+            $this->set('status', self::STATUS_DRAFT);
+            if (empty($this->save()['status'])) throw new \RuntimeException('decision_interruption_save_failed');
+            if ($ownsTransaction) $pdo->commit();
+            return ['status' => true, 'action' => 'interrupt', 'message' => self::uiMessage('scrutin_interrompu')];
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+            error_log('decision_interruption_failed: ' . $exception->getMessage());
+            return ['status' => false, 'code' => 500, 'message' => self::uiMessage('interruption_echec')];
+        }
+    }
+
     protected static function truncateCompactEmbedSummary(string $value, int $maximumLength = 420): string
     {
         $value = trim(strip_tags($value));
@@ -1719,7 +1957,7 @@ class DecisionProcess extends DbObject
                 $summary = self::truncateCompactEmbedSummary($this->getCompactEmbedComputedResult());
             }
 
-            return $summary !== '' ? $summary : 'Resultats disponibles.';
+            return $summary !== '' ? $summary : self::uiMessage('copy.resultats_disponibles');
         }
 
         $participantCount = 0;
@@ -1805,9 +2043,7 @@ class DecisionProcess extends DbObject
 
     public function hasParticipationPreventingNamedVote()
     {
-        return $this->hasSubmittedResponses()
-            || $this->hasProposalsFromOtherPeople()
-            || $this->hasProposalDiscussionMessages();
+        return $this->hasEvaluationResponses();
     }
 
     public function canEnableNamedVote($referenceDateTime = null)
@@ -1939,6 +2175,7 @@ class DecisionProcess extends DbObject
                 "DELETE FROM `resource_invitation` WHERE `resource_type` = 'decision_process' AND `resource_id` = :decision_process_id",
                 'DELETE FROM `decision_proposal` WHERE `IDdecision_process` = :decision_process_id',
                 'DELETE FROM `decision_group` WHERE `IDdecision_process` = :decision_process_id',
+                "DELETE FROM `object_visibility` WHERE `object_type` IN ('decision_process', 'decision_process_edit') AND `object_id` = :decision_process_id",
             ];
 
             foreach ($deleteQueries as $query) {
@@ -3153,6 +3390,7 @@ class DecisionProcess extends DbObject
 
     public function hasConsultationStarted($referenceDateTime = null)
     {
+        if ($this->isInterruptedEvaluationDraft()) return false;
         $status = self::normalizeStatus($this->get('status'));
         if (in_array($status, [
             self::STATUS_EVALUATION,
@@ -3173,6 +3411,7 @@ class DecisionProcess extends DbObject
 
     public function hasConsultationEnded($referenceDateTime = null)
     {
+        if ($this->isInterruptedEvaluationDraft()) return false;
         $status = self::normalizeStatus($this->get('status'));
         if (in_array($status, [
             self::STATUS_EVALUATION,

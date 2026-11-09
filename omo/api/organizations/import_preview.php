@@ -9,7 +9,7 @@ if ((int)commonGetCurrentUserId() <= 0) {
 }
 try {
     $file = $_FILES['omo1_export_file'] ?? [];
-    if ((int)($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) { throw new RuntimeException('Le fichier n a pas pu etre televerse.'); }
+    if ((int)($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) { throw new RuntimeException(omoOrganizationsUiT('copy.le_fichier_n_a_pas_pu_etre_televerse')); }
     $archive = \dbObject\OrganizationArchive::read((string)$file['tmp_name']);
     $payload = $archive['payload'];
     // Preview needs structure and module availability, never writes files or data.

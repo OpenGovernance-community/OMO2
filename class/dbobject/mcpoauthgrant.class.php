@@ -4,6 +4,13 @@ require_once dirname(__DIR__, 2) . '/common/patreon.php';
 
 class McpOauthGrant extends DbObject
 {
+    protected static function uiMessageSourceLang(): array
+    {
+        return parent::uiMessageSourceLang() + [
+            'copy.les_connexions_api_et_mcp_sont_bloquees_par_cette_organisation' => ['text' => 'Les connexions API et MCP sont bloquées par cette organisation.', 'context' => 'Interface text in class/dbobject/mcpoauthgrant.class.php'],
+        ];
+    }
+
     public const ACCESS_LIFETIME = 3600;
     public const REFRESH_LIFETIME = 2592000;
     public static function tableName() { return 'mcp_oauth_grant'; }
@@ -22,9 +29,9 @@ class McpOauthGrant extends DbObject
         return ['id' => 'ID', 'IDclient' => 'Client', 'IDuser' => 'Utilisateur', 'IDorganization' => 'Organisation',
             'resource' => 'Serveur', 'scope' => 'Droits', 'redirect_uri' => 'Adresse de retour',
             'code_hash' => 'Empreinte du code', 'code_challenge' => 'PKCE', 'code_expires_at' => 'Expiration du code',
-            'code_used_at' => 'Code utilise', 'access_hash' => 'Empreinte acces', 'access_expires_at' => 'Expiration acces',
+            'code_used_at' => 'Code utilisé', 'access_hash' => 'Empreinte accès', 'access_expires_at' => 'Expiration accès',
             'refresh_hash' => 'Empreinte renouvellement', 'refresh_expires_at' => 'Expiration renouvellement',
-            'revoked_at' => 'Revocation', 'created_at' => 'Creation', 'used_refresh_hashes' => 'Empreintes deja utilisees'];
+            'revoked_at' => 'Révocation', 'created_at' => 'Création', 'used_refresh_hashes' => 'Empreintes déjà utilisées'];
     }
     public static function attributeLength()
     {
@@ -37,7 +44,7 @@ class McpOauthGrant extends DbObject
     public static function issueCode(McpOauthClient $client, int $userId, int $organizationId, array $request): string
     {
         if (!Organization::allowsExternalIntegration($organizationId)) {
-            throw new \DomainException('Les connexions API et MCP sont bloquees par cette organisation.');
+            throw new \DomainException(self::uiMessage('copy.les_connexions_api_et_mcp_sont_bloquees_par_cette_organisation'));
         }
         if (!UserOrganization::hasActiveMembership($userId, $organizationId) || !\patreonUserCanUseAi($userId, $organizationId)) {
             throw new \DomainException('Un abonnement individuel ou de cette organisation est requis.');

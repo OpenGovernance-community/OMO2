@@ -13,7 +13,17 @@ class Event extends DbObject
                 'une_adresse_est_obligatoire_pour_un_evenement_en_presentiel' => ['text' => 'Une adresse est obligatoire pour un événement en présentiel.', 'context' => 'Validation or action feedback for event.'],
                 'un_lien_de_visio_est_obligatoire_pour_un_evenement_virtuel' => ['text' => 'Un lien de visio est obligatoire pour un événement virtuel.', 'context' => 'Validation or action feedback for event.'],
                 'une_adresse_et_un_lien_de_visio_sont_obligatoires_pour_un_evenement_mixte' => ['text' => 'Une adresse et un lien de visio sont obligatoires pour un événement mixte.', 'context' => 'Validation or action feedback for event.'],
-            ];
+
+                'copy.date_envisageable_mais_pas_encore_confirmee' => ['text' => 'Date envisageable mais pas encore confirmée.', 'context' => 'Interface text in class/dbobject/event.class.php'],
+
+                'option.brouillon' => ['text' => 'Brouillon', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+                'option.l_evenement_est_encore_en_preparation' => ['text' => 'L\'événement est encore en préparation.', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+                'option.option' => ['text' => 'Option', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+                'option.confirme' => ['text' => 'Confirmé', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+                'option.l_evenement_est_planifie_et_pret_a_etre_diffuse' => ['text' => 'L\'événement est planifié et prêt à être diffusé.', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+                'option.annule' => ['text' => 'Annulé', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+                'option.l_evenement_est_conserve_mais_ne_doit_plus_etre_actif' => ['text' => 'L\'événement est conservé mais ne doit plus être actif.', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+        ];
         }
 
     use CalendarTimeBuffer;
@@ -190,20 +200,20 @@ class Event extends DbObject
     {
         return [
             self::STATUS_DRAFT => [
-                'label' => 'Brouillon',
-                'description' => "L'événement est encore en préparation.",
+                'label' => self::uiMessage('option.brouillon'),
+                'description' => self::uiMessage('option.l_evenement_est_encore_en_preparation'),
             ],
             self::STATUS_OPTION => [
-                'label' => 'Option',
-                'description' => 'Date envisageable mais pas encore confirmee.',
+                'label' => self::uiMessage('option.option'),
+                'description' => self::uiMessage('copy.date_envisageable_mais_pas_encore_confirmee'),
             ],
             self::STATUS_CONFIRMED => [
-                'label' => 'Confirmé',
-                'description' => "L'événement est planifié et prêt à être diffusé.",
+                'label' => self::uiMessage('option.confirme'),
+                'description' => self::uiMessage('option.l_evenement_est_planifie_et_pret_a_etre_diffuse'),
             ],
             self::STATUS_CANCELLED => [
-                'label' => 'Annulé',
-                'description' => "L'événement est conservé mais ne doit plus être actif.",
+                'label' => self::uiMessage('option.annule'),
+                'description' => self::uiMessage('option.l_evenement_est_conserve_mais_ne_doit_plus_etre_actif'),
             ],
         ];
     }

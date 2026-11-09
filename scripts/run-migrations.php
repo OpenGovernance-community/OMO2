@@ -12,12 +12,12 @@ function ensureMigrationComposerDependencies(): void
     }
 
     if (!function_exists('exec')) {
-        throw new RuntimeException('Les dependances PHP sont absentes et Composer ne peut pas etre lance sur ce serveur.');
+        throw new RuntimeException('Les dépendances PHP sont absentes et Composer ne peut pas être lance sur ce serveur.');
     }
 
     require_once $projectRoot . '/includes/site_update_admin.php';
     $command = siteUpdateAdminGetComposerCommand(siteUpdateAdminGetPhpBinary());
-    echo "Dependances PHP absentes. Installation avec Composer.\n";
+    echo "Dépendances PHP absentes. Installation avec Composer.\n";
     $output = siteUpdateAdminRunCommand(
         array_merge($command, array('install', '--no-dev', '--prefer-dist', '--no-interaction', '--optimize-autoloader')),
         $projectRoot,
@@ -28,7 +28,7 @@ function ensureMigrationComposerDependencies(): void
     }
 
     if ((int)$exitCode !== 0 || !is_file($autoloadPath)) {
-        throw new RuntimeException('L installation des dependances PHP a echoue.');
+        throw new RuntimeException('L’installation des dépendances PHP a échoué.');
     }
 }
 
@@ -154,7 +154,7 @@ try {
     // Publish for the application database only after every migration succeeded.
     if ($updateState !== []) {
         $newsId = siteUpdateAdminPublishInstalledNews($updateState);
-        if ($newsId > 0) { echo '  - News de mise a jour : ' . $newsId . PHP_EOL; }
+        if ($newsId > 0) { echo '  - News de mise à jour : ' . $newsId . PHP_EOL; }
     }
 
     exit(0);

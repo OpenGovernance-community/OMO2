@@ -53,7 +53,7 @@ class Tension extends DbObject
     public static function attributeDescriptions()
     {
         return [
-            'IDholon' => 'Holon de contexte dans lequel la tension est exprimee.',
+            'IDholon' => 'Holon de contexte dans lequel la tension est exprimée.',
             'title' => 'Titre court de trois mots maximum.',
             'description' => 'Description libre en texte simple.',
         ];

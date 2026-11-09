@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/account-translations.php';
+
 	require_once dirname(__DIR__) . '/config.php';
 	require_once dirname(__DIR__) . '/shared_functions.php';
 ?>
@@ -6,7 +8,7 @@
 	<head>
 		<title>EasyPV - <?=T_("Facilitez-vous la prise de notes !");?>?></title>
 		<meta charset="utf-8">
-		
+
 		<script src="https://code.jquery.com/jquery-3.6.0.js"></script>
 		<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
 		<script>
@@ -39,7 +41,7 @@
 				.left { background:var(--light-bg-color)}
 				.right {  background:var(--light-bg-color)}
 				.bottom { background:var(--midlow-bg-color)}
-				
+
 			}
 		</style>
 	</head>
@@ -50,32 +52,32 @@
 		function fct_motdepasse($object, $colonne, $default) {
 			$content="<input type='password' autocomplete='off' id='password' name='password' placeholder='Choisissez un mot de passe' minlength='12'><br><input type='password' autocomplete='off' id='password2' name='password2' placeholder='Confirmez votre mot de passe' minlength='12'>";
 			$content.="<div class='common-password-policy' data-password-policy='1' data-password-policy-password-selector='#password' data-password-policy-confirm-selector='#password2' data-password-policy-email-selector='#email' data-password-policy-min-length='12' data-password-policy-required-keys='length,lower,upper,digit,special' data-password-policy-status-empty='Le mot de passe doit respecter les criteres ci-dessous.' data-password-policy-status-valid='Mot de passe OK.' data-password-policy-status-invalid='Mot de passe encore incomplet.' data-password-policy-match-empty='Retapez le meme mot de passe pour confirmation.' data-password-policy-match-valid='Confirmation OK.' data-password-policy-match-invalid='La confirmation ne correspond pas encore.'>";
-			$content.="<span class='common-password-policy__status' data-password-status aria-live='polite'>Le mot de passe doit respecter les criteres ci-dessous.</span>";
+			$content.=('<span class=\'common-password-policy__status\' data-password-status aria-live=\'polite\'>' . commonAccountUiT('copy.le_mot_de_passe_doit_respecter_les_criteres_ci_dessous') . '</span>');
 			$content.="<ul class='common-password-policy__rules'>";
-			$content.="<li class='common-password-policy__rule' data-password-rule='length'>Au moins 12 caracteres</li>";
+			$content.=('<li class=\'common-password-policy__rule\' data-password-rule=\'length\'>' . commonAccountUiT('copy.au_moins_12_caracteres') . '</li>');
 			$content.="<li class='common-password-policy__rule' data-password-rule='lower'>Au moins une minuscule</li>";
 			$content.="<li class='common-password-policy__rule' data-password-rule='upper'>Au moins une majuscule</li>";
 			$content.="<li class='common-password-policy__rule' data-password-rule='digit'>Au moins un chiffre</li>";
-			$content.="<li class='common-password-policy__rule' data-password-rule='special'>Au moins un caractere special ou un espace</li>";
-		$content.="<li class='common-password-policy__rule' data-password-rule='email'>Evitez de reprendre votre e-mail ou votre nom d'utilisateur</li>";
+			$content.=('<li class=\'common-password-policy__rule\' data-password-rule=\'special\'>' . commonAccountUiT('copy.au_moins_un_caractere_special_ou_un_espace') . '</li>');
+		$content.=('<li class=\'common-password-policy__rule\' data-password-rule=\'email\'>' . commonAccountUiT('copy.evitez_de_reprendre_votre_e_mail_ou_votre_nom_d_utilisateur') . '</li>');
 			$content.="</ul>";
-			$content.="<span class='common-password-policy__match' data-password-match aria-live='polite'>Retapez le meme mot de passe pour confirmation.</span>";
+			$content.=('<span class=\'common-password-policy__match\' data-password-match aria-live=\'polite\'>' . commonAccountUiT('copy.retapez_le_meme_mot_de_passe_pour_confirmation') . '</span>');
 			$content.="</div>";
 			return array("Mot de passe",$content);
 		}
-		
+
 	// Charge le compte avec cet ID
 	$user=\dbObject\User::findByPasswordResetCode($_GET['code'] ?? null);
-	
+
 	if ($user) {
 		// The form sends the original token; only its hash is stored in the account.
 		$user->set('code', $_GET['code']);
-		
+
 		// Affiche un texte d'intro selon la situation
 		if ($user->get("password")!=null) {
 			// Récupération de mot de passe
 				$title="Récupération du mot de passe";
-				$intro="<p>Veuillez définir un nouveau mot de passe, qui remplaçera le précédent. Si vous n'êtes pas l'auteur de cette demande de réinitialisation, ignorez simplement cette demande et connectez-vous comme normalement.</p>";
+				$intro=('<p>' . commonAccountUiT('copy.veuillez_definir_un_nouveau_mot_de_passe_qui_remplacera_le_precedent_s') . '</p>');
 				$btntxt="Valider le nouveau mot de passe";
 				$params=array(
 					"allowProtectedFields" => true,
@@ -96,19 +98,19 @@
 					"success" => "/license.php"
 				);			
 		}
-		
+
 		// Affiche le formulaire de saisie de cet utilisateur
 				echo "<div class='bottom' style='padding:10px' >".$title."</div>";
-				
-				
+
+
 				echo "<div style='padding:20px;  width:100%; '>";
 
 				echo $intro;
-	
+
 				$user->display("adminEdit.php",$params);	
-				
+
 				echo "<input type='button' id='btn_finalize' value='".str_replace("'","&apos;",$btntxt)."'>";	
-		
+
 	} else {
 		sleep(3);
 		echo "Invalid access code";

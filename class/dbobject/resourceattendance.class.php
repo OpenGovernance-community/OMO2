@@ -40,13 +40,13 @@ class ResourceAttendance extends DbObject
             'resource_id' => 'Ressource',
             'IDuser' => 'Utilisateur',
             'email' => 'E-mail',
-            'display_name' => 'Nom affiche',
-            'is_present' => 'Present',
+            'display_name' => 'Nom affiché',
+            'is_present' => 'Présent',
             'IDuser_checked_by' => 'Coche par',
             'checked_at' => 'Date de pointage',
             'active' => 'Actif',
-            'created_at' => 'Creation',
-            'updated_at' => 'Mise a jour',
+            'created_at' => 'Création',
+            'updated_at' => 'Mise à jour',
         ];
     }
 

@@ -3,6 +3,17 @@ namespace dbObject;
 
 class DecisionParticipant extends DbObject
 {
+    protected static function uiMessageSourceLang(): array
+    {
+        return parent::uiMessageSourceLang() + [
+            'copy.invite' => ['text' => 'Invité', 'context' => 'Interface text in class/dbobject/decisionparticipant.class.php'],
+            'copy.refuse' => ['text' => 'Refusé', 'context' => 'Interface text in class/dbobject/decisionparticipant.class.php'],
+
+            'option.actif' => ['text' => 'Actif', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+            'option.revoque' => ['text' => 'Revoque', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+        ];
+    }
+
     const ROLE_OWNER = 'owner';
     const ROLE_PARTICIPANT = 'participant';
     const ROLE_OBSERVER = 'observer';
@@ -50,7 +61,7 @@ class DecisionParticipant extends DbObject
             'IDdecision_process' => 'Prise de décision',
             'IDuser' => 'Utilisateur',
             'email' => 'E-mail',
-            'display_name' => 'Nom affiche',
+            'display_name' => 'Nom affiché',
             'role' => 'Rôle',
             'status' => 'Statut',
             'access_token' => 'Jeton public',
@@ -100,10 +111,10 @@ class DecisionParticipant extends DbObject
     public static function getStatusCatalog()
     {
         return [
-            self::STATUS_INVITED => 'Invite',
-            self::STATUS_ACTIVE => 'Actif',
-            self::STATUS_DECLINED => 'Refuse',
-            self::STATUS_REVOKED => 'Revoque',
+            self::STATUS_INVITED => self::uiMessage('copy.invite'),
+            self::STATUS_ACTIVE => self::uiMessage('option.actif'),
+            self::STATUS_DECLINED => self::uiMessage('copy.refuse'),
+            self::STATUS_REVOKED => self::uiMessage('option.revoque'),
         ];
     }
 

@@ -3,6 +3,13 @@ namespace dbObject;
 
 class OrganizationalMaturityPublicLink extends DbObject
 {
+    protected static function uiMessageSourceLang(): array
+    {
+        return parent::uiMessageSourceLang() + [
+            'copy.generation_de_lien_impossible' => ['text' => 'Génération de lien impossible.', 'context' => 'Interface text in class/dbobject/organizationalmaturitypubliclink.class.php'],
+        ];
+    }
+
     public static function tableName() { return 'organizational_maturity_public_link'; }
 
     public static function rules()
@@ -22,8 +29,8 @@ class OrganizationalMaturityPublicLink extends DbObject
             'id' => 'ID',
             'IDorganization' => 'Organisation',
             'token' => 'Lien public',
-            'created_at' => 'Cree le',
-            'updated_at' => 'Modifie le',
+            'created_at' => 'Créé le',
+            'updated_at' => 'Modifié le',
         ];
     }
 
@@ -79,7 +86,7 @@ class OrganizationalMaturityPublicLink extends DbObject
             try {
                 $token = bin2hex(random_bytes(16));
             } catch (\Throwable $error) {
-                return ['status' => false, 'message' => 'Generation de lien impossible.'];
+                return ['status' => false, 'message' => self::uiMessage('copy.generation_de_lien_impossible')];
             }
             $item = new self();
             $item->set('IDorganization', $organizationId);

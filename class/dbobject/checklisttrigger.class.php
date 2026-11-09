@@ -34,15 +34,15 @@ class ChecklistTrigger extends DbObject
         return [
             'id' => 'ID',
             'IDchecklist' => 'Processus',
-            'stable_key' => 'Cle stable',
-            'trigger_type' => 'Type de declenchement',
-            'frequency' => 'Frequence',
+            'stable_key' => 'Clé stable',
+            'trigger_type' => 'Type de déclenchement',
+            'frequency' => 'Fréquence',
             'schedule' => 'Moment attendu',
-            'next_trigger_at' => 'Prochain declenchement',
-            'overlap_policy' => 'Si une execution est ouverte',
+            'next_trigger_at' => 'Prochain déclenchement',
+            'overlap_policy' => 'Si une exécution est ouverte',
             'enabled' => 'Active',
-            'created_at' => 'Creation',
-            'updated_at' => 'Mise a jour',
+            'created_at' => 'Création',
+            'updated_at' => 'Mise à jour',
         ];
     }
 
@@ -72,9 +72,9 @@ class ChecklistTrigger extends DbObject
             ],
             'frequency' => $frequencyValues,
             'overlap_policy' => [
-                [self::OVERLAP_CREATE_NEW, 'Creer une nouvelle execution'],
-                [self::OVERLAP_BLOCK, 'Ne pas creer de nouvelle execution'],
-                [self::OVERLAP_RESTART, 'Effacer les executions precedentes et recommencer'],
+                [self::OVERLAP_CREATE_NEW, 'Créer une nouvelle exécution'],
+                [self::OVERLAP_BLOCK, 'Ne pas créer de nouvelle exécution'],
+                [self::OVERLAP_RESTART, 'Effacer les exécutions précédentes et recommencer'],
             ],
         ];
     }

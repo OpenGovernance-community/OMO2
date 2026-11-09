@@ -57,9 +57,9 @@ $cid = $input['holonId'] ?? null;
 if ($cid !== null && (!is_int($cid) || $cid < 1)) $fail('invalid');
 $now = time();
 if (($chat['busy_until'] ?? 0) > $now) $fail('busy', 409);
-$rate = array_values(array_filter($_SESSION['common_assistant_rate'] ?? [], static fn ($time) => $time > $now - 600));
-if (count($rate) >= 20) $fail('rate', 429);
-$rate[] = $now;
+$rate = $_SESSION['common_assistant_rate'] ?? [];
+try { commonAssistantConsumeRate($rate, $now); }
+catch (DomainException $error) { $fail('rate', 429); }
 $_SESSION['common_assistant_rate'] = $rate;
 $turn = bin2hex(random_bytes(12));
 $_SESSION['common_assistant_chats'][$chatId] = $chat + ['updated' => $now];

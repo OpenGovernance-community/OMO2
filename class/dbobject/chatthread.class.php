@@ -33,7 +33,7 @@ class ChatThread extends DbObject
             'id' => 'ID',
             'IDorganization' => 'Organisation',
             'IDuser_created' => 'Créateur',
-            'subject_type' => 'Type d objet',
+            'subject_type' => 'Type d’objet',
             'subject_id' => 'Objet',
             'title' => 'Titre',
             'parameters' => 'Paramètres',
@@ -46,8 +46,8 @@ class ChatThread extends DbObject
     public static function attributeDescriptions()
     {
         return [
-            'subject_type' => 'Type générique de l objet auquel cette discussion est liée.',
-            'subject_id' => 'Identifiant de l objet dans son type.',
+            'subject_type' => 'Type générique de l’objet auquel cette discussion est liée.',
+            'subject_id' => 'Identifiant de l’objet dans son type.',
         ];
     }
 
@@ -244,6 +244,8 @@ class ChatThread extends DbObject
                 'last_message_author_name' => '',
                 'last_message_type' => '',
                 'last_message_at' => '',
+                'last_message_is_anonymous' => false,
+                'last_message_force_anonymous' => false,
             ];
             if ($lastMessageId > 0) {
                 $lastMessageIds[] = $lastMessageId;
@@ -262,7 +264,7 @@ class ChatThread extends DbObject
             $lastParameters[$placeholder] = $messageId;
         }
         $lastRows = self::fetchAll(
-            'SELECT `id`, `IDuser`, `IDdecision_participant`, `IDdocument_share_link`, `author_name`, `message_type`, `created_at`
+            'SELECT `id`, `IDuser`, `IDdecision_participant`, `IDdocument_share_link`, `author_name`, `message_type`, `created_at`, `parameters`
              FROM `chat_message`
              WHERE `id` IN (' . implode(', ', $lastPlaceholders) . ')',
             $lastParameters
@@ -282,6 +284,9 @@ class ChatThread extends DbObject
             $summary['last_message_author_name'] = trim((string)($lastRow['author_name'] ?? ''));
             $summary['last_message_type'] = trim((string)($lastRow['message_type'] ?? ''));
             $summary['last_message_at'] = trim((string)($lastRow['created_at'] ?? ''));
+            $messageParameters = json_decode((string)($lastRow['parameters'] ?? ''), true) ?: [];
+            $summary['last_message_is_anonymous'] = !empty($messageParameters['is_anonymous']) || !empty($messageParameters['anonymity_preserved']);
+            $summary['last_message_force_anonymous'] = !empty($messageParameters['anonymous_by_author']) || !empty($messageParameters['anonymity_preserved']);
         }
         unset($summary);
 

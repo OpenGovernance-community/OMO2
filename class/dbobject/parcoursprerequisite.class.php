@@ -32,7 +32,7 @@
 			return [
 				'id' => 'ID',
 				'IDparcours' => 'Parcours cible',
-				'IDparcours_required' => 'Parcours prerequis',
+				'IDparcours_required' => 'Parcours prérequis',
 			];
 		}
 

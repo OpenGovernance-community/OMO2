@@ -91,7 +91,7 @@ if ($projectId > 0) {
         $projectDocumentResult = $projectDocument->save();
         if (!is_array($projectDocumentResult) || empty($projectDocumentResult['status'])) {
             $duplicate->delete();
-            $error('Impossible d associer le document au projet.');
+            $error(omoDocumentsUiT('impossible_d_associer_le_document_au_projet'));
         }
         $project->recordAssociationHistory('document', (int)$duplicate->getId(), (string)$duplicate->get('title'), 'added', $userId);
     }

@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/document/service-translations.php';
+
 
 if (!function_exists('omoEtherpadNormalizeBaseUrl')) {
     function omoEtherpadNormalizeBaseUrl(string $baseUrl): string
@@ -199,7 +201,7 @@ if (!function_exists('omoEtherpadApiRequest')) {
         $curlError = trim((string)curl_error($curl));
         $httpCode = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
         if ($response === false) {
-            return array('status' => false, 'text' => $curlError !== '' ? $curlError : 'La requete Etherpad a echoue.');
+            return array('status' => false, 'text' => $curlError !== '' ? $curlError : commonDocumentServiceT('copy.la_requete_etherpad_a_echoue'));
         }
 
         $payload = json_decode((string)$response, true);
@@ -209,7 +211,7 @@ if (!function_exists('omoEtherpadApiRequest')) {
 
         $code = (int)($payload['code'] ?? -1);
         if ($httpCode < 200 || $httpCode >= 300 || $code !== 0) {
-            $message = trim((string)($payload['message'] ?? 'La requete Etherpad a echoue.'));
+            $message = trim((string)($payload['message'] ?? commonDocumentServiceT('copy.la_requete_etherpad_a_echoue')));
             return array(
                 'status' => false,
                 'code' => $code,

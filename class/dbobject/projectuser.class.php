@@ -26,7 +26,7 @@ class ProjectUser extends DbObject
             'id' => 'ID',
             'IDproject' => 'Projet',
             'IDuser' => 'Personne',
-            'datecreation' => 'Date d ajout',
+            'datecreation' => 'Date d’ajout',
             'active' => 'Actif',
         ];
     }

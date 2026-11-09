@@ -10,7 +10,7 @@ class EventSharedDocument extends DbObject
     {
         return [[['IDevent', 'IDdocument'], 'required'], [['IDevent', 'IDdocument'], 'fk'], [['id'], 'integer'], [['id'], 'safe']];
     }
-    public static function attributeLabels() { return ['IDevent' => 'Reunion', 'IDdocument' => 'Document partage']; }
+    public static function attributeLabels() { return ['IDevent' => 'Réunion', 'IDdocument' => 'Document partage']; }
 
     public function save()
     {

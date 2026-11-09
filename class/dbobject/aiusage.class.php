@@ -16,10 +16,10 @@ class AiUsage extends DbObject
     public static function attributeLabels()
     {
         return ['id' => 'ID', 'IDuser' => 'Utilisateur', 'IDorganization' => 'Organisation', 'origin' => 'Origine',
-            'kind' => 'Type', 'feature' => 'Fonction', 'provider' => 'Fournisseur', 'model' => 'Modele',
+            'kind' => 'Type', 'feature' => 'Fonction', 'provider' => 'Fournisseur', 'model' => 'Modèle',
             'input_tokens' => 'Jetons entrants', 'output_tokens' => 'Jetons sortants', 'total_tokens' => 'Jetons totaux',
-            'input_chars' => 'Caracteres entrants', 'output_chars' => 'Caracteres sortants', 'audio_bytes' => 'Octets audio',
-            'success' => 'Succes', 'http_status' => 'Statut HTTP', 'created_at' => 'Date'];
+            'input_chars' => 'Caractères entrants', 'output_chars' => 'Caractères sortants', 'audio_bytes' => 'Octets audio',
+            'success' => 'Succès', 'http_status' => 'Statut HTTP', 'created_at' => 'Date'];
     }
     public static function attributeLength() { return ['origin' => 20, 'kind' => 20, 'feature' => 190, 'provider' => 40, 'model' => 120]; }
 

@@ -23,10 +23,10 @@ class ProjectExternalEvent extends DbObject
 
     public static function attributeLabels()
     {
-        return ['IDproject' => 'Projet', 'IDexternalcalendarevent' => 'Evenement externe',
+        return ['IDproject' => 'Projet', 'IDexternalcalendarevent' => 'Événement externe',
             'title' => 'Titre', 'calendar_title' => 'Calendrier source', 'description' => 'Description',
-            'location' => 'Lieu', 'start_at' => 'Debut', 'end_at' => 'Fin', 'is_all_day' => 'Journee entiere',
-            'source_missing' => 'Source indisponible', 'last_seen_at' => 'Derniere presence dans la source', 'datecreation' => 'Date d ajout'];
+            'location' => 'Lieu', 'start_at' => 'Début', 'end_at' => 'Fin', 'is_all_day' => 'Journee entiere',
+            'source_missing' => 'Source indisponible', 'last_seen_at' => 'Dernière présence dans la source', 'datecreation' => 'Date d’ajout'];
     }
 
     public static function attributeLength() { return ['title' => 1000, 'calendar_title' => 190, 'location' => 1000]; }

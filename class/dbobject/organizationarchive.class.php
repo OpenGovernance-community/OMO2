@@ -4,6 +4,31 @@ namespace dbObject;
 /** Portable ZIP transport shared by export, import and the import preview. */
 class OrganizationArchive
 {
+        private static function uiMessage(string $key, array $variables = []): string
+{
+    static $sourceLang = [
+        'copy.repertoire_des_images_introuvable' => ['text' => 'Répertoire des images introuvable.', 'context' => 'Interface text in class/dbobject/organizationarchive.class.php'],
+        'copy.trop_d_images_dans_l_export_2000_maximum' => ['text' => 'Trop d’images dans l’export (2000 maximum).', 'context' => 'Interface text in class/dbobject/organizationarchive.class.php'],
+        'copy.les_images_depassent_la_taille_maximale_de_128_mio' => ['text' => 'Les images dépassent la taille maximale de 128 Mio.', 'context' => 'Interface text in class/dbobject/organizationarchive.class.php'],
+        'copy.impossible_de_creer_le_zip' => ['text' => 'Impossible de créer le ZIP.', 'context' => 'Interface text in class/dbobject/organizationarchive.class.php'],
+        'copy.ecriture_du_json_impossible' => ['text' => 'Écriture du JSON impossible.', 'context' => 'Interface text in class/dbobject/organizationarchive.class.php'],
+        'copy.ecriture_d_une_image_impossible' => ['text' => 'Écriture d’une image impossible.', 'context' => 'Interface text in class/dbobject/organizationarchive.class.php'],
+        'copy.entree_zip_non_autorisee' => ['text' => 'Entrée ZIP non autorisée.', 'context' => 'Interface text in class/dbobject/organizationarchive.class.php'],
+        'copy.image_corrompue_ou_format_non_autorise' => ['text' => 'Image corrompue ou format non autorisé.', 'context' => 'Interface text in class/dbobject/organizationarchive.class.php'],
+        'copy.reference_image_absente_du_zip' => ['text' => 'Référence image absente du ZIP.', 'context' => 'Interface text in class/dbobject/organizationarchive.class.php'],
+        'copy.le_repertoire_d_import_des_images_n_est_pas_accessible_en_ecriture_ver' => ['text' => 'Le répertoire d’import des images n’est pas accessible en écriture. Vérifiez les droits du serveur web.', 'context' => 'Interface text in class/dbobject/organizationarchive.class.php'],
+        'copy.impossible_d_enregistrer_les_images' => ['text' => 'Impossible d’enregistrer les images.', 'context' => 'Interface text in class/dbobject/organizationarchive.class.php'],
+        'copy.ecriture_image_incomplete' => ['text' => 'Écriture image incomplète.', 'context' => 'Interface text in class/dbobject/organizationarchive.class.php'],
+        'copy.le_fichier_doit_etre_un_export_omo_compact_version_4' => ['text' => 'Le fichier doit être un export OMO compact version 4.', 'context' => 'Interface text in class/dbobject/organizationarchive.class.php'],
+    ];
+    require_once __DIR__ . '/../../common/translation_bundles.php';
+    static $bundles = [];
+    $locale = \translationBundleResolveRequestLocale();
+    $bundle = class_exists(\dbObject\TranslationBundle::class)
+        ? ($bundles[$locale] ??= \loadTranslationBundle('class_dbobject_organizationarchive_class', $locale, $sourceLang)) : $sourceLang;
+    return \t($key, $variables, $bundle, $sourceLang);
+}
+
     private const MAX_TOTAL = 134217728;
     private const MAX_JSON = 33554432;
     private const MAX_IMAGE = 16777216;
@@ -34,7 +59,7 @@ class OrganizationArchive
     public static function create(array $payload, string $destination): array
     {
         $root = realpath((string)($_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__, 2)));
-        if (!$root) { throw new \RuntimeException('Repertoire des images introuvable.'); }
+        if (!$root) { throw new \RuntimeException(self::uiMessage('copy.repertoire_des_images_introuvable')); }
         $assets = [];
         $warnings = [];
         $total = 0;
@@ -53,9 +78,9 @@ class OrganizationArchive
             $hash = hash_file('sha256', $file);
             $entry = 'images/'.$hash.'.'.$extension;
             if (!isset($assets[$entry])) {
-                if (count($assets) >= 2000) { throw new \RuntimeException('Trop d images dans l export (2000 maximum).'); }
+                if (count($assets) >= 2000) { throw new \RuntimeException(self::uiMessage('copy.trop_d_images_dans_l_export_2000_maximum')); }
                 $total += $size;
-                if ($total > self::MAX_TOTAL) { throw new \RuntimeException('Les images depassent la taille maximale de 128 Mio.'); }
+                if ($total > self::MAX_TOTAL) { throw new \RuntimeException(self::uiMessage('copy.les_images_depassent_la_taille_maximale_de_128_mio')); }
                 $assets[$entry] = ['file' => $file, 'sha256' => $hash, 'mime' => $info['mime'], 'size' => $size];
             }
             return $entry;
@@ -67,11 +92,11 @@ class OrganizationArchive
         $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
         if (strlen($json) > self::MAX_JSON || strlen($json) + $total > self::MAX_TOTAL) { throw new \RuntimeException('Archive trop volumineuse.'); }
         $zip = new \ZipArchive();
-        if ($zip->open($destination, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) { throw new \RuntimeException('Impossible de creer le ZIP.'); }
+        if ($zip->open($destination, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) { throw new \RuntimeException(self::uiMessage('copy.impossible_de_creer_le_zip')); }
         try {
-            if (!$zip->addFromString('organization.json', $json)) { throw new \RuntimeException('Ecriture du JSON impossible.'); }
+            if (!$zip->addFromString('organization.json', $json)) { throw new \RuntimeException(self::uiMessage('copy.ecriture_du_json_impossible')); }
             foreach ($assets as $entry => $asset) {
-                if (!$zip->addFile($asset['file'], $entry)) { throw new \RuntimeException('Ecriture d une image impossible.'); }
+                if (!$zip->addFile($asset['file'], $entry)) { throw new \RuntimeException(self::uiMessage('copy.ecriture_d_une_image_impossible')); }
             }
         } catch (\Throwable $e) { $zip->close(); @unlink($destination); throw $e; }
         if (!$zip->close()) { @unlink($destination); throw new \RuntimeException('Finalisation du ZIP impossible.'); }
@@ -102,7 +127,7 @@ class OrganizationArchive
             for ($i = 0; $i < $zip->numFiles; $i++) {
                 $stat = $zip->statIndex($i);
                 $name = $stat['name'];
-                if (isset($entries[$name]) || ($name !== 'organization.json' && !preg_match('/^images\/[a-f0-9]{64}\.(png|jpg|gif|webp|avif)$/D', $name))) { throw new \RuntimeException('Entree ZIP non autorisee.'); }
+                if (isset($entries[$name]) || ($name !== 'organization.json' && !preg_match('/^images\/[a-f0-9]{64}\.(png|jpg|gif|webp|avif)$/D', $name))) { throw new \RuntimeException(self::uiMessage('copy.entree_zip_non_autorisee')); }
                 $limit = $name === 'organization.json' ? self::MAX_JSON : self::MAX_IMAGE;
                 $total += $stat['size'];
                 if ($stat['size'] > $limit || $total > self::MAX_TOTAL || !empty($stat['encryption_method'])) { throw new \RuntimeException('ZIP chiffre ou trop volumineux.'); }
@@ -120,30 +145,30 @@ class OrganizationArchive
                 $info = is_string($data) ? @getimagesizefromstring($data) : false;
                 $hash = is_string($data) ? hash('sha256', $data) : '';
                 if (!$info || !isset(self::TYPES[$info['mime']]) || ($meta['mime'] ?? '') !== $info['mime'] || ($meta['sha256'] ?? '') !== $hash || strlen($data) !== (int)($meta['size'] ?? -1)
-                    || $entry !== 'images/'.$hash.'.'.self::TYPES[$info['mime']]) { throw new \RuntimeException('Image corrompue ou format non autorise.'); }
+                    || $entry !== 'images/'.$hash.'.'.self::TYPES[$info['mime']]) { throw new \RuntimeException(self::uiMessage('copy.image_corrompue_ou_format_non_autorise')); }
                 $bytes[$entry] = $data;
             }
             // Validate every reference before creating any file.
             self::media($payload, function (string $path) use ($media): string {
-                if ($path !== '' && !isset($media[$path])) { throw new \RuntimeException('Reference image absente du ZIP.'); }
+                if ($path !== '' && !isset($media[$path])) { throw new \RuntimeException(self::uiMessage('copy.reference_image_absente_du_zip')); }
                 return $path;
             });
             if ($materialize && $bytes !== []) {
                 $root = realpath((string)($_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__, 2)));
-                if (!$root) { throw new \RuntimeException('Repertoire des images introuvable.'); }
+                if (!$root) { throw new \RuntimeException(self::uiMessage('copy.repertoire_des_images_introuvable')); }
                 $importRoot = $root.'/img/upload/import';
                 if ((!is_dir($importRoot) && !@mkdir($importRoot, 0755, true) && !is_dir($importRoot)) || !is_writable($importRoot)) {
-                    throw new \RuntimeException('Le repertoire d import des images n est pas accessible en ecriture. Verifiez les droits du serveur web.');
+                    throw new \RuntimeException(self::uiMessage('copy.le_repertoire_d_import_des_images_n_est_pas_accessible_en_ecriture_ver'));
                 }
                 $relative = '/img/upload/import/'.bin2hex(random_bytes(8));
                 $directory = $root.$relative;
-                if (!@mkdir($directory, 0755)) { throw new \RuntimeException('Impossible d enregistrer les images.'); }
+                if (!@mkdir($directory, 0755)) { throw new \RuntimeException(self::uiMessage('copy.impossible_d_enregistrer_les_images')); }
                 $localPaths = [];
                 foreach ($bytes as $entry => $data) {
                     $localPaths[$entry] = $relative.'/'.bin2hex(random_bytes(16)).'.'.pathinfo($entry, PATHINFO_EXTENSION);
                     $path = $root.$localPaths[$entry];
                     $files[] = $path;
-                    if (file_put_contents($path, $data, LOCK_EX) !== strlen($data)) { throw new \RuntimeException('Ecriture image incomplete.'); }
+                    if (file_put_contents($path, $data, LOCK_EX) !== strlen($data)) { throw new \RuntimeException(self::uiMessage('copy.ecriture_image_incomplete')); }
                 }
                 self::media($payload, fn(string $path): string => $path === '' ? '' : $localPaths[$path]);
             }
@@ -160,7 +185,7 @@ class OrganizationArchive
 
     private static function validatePayload($payload): void
     {
-        if (!is_array($payload) || ($payload['format'] ?? '') !== OrganizationExport::FORMAT || (int)($payload['version'] ?? 0) !== 4) { throw new \RuntimeException('Le fichier doit etre un export OMO compact version 4.'); }
+        if (!is_array($payload) || ($payload['format'] ?? '') !== OrganizationExport::FORMAT || (int)($payload['version'] ?? 0) !== 4) { throw new \RuntimeException(self::uiMessage('copy.le_fichier_doit_etre_un_export_omo_compact_version_4')); }
     }
 
     private static function media(array &$node, callable $convert): void

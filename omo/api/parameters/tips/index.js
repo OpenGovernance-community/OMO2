@@ -36,6 +36,7 @@ window.commonPageScripts['/omo/api/parameters/tips/index.js'] = function (config
             const response = await fetch(form.action, {method: 'POST', body: data, credentials: 'same-origin'});
             const result = await response.json();
             if (!response.ok || !result.status) throw new Error(result.message || config.error);
+            if (typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(form);
             window.commonNotify(result.message, 'success');
             reload(result.id);
         } catch (error) {

@@ -6,6 +6,25 @@ require_once dirname(__DIR__, 2) . '/common/object_mail/validation.php';
 /** One permission-checked audience shared by the OMO composer and MCP. */
 final class ObjectAudience
 {
+        private static function uiMessage(string $key, array $variables = []): string
+{
+    static $sourceLang = [
+        'copy.un_membre_selectionne_est_indisponible_ou_inactif_dans_cette_organisat' => ['text' => 'Un membre sélectionné est indisponible ou inactif dans cette organisation.', 'context' => 'Interface text in class/dbobject/objectaudience.class.php'],
+        'copy.membres_actifs_de_l_organisation_autorisee_ou_selection_explicite_par_' => ['text' => 'Membres actifs de l’organisation autorisée, ou sélection explicite par user_ids. Coordonnées propres à cette organisation. Aucun destinataire externe.', 'context' => 'Interface text in class/dbobject/objectaudience.class.php'],
+        'copy.membres_effectifs_du_holon_y_compris_les_roles_descendants_des_cercles' => ['text' => 'Membres effectifs du holon, y compris les rôles descendants des cercles et les appartenances calculées. Le holon racine représente les membres actifs de l’organisation.', 'context' => 'Interface text in class/dbobject/objectaudience.class.php'],
+        'copy.liste_native_des_invitations_individuelles_et_des_holons_invites_ou_me' => ['text' => 'Liste native des invitations individuelles et des holons invités, ou membres du holon de la réunion en leur absence, indépendante de la présence. Les inscriptions publiques et adresses invitées sont visibles aux gestionnaires. Un contact référence peut être liste sans être éligible à l’envoi. Une invitation refusée ne reçoit pas de message.', 'context' => 'Interface text in class/dbobject/objectaudience.class.php'],
+        'copy.responsable_et_personnes_affectees_activement_au_projet_les_abonnement' => ['text' => 'Responsable et personnes affectées activement au projet. Les abonnements et membres du holon ne constituent pas une invitation au projet.', 'context' => 'Interface text in class/dbobject/objectaudience.class.php'],
+        'copy.participants_actifs_deja_references_dans_la_decision_sans_votes_ni_jet' => ['text' => 'Participants actifs déjà référencés dans la décision, sans votes ni jetons personnels. Les participants refusés ou révoqués ne reçoivent pas de message.', 'context' => 'Interface text in class/dbobject/objectaudience.class.php'],
+        'copy.un_destinataire_selectionne_est_indisponible_ou_invalide' => ['text' => 'Un destinataire sélectionné est indisponible ou invalide.', 'context' => 'Interface text in class/dbobject/objectaudience.class.php'],
+    ];
+    require_once __DIR__ . '/../../common/translation_bundles.php';
+    static $bundles = [];
+    $locale = \translationBundleResolveRequestLocale();
+    $bundle = class_exists(\dbObject\TranslationBundle::class)
+        ? ($bundles[$locale] ??= \loadTranslationBundle('class_dbobject_objectaudience_class', $locale, $sourceLang)) : $sourceLang;
+    return \t($key, $variables, $bundle, $sourceLang);
+}
+
     public const TYPES = ['organization', 'holon', 'event', 'project', 'decision'];
 
     public static function resolve(int $organizationId, string $type, int $id, ?array $userIds = null): array
@@ -64,13 +83,13 @@ final class ObjectAudience
             foreach ($memberships as $membership) $addUser((int)$membership->get('IDuser'), 'organization_member');
             // A selected, unavailable member must never turn into an organization-wide send.
             if ($userIds !== null) foreach ($userIds as $memberId) {
-                if (!isset($members['user:' . $memberId])) throw new \DomainException('Un membre selectionne est indisponible ou inactif dans cette organisation.');
+                if (!isset($members['user:' . $memberId])) throw new \DomainException(self::uiMessage('copy.un_membre_selectionne_est_indisponible_ou_inactif_dans_cette_organisat'));
             }
-            $semantics = 'Membres actifs de l organisation autorisee, ou selection explicite par user_ids. Coordonnees propres a cette organisation. Aucun destinataire externe.';
+            $semantics = self::uiMessage('copy.membres_actifs_de_l_organisation_autorisee_ou_selection_explicite_par_');
         } elseif ($object instanceof Holon) {
             if (!$org->containsHolon($object) || !$object->get('visible') || !$object->canViewDetail()) throw new \DomainException('Holon indisponible.');
             foreach ($object->getAssociatedMemberUserIds(['organizationId' => $organizationId, 'activeOnly' => true, 'skipPermissionFilter' => true]) as $memberId) $addUser((int)$memberId, 'member');
-            $semantics = 'Membres effectifs du holon, y compris les roles descendants des cercles et les appartenances calculees. Le holon racine represente les membres actifs de l organisation.';
+            $semantics = self::uiMessage('copy.membres_effectifs_du_holon_y_compris_les_roles_descendants_des_cercles');
         } elseif ($object instanceof Event) {
             require_once dirname(__DIR__, 2) . '/omo/api/calendar/permissions_shared.php';
             $canManage = \omoCalendarCanEditEvent($object, $organizationId, $uid, $org->getStructuralRootHolon(), false);
@@ -104,13 +123,13 @@ final class ObjectAudience
                 }
             }
             foreach (array_replace($groupStatuses, $individualStatuses) as $key => $status) if (isset($members[$key])) $members[$key]['status'] = $status;
-            $semantics = 'Liste native des invitations individuelles et des holons invites, ou membres du holon de la reunion en leur absence, independante de la presence. Les inscriptions publiques et adresses invitees sont visibles aux gestionnaires. Un contact reference peut etre liste sans etre eligible a l envoi. Une invitation refusee ne recoit pas de message.';
+            $semantics = self::uiMessage('copy.liste_native_des_invitations_individuelles_et_des_holons_invites_ou_me');
         } elseif ($object instanceof Project) {
             $addUser((int)$object->get('IDuser'), 'responsible');
             $assignments = new ArrayProjectUser();
             $assignments->load(['where' => [['field' => 'IDproject', 'value' => $id], ['field' => 'active', 'value' => 1]]]);
             foreach ($assignments as $assignment) $addUser((int)$assignment->get('IDuser'), 'assignee');
-            $semantics = 'Responsable et personnes affectees activement au projet. Les abonnements et membres du holon ne constituent pas une invitation au projet.';
+            $semantics = self::uiMessage('copy.responsable_et_personnes_affectees_activement_au_projet_les_abonnement');
         } elseif ($object instanceof DecisionProcess) {
             $canManage = $object->canUseManagementPermission('CAN_EDIT_DECISION', $uid);
             foreach ($object->getParticipants(true) as $participant) {
@@ -120,7 +139,7 @@ final class ObjectAudience
                 if ($memberId > 0) $addUser($memberId, (string)$participant->get('role'), $status);
                 elseif ($canManage) $addExternal((string)$participant->get('email'), (string)$participant->get('display_name'), (string)$participant->get('role'), $status);
             }
-            $semantics = 'Participants actifs deja references dans la decision, sans votes ni jetons personnels. Les participants refuses ou revoques ne recoivent pas de message.';
+            $semantics = self::uiMessage('copy.participants_actifs_deja_references_dans_la_decision_sans_votes_ni_jet');
         }
         ksort($members, SORT_STRING);
         $recipients = [];
@@ -156,7 +175,7 @@ final class ObjectAudience
         $selected = [];
         foreach ($memberIds as $memberId) {
             if (!is_string($memberId) || !isset($eligible[$memberId]) || isset($selected[$memberId])) {
-                throw new \DomainException('Un destinataire selectionne est indisponible ou invalide.');
+                throw new \DomainException(self::uiMessage('copy.un_destinataire_selectionne_est_indisponible_ou_invalide'));
             }
             $selected[$memberId] = true;
         }

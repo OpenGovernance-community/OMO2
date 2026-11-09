@@ -168,7 +168,7 @@ $sourceLang = array_merge(commonMeetingRecurrenceSourceLang(), commonCalendarAva
         'context' => 'Validation error for a failed or incomplete meeting attachment upload.',
     ],
     'calendar.create.error.document_url' => [
-        'text' => 'Saisissez une adresse de lien valide commencant par https:// ou http://.',
+        'text' => 'Saisissez une adresse de lien valide commençant par https:// ou http://.',
         'context' => 'Validation error for a missing or invalid meeting document URL.',
     ],
     'calendar.create.field.document_template' => [

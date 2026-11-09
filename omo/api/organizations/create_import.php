@@ -143,7 +143,7 @@ if (empty($result['status']) || !($result['organization'] ?? null) instanceof \d
     $journalReference = trim((string)($result['importJournalReference'] ?? ''));
     $message = (string)($result['message'] ?? omoOrganizationsUiT('l_import_de_la_nouvelle_organisation_a_echoue'));
     if ($journalReference !== '') {
-        $message .= ' Reference du journal : ' . $journalReference . '.';
+        $message .= omoOrganizationsUiT('copy.reference_du_journal_journalreference', ['journalReference' => $journalReference]);
     }
     echo json_encode(array(
         'status' => false,

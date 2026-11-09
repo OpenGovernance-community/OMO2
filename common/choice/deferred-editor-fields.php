@@ -23,14 +23,14 @@ function omoDeferredEditorT(string $key): string
         'priority' => ['text' => 'Priorité', 'context' => 'Deferred project priority'],
         'importance' => ['text' => 'Importance stratégique', 'context' => 'Deferred project strategic importance'],
         'blocked_reason' => ['text' => 'Motif du blocage', 'context' => 'Deferred project blocking reason'],
-        'blocked_until' => ['text' => 'Date de deblocage', 'context' => 'Deferred project follow-up date'],
+        'blocked_until' => ['text' => 'Date de déblocage', 'context' => 'Deferred project follow-up date'],
         'save' => ['text' => 'Enregistrer la modification', 'context' => 'Deferred proposal save action'],
         'cancel' => ['text' => 'Annuler', 'context' => 'Deferred proposal cancel action'],
         'move_destination' => ['text' => 'Destination', 'context' => 'Deferred holon move destination'],
         'move_help' => ['text' => 'Le déplacement sera appliqué après validation de la proposition.', 'context' => 'Deferred holon move explanation'],
         'move_empty' => ['text' => 'Aucune destination compatible et autorisée.', 'context' => 'Deferred holon move without destination'],
         'creation_space' => ['text' => 'Espace de création', 'context' => 'Space receiving an object created by a PV proposal'],
-        'creation_space_hint' => ['text' => 'Choisissez un espace autorise par les droits collectifs du holon du PV.', 'context' => 'Collective permission boundary for a PV proposal creation destination'],
+        'creation_space_hint' => ['text' => 'Choisissez un espace autorisé par les droits collectifs du holon du PV.', 'context' => 'Collective permission boundary for a PV proposal creation destination'],
     ];
     static $bundle = null;
     $bundle ??= omoLoadTranslationBundle('omo_deferred_editor_fields', $sourceLang);

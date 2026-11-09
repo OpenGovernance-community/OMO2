@@ -18,7 +18,7 @@ class ProjectRecurringTask extends DbObject
 
     public static function attributeLabels()
     {
-        return ['id' => 'ID', 'IDproject' => 'Projet', 'IDrecurringtask' => 'Tache recurrente', 'datecreation' => 'Date d ajout'];
+        return ['id' => 'ID', 'IDproject' => 'Projet', 'IDrecurringtask' => 'Tâche récurrente', 'datecreation' => 'Date d’ajout'];
     }
 
     public function save()

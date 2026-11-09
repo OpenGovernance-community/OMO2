@@ -47,7 +47,7 @@
 	if ((int)$pv->get("IDuser") !== (int)$_SESSION["currentUser"]) {
 		echo json_encode(array(
 			'error' => true,
-			'errorMsg' => T_('Acces refuse')
+			'errorMsg' => T_('Accès refusé')
 		));
 		exit;
 	}
@@ -56,7 +56,7 @@
 	if (!is_array($data)) {
 		echo json_encode(array(
 			'error' => true,
-			'errorMsg' => T_('Le document sauvegarde n est plus lisible')
+			'errorMsg' => T_('Le document sauvegardé n’est plus lisible')
 		));
 		exit;
 	}

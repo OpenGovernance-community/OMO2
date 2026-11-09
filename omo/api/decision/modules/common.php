@@ -13,6 +13,7 @@ use dbObject\User;
 
 require_once dirname(__DIR__, 4) . '/common/choice/proposal-dates.php';
 require_once dirname(__DIR__, 4) . '/common/choice/process-schedule.php';
+require_once dirname(__DIR__, 4) . '/common/choice/decision-visibility.php';
 
 if (!class_exists('OmoDecisionModuleCapturedResponse', false)) {
     class OmoDecisionModuleCapturedResponse extends RuntimeException
@@ -959,7 +960,7 @@ if (!function_exists('omoDecisionRenderProposalSupplementHtml')) {
 
         if ($infoUrl !== null) {
             $classAttribute = trim((string)$linkClass) !== '' ? ' class="' . $escape(trim((string)$linkClass)) . '"' : '';
-            $html .= '<a' . $classAttribute . ' href="' . $escape($infoUrl) . '" target="_blank" rel="noopener noreferrer">Plus d infos</a>';
+            $html .= '<a' . $classAttribute . ' href="' . $escape($infoUrl) . '" target="_blank" rel="noopener noreferrer">Plus d’infos</a>';
         }
 
         return $html;
@@ -1167,6 +1168,7 @@ if (!function_exists('omoDecisionCanAccessProposalDiscussion')) {
                 omoDecisionGetContextAccountUserId($context) > 0
                 || omoDecisionGetContextParticipantId($context) > 0
             )
+            && (!empty($context['hasParticipation']) || !empty($context['isOwner']))
             && !empty($context['canView'])
             && $proposal->areDiscussionsEnabled()
             && (int)$proposal->get('active') === 1
@@ -1210,13 +1212,13 @@ if (!function_exists('omoDecisionResolveExternalParticipantName')) {
 }
 
 if (!function_exists('omoDecisionResolveProposalParticipantName')) {
-    function omoDecisionResolveProposalParticipantName(DecisionProcess $decision, $userId, $fallbackName = '', $anonymous = false, $participantId = 0)
+    function omoDecisionResolveProposalParticipantName(DecisionProcess $decision, $userId, $fallbackName = '', $anonymous = false, $participantId = 0, $anonymousByAuthor = false)
     {
         $userId = (int)$userId;
         $participantId = (int)$participantId;
         $fallbackName = trim((string)$fallbackName);
         $isAdministrator = $userId > 0 && $userId === (int)$decision->get('IDuser');
-        if (!empty($anonymous) && !$isAdministrator) {
+        if (!empty($anonymous) && (!$isAdministrator || $anonymousByAuthor)) {
             if ($participantId > 0) {
                 return $decision->getAnonymousPseudonymForParticipant($participantId);
             }
@@ -1374,17 +1376,20 @@ if (!function_exists('omoDecisionRenderProposalMetadata')) {
                 $lastMessageType = (string)($summary['last_message_type'] ?? '');
                 $lastMessageUserId = (int)($summary['last_message_user_id'] ?? 0);
                 $lastMessageParticipantId = (int)($summary['last_message_participant_id'] ?? 0);
+                $lastMessageIsAnonymous = !empty($summary['last_message_is_anonymous'])
+                    || $proposal->isDiscussionAnonymous();
                 if ($lastMessageType === 'system') {
                     $lastAuthor = omoDecisionProposalT('decisions.proposals.metadata.system');
-                } elseif ($isAnonymous && $lastMessageUserId <= 0 && $lastMessageParticipantId > 0) {
+                } elseif ($lastMessageIsAnonymous && $lastMessageUserId <= 0 && $lastMessageParticipantId > 0) {
                     $lastAuthor = $decision->getAnonymousPseudonymForParticipant($lastMessageParticipantId);
                 } else {
                     $lastAuthor = omoDecisionResolveProposalParticipantName(
                         $decision,
                         $lastMessageUserId,
                         trim((string)($summary['last_message_author_name'] ?? '')),
-                        $isAnonymous,
-                        $lastMessageParticipantId
+                        $lastMessageIsAnonymous,
+                        $lastMessageParticipantId,
+                        !empty($summary['last_message_force_anonymous'])
                     );
                 }
                 if ($lastAuthor === '') {
@@ -1420,6 +1425,7 @@ if (!function_exists('omoDecisionCanEditProposalFromPublicInterface')) {
         $userId = omoDecisionGetContextAccountUserId($context);
         $participantId = omoDecisionGetContextParticipantId($context);
         return $decision instanceof DecisionProcess
+            && (!empty($context['hasParticipation']) || !empty($context['isOwner']))
             && !$decision->hasConsultationEnded()
             && !$decision->hasEvaluationStarted()
             && $proposal->canBeEditedByActor($userId, $participantId);
@@ -2741,7 +2747,7 @@ if (!function_exists('omoDecisionBuildInvitationEditorState')) {
             'allowPublicSelfRegistration' => $allowPublicSelfRegistration,
             'holonTree' => $holonTree,
             'hasHolonStructure' => is_array($holonTree),
-            'currentContextLabel' => $effectiveHolon instanceof Holon ? 'du contexte courant' : 'de l organisation',
+            'currentContextLabel' => $effectiveHolon instanceof Holon ? omoDecisionUiT('copy.du_contexte_courant') : 'de l’organisation',
             'memberships' => $memberships,
         ];
     }
@@ -2772,7 +2778,7 @@ if (!function_exists('omoDecisionApplyInvitationSelections')) {
             if (!$holon->load($holonId) || !$organization->containsHolon($holon) || !$holon->canViewDetail()) {
                 return [
                     'status' => false,
-                    'message' => \dbObject\Organization::formatLexiconText('Un holon selectionne est invalide.'),
+                    'message' => \dbObject\Organization::formatLexiconText('Un holon sélectionné est invalide.'),
                 ];
             }
 

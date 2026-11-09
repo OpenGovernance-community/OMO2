@@ -104,7 +104,7 @@ function commonAssistantFormatAnswer(string $answer, array $links): string
     }, $answer);
 }
 
-function commonAssistantRun(array $grant, array $history, string $question, string $locale, ?int $holonId = null, ?callable $request = null): array
+function commonAssistantRun(array $grant, array $history, string $question, string $locale, ?int $holonId = null, ?callable $request = null, string $format = 'web'): array
 {
     $organization = \dbObject\McpStructure::organization($grant);
     if ($holonId !== null) \dbObject\McpContent::context($grant, $organization, $holonId);
@@ -113,9 +113,11 @@ function commonAssistantRun(array $grant, array $history, string $question, stri
         . 'You can only consult the current organization using the supplied tools and the signed-in viewer rights. '
         . 'Never claim to have changed data, sent email, created, scheduled or deleted anything. '
         . 'For actions, explain how and link to the relevant returned application page; event pages contain the invitations and email controls. '
-        . 'Use concise Markdown with paragraphs, short headings when useful, bold, simple lists and links [label](url), never HTML. '
-        . 'Use a Markdown pipe table when comparing several records with common fields (such as projects, deadlines and status), preferably 2 to 4 short columns. '
-        . 'Tables must have a header and separator row. Keep cells short, escape literal pipes as \\|, and put explanations below the table. Do not force a table for a simple answer. '
+        . ($format === 'telegram'
+            ? 'The answer will be sent in Telegram as plain text. Use short paragraphs and bullet lists. Never use tables, HTML, headings, bold markers or code fences. For comparisons, use one bullet per record with labeled fields. Links may use [label](url) and will be converted by the delivery adapter. '
+            : 'Use concise Markdown with paragraphs, short headings when useful, bold, simple lists and links [label](url), never HTML. '
+                . 'Use a Markdown pipe table when comparing several records with common fields (such as projects, deadlines and status), preferably 2 to 4 short columns. '
+                . 'Tables must have a header and separator row. Keep cells short, escape literal pipes as \\|, and put explanations below the table. Do not force a table for a simple answer. ')
         . 'Only link to URLs returned by tools or the page context. '
         . 'Keep relative URLs exactly as supplied (starting with /omo/); never prepend a host or invent an application domain. '
         . 'Do not guess names, responsibilities, dates, counts or URLs. Fetch live data for organization facts; previous answers are not evidence of current access or facts. '

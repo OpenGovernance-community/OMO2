@@ -3,6 +3,17 @@
 
 	class History extends DbObject
 	{
+    protected static function uiMessageSourceLang(): array
+    {
+        return parent::uiMessageSourceLang() + [
+            'copy.la_tache_recurrente' => ['text' => 'la tâche récurrente', 'context' => 'Interface text in class/dbobject/history.class.php'],
+            'copy.creation_du_projet' => ['text' => 'Création du projet', 'context' => 'Interface text in class/dbobject/history.class.php'],
+            'copy.reactivation_automatique_du_projet' => ['text' => 'Réactivation automatique du projet', 'context' => 'Interface text in class/dbobject/history.class.php'],
+            'copy.archivage_de_tache_recurrente' => ['text' => 'Archivage de tâche récurrente', 'context' => 'Interface text in class/dbobject/history.class.php'],
+            'copy.suppression_de_tache_recurrente' => ['text' => 'Suppression de tâche récurrente', 'context' => 'Interface text in class/dbobject/history.class.php'],
+        ];
+    }
+
 	    public static function tableName()
 		{
 			return 'history';
@@ -114,7 +125,7 @@
 			$resourceId = (int)$resourceId;
 			$resourceLabels = array(
 				'indicator' => "l'indicateur",
-				'recurring_task' => 'la tache recurrente',
+				'recurring_task' => self::uiMessage('copy.la_tache_recurrente'),
 			);
 			if ($organizationId <= 0 || $resourceId <= 0 || !isset($resourceLabels[$resourceType]) || !in_array($change, array('archived', 'deleted'), true)) {
 				return false;
@@ -735,14 +746,14 @@
 				'authority_deleted' => 'Suppression d’autorité',
 				'authority_reassigned' => 'Remontée d’autorité',
 				'authority_complete_delegated' => 'Délégation complète d’autorité',
-				'project_created' => 'Creation du projet',
+				'project_created' => self::uiMessage('copy.creation_du_projet'),
 				'project_updated' => 'Modification du projet',
 				'project_status_updated' => 'Changement de statut',
-				'project_title_updated' => 'Changement d intitule',
+				'project_title_updated' => 'Changement d’intitule',
 				'project_schedule_updated' => 'Changement de planification',
 				'project_block_details_updated' => 'Modification du blocage',
 				'project_blocked' => 'Blocage du projet',
-				'project_auto_reactivated' => 'Reactivation automatique du projet',
+				'project_auto_reactivated' => self::uiMessage('copy.reactivation_automatique_du_projet'),
 				'project_document_added' => 'Ajout de document',
 				'project_document_removed' => 'Retrait de document',
 				'project_document_deleted' => 'Suppression de document',
@@ -754,8 +765,8 @@
 				'project_recurring_task_removed' => 'Retrait de tâche récurrente',
 				'holon_indicator_archived' => "Archivage d'indicateur",
 				'holon_indicator_deleted' => "Suppression d'indicateur",
-				'holon_recurring_task_archived' => 'Archivage de tache recurrente',
-				'holon_recurring_task_deleted' => 'Suppression de tache recurrente',
+				'holon_recurring_task_archived' => self::uiMessage('copy.archivage_de_tache_recurrente'),
+				'holon_recurring_task_deleted' => self::uiMessage('copy.suppression_de_tache_recurrente'),
 			);
 
 			if (isset($labels[$action])) {

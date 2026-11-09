@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/account-translations.php';
+
 define('BASE_PATH', dirname(__DIR__));
 require_once BASE_PATH . '/shared_functions.php';
 require_once __DIR__ . '/auth.php';
@@ -17,7 +19,7 @@ if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
         header('Content-Type: application/json; charset=UTF-8');
         echo json_encode([
             'status' => false,
-            'message' => 'Requete invalide.',
+            'message' => commonAccountUiT('copy.requete_invalide'),
             'redirect_to' => $returnTo,
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
@@ -33,7 +35,7 @@ if ((int)commonGetCurrentUserId() <= 0) {
         header('Content-Type: application/json; charset=UTF-8');
         echo json_encode([
             'status' => false,
-            'message' => 'Utilisateur non connecte.',
+            'message' => commonAccountUiT('copy.utilisateur_non_connecte'),
             'redirect_to' => $returnTo,
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;

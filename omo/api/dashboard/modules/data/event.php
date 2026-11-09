@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../../../../ui_translations.php';
+
 require_once dirname(__DIR__, 3) . '/calendar/permissions_shared.php';
 
 use dbObject\ArrayDocument;
@@ -120,7 +122,7 @@ if (!empty($enabledAppHashes['calendar'])) {
             'status' => $eventStatus,
             'title' => trim((string)$event->get('title')) !== ''
                 ? trim((string)$event->get('title'))
-                : 'Evenement #' . (int)$event->getId(),
+                : omoInterfaceUiT('copy.evenement_value', ['value' => (int)$event->getId()]),
             'description' => trim((string)$event->get('description')),
             'contextLabel' => $contextLabel,
             'documentUrl' => $associatedDocumentOpenData['url'],

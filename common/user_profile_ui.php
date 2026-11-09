@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/team/profile-translations.php';
+
 
 if (!function_exists('commonUserProfileMonthName')) {
     function commonUserProfileMonthName($month)
@@ -89,9 +91,9 @@ if (!function_exists('commonUserProfileBuildRecurringDateSummary')) {
             return null;
         }
 
-        $todayLabel = (string)($labels['today'] ?? "Evenement aujourd'hui");
-        $soonPrefix = (string)($labels['soonPrefix'] ?? 'Evenement dans');
-        $monthPrefix = (string)($labels['monthPrefix'] ?? 'Evenement en');
+        $todayLabel = (string)($labels['today'] ?? commonUserProfileT('copy.evenement_aujourd_hui'));
+        $soonPrefix = (string)($labels['soonPrefix'] ?? commonUserProfileT('copy.evenement_dans'));
+        $monthPrefix = (string)($labels['monthPrefix'] ?? commonUserProfileT('copy.evenement_en'));
         $detailPrefix = array_key_exists('detailPrefix', $labels)
             ? (string)$labels['detailPrefix']
             : 'Le';

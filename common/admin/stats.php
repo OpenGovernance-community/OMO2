@@ -4,60 +4,63 @@ require_once dirname(__DIR__, 2) . '/shared_functions.php';
 require_once dirname(__DIR__) . '/translation_bundles.php';
 require_once dirname(__DIR__) . '/topbar.php';
 require_once dirname(__DIR__, 2) . '/omo/topbar.php';
+require_once dirname(__DIR__) . '/stats_stl.php';
 
 function siteStatsSourceLang(): array
 {
     $monitoring = [
-        'visio.title' => 'Trafic des visioconferences (prototype)',
+        'visio.title' => 'Trafic des visioconférences (prototype)',
         'visio.group' => 'Regrouper le trafic visio', 'visio.organization' => 'Par organisation', 'visio.person' => 'Par personne',
-        'visio.received' => 'Recus par Jitsi (Mo)', 'visio.sent' => 'Envoyes par Jitsi (Mo)', 'visio.rooms' => 'Salles mesurees',
-        'visio.note' => 'Trafic media observe sur le serveur Jitsi, attribue au createur de la salle et a son organisation selectionnee au moment du releve. Releves toutes les 30 secondes ; les fins de connexion entre deux releves peuvent manquer. Echanges P2P, signalisation, TURN et surcout reseau exclus. Les volumes sont des minima observes, pas un compteur de facturation. Mo = 1 000 000 octets ; dates UTC.',
-        'visio.never' => 'Aucun releve recu. Verifier le collecteur VPS et la publication du point de reception /visio/traffic.php sur l instance de destination.',
-        'visio.attempt' => 'Derniere tentative de collecte : {date} UTC.',
-        'visio.fresh' => 'Dernier releve reussi : {date} UTC.',
+        'visio.received' => 'Reçus par Jitsi (Mo)', 'visio.sent' => 'Envoyés par Jitsi (Mo)', 'visio.rooms' => 'Salles mesurées',
+        'visio.daily' => 'Trafic visio par jour (Mo)',
+        'visio.daily_note' => 'Toutes organisations confondues, y compris les salles sans organisation. Ce graphique ignore le filtre Organisation. Jours UTC ; le jour en cours est incomplet.',
+        'visio.note' => 'Trafic média observé sur le serveur Jitsi, attribué au créateur de la salle et à son organisation sélectionnée au moment du relevé. Relevés toutes les 30 secondes ; les fins de connexion entre deux relevés peuvent manquer. Échanges P2P, signalisation, TURN et surcoût réseau exclus. Les volumes sont des minima observes, pas un compteur de facturation. Mo = 1 000 000 octets ; dates UTC.',
+        'visio.never' => 'Aucun relevé reçu. Vérifier le collecteur VPS et la publication du point de réception /visio/traffic.php sur l’instance de destination.',
+        'visio.attempt' => 'Dernière tentative de collecte : {date} UTC.',
+        'visio.fresh' => 'Dernier relevé réussi : {date} UTC.',
         'visio.stale' => 'Collecte interrompue ou en erreur : les totaux sont incomplets.',
-        'visio.unmatched' => '{count} connexions sans salle correspondante au dernier releve.',
+        'visio.unmatched' => '{count} connexions sans salle correspondante au dernier relevé.',
         'visio.deleted_person' => 'Personne #{id}', 'visio.deleted_org' => 'Organisation #{id}',
-        'monitor.title' => 'Performance et charge', 'monitor.intro' => 'Temps de reponse, consommation et activite de la plateforme.',
-        'monitor.range' => 'Periode', 'monitor.organization' => 'Organisation', 'monitor.all' => 'Toutes',
-        'monitor.kind' => 'Mesures', 'monitor.web' => 'Pages HTTP', 'monitor.cron' => 'Executions du cron', 'monitor.task' => 'Taches du cron',
-        'monitor.cron_filter' => 'Execution du cron', 'monitor.any' => 'Tous les cas', 'monitor.none' => 'Sans appel au cron',
-        'monitor.called' => 'Cron sollicite', 'monitor.ran' => 'Cron execute', 'monitor.skipped' => 'Cron ignore (verrou ou delai)',
-        'monitor.sort' => 'Classement des pages / taches', 'monitor.slow' => 'Duree moyenne', 'monitor.cpu' => 'CPU PHP cumule',
-        'monitor.total' => 'Duree cumulee', 'monitor.volume' => 'Nombre d appels', 'monitor.apply' => 'Afficher',
-        'monitor.requests' => 'Appels', 'monitor.users' => 'Utilisateurs actifs', 'monitor.p95' => 'p95 estime', 'monitor.median' => 'Mediane estimee',
-        'monitor.errors' => 'Erreurs serveur', 'monitor.sql' => 'Temps SQL', 'monitor.memory' => 'Pic memoire PHP',
+        'monitor.title' => 'Performance et charge', 'monitor.intro' => 'Temps de réponse, consommation et activité de la plateforme.',
+        'monitor.range' => 'Période', 'monitor.organization' => 'Organisation', 'monitor.all' => 'Toutes',
+        'monitor.kind' => 'Mesures', 'monitor.web' => 'Pages HTTP', 'monitor.cron' => 'Exécutions du cron', 'monitor.task' => 'Tâches du cron',
+        'monitor.cron_filter' => 'Exécution du cron', 'monitor.any' => 'Tous les cas', 'monitor.none' => 'Sans appel au cron',
+        'monitor.called' => 'Cron sollicite', 'monitor.ran' => 'Cron exécuté', 'monitor.skipped' => 'Cron ignore (verrou ou délai)',
+        'monitor.sort' => 'Classement des pages / tâches', 'monitor.slow' => 'Durée moyenne', 'monitor.cpu' => 'CPU PHP cumulé',
+        'monitor.total' => 'Durée cumulée', 'monitor.volume' => 'Nombre d’appels', 'monitor.apply' => 'Afficher',
+        'monitor.requests' => 'Appels', 'monitor.users' => 'Utilisateurs actifs', 'monitor.p95' => 'p95 estime', 'monitor.median' => 'Médiane estimée',
+        'monitor.errors' => 'Erreurs serveur', 'monitor.sql' => 'Temps SQL', 'monitor.memory' => 'Pic mémoire PHP',
         'monitor.daily_requests' => 'Appels par jour', 'monitor.daily_users' => 'Utilisateurs actifs par jour',
         'monitor.daily_cpu' => 'CPU PHP par jour (secondes)', 'monitor.daily_per_user' => 'CPU PHP par utilisateur actif (secondes / jour)',
-        'monitor.daily_latency' => 'Reponse moyenne et p95 estime (ms)', 'monitor.hourly' => 'Duree et CPU par heure UTC (secondes)',
+        'monitor.daily_latency' => 'Réponse moyenne et p95 estime (ms)', 'monitor.hourly' => 'Durée et CPU par heure UTC (secondes)',
         'monitor.daily_errors' => 'Erreurs serveur par jour', 'monitor.daily_cron' => 'Temps du cron inclus dans les pages (secondes / jour)',
         'monitor.mean' => 'Moyenne', 'monitor.routes' => 'Pages et traitements', 'monitor.orgs' => 'Charge par organisation',
-        'monitor.name' => 'Page / traitement', 'monitor.per_user' => 'Duree / utilisateur actif', 'monitor.cron_calls' => 'Appels cron',
+        'monitor.name' => 'Page / traitement', 'monitor.per_user' => 'Durée / utilisateur actif', 'monitor.cron_calls' => 'Appels cron',
         'monitor.cron_time' => 'Temps cron inclus', 'monitor.unassigned' => 'Sans organisation', 'monitor.unknown_org' => 'Organisation #{id}',
-        'monitor.notes' => 'Heures et jours en UTC. Le p95 est la borne haute d une tranche de duree, pas une mesure exacte. Les utilisateurs actifs sont les comptes connectes distincts ; les visiteurs anonymes restent inclus dans les appels.',
-        'monitor.cost_note' => 'La duree des pages inclut les attentes et le cron appele pendant la requete. La maintenance du navigateur passe par runtime_maintenance.php : son temps est attribue a cet appel distinct. CPU PHP et temps SQL sont des mesures differentes. Les vues Pages, Cron et Taches se recouvrent : ne pas additionner leurs totaux. Le pic memoire concerne le processus PHP, y compris pour les taches. Le cron global reste sans organisation.',
-        'monitor.retention' => 'Details : 30 jours. Agregats horaires : 13 mois. Les mesures en attente sont incluses dans les graphiques.',
-        'monitor.pending' => '{count} mesures en attente d agregation. Plus ancienne : {date}.',
-        'monitor.ready' => 'Toutes les mesures ont ete agregees.', 'monitor.cpu_coverage' => 'CPU disponible pour {count} appels sur {total}.',
-        'monitor.missing' => 'Les tables de suivi ne sont pas encore installees. Appliquer les migrations du site.',
-        'monitor.disabled' => 'La collecte des performances est desactivee dans la configuration.',
+        'monitor.notes' => 'Heures et jours en UTC. Le p95 est la borne haute d’une tranche de durée, pas une mesure exacte. Les utilisateurs actifs sont les comptes connectés distincts ; les visiteurs anonymes restent inclus dans les appels.',
+        'monitor.cost_note' => 'La durée des pages inclut les attentes et le cron appelé pendant la requête. La maintenance du navigateur passe par runtime_maintenance.php : son temps est attribué à cet appel distinct. CPU PHP et temps SQL sont des mesures différentes. Les vues Pages, Cron et Tâches se recouvrent : ne pas additionner leurs totaux. Le pic mémoire concerne le processus PHP, y compris pour les tâches. Le cron global reste sans organisation.',
+        'monitor.retention' => 'Détails : 30 jours. Agrégats horaires : 13 mois. Les mesures en attente sont incluses dans les graphiques.',
+        'monitor.pending' => '{count} mesures en attente d’agrégation. Plus ancienne : {date}.',
+        'monitor.ready' => 'Toutes les mesures ont été agrégées.', 'monitor.cpu_coverage' => 'CPU disponible pour {count} appels sur {total}.',
+        'monitor.missing' => 'Les tables de suivi ne sont pas encore installées. Appliquer les migrations du site.',
+        'monitor.disabled' => 'La collecte des performances est désactivée dans la configuration.',
         'monitor.growth' => 'Croissance globale du site', 'monitor.unavailable' => 'Indisponible',
-        'monitor.days' => '{count} jours', 'monitor.error_rate' => 'Taux d erreurs serveur',
-        'monitor.sql_queries' => 'Requetes SQL', 'monitor.client_errors' => 'Erreurs HTTP 4xx',
-        'ai.title' => 'Consommation IA, API et MCP', 'ai.origin' => 'Origine des appels IA / integrations',
-        'ai.source' => 'Origine', 'ai.errors' => 'Appels en echec', 'ai.site' => 'Site', 'ai.api' => 'API', 'ai.mcp' => 'MCP', 'ai.telegram' => 'Telegram', 'ai.background' => 'Traitements automatiques',
-        'ai.model_requests' => 'Appels aux modeles', 'ai.exchange_requests' => 'Requetes API / MCP', 'ai.tokens' => 'Jetons des modeles',
-        'ai.feature' => 'Fonction / fournisseur / modele', 'ai.input_tokens' => 'Jetons entrants', 'ai.output_tokens' => 'Jetons sortants',
-        'ai.characters' => 'Caracteres entree / sortie', 'ai.audio_bytes' => 'Octets audio entrants', 'ai.coverage' => 'Appels avec jetons fournis',
-        'ai.help' => 'Les jetons sont ceux renvoyes par les modeles appeles par le site, y compris les tours internes de l assistant. API et MCP comptent uniquement leurs requetes et caracteres echanges, independamment des jetons du modele externe. Les caracteres couvrent les donnees JSON echangees ; les fichiers audio entrants sont comptes en octets. Aucun contenu de question ou reponse n est conserve dans ces mesures. Totaux complets ; tableau limite aux 200 combinaisons les plus consommatrices sur la periode choisie (UTC). Les filtres Mesures, Cron et CalDAV ne concernent pas ce suivi.',
+        'monitor.days' => '{count} jours', 'monitor.error_rate' => 'Taux d’erreurs serveur',
+        'monitor.sql_queries' => 'Requêtes SQL', 'monitor.client_errors' => 'Erreurs HTTP 4xx',
+        'ai.title' => 'Consommation IA, API et MCP', 'ai.origin' => 'Origine des appels IA / intégrations',
+        'ai.source' => 'Origine', 'ai.errors' => 'Appels en échec', 'ai.site' => 'Site', 'ai.api' => 'API', 'ai.mcp' => 'MCP', 'ai.telegram' => 'Telegram', 'ai.background' => 'Traitements automatiques',
+        'ai.model_requests' => 'Appels aux modèles', 'ai.exchange_requests' => 'Requêtes API / MCP', 'ai.tokens' => 'Jetons des modèles',
+        'ai.feature' => 'Fonction / fournisseur / modèle', 'ai.input_tokens' => 'Jetons entrants', 'ai.output_tokens' => 'Jetons sortants',
+        'ai.characters' => 'Caractères entrée / sortie', 'ai.audio_bytes' => 'Octets audio entrants', 'ai.coverage' => 'Appels avec jetons fournis',
+        'ai.help' => 'Les jetons sont ceux renvoyés par les modèles appelés par le site, y compris les tours internes de l’assistant. API et MCP comptent uniquement leurs requêtes et caractères échangés, indépendamment des jetons du modèle externe. Les caractères couvrent les données JSON échangées ; les fichiers audio entrants sont comptés en octets. Aucun contenu de question ou réponse n’est conservé dans ces mesures. Totaux complets ; tableau limité aux 200 combinaisons les plus consommatrices sur la période choisie (UTC). Les filtres Mesures, Cron et CalDAV ne concernent pas ce suivi.',
         'caldav.title' => 'Suivi CalDAV', 'caldav.sort' => 'Classement CalDAV',
         'caldav.requests' => 'Appels CalDAV', 'caldav.cpu' => 'CPU PHP CalDAV (secondes)',
         'caldav.users' => 'Utilisateurs les plus consommateurs de CalDAV',
         'caldav.contact' => 'Utilisateur / e-mail', 'caldav.unknown' => 'Compte #{id}',
         'caldav.anonymous' => 'Non identifie', 'caldav.no_email' => 'E-mail indisponible',
-        'caldav.notes' => 'Periode et organisation selectionnees ; tous les appels HTTP CalDAV, independamment des filtres Mesures et Cron. Classement limite a 25 comptes, e-mails actuels. Les appels non identifies restent inclus.',
-        'caldav.scope_note' => 'Choisir Toutes les organisations pour inclure la decouverte des calendriers et les appels historiquement sans organisation. Les flux ICS sont exclus. Les erreurs 4xx et 5xx ne comprennent pas les refus par propriete dans un HTTP 207.',
-        'caldav.period_note' => 'Aujourd hui : detail par heure UTC ; autres periodes : par jour UTC. La derniere tranche est en cours. Le nombre d appels ne donne pas directement le nombre de synchronisations.',
+        'caldav.notes' => 'Période et organisation sélectionnées ; tous les appels HTTP CalDAV, indépendamment des filtres Mesures et Cron. Classement limite à 25 comptes, e-mails actuels. Les appels non identifiés restent inclus.',
+        'caldav.scope_note' => 'Choisir Toutes les organisations pour inclure la découverte des calendriers et les appels historiquement sans organisation. Les flux ICS sont exclus. Les erreurs 4xx et 5xx ne comprennent pas les refus par propriété dans un HTTP 207.',
+        'caldav.period_note' => 'Aujourd’hui : détail par heure UTC ; autres périodes : par jour UTC. La dernière tranche est en cours. Le nombre d’appels ne donne pas directement le nombre de synchronisations.',
         'caldav.today' => 'Aujourd hui (UTC)', 'caldav.propfind' => 'PROPFIND', 'caldav.proppatch' => 'PROPPATCH',
     ];
     return [
@@ -88,6 +91,10 @@ function siteStatsSourceLang(): array
         'stats.holons.modified' => ['text' => 'Modifications', 'context' => 'Legend label for distinct modified holon bars.'],
         'stats.holons.chart_note' => ['text' => 'Les modifications sont lues dans les événements d’historique holon_updated et comptées une fois par espace et par période.', 'context' => 'Note explaining the source and aggregation of the space modification series.'],
         'stats.chart.empty' => ['text' => 'Aucune donnée sur cette période.', 'context' => 'Empty state for a statistics bar chart.'],
+        'stats.trend.label' => ['text' => 'Tendance', 'context' => 'Statistics trend selector label.'],
+        'stats.trend.stl' => ['text' => 'Tendance STL', 'context' => 'Legend and option for the seasonal-trend decomposition curve.'],
+        'stats.trend.none' => ['text' => 'Masquer', 'context' => 'Option to hide statistics trend curves.'],
+        'stats.trend.help' => ['text' => 'La courbe STL sépare la tendance du cycle de 7 jours et atténue les pics exceptionnels. Elle demande au moins 21 jours consécutifs complets ; le jour UTC en cours est exclu du calcul. Sur la vue par semaine, les tendances quotidiennes sont additionnées sur les semaines complètes. Les profils par heure n’ont pas de tendance STL. La courbe décrit la période affichée, sans prédiction ; ses extrémités sont moins certaines.', 'context' => 'Explanation and limits of the weekly STL decomposition on the statistics dashboard.'],
         'stats.chart.value' => ['one' => '{count} élément', 'other' => '{count} éléments', 'context' => 'Accessible chart bar value label.'],
         'stats.access.title' => ['text' => 'Accès réservé', 'context' => 'Title shown when global site statistics are not available.'],
         'stats.access.message' => ['text' => 'Cette page est réservée aux super administrateurs du site.', 'context' => 'Message shown to users without the site administrator role.'],
@@ -115,15 +122,11 @@ function siteStatsEscape($value): string
     return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
 }
 
-function siteStatsBuildSeries(array $rows, DateTimeImmutable $startDate, DateTimeImmutable $endDate, string $mode): array
+function siteStatsBuildSeries(array $rows, DateTimeImmutable $startDate, DateTimeImmutable $endDate, string $mode, bool $showTrend = true): array
 {
     $series = [];
-    $cursor = $mode === 'weekly'
-        ? $startDate->modify('monday this week')
-        : $startDate;
-    $lastBucket = $mode === 'weekly'
-        ? $endDate->modify('monday this week')
-        : $endDate;
+    $cursor = $startDate;
+    $lastBucket = $endDate;
 
     while ($cursor <= $lastBucket) {
         $key = $cursor->format('Y-m-d');
@@ -131,7 +134,7 @@ function siteStatsBuildSeries(array $rows, DateTimeImmutable $startDate, DateTim
             'date' => $cursor,
             'value' => 0,
         ];
-        $cursor = $cursor->modify($mode === 'weekly' ? '+7 days' : '+1 day');
+        $cursor = $cursor->modify('+1 day');
     }
 
     foreach ($rows as $row) {
@@ -146,20 +149,40 @@ function siteStatsBuildSeries(array $rows, DateTimeImmutable $startDate, DateTim
             continue;
         }
 
-        if ($mode === 'weekly') {
-            $rowDate = $rowDate->modify('monday this week');
-        }
-
         $key = $rowDate->format('Y-m-d');
         if (isset($series[$key])) {
             $series[$key]['value'] += (int)($row['total'] ?? 0);
         }
     }
 
-    return array_values($series);
+    $series = array_values($series);
+    if ($mode !== 'weekly') {
+        return $series;
+    }
+    // Decompose daily observations before aggregation: a week is not a season.
+    $trend = $showTrend ? siteStatsDailyTrend($series) : [];
+    $weeks = [];
+    foreach ($series as $index => $point) {
+        $monday = $point['date']->modify('monday this week');
+        $key = $monday->format('Y-m-d');
+        $weeks[$key] ??= ['date' => $monday, 'value' => 0, 'trend' => null, 'trend_days' => 0];
+        $weeks[$key]['value'] += $point['value'];
+        if (isset($trend[$index])) {
+            $weeks[$key]['trend'] = ($weeks[$key]['trend'] ?? 0) + $trend[$index];
+            $weeks[$key]['trend_days']++;
+        }
+    }
+    foreach ($weeks as &$week) {
+        if ($week['trend_days'] !== 7) {
+            $week['trend'] = null;
+        }
+        unset($week['trend_days']);
+    }
+    unset($week);
+    return array_values($weeks);
 }
 
-function siteStatsRenderBarChart(string $chartId, array $seriesList, string $ariaLabel, string $mode): string
+function siteStatsRenderBarChart(string $chartId, array $seriesList, string $ariaLabel, string $mode, bool $showTrend = true): string
 {
     $width = 640;
     $height = 230;
@@ -170,10 +193,23 @@ function siteStatsRenderBarChart(string $chartId, array $seriesList, string $ari
     $plotWidth = $width - $paddingLeft - $paddingRight;
     $plotHeight = $height - $paddingTop - $paddingBottom;
     $maxValue = 0;
+    $minValue = 0;
+    $trends = [];
     $seriesCount = count($seriesList);
-    foreach ($seriesList as $seriesItem) {
+    foreach ($seriesList as $seriesIndex => $seriesItem) {
         foreach (($seriesItem['series'] ?? []) as $point) {
             $maxValue = max($maxValue, (float)$point['value']);
+        }
+        if ($showTrend && $mode === 'daily') {
+            $trends[$seriesIndex] = siteStatsDailyTrend($seriesItem['series'] ?? []);
+        } elseif ($showTrend && $mode === 'weekly') {
+            $trends[$seriesIndex] = array_column($seriesItem['series'] ?? [], 'trend');
+        }
+        foreach ($trends[$seriesIndex] ?? [] as $value) {
+            if ($value !== null) {
+                $maxValue = max($maxValue, $value);
+                $minValue = min($minValue, $value);
+            }
         }
     }
 
@@ -185,15 +221,21 @@ function siteStatsRenderBarChart(string $chartId, array $seriesList, string $ari
     $count = count($series);
     $slotWidth = $plotWidth / max(1, $count);
     $barGroupWidth = $slotWidth * 0.72;
-    $barWidth = max(0.5, ($barGroupWidth - (($seriesCount - 1) * 3)) / max(1, $seriesCount));
+    $barGap = min(3, $slotWidth * 0.12);
+    $barWidth = max(0.5, ($barGroupWidth - (($seriesCount - 1) * $barGap)) / max(1, $seriesCount));
     $labelStep = max(1, (int)ceil($count / 6));
+    $valueRange = $maxValue - $minValue;
+    $zeroY = $paddingTop + $maxValue / $valueRange * $plotHeight;
     $svg = '<svg class="site-stats-chart" viewBox="0 0 ' . $width . ' ' . $height . '" role="img" aria-labelledby="' . siteStatsEscape($chartId) . '-title ' . siteStatsEscape($chartId) . '-description">';
     $svg .= '<title id="' . siteStatsEscape($chartId) . '-title">' . siteStatsEscape($ariaLabel) . '</title>';
     $svg .= '<desc id="' . siteStatsEscape($chartId) . '-description">' . siteStatsEscape(siteStatsT('stats.period.' . (in_array($mode, ['weekly', 'hourly'], true) ? $mode : 'daily'))) . '</desc>';
     $svg .= '<line class="site-stats-chart__grid" x1="' . $paddingLeft . '" y1="' . $paddingTop . '" x2="' . ($width - $paddingRight) . '" y2="' . $paddingTop . '" />';
     $svg .= '<line class="site-stats-chart__grid" x1="' . $paddingLeft . '" y1="' . ($paddingTop + $plotHeight / 2) . '" x2="' . ($width - $paddingRight) . '" y2="' . ($paddingTop + $plotHeight / 2) . '" />';
-    $svg .= '<line class="site-stats-chart__axis" x1="' . $paddingLeft . '" y1="' . ($paddingTop + $plotHeight) . '" x2="' . ($width - $paddingRight) . '" y2="' . ($paddingTop + $plotHeight) . '" />';
+    $svg .= '<line class="site-stats-chart__axis" x1="' . $paddingLeft . '" y1="' . round($zeroY, 2) . '" x2="' . ($width - $paddingRight) . '" y2="' . round($zeroY, 2) . '" />';
     $svg .= '<text class="site-stats-chart__scale" x="' . ($paddingLeft - 8) . '" y="' . ($paddingTop + 4) . '" text-anchor="end">' . siteStatsEscape(number_format($maxValue, $maxValue < 10 ? 1 : 0, ',', ' ')) . '</text>';
+    if ($minValue < 0) {
+        $svg .= '<text class="site-stats-chart__scale" x="' . ($paddingLeft - 8) . '" y="' . ($paddingTop + $plotHeight) . '" text-anchor="end">' . siteStatsEscape(number_format($minValue, 1, ',', ' ')) . '</text>';
+    }
 
     foreach ($series as $index => $point) {
         $dateLabel = isset($point['label']) ? (string)$point['label'] : ($mode === 'weekly'
@@ -202,9 +244,9 @@ function siteStatsRenderBarChart(string $chartId, array $seriesList, string $ari
         foreach ($seriesList as $seriesIndex => $seriesItem) {
             $secondaryPoint = ($seriesItem['series'] ?? [])[$index] ?? ['value' => 0];
             $value = (float)($secondaryPoint['value'] ?? 0);
-            $barHeight = $value > 0 ? max(2, ($value / $maxValue) * $plotHeight) : 1;
-            $x = $paddingLeft + ($index * $slotWidth) + (($slotWidth - $barGroupWidth) / 2) + ($seriesIndex * ($barWidth + 3));
-            $y = $paddingTop + $plotHeight - $barHeight;
+            $barHeight = $value > 0 ? max(2, ($value / $valueRange) * $plotHeight) : 1;
+            $x = $paddingLeft + ($index * $slotWidth) + (($slotWidth - $barGroupWidth) / 2) + ($seriesIndex * ($barWidth + $barGap));
+            $y = $zeroY - $barHeight;
             $seriesLabel = trim((string)($seriesItem['label'] ?? ''));
             $barLabel = ($seriesLabel !== '' ? $seriesLabel . ' - ' : '') . $dateLabel . ' : ' . number_format($value, $value < 10 ? 2 : 0, ',', ' ') . ' ' . ($seriesItem['unit'] ?? '');
             $barClass = trim((string)($seriesItem['class'] ?? ''));
@@ -216,21 +258,48 @@ function siteStatsRenderBarChart(string $chartId, array $seriesList, string $ari
         }
     }
 
+    $trendLegend = '';
+    foreach ($trends as $seriesIndex => $values) {
+        $path = '';
+        $connected = false;
+        foreach ($values as $index => $value) {
+            if ($value === null) {
+                $connected = false;
+                continue;
+            }
+            $x = $paddingLeft + ($index + 0.5) * $slotWidth;
+            $y = $paddingTop + ($maxValue - $value) / $valueRange * $plotHeight;
+            $path .= ($connected ? ' L' : ' M') . round($x, 2) . ',' . round($y, 2);
+            $connected = true;
+        }
+        if ($path === '') {
+            continue;
+        }
+        $trendLabel = siteStatsT('stats.trend.stl');
+        if (trim((string)($seriesList[$seriesIndex]['label'] ?? '')) !== '') {
+            $trendLabel .= ' - ' . $seriesList[$seriesIndex]['label'];
+        }
+        $trendClass = $seriesIndex > 0 ? ' site-stats-chart__trend--secondary' : '';
+        $svg .= '<path class="site-stats-chart__trend' . $trendClass . '" d="' . $path . '"><title>' . siteStatsEscape($trendLabel) . '</title></path>';
+        $trendLegend .= '<span><i class="site-stats-chart__legend-line' . $trendClass . '"></i>' . siteStatsEscape($trendLabel) . '</span>';
+    }
     $svg .= '</svg>';
-    if ($seriesCount <= 1) {
+    if ($seriesCount <= 1 && $trendLegend === '') {
         return $svg;
     }
 
     $legend = '<div class="site-stats-chart__legend">';
     foreach ($seriesList as $seriesItem) {
-        $legend .= '<span><i class="site-stats-chart__legend-swatch ' . siteStatsEscape((string)($seriesItem['class'] ?? '')) . '"></i>' . siteStatsEscape((string)($seriesItem['label'] ?? '')) . '</span>';
+        if ($seriesCount > 1) {
+            $legend .= '<span><i class="site-stats-chart__legend-swatch ' . siteStatsEscape((string)($seriesItem['class'] ?? '')) . '"></i>' . siteStatsEscape((string)($seriesItem['label'] ?? '')) . '</span>';
+        }
     }
-    $legend .= '</div>';
+    $legend .= $trendLegend . '</div>';
 
     return '<div class="site-stats-chart-shell">' . $svg . $legend . '</div>';
 }
 
-function siteStatsRenderChart(string $chartId, array $series, string $ariaLabel, string $mode): string
+function siteStatsRenderChart(string $chartId, array $series, string $ariaLabel, string $mode, bool $showTrend = true): string
 {
     return siteStatsRenderBarChart($chartId, [
         [
@@ -238,10 +307,10 @@ function siteStatsRenderChart(string $chartId, array $series, string $ariaLabel,
             'series' => $series,
             'class' => 'site-stats-chart__bar--primary',
         ],
-    ], $ariaLabel, $mode);
+    ], $ariaLabel, $mode, $showTrend);
 }
 
-function siteStatsRenderDualChart(string $chartId, array $primarySeries, array $secondarySeries, string $ariaLabel, string $mode, string $primaryLabel, string $secondaryLabel): string
+function siteStatsRenderDualChart(string $chartId, array $primarySeries, array $secondarySeries, string $ariaLabel, string $mode, string $primaryLabel, string $secondaryLabel, bool $showTrend = true): string
 {
     return siteStatsRenderBarChart($chartId, [
         [
@@ -254,7 +323,7 @@ function siteStatsRenderDualChart(string $chartId, array $primarySeries, array $
             'series' => $secondarySeries,
             'class' => 'site-stats-chart__bar--secondary',
         ],
-    ], $ariaLabel, $mode);
+    ], $ariaLabel, $mode, $showTrend);
 }
 
 function siteStatsNumber($value, int $decimals = 0): string
@@ -340,6 +409,7 @@ $calDavSort = in_array($_GET['caldav_sort'] ?? '', ['cpu', 'total', 'volume'], t
 $chartEndDate = new DateTimeImmutable('today', new DateTimeZone('UTC'));
 $chartStartDate = $chartEndDate->modify('-' . ($chartRange - 1) . ' days');
 $chartMode = $chartRange > 90 ? 'weekly' : 'daily';
+$showTrend = ($_GET['trend'] ?? 'stl') !== 'none';
 $pageTitle = siteStatsT('stats.page.title');
 $performance = ['available' => false];
 $organizationNames = [];
@@ -350,6 +420,16 @@ if ($allowed) {
     }
     commonReleaseReadOnlySession();
     $visioTraffic = \dbObject\VideoTraffic::dashboard($chartStartDate->format('Y-m-d H:i:s'), $chartEndDate->modify('+1 day')->format('Y-m-d H:i:s'), $visioGroup, $organizationId);
+    $visioDailySeries = [];
+    foreach (['received_bytes' => 'visio.received', 'sent_bytes' => 'visio.sent'] as $field => $label) {
+        $points = siteStatsBuildSeries(array_map(static fn (array $row): array => [
+            'period_date' => $row['period_date'], 'total' => $row[$field],
+        ], $visioTraffic['daily']), $chartStartDate, $chartEndDate, 'daily', $showTrend);
+        foreach ($points as &$point) $point['value'] /= 1000000;
+        unset($point);
+        $visioDailySeries[] = ['label' => siteStatsT($label), 'series' => $points,
+            'class' => $field === 'sent_bytes' ? 'site-stats-chart__bar--secondary' : 'site-stats-chart__bar--primary'];
+    }
     $aiUsage = \dbObject\AiUsage::dashboard($chartStartDate->format('Y-m-d H:i:s'), $chartEndDate->modify('+1 day')->format('Y-m-d H:i:s'), $organizationId, $aiOrigin);
     $growth = \dbObject\SiteStatistics::growth($chartStartDate, $chartEndDate);
     $performance = \dbObject\PerformanceHourly::dashboard($chartStartDate->format('Y-m-d H:i:s'),
@@ -387,6 +467,7 @@ if ($allowed) {
         <section class="generic-section"><form class="site-stats-filters" method="get">
             <?php $filters = [
                 'range' => ['monitor.range', [1 => siteStatsT('caldav.today')] + array_combine([7, 30, 90, 365], array_map(static fn($days) => siteStatsT('monitor.days', ['count' => $days]), [7, 30, 90, 365])), $chartRange],
+                'trend' => ['stats.trend.label', ['stl' => siteStatsT('stats.trend.stl'), 'none' => siteStatsT('stats.trend.none')], $showTrend ? 'stl' : 'none'],
                 'organization' => ['monitor.organization', [0 => siteStatsT('monitor.all')] + $organizationNames, $organizationId],
                 'kind' => ['monitor.kind', ['web' => siteStatsT('monitor.web'), 'cron' => siteStatsT('monitor.cron'), 'task' => siteStatsT('monitor.task')], $kind],
                 'cron' => ['monitor.cron_filter', array_combine(['all', 'none', 'called', 'ran', 'skipped'], array_map('siteStatsT', ['monitor.any', 'monitor.none', 'monitor.called', 'monitor.ran', 'monitor.skipped'])), $cron],
@@ -403,6 +484,7 @@ if ($allowed) {
             <?php endforeach; ?>
             <button class="generic-action-button generic-action-button--main" type="submit"><?= siteStatsEscape(siteStatsT('monitor.apply')) ?></button>
         </form></section>
+        <?php if ($showTrend): ?><p class="generic-help-text"><?= siteStatsEscape(siteStatsT('stats.trend.help')) ?></p><?php endif; ?>
         <h2 class="generic-card-title generic-card-title--section"><?= siteStatsEscape(siteStatsT('monitor.title')) ?> — <?= siteStatsEscape(siteStatsT('monitor.' . $kind)) ?></h2>
         <?php if (!commonPerformanceEnabled()): ?><p class="generic-soft-panel"><?= siteStatsEscape(siteStatsT('monitor.disabled')) ?></p><?php endif; ?>
         <?php if (!$performance['available']): ?><p class="generic-soft-panel"><?= siteStatsEscape(siteStatsT('monitor.missing')) ?></p>
@@ -455,7 +537,7 @@ if ($allowed) {
             if ($kind === 'web') { $charts['daily_cron'] = [['series' => $series('cron'), 'unit' => 's']]; }
             ?>
             <div class="site-stats-grid">
-                <?php foreach ($charts as $id => $chart): ?><figure class="site-stats-chart-panel generic-section generic-section--stack"><figcaption class="generic-card-title"><?= siteStatsEscape(siteStatsT('monitor.' . $id)) ?></figcaption><?= siteStatsRenderBarChart('perf-' . $id, $chart, siteStatsT('monitor.' . $id), 'daily') ?></figure><?php endforeach; ?>
+                <?php foreach ($charts as $id => $chart): ?><figure class="site-stats-chart-panel generic-section generic-section--stack"><figcaption class="generic-card-title"><?= siteStatsEscape(siteStatsT('monitor.' . $id)) ?></figcaption><?= siteStatsRenderBarChart('perf-' . $id, $chart, siteStatsT('monitor.' . $id), $id === 'hourly' ? 'hourly' : 'daily', $showTrend) ?></figure><?php endforeach; ?>
             </div>
             <section class="generic-section">
                 <h3 class="generic-card-title"><?= siteStatsEscape(siteStatsT('monitor.routes')) ?></h3>
@@ -493,14 +575,14 @@ if ($allowed) {
             $calDavLast = $calDavHourly ? new DateTimeImmutable('now', new DateTimeZone('UTC')) : $chartEndDate;
             foreach (new DatePeriod($chartStartDate, new DateInterval($calDavHourly ? 'PT1H' : 'P1D'), $calDavLast, DatePeriod::INCLUDE_END_DATE) as $date) {
                 $row = $calDavTimeline[$date->format($calDavHourly ? 'Y-m-d H:00:00' : 'Y-m-d')] ?? [];
-                $point = ['label' => $date->format($calDavHourly ? 'H\h' : 'd.m')];
+                $point = ['date' => $date, 'label' => $date->format($calDavHourly ? 'H\h' : 'd.m')];
                 $calDavRequests[] = $point + ['value' => (int)($row['requests'] ?? 0)];
                 $calDavCpu[] = $point + ['value' => ($row['cpu_ms'] ?? 0) / 1000];
             }
             ?>
             <div class="site-stats-grid">
                 <?php foreach (['requests' => [$calDavRequests, ''], 'cpu' => [$calDavCpu, 's']] as $id => [$points, $unit]): ?>
-                    <figure class="site-stats-chart-panel generic-section generic-section--stack"><figcaption class="generic-card-title"><?= siteStatsEscape(siteStatsT('caldav.' . $id)) ?></figcaption><?= siteStatsRenderBarChart('caldav-' . $id, [['series' => $points, 'unit' => $unit]], siteStatsT('caldav.' . $id), $calDavHourly ? 'hourly' : 'daily') ?></figure>
+                    <figure class="site-stats-chart-panel generic-section generic-section--stack"><figcaption class="generic-card-title"><?= siteStatsEscape(siteStatsT('caldav.' . $id)) ?></figcaption><?= siteStatsRenderBarChart('caldav-' . $id, [['series' => $points, 'unit' => $unit]], siteStatsT('caldav.' . $id), $calDavHourly ? 'hourly' : 'daily', $showTrend) ?></figure>
                 <?php endforeach; ?>
             </div>
             <section class="generic-section">
@@ -548,11 +630,11 @@ if ($allowed) {
                     <p><?= siteStatsEscape(siteStatsT('stats.' . $section . '.' . $recentLabel)) ?> : <?= siteStatsNumber($growth[$recentKey]) ?></p>
                     <figure class="site-stats-chart-panel">
                         <figcaption><?= siteStatsEscape(siteStatsT('stats.' . $section . '.chart')) ?></figcaption>
-                        <?php $points = siteStatsBuildSeries($growth[$rowsKey] ?: [], $chartStartDate, $chartEndDate, $chartMode);
+                        <?php $points = siteStatsBuildSeries($growth[$rowsKey] ?: [], $chartStartDate, $chartEndDate, $chartMode, $showTrend);
                         echo $section === 'holons' ? siteStatsRenderDualChart('growth-' . $section, $points,
-                            siteStatsBuildSeries($growth['holonModificationRows'] ?: [], $chartStartDate, $chartEndDate, $chartMode),
-                            siteStatsT('stats.holons.chart'), $chartMode, siteStatsT('stats.holons.created'), siteStatsT('stats.holons.modified'))
-                            : siteStatsRenderChart('growth-' . $section, $points, siteStatsT('stats.' . $section . '.chart'), $chartMode); ?>
+                            siteStatsBuildSeries($growth['holonModificationRows'] ?: [], $chartStartDate, $chartEndDate, $chartMode, $showTrend),
+                            siteStatsT('stats.holons.chart'), $chartMode, siteStatsT('stats.holons.created'), siteStatsT('stats.holons.modified'), $showTrend)
+                            : siteStatsRenderChart('growth-' . $section, $points, siteStatsT('stats.' . $section . '.chart'), $chartMode, $showTrend); ?>
                         <?php if ($section !== 'organizations'): ?><p class="site-stats-notes"><?= siteStatsEscape(siteStatsT('stats.' . $section . '.chart_note')) ?></p><?php endif; ?>
                     </figure>
                 </section>
@@ -571,6 +653,11 @@ if ($allowed) {
                 <?php if (!empty($trafficStatus['last_attempt']) && $trafficStale): ?><p><?= siteStatsEscape(siteStatsT('visio.attempt', ['date' => $trafficStatus['last_attempt']])) ?></p><?php endif; ?>
                 <?php if ($trafficStale): ?><p role="status"><?= siteStatsEscape(siteStatsT('visio.stale')) ?></p><?php endif; ?>
                 <?php if (!empty($trafficStatus['unmatched_rooms'])): ?><p><?= siteStatsEscape(siteStatsT('visio.unmatched', ['count' => $trafficStatus['unmatched_rooms']])) ?></p><?php endif; ?>
+                <figure class="site-stats-chart-panel generic-section generic-section--stack" id="visio-daily">
+                    <figcaption class="generic-card-title"><?= siteStatsEscape(siteStatsT('visio.daily')) ?></figcaption>
+                    <?= siteStatsRenderBarChart('visio-daily', $visioDailySeries, siteStatsT('visio.daily'), 'daily', $showTrend) ?>
+                    <p class="generic-help-text"><?= siteStatsEscape(siteStatsT('visio.daily_note')) ?></p>
+                </figure>
                 <?php if (!$visioTraffic['rows']): ?><p><?= siteStatsEscape(siteStatsT('stats.chart.empty')) ?></p>
                 <?php else: ?>
                 <div class="site-stats-table-scroll"><table class="site-stats-table">
