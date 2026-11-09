@@ -356,6 +356,7 @@ if (!function_exists('omoDecisionImportNormalizeStructuredData')) {
                 'description' => trim((string)($decisionBlueprint['description'] ?? '')),
                 'decision_type' => DecisionProcess::normalizeDecisionType((string)($decisionBlueprint['decision_type'] ?? DecisionProcess::TYPE_DECISION)),
                 'visibility_type' => DecisionProcess::normalizeVisibilityType((string)($decisionBlueprint['visibility_type'] ?? DecisionProcess::getDefaultVisibilityType())),
+                'edit_visibility_type' => DecisionProcess::normalizeVisibilityType((string)($decisionBlueprint['edit_visibility_type'] ?? DecisionProcess::getDefaultEditVisibilityType())),
                 'parameters' => omoDecisionImportNormalizeTypedStructure(
                     omoDecisionModuleDecodeParameters($decisionBlueprint['parameters'] ?? [])
                 ),

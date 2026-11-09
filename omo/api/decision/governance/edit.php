@@ -7,6 +7,7 @@ use dbObject\DeferredProposal;
 use dbObject\Rule;
 
 require_once __DIR__ . '/shared.php';
+require_once dirname(__DIR__, 4) . '/common/choice/decision-visibility.php';
 require_once dirname(__DIR__, 4) . '/common/choice/deferred-editor-fields.php';
 require_once dirname(__DIR__, 4) . '/common/patreon.php';
 require_once dirname(__DIR__, 4) . '/common/openai_text.php';
@@ -252,6 +253,7 @@ $payload = [
         <input type="hidden" name="method" value="<?= omoApiEscape($governanceMethod) ?>">
         <input type="hidden" name="intent" value="manage">
         <input type="hidden" name="workflow" value="<?= omoApiEscape(DecisionProcess::WORKFLOW_GOVERNANCE) ?>">
+        <?= commonDecisionRenderVisibilitySelectors($decision, $context, $canEdit && (!$decision || !$decision->hasEvaluationStarted()), 'decision-governance') ?>
         <textarea name="governance_blueprint" data-governance-blueprint hidden></textarea>
 
         <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact">

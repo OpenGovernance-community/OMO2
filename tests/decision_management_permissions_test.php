@@ -103,6 +103,11 @@ try {
     decisionPermissionExpect(!empty($decision->syncParticipantsFromInvitations()['status']), 'Participants synchronized');
     $archivable = decisionPermissionFixture(DecisionProcess::class, array_replace($fields, ['title' => 'Finished scrutiny', 'status' => 'results',
         'consultation_end_at' => '2020-01-02 00:00:00', 'evaluation_start_at' => '2020-01-03 00:00:00', 'evaluation_end_at' => '2020-01-04 00:00:00']));
+    if ($actorType === 'editor') {
+        foreach ([$decision, $archivable] as $item) {
+            decisionPermissionExpect(!empty($item->saveVisibilityRulesFromInput(['edit_visibility_type' => 'circle'])['status']), 'Circle editors saved');
+        }
+    }
     $actor = $actorType === 'owner' ? $owner : $other;
     $_SESSION['currentUser'] = (int)$actor->getId();
     $_SESSION['currentOrganization'] = $oid;
@@ -159,6 +164,7 @@ try {
     if ($scenario === 'editor') {
         $vote = decisionPermissionFixture(DecisionProcess::class, array_replace($fields,
             ['evaluation_method' => DecisionProcess::METHOD_SIMPLE_VOTE, 'parameters' => []]));
+        decisionPermissionExpect(!empty($vote->saveVisibilityRulesFromInput(['edit_visibility_type' => 'circle'])['status']), 'Vote editors saved');
         $_POST = $_REQUEST = ['oid' => $oid, 'cid' => $circle->getId(), 'id' => $vote->getId(), 'intent' => 'view',
             'process_title' => 'Edited by manager', 'title' => 'Question', 'proposals' => ['Yes', 'No'], 'proposal_content_title' => 1];
         $GLOBALS['omoDecisionCaptureModuleResponse'] = true;

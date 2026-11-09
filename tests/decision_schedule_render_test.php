@@ -38,7 +38,8 @@ foreach (['vote' => 'Vote', 'majority_judgment' => 'MajorityJudgment', 'consent'
     $xpath = scheduleDom(ob_get_clean());
     scheduleExpect($xpath->query('//*[@data-omo-decision-schedule-phase]')->length === 2, $method . ': both scheduling phases are rendered.');
     scheduleExpect($xpath->query('//*[@data-omo-decision-schedule-phase]//input[@data-generic-accordion-toggle and @checked]')->length === 0, $method . ': new schedules start unchecked.');
-    scheduleExpect($xpath->query('//select[@name="status" or @name="visibility_type"][not(ancestor::*[@data-generic-accordion])]')->length === 2, $method . ': status and visibility stay outside scheduling.');
+    scheduleExpect($xpath->query('//select[@name="status"][not(ancestor::*[@data-generic-accordion])]')->length === 1, $method . ': status stays outside scheduling.');
+    scheduleExpect($xpath->query('//input[@type="radio" and (@name="visibility_type" or @name="edit_visibility_type")][not(ancestor::*[@data-generic-accordion])]')->length === 10, $method . ': both visibility selectors stay outside scheduling.');
     scheduleExpect($xpath->query('//*[@data-omo-decision-schedule-phase]//details/summary[@aria-label]')->length === 2, $method . ': both phase checkboxes have explanatory help.');
     scheduleExpect($xpath->query('//*[@data-omo-decision-schedule-phase]//input[@type="datetime-local"]')->length === 4, $method . ': existing date save fields are rendered.');
 }

@@ -12,6 +12,7 @@ class DecisionProcess extends DbObject
                 'impossible_de_sauvegarder_la_decision_et_son_agenda' => ['text' => 'Impossible de sauvegarder la décision et son agenda.', 'context' => 'Validation or action feedback for decisionprocess.'],
                 'destination_invalide' => ['text' => 'Destination invalide.', 'context' => 'Validation or action feedback for decisionprocess.'],
                 'acces_refuse' => ['text' => 'Accès refusé.', 'context' => 'Validation or action feedback for decisionprocess.'],
+                'visibilite_invalide' => ['text' => 'Visibilité invalide pour ce scrutin.', 'context' => 'Invalid decision read or edit scope.'],
                 'acces_refuse_pour_cette_destination' => ['text' => 'Accès refusé pour cette destination.', 'context' => 'Validation or action feedback for decisionprocess.'],
                 'cette_prise_de_decision_est_deja_a_cette_destination' => ['text' => 'Cette prise de décision est déjà à cette destination.', 'context' => 'Validation or action feedback for decisionprocess.'],
                 'prise_de_decision_deplacee' => ['text' => 'Prise de décision déplacée.', 'context' => 'Validation or action feedback for decisionprocess.'],
@@ -252,7 +253,26 @@ class DecisionProcess extends DbObject
             return false;
         }
         $organizationId = (int)$this->get('IDorganization');
+        if ((int)$this->get('IDuser') === $userId) return true;
         if (function_exists('commonUserHasAdminOverride') && \commonUserHasAdminOverride($userId, $organizationId)) return true;
+        if ($permissionKey === 'CAN_EDIT_DECISION') {
+            $viewerContext = ObjectVisibility::buildCurrentViewerContext($organizationId, $userId);
+            $objectContext = ['organizationId' => $organizationId, 'ownerUserId' => (int)$this->get('IDuser')];
+            if (!ObjectVisibility::viewerCanAccessRule($this->getPrimaryVisibilityRuleRow(), $viewerContext, $objectContext)) {
+                $participant = DecisionParticipant::findByDecisionAndUser((int)$this->getId(), $userId);
+                if (!$participant || !(bool)$participant->get('active')) {
+                    $user = new User();
+                    $email = $user->load($userId) ? trim((string)$user->getScopedEmail($organizationId)) : '';
+                    $participant = $email !== '' ? DecisionParticipant::findByDecisionAndEmail((int)$this->getId(), $email) : null;
+                }
+                if (!$participant || !(bool)$participant->get('active')
+                    || in_array($participant->get('status'), [DecisionParticipant::STATUS_DECLINED, DecisionParticipant::STATUS_REVOKED], true)) return false;
+            }
+            return $viewerContext['type'] === 'user' && ObjectVisibility::viewerCanAccessRule(
+                $this->getPrimaryEditVisibilityRuleRow(), $viewerContext,
+                $objectContext
+            );
+        }
         if ($organizationId <= 0) {
             return (int)$this->get('IDuser') === $userId;
         }
@@ -362,6 +382,58 @@ class DecisionProcess extends DbObject
     public static function getDefaultVisibilityType(): string
     {
         return \dbObject\ObjectVisibility::getDefaultVisibilityType();
+    }
+
+    public static function getDefaultEditVisibilityType(): string
+    {
+        return ObjectVisibility::TYPE_SELF;
+    }
+
+    public static function getEditVisibilityObjectType(): string
+    {
+        return 'decision_process_edit';
+    }
+
+    public function getPrimaryEditVisibilityRuleRow(): array
+    {
+        return ObjectVisibility::loadActiveRuleRow(self::getEditVisibilityObjectType(), (int)$this->getId(), (int)$this->get('IDorganization'))
+            ?: array_replace(ObjectVisibility::buildFallbackRuleData((int)$this->get('IDorganization')),
+                ['visibility_type' => self::getDefaultEditVisibilityType()]);
+    }
+
+    public function saveVisibilityRulesFromInput(array $input, bool $locked = false): array
+    {
+        if ($locked) return ['status' => true];
+        $rules = [];
+        foreach (['visibility_type' => self::getVisibilityObjectType(), 'edit_visibility_type' => self::getEditVisibilityObjectType()] as $key => $objectType) {
+            if (!array_key_exists($key, $input)) continue;
+            if (!is_string($input[$key]) || !array_key_exists($input[$key], self::getVisibilityTypeOptions())) {
+                return ['status' => false, 'text' => self::uiMessage('visibilite_invalide')];
+            }
+            $resolved = $this->resolveVisibilityRuleInput($input[$key]);
+            if (empty($resolved['status'])) return $resolved;
+            $rules[$objectType] = $resolved;
+        }
+        if (!$rules) return ['status' => true];
+        $pdo = self::getPdo();
+        $ownsTransaction = !$pdo->inTransaction();
+        try {
+            if ($ownsTransaction) $pdo->beginTransaction();
+            foreach ($rules as $objectType => $resolved) {
+                $result = ObjectVisibility::saveSingleRule($objectType, (int)$this->getId(), (int)$this->get('IDorganization'), $resolved['type'], $resolved['holonId']);
+                if (empty($result['status'])) throw new \RuntimeException('decision_visibility_save_failed');
+            }
+            if (isset($rules[self::getVisibilityObjectType()]) && $this->get('visibility_type') !== $input['visibility_type']) {
+                $this->set('visibility_type', $input['visibility_type']);
+                if (empty($this->save()['status'])) throw new \RuntimeException('decision_visibility_save_failed');
+            }
+            if ($ownsTransaction) $pdo->commit();
+            return ['status' => true];
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+            error_log('decision_visibility_save_failed: ' . $exception->getMessage());
+            return ['status' => false, 'text' => self::uiMessage('visibilite_invalide')];
+        }
     }
 
     public static function getVisibilityTypeOptions(): array
@@ -618,6 +690,14 @@ class DecisionProcess extends DbObject
             return $saveResult;
         }
 
+        $storedRule = ObjectVisibility::loadActiveRuleRow(self::getVisibilityObjectType(), (int)$this->getId(), (int)$this->get('IDorganization'));
+        if ($storedRule && $storedRule['visibility_type'] !== $this->get('visibility_type')) {
+            $resolved = $this->resolveVisibilityRuleInput($this->get('visibility_type'));
+            if (empty($resolved['status'])) return $resolved;
+            $result = ObjectVisibility::saveSingleRule(self::getVisibilityObjectType(), (int)$this->getId(), (int)$this->get('IDorganization'), $resolved['type'], $resolved['holonId']);
+            if (empty($result['status'])) return $result;
+        }
+
         $groups = $this->getDecisionGroups(false);
         if (count($groups) <= 1) {
             $this->syncPrimaryGroupFromProcess();
@@ -689,6 +769,7 @@ class DecisionProcess extends DbObject
         }
 
         $previousVisibilityType = self::normalizeVisibilityType($this->get('visibility_type'));
+        $previousEditVisibilityType = (string)$this->getPrimaryEditVisibilityRuleRow()['visibility_type'];
         $this->set('IDholon', $targetHolonId);
         $resolvedVisibility = $this->resolveVisibilityRuleInput($previousVisibilityType);
         if (($resolvedVisibility['status'] ?? false) !== true) {
@@ -725,6 +806,12 @@ class DecisionProcess extends DbObject
             if (!is_array($visibilityResult) || empty($visibilityResult['status'])) {
                 throw new \RuntimeException(trim((string)($visibilityResult['text'] ?? 'decision_move_visibility_failed')));
             }
+
+            $editScope = $this->resolveVisibilityRuleInput($previousEditVisibilityType);
+            $editResult = $this->saveVisibilityRulesFromInput([
+                'edit_visibility_type' => !empty($editScope['status']) ? $previousEditVisibilityType : self::getDefaultEditVisibilityType(),
+            ]);
+            if (empty($editResult['status'])) throw new \RuntimeException('decision_move_edit_visibility_failed');
 
             if ($ownsTransaction) {
                 $pdo->commit();
@@ -1941,6 +2028,7 @@ class DecisionProcess extends DbObject
                 "DELETE FROM `resource_invitation` WHERE `resource_type` = 'decision_process' AND `resource_id` = :decision_process_id",
                 'DELETE FROM `decision_proposal` WHERE `IDdecision_process` = :decision_process_id',
                 'DELETE FROM `decision_group` WHERE `IDdecision_process` = :decision_process_id',
+                "DELETE FROM `object_visibility` WHERE `object_type` IN ('decision_process', 'decision_process_edit') AND `object_id` = :decision_process_id",
             ];
 
             foreach ($deleteQueries as $query) {

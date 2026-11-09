@@ -139,10 +139,13 @@ if (!function_exists('omoDecisionResolveGenericPublicContext')) {
         if (!$decisionGroup instanceof DecisionGroup) {
             $decisionGroup = $decision->ensurePrimaryGroup();
         }
+        $isPublicObserver = $intent === 'view'
+            && DecisionProcess::normalizeStatus($decision->get('status')) !== DecisionProcess::STATUS_DRAFT
+            && ($decision->getPrimaryVisibilityRuleRow()['visibility_type'] ?? '') === \dbObject\ObjectVisibility::TYPE_EVERYONE;
 
         return [
             'status' => true,
-            'accessMode' => 'public_request',
+            'accessMode' => $isPublicObserver ? 'public_observer' : 'public_request',
             'publicToken' => '',
             'organizationId' => $organizationId,
             'requestedHolonId' => $effectiveHolon ? (int)$effectiveHolon->getId() : 0,
@@ -165,7 +168,7 @@ if (!function_exists('omoDecisionResolveGenericPublicContext')) {
             'canParticipate' => false,
             'hasParticipation' => false,
             'isOwner' => false,
-            'requiresPublicAccessEmail' => true,
+            'requiresPublicAccessEmail' => !$isPublicObserver,
         ];
     }
 }

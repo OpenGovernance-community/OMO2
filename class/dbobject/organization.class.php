@@ -15720,17 +15720,6 @@
 				return false;
 			}
 
-			$decisionHolonId = (int)$decision->get('IDholon');
-			if ($decisionHolonId > 0) {
-				$decisionHolon = new \dbObject\Holon();
-				if (
-					!$decisionHolon->load($decisionHolonId)
-					|| !self::topbarSearchViewerCanViewHolon($decisionHolon, $viewerContext)
-				) {
-					return false;
-				}
-			}
-
 			$participant = null;
 			$hasParticipation = false;
 			$isOwner = false;
@@ -15766,7 +15755,8 @@
 				}
 			}
 
-			$canManage = $isOwner;
+			$canManage = (string)($viewerContext['type'] ?? '') === 'user'
+				&& $decision->canUseManagementPermission('CAN_EDIT_DECISION', (int)($viewerContext['userId'] ?? 0));
 			$canParticipate = ($isOwner || $hasParticipation) && $decision->isParticipationInterfaceOpen();
 			$canView = $canManage
 				|| $hasParticipation

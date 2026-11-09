@@ -19,7 +19,7 @@
                 'copy.reserve_aux_membres_de_l_organisation' => ['text' => 'Réservé aux membres de l’organisation.', 'context' => 'Interface text in class/dbobject/objectvisibility.class.php'],
                 'copy.reserve_aux_membres_du_cercle_concerne' => ['text' => 'Réservé aux membres du cercle concerné.', 'context' => 'Interface text in class/dbobject/objectvisibility.class.php'],
                 'copy.reserve_aux_membres_du_role_concerne' => ['text' => 'Réservé aux membres du rôle concerné.', 'context' => 'Interface text in class/dbobject/objectvisibility.class.php'],
-                'copy.reserve_a_la_personne_proprietaire_du_document' => ['text' => 'Réserve à la personne propriétaire du document.', 'context' => 'Interface text in class/dbobject/objectvisibility.class.php'],
+                'copy.reserve_a_la_personne_proprietaire_du_document' => ['text' => 'Réservé à la personne propriétaire.', 'context' => 'Help for owner-only visibility, shared by documents and other objects.'],
                 'copy.la_visibilite_cercle_attend_un_cercle' => ['text' => 'La visibilité cercle attend un cercle.', 'context' => 'Interface text in class/dbobject/objectvisibility.class.php'],
                 'copy.la_visibilite_role_attend_un_role' => ['text' => 'La visibilité rôle attend un rôle.', 'context' => 'Interface text in class/dbobject/objectvisibility.class.php'],
                 'copy.impossible_de_sauvegarder_la_visibilite' => ['text' => 'Impossible de sauvegarder la visibilité.', 'context' => 'Interface text in class/dbobject/objectvisibility.class.php'],

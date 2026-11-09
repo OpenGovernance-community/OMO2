@@ -446,7 +446,7 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
             }
         }
 
-        $holonContext = omoDecisionResolveOrganizationHolonContext($organization, $requestedHolonId);
+        $holonContext = omoDecisionResolveOrganizationHolonContext($organization, $decisionId > 0 ? 0 : $requestedHolonId);
         if (empty($holonContext['status'])) {
             return [
                 'status' => false,
@@ -492,13 +492,6 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
                     ];
                 }
 
-                if (!$decisionHolon->canViewDetail()) {
-                    return [
-                        'status' => false,
-                        'code' => 403,
-                        'error_key' => 'decisions.edit.context.holon_denied',
-                    ];
-                }
             }
 
             if ($currentUserId > 0) {
@@ -562,7 +555,6 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
         $canView = $decision instanceof DecisionProcess
             ? (
                 $canManage
-                || $canDelete
                 || $isOwner
                 || $hasParticipation
                 || (

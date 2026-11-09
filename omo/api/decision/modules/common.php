@@ -13,6 +13,7 @@ use dbObject\User;
 
 require_once dirname(__DIR__, 4) . '/common/choice/proposal-dates.php';
 require_once dirname(__DIR__, 4) . '/common/choice/process-schedule.php';
+require_once dirname(__DIR__, 4) . '/common/choice/decision-visibility.php';
 
 if (!class_exists('OmoDecisionModuleCapturedResponse', false)) {
     class OmoDecisionModuleCapturedResponse extends RuntimeException
@@ -1167,6 +1168,7 @@ if (!function_exists('omoDecisionCanAccessProposalDiscussion')) {
                 omoDecisionGetContextAccountUserId($context) > 0
                 || omoDecisionGetContextParticipantId($context) > 0
             )
+            && (!empty($context['hasParticipation']) || !empty($context['isOwner']))
             && !empty($context['canView'])
             && $proposal->areDiscussionsEnabled()
             && (int)$proposal->get('active') === 1
@@ -1420,6 +1422,7 @@ if (!function_exists('omoDecisionCanEditProposalFromPublicInterface')) {
         $userId = omoDecisionGetContextAccountUserId($context);
         $participantId = omoDecisionGetContextParticipantId($context);
         return $decision instanceof DecisionProcess
+            && (!empty($context['hasParticipation']) || !empty($context['isOwner']))
             && !$decision->hasConsultationEnded()
             && !$decision->hasEvaluationStarted()
             && $proposal->canBeEditedByActor($userId, $participantId);

@@ -119,6 +119,9 @@ try {
         throw new RuntimeException('decision_save_failed');
     }
 
+    $saveVisibility = $decision->saveVisibilityRulesFromInput($processBlueprint);
+    if (empty($saveVisibility['status'])) throw new RuntimeException('decision_visibility_save_failed');
+
     $ownerResult = omoDecisionImportEnsureOwnerParticipant($decision, $currentUserId);
     if (empty($ownerResult['status'])) {
         throw new RuntimeException('owner_participant_failed');

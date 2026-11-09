@@ -362,6 +362,7 @@ if (!function_exists('omoDecisionExportBuildProcessJsonData')) {
                         ? (string)($exportMethodMeta['label'] ?? $exportMethod)
                         : 'Multi-blocs',
                     'visibility_type' => trim((string)$decision->get('visibility_type')),
+                    'edit_visibility_type' => (string)$decision->getPrimaryEditVisibilityRuleRow()['visibility_type'],
                     'parameters' => $decisionParameters,
                 ],
                 'blocks' => $blockItems,

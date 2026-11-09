@@ -6,6 +6,8 @@ Les dates déjà indiquées sont conservées. Les dates manquantes sont reconsti
 
 ## 2026-11-09
 
+- Scrutins : sélecteurs de visibilité et d’édition identiques à ceux des documents. Lecture par l’organisation et édition par l’auteur par défaut ; les invitations conservent l’accès, les autres lecteurs consultent sans participer et plusieurs personnes peuvent gérer le scrutin selon la portée choisie. Le contexte reste verrouillé après le début du vote. Lecture publique des scrutins ouverts à tout le monde et conservation des droits dans les exports et imports.
+
 - OMO / traductions : raccordement des textes corrigés aux bundles des modules et des composants communs, avec paramètres nommés et pluriels. Libellés des choix traduits sans changer les valeurs SQL ; sources françaises d'adminEdit préservées quelle que soit la langue affichée.
 
 - Telegram / assistant : questions textuelles en privé avec le même moteur de consultation que le chat interne, les droits du compte lié et les contrôles IA de l’organisation. Choix par /organization, historique isolé par compte et organisation, remise à zéro par /new. Réponses sans tableaux, liens vers OMO et découpage des messages longs. Dans un groupe, seuls une mention du bot, une réponse à l’un de ses messages ou une commande explicitement adressée à son nom déclenchent le traitement ; les réponses de l’assistant restent privées et les échanges ordinaires sont ignorés.

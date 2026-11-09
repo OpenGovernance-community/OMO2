@@ -119,6 +119,8 @@ if (!$pdo) {
 }
 
 $originalPost = $_POST;
+$accessInput = $groupPayloads[count($groupPayloads) - 1]['postData'];
+$accessLocked = !$isCreatingDecision && $batchDecision->hasEvaluationStarted();
 $results = [];
 $failureCode = 500;
 $GLOBALS['omoDecisionCaptureModuleResponse'] = true;
@@ -135,6 +137,9 @@ try {
             $groupPayload['postData']['group_action'] = 'create';
         }
         $groupPayload['postData']['status'] = $executionIndex === $lastExecutionIndex ? $desiredStatus : $originalStatus;
+        // Apply access changes once every question has passed its existing permission check.
+        // An editor may narrow the scope and lose their own access in this save.
+        unset($groupPayload['postData']['visibility_type'], $groupPayload['postData']['edit_visibility_type']);
         $response = omoDecisionMultiSaveExecute($groupPayload['saveFile'], $groupPayload['postData']);
         if ($response->statusCode >= 400 || empty($response->payload['status'])) {
             $failureCode = $response->statusCode;
@@ -147,6 +152,12 @@ try {
             }
         }
         $results[$groupPayload['originalIndex']] = $response->payload;
+    }
+    if (!$batchDecision->load($decisionId, true)) throw new RuntimeException('decision_visibility_load_failed');
+    $accessResult = $batchDecision->saveVisibilityRulesFromInput($accessInput, $accessLocked);
+    if (empty($accessResult['status'])) {
+        $failureCode = 400;
+        throw new RuntimeException((string)($accessResult['text'] ?? omoDecisionUiT('visibilite_invalide_pour_cette_prise_de_decision')));
     }
     $pdo->commit();
     ksort($results);

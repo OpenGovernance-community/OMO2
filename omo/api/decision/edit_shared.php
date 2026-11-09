@@ -1,4 +1,5 @@
 <?php
+require_once dirname(__DIR__, 3) . '/common/choice/decision-visibility.php';
 require_once __DIR__ . '/ui_translations.php';
 
 use dbObject\DecisionProcess;
@@ -658,38 +659,6 @@ if (!function_exists('omoDecisionRenderEditorGroupSwitch')) {
     }
 }
 
-if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
-    function omoDecisionResolveVisibilityEditorState(?DecisionProcess $decision, array $context): array
-    {
-        $organizationId = $decision instanceof DecisionProcess
-            ? (int)$decision->get('IDorganization')
-            : (int)($context['organizationId'] ?? 0);
-        $holonId = $decision instanceof DecisionProcess
-            ? (int)$decision->get('IDholon')
-            : (int)($context['targetHolonId'] ?? 0);
-        $editorConfig = DecisionProcess::buildVisibilityEditorConfig($organizationId, $holonId);
-        $visibilityOptions = is_array($editorConfig['visibilityOptions'] ?? null)
-            ? $editorConfig['visibilityOptions']
-            : DecisionProcess::getVisibilityTypeOptions();
-        $disabledVisibilityTypes = is_array($editorConfig['disabledTypes'] ?? null)
-            ? $editorConfig['disabledTypes']
-            : array();
-        $selectedVisibilityType = $decision instanceof DecisionProcess
-            ? DecisionProcess::normalizeVisibilityType($decision->get('visibility_type'))
-            : DecisionProcess::getDefaultVisibilityType();
-
-        if (!empty($disabledVisibilityTypes[$selectedVisibilityType])) {
-            $selectedVisibilityType = DecisionProcess::getDefaultVisibilityType();
-        }
-
-        return array(
-            'selectedVisibilityType' => $selectedVisibilityType,
-            'visibilityOptions' => $visibilityOptions,
-            'disabledVisibilityTypes' => $disabledVisibilityTypes,
-            'visibilityHelpText' => trim((string)($editorConfig['helpText'] ?? '')),
-        );
-    }
-}
 ?>
 <link rel="stylesheet" href="/common/choice/decision_cards.css?v=20260923-compact-editor">
 <div class="omo-decision-edit omo-panel-view">
@@ -789,7 +758,6 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                     && in_array($multiStatus, [DecisionProcess::STATUS_RESULTS, DecisionProcess::STATUS_ARCHIVED], true);
                 $multiCanEditStructure = !$multiResultsMode && !$multiCoreLocked;
                 $multiCanEditStartDates = !$multiResultsMode && !$multiStartDatesLocked;
-                $multiVisibilityState = omoDecisionResolveVisibilityEditorState($multiDecision, $context);
                 $multiStatusOptions = [
                     DecisionProcess::STATUS_DRAFT => 'decisions.edit.multi.status.draft',
                     DecisionProcess::STATUS_SCHEDULED => 'decisions.edit.multi.status.scheduled',
@@ -851,14 +819,7 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                             </label>
 
                             <div class="omo-decision-edit__process-primary">
-                                <label class="generic-form-field">
-                                    <span class="generic-form-label"><?= $escape(t('decisions.edit.visibility.label', [], $lang, $baseSourceLang)) ?></span>
-                                    <select class="generic-form-control generic-form-control--compact" name="visibility_type" <?= $multiCanEditStructure ? '' : 'disabled' ?>>
-                                        <?php foreach (($multiVisibilityState['visibilityOptions'] ?? []) as $optionValue => $optionLabel): ?>
-                                        <option value="<?= $escape((string)$optionValue) ?>" <?= $optionValue === ($multiVisibilityState['selectedVisibilityType'] ?? DecisionProcess::getDefaultVisibilityType()) ? 'selected' : '' ?> <?= !empty(($multiVisibilityState['disabledVisibilityTypes'] ?? [])[$optionValue]) ? 'disabled' : '' ?>><?= $escape((string)$optionLabel) ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </label>
+                                <?= commonDecisionRenderVisibilitySelectors($multiDecision, $context, $multiCanEditStructure, 'decision-multi') ?>
                                 <label class="generic-form-field">
                                     <span class="generic-form-label"><?= $escape(t('decisions.edit.multi.status', [], $lang, $baseSourceLang)) ?></span>
                                     <select class="generic-form-control generic-form-control--compact" name="status">

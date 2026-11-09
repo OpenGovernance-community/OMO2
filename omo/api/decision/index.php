@@ -951,7 +951,6 @@ foreach ($decisionRows as $row) {
     $canDelete = $decision->canUseManagementPermission('CAN_DELETE_DECISION', $currentUserId);
 
     $canView = $canManage
-        || $canDelete
         || $isOwner
         || $hasUserParticipation
         || $hasEmailParticipation
