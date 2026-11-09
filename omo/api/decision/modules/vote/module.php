@@ -428,6 +428,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
     function omoDecisionVoteModuleRender(array $renderContext)
     {
         $context = $renderContext['context'];
+        $evaluationPreview = !empty($context['evaluationPreview']);
         $decision = $renderContext['decision'];
         $forceNewGroup = !empty($renderContext['forceNewGroup']);
         $includeAssets = !array_key_exists('includeAssets', $renderContext) || !empty($renderContext['includeAssets']);
@@ -614,7 +615,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
         $anonymousVoteChecked = $isAnonymous || ($allowAnonymousVotes && $selectedResponseIsAnonymous);
         $anonymousVoteDisabled = $isAnonymous || !$allowAnonymousVotes;
         $submittedResponses = [];
-        if ($decision instanceof DecisionProcess) {
+        if (!$evaluationPreview && $decision instanceof DecisionProcess) {
             $submittedResponses = $decisionGroup instanceof DecisionGroup
                 ? $decisionGroup->getResponses(DecisionResponse::STATUS_SUBMITTED)
                 : $decision->getResponses(DecisionResponse::STATUS_SUBMITTED);
@@ -685,8 +686,9 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
         ];
 
         $responsePayload = [
-            'saveUrl' => '/omo/api/decision/modules/vote/respond.php',
-            'redirectUrl' => omoDecisionBuildContextualEditorUrl($context, 'participate'),
+            'saveUrl' => $evaluationPreview ? '' : '/omo/api/decision/modules/vote/respond.php',
+            'evaluationPreview' => $evaluationPreview,
+            'redirectUrl' => $evaluationPreview ? '' : omoDecisionBuildContextualEditorUrl($context, 'participate'),
             'drawerTitle' => t('decisions.vote.drawer_title', [], $lang, $sourceLang),
             'choiceMode' => $choiceMode,
             'maxChoices' => $maxChoices,
@@ -1257,7 +1259,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                 <?php else: ?>
                 <form
                     class="omo-decision-vote__form generic-form-stack generic-form-stack--compact"
-                    action="/omo/api/decision/modules/vote/respond.php"
+                    action="<?= $evaluationPreview ? '#' : '/omo/api/decision/modules/vote/respond.php' ?>"
                     method="post"
                     data-omo-decision-vote-response-form
                 >
@@ -1269,6 +1271,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                     <input type="hidden" name="gid" value="<?= $escape($decisionGroup instanceof DecisionGroup ? (int)$decisionGroup->getId() : 0) ?>">
                     <input type="hidden" name="method" value="<?= $escape(DecisionProcess::METHOD_SIMPLE_VOTE) ?>">
                     <input type="hidden" name="intent" value="participate">
+                    <?php if ($evaluationPreview): ?><input type="hidden" name="evaluation_preview" value="1"><?php endif; ?>
                     <?= omoDecisionRenderPublicTokenInput($context, $escape) ?>
                     <input type="hidden" name="choice_mode" value="<?= $escape($choiceMode) ?>">
                     <?php endif; ?>
@@ -1276,7 +1279,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                     <?php if ($isConsultationPhase): ?>
                     <div class="generic-form-field omo-decision-vote__fieldset">
                     <?php else: ?>
-                    <fieldset class="generic-form-field omo-decision-vote__fieldset"<?= !$canEditSubmittedResponse ? ' disabled' : '' ?><?= $oneProposalAtATime && $evaluationStarted ? ' data-omo-decision-one-at-a-time' : '' ?><?= $oneProposalAtATime && $evaluationStarted && $choiceMode === 'single' ? ' data-omo-decision-one-at-a-time-single-choice="1"' : '' ?><?= $oneProposalAtATime && $evaluationStarted && (!($selectedResponse instanceof DecisionResponse) || DecisionResponse::normalizeStatus($selectedResponse->get('status')) !== DecisionResponse::STATUS_SUBMITTED) ? ' data-omo-decision-one-at-a-time-draft-url="/omo/api/decision/modules/vote/respond.php"' : '' ?>>
+                    <fieldset class="generic-form-field omo-decision-vote__fieldset"<?= !$canEditSubmittedResponse ? ' disabled' : '' ?><?= $oneProposalAtATime && $evaluationStarted ? ' data-omo-decision-one-at-a-time' : '' ?><?= $oneProposalAtATime && $evaluationStarted && $choiceMode === 'single' ? ' data-omo-decision-one-at-a-time-single-choice="1"' : '' ?><?= $oneProposalAtATime && $evaluationStarted && (!($selectedResponse instanceof DecisionResponse) || DecisionResponse::normalizeStatus($selectedResponse->get('status')) !== DecisionResponse::STATUS_SUBMITTED) && !$evaluationPreview ? ' data-omo-decision-one-at-a-time-draft-url="/omo/api/decision/modules/vote/respond.php"' : '' ?>>
                         <legend class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.vote.field.your_choice', [], $lang, $sourceLang)) ?></legend>
                     <?php endif; ?>
                         <?php if ($choiceMode === 'multiple'): ?>

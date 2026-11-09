@@ -686,6 +686,7 @@ function translationBundleTriggerAsyncRefreshJob($jobId)
 
 function translationBundleQueueRefresh(string $bundleKey, string $locale, array $sourceLang, string $storageLocale = ''): bool
 {
+    if (class_exists('\dbObject\DecisionProcess', false) && \dbObject\DecisionProcess::isReadOnlyEvaluationPreview()) return false;
     require_once __DIR__ . '/ai_access.php';
     if (!commonAiOrganizationAllows(commonAiRequestOrganization())) return false;
     if (commonAiGetProvider() === 'disabled') return false;

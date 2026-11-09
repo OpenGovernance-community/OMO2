@@ -3,6 +3,26 @@ namespace dbObject;
 
 class DecisionProcess extends DbObject
 {
+    private static bool $readOnlyEvaluationPreview = false;
+
+    public static function beginReadOnlyEvaluationPreview(): void
+    {
+        $pdo = self::getPdo();
+        if (!$pdo || $pdo->inTransaction()) throw new \RuntimeException('evaluation_preview_connection_unavailable');
+        // Session-level protection also survives an accidental commit in a rendering helper.
+        $pdo->exec('SET SESSION TRANSACTION READ ONLY');
+        $pdo->beginTransaction();
+        self::$readOnlyEvaluationPreview = true;
+        register_shutdown_function(static function () use ($pdo): void {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+        });
+    }
+
+    public static function isReadOnlyEvaluationPreview(): bool
+    {
+        return self::$readOnlyEvaluationPreview;
+    }
+
         protected static function uiMessageSourceLang(): array
         {
             return [

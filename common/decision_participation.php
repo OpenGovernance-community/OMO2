@@ -1,5 +1,15 @@
 <?php
 require_once dirname(__DIR__) . '/shared_functions.php';
+$evaluationPreviewRequest = ($_GET['evaluation_preview'] ?? '') === '1';
+if ($evaluationPreviewRequest) {
+    if (!in_array($_SERVER['REQUEST_METHOD'] ?? 'GET', ['GET', 'HEAD'], true)) {
+        http_response_code(405);
+        header('Allow: GET, HEAD');
+        exit;
+    }
+    \dbObject\DecisionProcess::beginReadOnlyEvaluationPreview();
+    header("Content-Security-Policy: form-action 'none'; connect-src 'none'; base-uri 'self'");
+}
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/omo_public_pages.php';
 require_once __DIR__ . '/topbar.php';
@@ -32,6 +42,9 @@ if (!function_exists('commonDecisionParticipationGetSourceLang')) {
         return [
             'decisions.public.default_organization' => ['text' => 'Organisation', 'context' => 'Fallback organization name on the public decision page.'],
             'decisions.public.default_title' => ['text' => 'Prise de décision', 'context' => 'Fallback decision title on the public page.'],
+            'decisions.public.preview.title' => ['text' => 'Prévisualisation de l’évaluation', 'context' => 'Persistent heading on the simulated evaluation page.'],
+            'decisions.public.preview.help' => ['text' => 'Vous pouvez essayer le questionnaire et naviguer entre les propositions. Les choix restent dans cette fenêtre ; aucune réponse n’est enregistrée.', 'context' => 'Explain that preview interactions are local and never saved.'],
+            'decisions.public.preview.complete' => ['text' => 'Simulation terminée. Aucune réponse n’a été enregistrée.', 'context' => 'Notification after trying to submit the preview questionnaire.'],
             'decisions.public.method.simple_vote' => ['text' => 'Vote simple', 'context' => 'Public label for the simple vote method.'],
             'decisions.public.method.majority_judgment' => ['text' => 'Jugement majoritaire', 'context' => 'Public label for the majority judgment method.'],
             'decisions.public.method.consent' => ['text' => 'Consentement', 'context' => 'Public label for the consent method.'],
@@ -1011,9 +1024,10 @@ function commonDecisionParticipationBuildTimelineSegments(DecisionProcess $decis
 }
 
 $omoDecisionInput = $_GET;
-$isEmbedded = !empty($omoDecisionInput['embedded']);
+$isEmbedded = !$evaluationPreviewRequest && !empty($omoDecisionInput['embedded']);
 $context = omoDecisionResolveEditorContext($omoDecisionInput);
 $context['previewLayout'] = true;
+$isEvaluationPreview = !empty($context['evaluationPreview']);
 $decision = !empty($context['decision']) && $context['decision'] instanceof DecisionProcess
     ? $context['decision']
     : null;
@@ -1351,6 +1365,12 @@ ob_start();
 ?>
 
         <section class="decision-public-content<?= $requiresPublicAccessEmail ? ' decision-public-content--centered' : '' ?>">
+            <?php if ($isEvaluationPreview): ?>
+            <section class="generic-soft-panel generic-soft-panel--stack">
+                <h1 class="generic-card-title"><?= omoApiEscape(commonDecisionParticipationT('decisions.public.preview.title')) ?></h1>
+                <p class="generic-description"><?= omoApiEscape(commonDecisionParticipationT('decisions.public.preview.help')) ?></p>
+            </section>
+            <?php endif; ?>
             <?php if ($requiresPublicAccessEmail): ?>
             <div class="decision-public-access-request-shell">
                 <section class="generic-section generic-section--stack decision-public-access-request">
@@ -1441,7 +1461,7 @@ if (empty($context['status'])) {
     <link rel="stylesheet" href="<?= commonAssetUrl('/common/choice/public.css') ?>">
 <?php if (!$isEmbedded): ?>
 </head>
-<body class="omo-public-body decision-public-page view-right">
+<body class="omo-public-body decision-public-page view-right"<?= $isEvaluationPreview ? ' data-omo-decision-evaluation-preview' : '' ?>>
 <?php endif; ?>
 <?php if (!$isEmbedded): ?>
     <div class="app decision-public-app">
@@ -1474,7 +1494,7 @@ if (empty($context['status'])) {
             ]);
             ?>
             <div class="omo-public-banner decision-public-banner">
-                <?= omoApiEscape(commonDecisionParticipationT('decisions.public.banner_prefix')) ?> <strong><?= omoApiEscape($organizationName !== '' ? $organizationName : commonDecisionParticipationT('decisions.public.default_organization')) ?></strong>
+                <?= omoApiEscape(commonDecisionParticipationT($isEvaluationPreview ? 'decisions.public.preview.title' : 'decisions.public.banner_prefix')) ?> <strong><?= omoApiEscape($organizationName !== '' ? $organizationName : commonDecisionParticipationT('decisions.public.default_organization')) ?></strong>
                 <?php if ($participantLabel !== ''): ?>
                 <?= omoApiEscape(commonDecisionParticipationT('decisions.public.banner_personal_access', ['participant' => $participantLabel])) ?>
                 <?php endif; ?>
@@ -1518,6 +1538,9 @@ if (empty($context['status'])) {
                 'removeProposal' => commonDecisionParticipationT('decisions.public.js.remove_proposal'),
             ],
 ]) ?>
+    <?php if ($isEvaluationPreview): ?>
+    <?= commonPageScriptTags('/common/choice/evaluation-preview.js', ['completeMessage' => commonDecisionParticipationT('decisions.public.preview.complete')]) ?>
+    <?php endif; ?>
 <?php if (!$isEmbedded): ?>
 </body>
 </html>

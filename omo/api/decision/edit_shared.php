@@ -23,6 +23,8 @@ $baseSourceLang = [
     'decisions.edit.interrupt.confirm' => ['text' => 'Interrompre le scrutin et revenir en préparation ? Les modifications non enregistrées seront perdues.', 'context' => 'Confirmation before interrupting the evaluation.'],
     'decisions.edit.interrupt.pending' => ['text' => 'Interruption en cours…', 'context' => 'Progress label while interrupting evaluation.'],
     'decisions.edit.interrupt.error' => ['text' => 'Impossible d’interrompre le scrutin pour le moment.', 'context' => 'Fallback error for the interruption request.'],
+    'decisions.edit.evaluation_preview.label' => ['text' => 'Prévisualiser l’évaluation', 'context' => 'Open the saved questionnaire as a simulated evaluation in a separate window.'],
+    'decisions.edit.evaluation_preview.help' => ['text' => 'Version enregistrée du questionnaire, dans une fenêtre séparée. Les réponses de prévisualisation ne sont pas enregistrées.', 'context' => 'Explain the saved snapshot and local-only preview responses.'],
     'decisions.edit.view_title' => [
         'text' => 'Voir la prise de décision',
         'context' => 'Drawer title when opening a decision in read-only mode.',
@@ -670,6 +672,15 @@ if (!function_exists('omoDecisionRenderEditorGroupSwitch')) {
     <div class="omo-panel-view__body">
         <div class="omo-panel-view__body_content omo-decision-edit__stack generic-drawer-content generic-form-stack generic-form-stack--compact">
             <?php if ($isEditing && !$isDuplicate && ($context['accessMode'] ?? '') !== 'public'): require_once dirname(__DIR__, 3) . '/common/object_mail/ui.php'; omoObjectMailButton((int)$context['organizationId'], 'decision', (int)$decision->getId()); endif; ?>
+            <?php if ($isEditing && $intent === 'manage' && !empty($context['canManage'])): ?>
+            <div class="generic-form-actions">
+                <a class="generic-action-button generic-action-button--secondary" target="_blank" rel="noopener noreferrer"
+                    data-omo-decision-evaluation-preview-link
+                    href="<?= $escape(omoDecisionBuildEvaluationPreviewUrl((int)$context['organizationId'], (int)$decision->getId())) ?>"
+                    title="<?= $escape(t('decisions.edit.evaluation_preview.help', [], $lang, $baseSourceLang)) ?>"
+                ><?= $escape(t('decisions.edit.evaluation_preview.label', [], $lang, $baseSourceLang)) ?></a>
+            </div>
+            <?php endif; ?>
             <?php if ($isEditing && $intent === 'manage' && !empty($context['canManage']) && $decision->canInterruptEvaluation()): ?>
             <div class="generic-form-actions">
                 <button type="button" class="generic-action-button generic-action-button--secondary"

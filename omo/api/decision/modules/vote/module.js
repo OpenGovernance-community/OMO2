@@ -937,6 +937,12 @@ window.commonPageScripts["/omo/api/decision/modules/vote/module.js"] = function 
                                 }
                             }
 
+                            if (payload.evaluationPreview || document.body.hasAttribute('data-omo-decision-evaluation-preview')) {
+                                setFeedback('', false);
+                                if (typeof window.omoDecisionCompleteEvaluationPreview === 'function') window.omoDecisionCompleteEvaluationPreview(form);
+                                return;
+                            }
+
                             const formData = new FormData(form);
                             const defaultLabel = payload.texts && payload.texts.save ? payload.texts.save : submitButton.textContent;
                             const savingLabel = payload.texts && payload.texts.saving ? payload.texts.saving : defaultLabel;

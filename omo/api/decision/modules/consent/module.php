@@ -129,6 +129,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
     function omoDecisionConsentModuleRender(array $renderContext)
     {
         $context = $renderContext['context'];
+        $evaluationPreview = !empty($context['evaluationPreview']);
         $decision = $renderContext['decision'];
         $forceNewGroup = !empty($renderContext['forceNewGroup']);
         $includeAssets = !array_key_exists('includeAssets', $renderContext) || !empty($renderContext['includeAssets']);
@@ -290,7 +291,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
 
         $submittedResponses = [];
         $submittedVoteCount = 0;
-        if ($decision instanceof DecisionProcess) {
+        if (!$evaluationPreview && $decision instanceof DecisionProcess) {
             foreach (($decisionGroup instanceof DecisionGroup ? $decisionGroup->getResponses(DecisionResponse::STATUS_SUBMITTED) : $decision->getResponses(DecisionResponse::STATUS_SUBMITTED)) as $submittedResponse) {
                 $submittedResponses[] = $submittedResponse;
                 $submittedVoteCount++;
@@ -327,8 +328,9 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
         ];
 
         $responsePayload = [
-            'saveUrl' => '/omo/api/decision/modules/consent/respond.php',
-            'redirectUrl' => omoDecisionBuildContextualEditorUrl($context, 'participate'),
+            'saveUrl' => $evaluationPreview ? '' : '/omo/api/decision/modules/consent/respond.php',
+            'evaluationPreview' => $evaluationPreview,
+            'redirectUrl' => $evaluationPreview ? '' : omoDecisionBuildContextualEditorUrl($context, 'participate'),
             'drawerTitle' => t('decisions.consent.drawer_title', [], $lang, $sourceLang),
             'texts' => [
                 'save' => $selectedResponse instanceof DecisionResponse
@@ -718,13 +720,14 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                 <?php if ($isConsultationPhase): ?>
                 <div class="omo-decision-consent__form generic-form-stack generic-form-stack--compact">
                 <?php else: ?>
-                <form class="omo-decision-consent__form generic-form-stack generic-form-stack--compact" action="/omo/api/decision/modules/consent/respond.php" method="post" data-omo-decision-consent-response-form>
+                <form class="omo-decision-consent__form generic-form-stack generic-form-stack--compact" action="<?= $evaluationPreview ? '#' : '/omo/api/decision/modules/consent/respond.php' ?>" method="post" data-omo-decision-consent-response-form>
                     <input type="hidden" name="oid" value="<?= $escape((int)$context['organizationId']) ?>">
                     <input type="hidden" name="cid" value="<?= $escape((int)$context['targetHolonId']) ?>">
                     <input type="hidden" name="id" value="<?= $escape($isDuplicate ? 0 : ($decision instanceof DecisionProcess ? (int)$decision->getId() : 0)) ?>">
                     <input type="hidden" name="gid" value="<?= $escape($isDuplicate ? 0 : ($decisionGroup instanceof DecisionGroup ? (int)$decisionGroup->getId() : 0)) ?>">
                     <input type="hidden" name="method" value="<?= $escape(DecisionProcess::METHOD_CONSENT) ?>">
                     <input type="hidden" name="intent" value="participate">
+                    <?php if ($evaluationPreview): ?><input type="hidden" name="evaluation_preview" value="1"><?php endif; ?>
                     <?= omoDecisionRenderPublicTokenInput($context, $escape) ?>
                 <?php endif; ?>
 
@@ -739,7 +742,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                         <?php if (count($proposalObjects) === 0): ?>
                         <p class="omo-decision-consent__text"><?= $escape(t('decisions.consent.empty_proposals', [], $lang, $sourceLang)) ?></p>
                         <?php else: ?>
-                        <div class="omo-decision-consent__choice-list"<?= $oneProposalAtATime && $evaluationStarted ? ' data-omo-decision-one-at-a-time' : '' ?><?= $oneProposalAtATime && $evaluationStarted && (!($selectedResponse instanceof DecisionResponse) || DecisionResponse::normalizeStatus($selectedResponse->get('status')) !== DecisionResponse::STATUS_SUBMITTED) ? ' data-omo-decision-one-at-a-time-draft-url="/omo/api/decision/modules/consent/respond.php"' : '' ?>>
+                        <div class="omo-decision-consent__choice-list"<?= $oneProposalAtATime && $evaluationStarted ? ' data-omo-decision-one-at-a-time' : '' ?><?= $oneProposalAtATime && $evaluationStarted && (!($selectedResponse instanceof DecisionResponse) || DecisionResponse::normalizeStatus($selectedResponse->get('status')) !== DecisionResponse::STATUS_SUBMITTED) && !$evaluationPreview ? ' data-omo-decision-one-at-a-time-draft-url="/omo/api/decision/modules/consent/respond.php"' : '' ?>>
                             <?php foreach ($proposalObjects as $proposal): ?>
                             <?php $proposalId = (int)$proposal->getId(); ?>
                             <div class="generic-section generic-section--stack omo-decision-consent__choice-card"<?= $oneProposalAtATime && $evaluationStarted ? ' data-omo-decision-one-at-a-time-item' : '' ?>>

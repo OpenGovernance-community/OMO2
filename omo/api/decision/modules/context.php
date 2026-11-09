@@ -9,6 +9,45 @@ use dbObject\User;
 
 require_once __DIR__ . '/public_access.php';
 
+function omoDecisionBuildEvaluationPreviewUrl(int $organizationId, int $decisionId): string
+{
+    return '/common/decision_participation.php?' . http_build_query(['oid' => $organizationId, 'id' => $decisionId, 'evaluation_preview' => '1']);
+}
+
+function omoDecisionResolveEvaluationPreviewContext(array $input): array
+{
+    $denied = ['status' => false, 'code' => 403, 'error_key' => 'decisions.edit.context.decision_denied'];
+    if (!in_array($_SERVER['REQUEST_METHOD'] ?? 'GET', ['GET', 'HEAD'], true)) return array_replace($denied, ['code' => 405]);
+    $userId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : (int)($_SESSION['currentUser'] ?? 0);
+    $decision = new DecisionProcess();
+    if ($userId <= 0 || !$decision->load((int)($input['id'] ?? 0))) return $denied;
+    $organizationId = (int)$decision->get('IDorganization');
+    $organization = new Organization();
+    if ((int)($input['oid'] ?? 0) !== $organizationId || !$organization->load($organizationId)
+        || !commonUserHasOrganizationAccess($userId, $organizationId)
+        || !$decision->canUseManagementPermission('CAN_EDIT_DECISION', $userId)) return $denied;
+    $holon = null;
+    if ((int)$decision->get('IDholon') > 0) {
+        $holon = new Holon();
+        if (!$holon->load((int)$decision->get('IDholon')) || !$organization->containsHolon($holon)) return $denied;
+    }
+    // Only this in-memory copy enters evaluation. No lifecycle or invitation synchronization runs.
+    $preview = clone $decision;
+    $preview->set('status', DecisionProcess::STATUS_EVALUATION);
+    $preview->set('evaluation_start_at', new \DateTimeImmutable('-1 minute'));
+    foreach (['consultation_start_at', 'consultation_end_at', 'evaluation_end_at', 'results_published_at', 'archived_at'] as $key) $preview->set($key, null);
+    return [
+        'status' => true, 'accessMode' => 'evaluation_preview', 'evaluationPreview' => true, 'previewLayout' => true,
+        'organizationId' => $organizationId, 'organization' => $organization, 'decisionId' => (int)$decision->getId(),
+        'decision' => $preview, 'decisionGroup' => $preview->getPrimaryGroup(false),
+        'decisionGroupId' => 0, 'currentHolon' => $holon, 'decisionHolon' => $holon, 'effectiveHolon' => $holon,
+        'targetHolonId' => $holon ? (int)$holon->getId() : 0, 'requestedHolonId' => 0,
+        'currentUserId' => 0, 'currentUserEmail' => '', 'participant' => null, 'publicToken' => '',
+        'intent' => 'participate', 'canCreate' => false, 'canManage' => false, 'canDelete' => false,
+        'canView' => true, 'canParticipate' => true, 'hasParticipation' => false, 'isOwner' => false,
+    ];
+}
+
 if (!function_exists('omoDecisionBuildEditorUrl')) {
     function omoDecisionBuildEditorUrl($organizationId, $holonId = 0, $decisionId = 0, $method = '', $intent = '', $decisionGroupId = 0, $groupAction = '')
     {
@@ -286,6 +325,7 @@ if (!function_exists('omoDecisionResolveManagementContext')) {
 if (!function_exists('omoDecisionResolveEditorContext')) {
     function omoDecisionResolveEditorContext(array $input)
     {
+        if (($input['evaluation_preview'] ?? '') === '1') return omoDecisionResolveEvaluationPreviewContext($input);
         $publicToken = trim((string)($input['token'] ?? ''));
         if ($publicToken !== '') {
             $participant = omoDecisionResolvePublicParticipantByToken($publicToken);

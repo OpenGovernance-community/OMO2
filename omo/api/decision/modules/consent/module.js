@@ -900,6 +900,11 @@ var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; 
 
                     form.addEventListener('submit', function (event) {
                         event.preventDefault();
+                        if (payload.evaluationPreview || document.body.hasAttribute('data-omo-decision-evaluation-preview')) {
+                            setFeedback('', false);
+                            if (typeof window.omoDecisionCompleteEvaluationPreview === 'function') window.omoDecisionCompleteEvaluationPreview(form);
+                            return;
+                        }
                         if (!payload.saveUrl) {
                             return;
                         }
