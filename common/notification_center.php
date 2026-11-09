@@ -8,8 +8,8 @@ if (!function_exists('notificationCenterT')) {
         static $bundle = null;
         static $sourceLang = [
             'notification.login.new' => ['text' => 'Connexion sur un nouvel appareil', 'context' => 'Personal notification for a browser not yet recognized for this user.'],
-            'notification.login.known' => ['text' => 'Connexion sur un appareil deja identifie', 'context' => 'Personal notification for an explicit login on a recognized browser.'],
-            'notification.login.body' => ['text' => 'Connexion a votre compte le {date} (Europe/Zurich). Adresse IP : {ip}. Navigateur : {browser}. Si vous ne reconnaissez pas cette connexion, verifiez la securite de votre compte.', 'context' => 'Successful interactive login details; browser information is informational only.'],
+            'notification.login.known' => ['text' => 'Connexion sur un appareil déjà identifié', 'context' => 'Personal notification for an explicit login on a recognized browser.'],
+            'notification.login.body' => ['text' => 'Connexion à votre compte le {date} (Europe/Zurich). Adresse IP : {ip}. Navigateur : {browser}. Si vous ne reconnaissez pas cette connexion, vérifiez la sécurité de votre compte.', 'context' => 'Successful interactive login details; browser information is informational only.'],
             'notification.meeting.preference' => ['text' => 'Nouvelle réservation sur ma page de rendez-vous', 'context' => 'Personal booking notification preference.'],
             'notification.meeting.title' => ['text' => 'Nouveau rendez-vous — {guest}', 'context' => 'Booking notification sent to the calendar owner.'],
             'notification.meeting.body' => ['text' => '{guest} ({email}) a réservé un rendez-vous le {date} à {time}, pour {duration} minutes (Europe/Zurich).', 'context' => 'Confirmed booking summary for the owner.'],
@@ -48,7 +48,19 @@ if (!function_exists('notificationCenterT')) {
             'notification.project.status_title' => ['text' => 'Statut modifié - {title}', 'context' => 'Project status change notification title.'],
             'notification.project.status' => ['text' => '{actor} a changé le statut du projet "{title}" de "{previous}" à "{current}".', 'context' => 'Manual project status change with the actual editor.'],
             'notification.project.status_auto' => ['text' => 'Le statut du projet "{title}" est passé automatiquement de "{previous}" à "{current}".', 'context' => 'Automatic project status change without a human actor.'],
-        ];
+
+            'copy.nouveau_commentaire_dans_une_discussion_a_laquelle_je_participe' => ['text' => 'Nouveau commentaire dans une discussion à laquelle je participe', 'context' => 'Interface text in common/notification_center.php'],
+            'copy.passage_de_mes_scrutins_invites_en_consultation' => ['text' => 'Passage de mes scrutins invités en consultation', 'context' => 'Interface text in common/notification_center.php'],
+            'copy.passage_de_mes_scrutins_invites_en_vote' => ['text' => 'Passage de mes scrutins invités en vote', 'context' => 'Interface text in common/notification_center.php'],
+            'copy.invitation_a_un_nouvel_evenement' => ['text' => 'Invitation à un nouvel événement', 'context' => 'Interface text in common/notification_center.php'],
+            'copy.modification_du_lieu_d_un_evenement' => ['text' => 'Modification du lieu d’un événement', 'context' => 'Interface text in common/notification_center.php'],
+            'copy.modification_de_l_horaire_d_un_evenement' => ['text' => 'Modification de l’horaire d’un événement', 'context' => 'Interface text in common/notification_center.php'],
+            'copy.debut_prochain_d_un_evenement' => ['text' => 'Début prochain d’un événement', 'context' => 'Interface text in common/notification_center.php'],
+            'copy.nouveau_commentaire_dans_une_discussion_de_projet_a_laquelle_je_partic' => ['text' => 'Nouveau commentaire dans une discussion de projet à laquelle je participe', 'context' => 'Interface text in common/notification_center.php'],
+            'copy.debut_dans_leadlabel_eventtitle' => ['text' => 'Début dans {leadLabel} - {eventTitle}', 'context' => 'Interface text in common/notification_center.php'],
+            'copy.l_evenement_eventtitle_commence_le_value' => ['text' => 'L’événement "{eventTitle}" commence le {value}.', 'context' => 'Interface text in common/notification_center.php'],
+            'copy.la_periode_de_phaselabel_du_scrutin_decisiontitle_est_terminee_vous_po' => ['text' => 'La période de {phaseLabel} du scrutin "{decisionTitle}" est terminée. Vous pouvez maintenant effectuer les actions de suivi nécessaires.', 'context' => 'Interface text in common/notification_center.php'],
+    ];
         if ($bundle === null) {
             $bundle = function_exists('omoLoadTranslationBundle')
                 ? omoLoadTranslationBundle('common_notification_center', $sourceLang)
@@ -91,22 +103,22 @@ if (!function_exists('notificationCenterEventCatalog')) {
             'decision_proposal_owner' => 'Nouvelle proposition dans mes scrutins',
             'decision_proposal_participant' => 'Nouvelle proposition dans un scrutin auquel je participe',
             'decision_chat_proposal_owner' => 'Nouveau commentaire sur mes propositions',
-            'decision_chat_participant' => 'Nouveau commentaire dans une discussion a laquelle je participe',
-            'decision_consultation_started' => 'Passage de mes scrutins invites en consultation',
-            'decision_evaluation_started' => 'Passage de mes scrutins invites en vote',
+            'decision_chat_participant' => notificationCenterT('copy.nouveau_commentaire_dans_une_discussion_a_laquelle_je_participe'),
+            'decision_consultation_started' => notificationCenterT('copy.passage_de_mes_scrutins_invites_en_consultation'),
+            'decision_evaluation_started' => notificationCenterT('copy.passage_de_mes_scrutins_invites_en_vote'),
             'decision_consultation_ending' => 'Fin prochaine de la consultation',
             'decision_evaluation_ending' => 'Fin prochaine du vote',
             'decision_consultation_finished' => 'Fin de la consultation de mes scrutins',
             'decision_evaluation_finished' => 'Fin du vote de mes scrutins',
-            'calendar_event_invited' => 'Invitation a un nouvel evenement',
+            'calendar_event_invited' => notificationCenterT('copy.invitation_a_un_nouvel_evenement'),
             'calendar_recurring_occurrence_created' => notificationCenterT('notification.event.occurrence_preference'),
-            'calendar_event_location_changed' => 'Modification du lieu d un evenement',
-            'calendar_event_schedule_changed' => 'Modification de l horaire d un evenement',
-            'calendar_event_starting' => 'Debut prochain d un evenement',
+            'calendar_event_location_changed' => notificationCenterT('copy.modification_du_lieu_d_un_evenement'),
+            'calendar_event_schedule_changed' => notificationCenterT('copy.modification_de_l_horaire_d_un_evenement'),
+            'calendar_event_starting' => notificationCenterT('copy.debut_prochain_d_un_evenement'),
             'project_proposal_refused' => 'Refus de mes propositions de projet',
             'project_status_changed' => 'Changement de statut des projets suivis',
             'project_chat_owner' => 'Nouveau commentaire sur mes projets ou propositions',
-            'project_chat_participant' => 'Nouveau commentaire dans une discussion de projet a laquelle je participe',
+            'project_chat_participant' => notificationCenterT('copy.nouveau_commentaire_dans_une_discussion_de_projet_a_laquelle_je_partic'),
         ];
     }
 }
@@ -577,8 +589,8 @@ if (!function_exists('notificationCenterProcessEventLifecycle')) {
                     'calendar_event_starting',
                     [$userId],
                     'calendar-event-starting-' . (int)$event->getId() . '-' . $startAt->format('YmdHi') . '-' . $leadTime,
-                    'Debut dans ' . $leadLabel . ' - ' . $eventTitle,
-                    'L evenement "' . $eventTitle . '" commence le ' . notificationCenterFormatEventDateTime($startAt) . '.',
+                    notificationCenterT('copy.debut_dans_leadlabel_eventtitle', ['leadLabel' => $leadLabel, 'eventTitle' => $eventTitle]),
+                    notificationCenterT('copy.l_evenement_eventtitle_commence_le_value', ['eventTitle' => $eventTitle, 'value' => notificationCenterFormatEventDateTime($startAt)]),
                     notificationCenterBuildEventUrl((int)$event->get('IDorganization'), (int)$event->getId())
                 );
             }
@@ -962,7 +974,7 @@ if (!function_exists('notificationCenterDispatchDecisionCompletedPhase')) {
             [$ownerId],
             'decision-' . $phase . '-finished-' . $decisionId . '-' . $sourceDate,
             $titlePrefix . ' - ' . $decisionTitle,
-            'La periode de ' . $phaseLabel . ' du scrutin "' . $decisionTitle . '" est terminee. Vous pouvez maintenant effectuer les actions de suivi necessaires.',
+            notificationCenterT('copy.la_periode_de_phaselabel_du_scrutin_decisiontitle_est_terminee_vous_po', ['phaseLabel' => $phaseLabel, 'decisionTitle' => $decisionTitle]),
             notificationCenterBuildDecisionUrl($organizationId, $decisionId)
         );
         return 1;

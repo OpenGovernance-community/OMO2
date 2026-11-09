@@ -102,7 +102,32 @@ function omoInterfaceUiSourceLang(): array
         'search_follow_failed' => ['text' => 'Le suivi de la recherche a échoué.', 'context' => 'Translated interface feedback with named interpolation variables.'],
         'structure_not_shared' => ['text' => 'Structure non partagée', 'context' => 'Translated interface feedback with named interpolation variables.'],
         'structure_share_denied' => ['text' => 'Ce lien n’autorise pas l’affichage de la structure.', 'context' => 'Translated interface feedback with named interpolation variables.'],
-    ];
+
+        'copy.cette_action_doit_etre_envoyee_en_post' => ['text' => 'Cette action doit être envoyée en POST.', 'context' => 'Interface text in omo/api/application_view_preferences.php'],
+        'copy.jeton_de_securite_invalide' => ['text' => 'Jeton de sécurité invalide.', 'context' => 'Interface text in omo/api/application_view_preferences.php'],
+        'copy.configuration_de_reunion_indisponible' => ['text' => 'Configuration de réunion indisponible.', 'context' => 'Interface text in omo/api/application_view_preferences.php'],
+        'copy.impossible_d_enregistrer_cette_vue_de_reunion' => ['text' => 'Impossible d’enregistrer cette vue de réunion.', 'context' => 'Interface text in omo/api/application_view_preferences.php'],
+        'copy.droits_insuffisants_pour_cette_portee' => ['text' => 'Droits insuffisants pour cette portée.', 'context' => 'Interface text in omo/api/application_view_preferences.php'],
+        'copy.impossible_d_enregistrer_cette_vue_par_defaut' => ['text' => 'Impossible d’enregistrer cette vue par défaut.', 'context' => 'Interface text in omo/api/application_view_preferences.php'],
+        'copy.evenement_value' => ['text' => 'Événement #{value}', 'context' => 'Interface text in omo/api/dashboard/modules/data/event.php'],
+        'copy.acces_refuse' => ['text' => 'Accès refusé.', 'context' => 'Interface text in omo/api/debug_permissions.php'],
+        'copy.acces_refuse_a_cet_export' => ['text' => 'Accès refusé à cet export.', 'context' => 'Interface text in omo/api/exportStructure.php'],
+        'copy.impossible_de_generer_le_csv_de_structure' => ['text' => 'Impossible de générer le CSV de structure.', 'context' => 'Interface text in omo/api/exportStructure.php'],
+        'copy.impossible_de_generer_le_xml_de_structure' => ['text' => 'Impossible de générer le XML de structure.', 'context' => 'Interface text in omo/api/exportStructure.php'],
+        'copy.champ_non_autorise' => ['text' => 'Champ non autorisé.', 'context' => 'Interface text in omo/api/object_mail/index.php'],
+        'copy.deja_en_cours' => ['text' => 'déjà en cours', 'context' => 'Interface text in omo/api/parameters/site_update_run.php'],
+        'copy.portee_d_enregistrement_invalide' => ['text' => 'Portée d’enregistrement invalide.', 'context' => 'Interface text in omo/api/personal_space_layout.php'],
+        'copy.impossible_d_enregistrer_le_tableau_de_pilotage' => ['text' => 'Impossible d’enregistrer le tableau de pilotage.', 'context' => 'Interface text in omo/api/personal_space_layout.php'],
+        'copy.regles' => ['text' => 'Règles', 'context' => 'Interface text in omo/api/search_popup.php'],
+        'copy.decisions' => ['text' => 'Décisions', 'context' => 'Interface text in omo/api/search_popup.php'],
+        'copy.taches_recurrentes' => ['text' => 'Tâches récurrentes', 'context' => 'Interface text in omo/api/search_popup.php'],
+        'copy.le_worker_de_recherche_n_a_pas_pu_terminer_correctement' => ['text' => 'Le worker de recherche n’a pas pu terminer correctement.', 'context' => 'Interface text in omo/api/search_popup.php'],
+        'copy.resultat' => ['text' => 'Résultat', 'context' => 'Interface text in omo/api/search_popup.php'],
+        'copy.validation_enregistree' => ['text' => 'Validation enregistrée.', 'context' => 'Interface text in omo/api/user_competence_validate.php'],
+        'copy.impossible_d_enregistrer_cette_validation' => ['text' => 'Impossible d\'enregistrer cette validation.', 'context' => 'Interface text in omo/api/user_competence_validate.php'],
+
+        'copy.portee_toute_l_organisation' => ['text' => 'portée: toute l’organisation', 'context' => 'Interface text rendered by omo/api/debug_permissions.php'],
+];
     return $sourceLang;
 }
 

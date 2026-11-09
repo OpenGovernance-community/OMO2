@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/ai_translations.php';
+
 
 require_once __DIR__ . '/ai_access.php';
 require_once __DIR__ . '/ai_client.php';
@@ -56,7 +58,7 @@ function commonOpenAiRewriteSelectedDocumentText($selectedText, $fullText, array
     if ($selectedText === '' || $fullText === '') {
         return array(
             'status' => false,
-            'message' => 'Le texte a reecrire est vide.',
+            'message' => commonAiUiT('copy.le_texte_a_reecrire_est_vide'),
         );
     }
 
@@ -127,7 +129,7 @@ function commonOpenAiRewriteSelectedDocumentText($selectedText, $fullText, array
 
     return array(
         'status' => false,
-        'message' => trim((string)($lastFailure['message'] ?? 'Impossible de reecrire ce texte.')),
+        'message' => trim((string)($lastFailure['message'] ?? commonAiUiT('copy.impossible_de_reecrire_ce_texte'))),
     );
 }
 
@@ -216,7 +218,7 @@ function commonOpenAiSummarizeSelectedDocumentText($selectedText, $fullText, arr
     if ($selectedText === '' || $fullText === '') {
         return array(
             'status' => false,
-            'message' => 'Le texte a resumer est vide.',
+            'message' => commonAiUiT('copy.le_texte_a_resumer_est_vide'),
         );
     }
 
@@ -291,6 +293,6 @@ function commonOpenAiSummarizeSelectedDocumentText($selectedText, $fullText, arr
 
     return array(
         'status' => false,
-        'message' => trim((string)($lastFailure['message'] ?? 'Impossible de resumer ce texte.')),
+        'message' => trim((string)($lastFailure['message'] ?? commonAiUiT('copy.impossible_de_resumer_ce_texte'))),
     );
 }

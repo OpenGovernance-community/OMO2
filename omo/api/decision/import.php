@@ -133,7 +133,7 @@ try {
         $method = DecisionProcess::normalizeEvaluationMethod((string)($blockBlueprint['method'] ?? ''));
         $definition = omoDecisionEnsureMethodImportLoaded($method);
         if (!$definition || empty($definition['import_function']) || !function_exists((string)$definition['import_function'])) {
-            throw new InvalidArgumentException('Methode d import non supportee: ' . $method);
+            throw new InvalidArgumentException(omoDecisionUiT('copy.methode_d_import_non_supportee_method', ['method' => $method]));
         }
 
         $isPrimaryGroup = $blockIndex === 0;
@@ -176,7 +176,7 @@ try {
         'status' => false,
         'message' => trim((string)$exception->getMessage()) !== ''
             ? trim((string)$exception->getMessage())
-            : 'Impossible d importer ce fichier.',
+            : omoDecisionUiT('copy.impossible_d_importer_ce_fichier'),
     ]);
 } catch (Throwable $exception) {
     if ($pdo->inTransaction()) {
@@ -200,5 +200,5 @@ omoDecisionImportJsonResponse(200, [
     'message' => omoDecisionUiT('scrutin_importe'),
     'decisionId' => (int)$decision->getId(),
     'redirectUrl' => omoDecisionBuildEditorUrl($organizationId, $targetHolonId, (int)$decision->getId(), $redirectMethod, 'manage', $redirectGroupId),
-    'drawerTitle' => 'Prises de decision',
+    'drawerTitle' => omoDecisionUiT('prises_de_decision'),
 ]);

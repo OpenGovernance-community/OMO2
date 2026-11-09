@@ -29,7 +29,11 @@
                 'le_parcours_a_ete_detache_de_votre_organisation' => ['text' => 'Le parcours a été détaché de votre organisation.', 'context' => 'Validation or action feedback for parcours.'],
                 'le_parcours_et_ses_elements_non_reutilises_ont_ete_supprimes' => ['text' => 'Le parcours et ses éléments non réutilisés ont été supprimés.', 'context' => 'Validation or action feedback for parcours.'],
                 'impossible_de_supprimer_ce_parcours_pour_le_moment' => ['text' => 'Impossible de supprimer ce parcours pour le moment.', 'context' => 'Validation or action feedback for parcours.'],
-            ];
+
+                'copy.impossible_d_instancier_un_parcours_basic' => ['text' => 'Impossible d’instancier un parcours basic.', 'context' => 'Interface text in class/dbobject/parcours.class.php'],
+                'copy.le_parcours_a_ete_detache_de_votre_organisation_il_reste_utilise_dans_' => ['text' => 'Le parcours a été détaché de votre organisation. Il reste utilisé dans 1 autre organisation.', 'context' => 'Interface text in class/dbobject/parcours.class.php'],
+                'copy.le_parcours_a_ete_detache_de_votre_organisation_il_reste_utilise_dans__6fa0a8' => ['text' => 'Le parcours a été détaché de votre organisation. Il reste utilisé dans {remainingOrganizationCount} autres organisations.', 'context' => 'Interface text in class/dbobject/parcours.class.php'],
+    ];
         }
 
 		protected static $hasApplicationColumnCache = null;
@@ -632,7 +636,7 @@
 						'status' => false,
 						'message' => is_array($attachResult) && !empty($attachResult['message'])
 							? (string)$attachResult['message']
-							: 'Impossible d instancier un parcours basic.',
+							: self::uiMessage('copy.impossible_d_instancier_un_parcours_basic'),
 						'createdCount' => $createdCount,
 					);
 				}
@@ -2224,8 +2228,8 @@
 						'status' => true,
 						'action' => 'detach',
 						'message' => $remainingOrganizationCount === 1
-							? 'Le parcours a ete detache de votre organisation. Il reste utilise dans 1 autre organisation.'
-							: 'Le parcours a ete detache de votre organisation. Il reste utilise dans ' . $remainingOrganizationCount . ' autres organisations.',
+							? self::uiMessage('copy.le_parcours_a_ete_detache_de_votre_organisation_il_reste_utilise_dans_')
+							: self::uiMessage('copy.le_parcours_a_ete_detache_de_votre_organisation_il_reste_utilise_dans__6fa0a8', ['remainingOrganizationCount' => $remainingOrganizationCount]),
 						'remainingOrganizationCount' => $remainingOrganizationCount,
 						'deletedMissionCount' => 0,
 						'deletedQuestionCount' => 0,

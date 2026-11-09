@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/translations.php';
+
 require_once dirname(__DIR__) . '/email_layout.php';
 
 /** Resolve a stable technical sender, including for workers without an HTTP request. */
@@ -25,7 +27,7 @@ function omoObjectMailFromAddress(): string
         $domain = 'localhost.localdomain';
     }
     $from = 'noreply@' . strtolower($domain);
-    if (!filter_var($from, FILTER_VALIDATE_EMAIL)) throw new DomainException('Configurez MAIL_FROM avec une adresse technique du domaine d envoi.');
+    if (!filter_var($from, FILTER_VALIDATE_EMAIL)) throw new DomainException(commonObjectMailT('copy.configurez_mail_from_avec_une_adresse_technique_du_domaine_d_envoi'));
     return $from;
 }
 

@@ -4,8 +4,8 @@
     var icons = {up: '/common/chat/assets/pouce-en-lair.png', down: '/common/chat/assets/pouce-en-lair.png',
         clap: '/common/chat/assets/applaudissements.png'};
     var fallback = {up: 'Pouce leve', down: 'Pouce baisse', clap: 'Applaudissements',
-        choose: 'Reagir au message', remove: 'Retirer ma reaction', ownMessage: 'Vous ne pouvez pas reagir a votre propre message.',
-        error: 'La reaction ne peut pas etre enregistree.'};
+        choose: 'Réagir au message', remove: 'Retirer ma reaction', ownMessage: 'Vous ne pouvez pas réagir à votre propre message.',
+        error: 'La réaction ne peut pas être enregistrée.'};
     var active = null;
     var translations;
     var nextPickerId = 0;

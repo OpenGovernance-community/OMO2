@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../common/account-translations.php';
+
 	/* Gestion des comptes
 	 * Ce fichier prends les différentes requêtes liées à la gestion du login en permettant:
 	 * - De créer des comptes, à partir d'un simple e-mail
@@ -20,7 +22,7 @@
 	if (isset($_POST["email"]) && isset($_POST["password"])) {
 		// Contrôle la validité du mail
 		if ($_POST["email"]=="" || !filter_var($_POST["email"], FILTER_VALIDATE_EMAIL)) {
-			echo '{"status":false, "message":"Veuillez utiliser votre email pour la connexion.","script":"$(\'#user\').focus()"} ';
+			echo json_encode(['status' => false, 'message' => commonAccountUiT('login_email_required'), 'script' => "$('#user').focus()"], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 			exit;
 		}
 		// Contrôle la validité du mot de passe
@@ -46,7 +48,7 @@
 			if (($loginResult['error'] ?? '') === 'password_login_disabled') {
 				echo json_encode([
 					'status' => false,
-					'message' => 'La connexion avec mot de passe n est pas autorisee pour ce compte. Utilisez le code recu par e-mail.',
+					'message' => commonAccountUiT('copy.la_connexion_avec_mot_de_passe_n_est_pas_autorisee_pour_ce_compte_util'),
 				]);
 				exit;
 			}
@@ -56,7 +58,7 @@
 		}
 
 		echo '{"status":true, "script":"location.reload()"} ';
-		
+
 		exit;
 	} else
 	// Si c'est la création d'un compte, envoie le message avec les instructions
@@ -68,7 +70,7 @@
 			exit;
 		}
 		if (!filter_var($_POST["email"], FILTER_VALIDATE_EMAIL)) {
-			echo '{"status":false, "message":"Format d\'email invalide.","script":"$(\'#email\').focus()"} ';
+			echo '{"status":false, "message":"Format d\'e-mail invalide.","script":"$(\'#email\').focus()"} ';
 			exit;
 
 		}
@@ -88,47 +90,47 @@
 			]);
 			exit;
 		}
-		
+
 		// S'assure que l'adresse e-mail n'existe pas déjà dans la table, ou que les données n'ont pas été complétées
 		$user=new \dbObject\user();
 		$user->load(["email",$_POST["email"]]); // Chargement sur la base de l'email
 
 		if ($user->get("password")!=null && $user->get("password")!="") {
-			
+
 			// Est-ce posté depuis le formaulaire de création de compte? Si oui, signale une erreur
 			if (isset($_POST["check"])) {
 				echo '{"status":false, "message":"Ce compte existe déjà. Veuillez plutôt utiliser le formulaire de réinitialisation du mot de passe.","script":"$(\'#email\').focus()"} ';
 				exit;
-				
+
 			} 
-			
+
 			// Le mot de passe existe déjà, compte existant dont il faut rappeler le mot de passe
 			$legacyCode = commonIssueUserPasswordResetCode($user);
 			if ($legacyCode === '') { http_response_code(503); exit; }
 			// Défini la durée de validité de ce code
 			$user->set("codeexpiration",(new \DateTime())->add(new \DateInterval("PT1H")));
-			
-			$msg="Si ce compte existe, la procédure de réinitialisation vous a été envoyée.\\n\\nVeuillez vérifier votre boîte e-mail et suivre les instructions envoyés pour modifier votre mot de passe.";
+
+			$msg=commonAccountUiT('copy.si_ce_compte_existe_la_procedure_de_reinitialisation_vous_a_ete_envoye');
 			$title="Réinitialisation du mot de passe ".$GLOBALS["siteTitle"];
 			$txt="Bienvenue!";
 			$txt.="\n"."Cliquez ici pour redéfinir votre mot de passe : <a href='".commonSecurityUrl("/common/confirm.php?code=".$legacyCode)."'>Accéder à mon compte</a>.";
 			$formCode="$(this).html('<b>Veuillez vérifier votre boîte e-mail et suivre les instructions du mail envoyé pour modifier votre mot de passe.</b>');";
 
-			
+
 		} else {
 		// Création uniquement avec la patern anti-spam
 		if ($user->get("id")<=0 &&!isset($_POST["result"])) {
 			echo '{"status":false, "message":"Ce compte n\'existe pas."} ';
 			exit;
-			
+
 		}
 		// Contrôle la patern anti-spam
 		if (md5($_POST["result"])!=$_POST["check"]) {
 			echo '{"status":false, "message":"Veuillez résoudre le calcul de façon correcte.","script":"$(\'#result\').focus()"} ';
 			exit;
-			
+
 		}
-		
+
 		// Crée le compte
 		$user->set("email",$_POST["email"]);
 		// Défini le code d'accès unique
@@ -138,21 +140,21 @@
 		if ($legacyCode === '') { http_response_code(503); exit; }
 		// Défini la durée de validité de ce code
 		$user->set("codeexpiration",(new \DateTime())->add(new \DateInterval("PT1H")));
-		
+
 		// Si l'adresse existe, envoie un message pour redéfinir le mot de passe
 		if ($wasExistingUser) {
 			// Message d'alert affiché
-			$msg="Un compte avec cette adresse e-mail existe déjà.\\n\\nVeuillez vérifier votre boîte e-mail et suivre les instructions envoyés pour le réactiver ou modifier le mot de passe.";
+			$msg=commonAccountUiT('copy.un_compte_avec_cette_adresse_e_mail_existe_deja_n_nveuillez_verifier_v');
 			// Texte de remplacement du formaulaire
 			$formCode="$(this).html('<b>Veuillez vérifier votre boîte e-mail et suivre les instructions du mail envoyé pour réactiver votre compte ou modifier votre mot de passe.</b>');";
 			// Création du message
 			$title="Création d'un compte sur ".$GLOBALS["siteTitle"];
 			$txt="Bienvenue!";
 			$txt.="\n"."Cliquez ici pour réactiver votre compte ou redéfinir votre mot de passe : <a href='".commonSecurityUrl("/common/confirm.php?code=".$legacyCode)."'>Accéder à mon compte</a>.";
-			
+
 		} else {
 		// Si elle n'existe pas
-			
+
 			// Message d'alert affiché
 			$msg="Votre compte a bien été créé.\\n\\nVeuillez vérifier votre boîte e-mail et suivre les instructions du mail envoyé pour finaliser votre inscription et compléter votre profil.";
 			// Texte de remplacement du formaulaire
@@ -182,9 +184,9 @@
 				echo '{"status":false, "message":"Problème d\'envoi de mail."} ';
 			}
 			// Sauve les infos
-			
+
 		exit;
-		
+
 	}
 	echo '{"status":false, "message":"Commande inconnue"} ';
 ?>

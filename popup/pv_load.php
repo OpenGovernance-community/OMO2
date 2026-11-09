@@ -36,14 +36,14 @@
 				$title = "<i>".T_("document incompatible")."</i>";
 			}
 
-			echo "<div class='loadPV' data-src='".$pv->get("id")."'><div class='deletePV' float='right' data-src='".$pv->get("id")."'>Delete</div>".$pv->get("datemodification")->format("d.m.Y H:i")."/ ".$title."<br/><span style='font-size:80%'>".T_("Date de creation").": ".$pv->get("datecreation")->format("d.m.Y H:i")."</span></div>";
+			echo "<div class='loadPV' data-src='".$pv->get("id")."'><div class='deletePV' float='right' data-src='".$pv->get("id")."'>Delete</div>".$pv->get("datemodification")->format("d.m.Y H:i")."/ ".$title."<br/><span style='font-size:80%'>".T_("Date de création").": ".$pv->get("datecreation")->format("d.m.Y H:i")."</span></div>";
 		}
 
 		echo "</div>";
 	} else {
-		echo T_("Vous devez etre connecte pour pouvoir charger un ordre du jour ou un PV.");
+		echo T_("Vous devez être connecté pour pouvoir charger un ordre du jour ou un PV.");
 		echo T_("Se connecter");
-		echo T_("Creer un compte");
+		echo T_("Créer un compte");
 	}
 ?>
 <script>
@@ -51,7 +51,7 @@
 		$("#PVliste").delegate(".deletePV","click",function (e) {
 			e.stopPropagation();
 			var button = $(this);
-			if (confirm("<?=T_("Etes-vous sur de vouloir effacer ce compte-rendu ?")?>")) {
+			if (confirm("<?=T_("Êtes-vous sur de vouloir effacer ce compte-rendu ?")?>")) {
 				if (button.prop("disabled")) {
 					return;
 				}
@@ -70,14 +70,14 @@
 			fetch('/ajax/loadpv.php?id='+$(this).attr("data-src"))
 				.then(response => {
 					if (!response.ok) {
-						throw new Error("<?=T_("Erreur reseau lors de la recuperation des donnees.")?>");
+						throw new Error("<?=T_("Erreur réseau lors de la récupération des données.")?>");
 					}
 					return response.json();
 				})
 				.then(data => {
 					if (data.error) {
 						(typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, data.errorMsg, 'error');
-					} else if (confirm("<?=T_("Etes-vous sur de vouloir ecraser le contenu de l'editeur avec le compte-rendu charge ?")?>")) {
+					} else if (confirm("<?=T_("Êtes-vous sur de vouloir écraser le contenu de l'éditeur avec le compte-rendu charge ?")?>")) {
 						data.id=$(this).attr("data-src");
 						localStorage.setItem("savedata", JSON.stringify(data));
 						load();

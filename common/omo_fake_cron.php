@@ -129,7 +129,7 @@ if (!function_exists('omo_run_fake_cron_maintenance')) {
             static fn () => \dbObject\Event::freezePastMeetingParticipantsBatch(200)
         );
         $result['meetingOccurrencesCreated'] = $runTask(
-            'meeting_recurrence', 'OMO meeting recurrence maintenance failed: ',
+            'meeting_recurrence', 'OMO meeting récurrence maintenance failed: ',
             static fn () => \dbObject\EventRecurrence::generateDueBatch(100)
         );
         $result['eventNotificationsProcessed'] = $runTask(

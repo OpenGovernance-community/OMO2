@@ -85,18 +85,14 @@ function adminEditBuildSourceLang($object): array
         ],
     ];
 
-    $labels = is_object($object) && method_exists($object, 'attributeLabels')
-        ? (array)$object->attributeLabels()
-        : [];
-    $descriptions = is_object($object) && method_exists($object, 'attributeDescriptions')
-        ? (array)$object->attributeDescriptions()
-        : [];
-    $placeholders = is_object($object) && method_exists($object, 'attributePlaceholder')
-        ? (array)$object::attributePlaceholder()
-        : [];
-    $values = is_object($object) && method_exists($object, 'attributeValues')
-        ? (array)$object::attributeValues()
-        : [];
+    $readMetadata = static fn(): array => [
+        is_object($object) && method_exists($object, 'attributeLabels') ? (array)$object->attributeLabels() : [],
+        is_object($object) && method_exists($object, 'attributeDescriptions') ? (array)$object->attributeDescriptions() : [],
+        is_object($object) && method_exists($object, 'attributePlaceholder') ? (array)$object::attributePlaceholder() : [],
+        is_object($object) && method_exists($object, 'attributeValues') ? (array)$object::attributeValues() : [],
+    ];
+    [$labels, $descriptions, $placeholders, $values] = $object instanceof \dbObject\DbObject
+        ? \dbObject\DbObject::withSourceUiMessages($readMetadata) : $readMetadata();
     $objectKey = preg_replace('/[^a-z0-9_]+/i', '_', strtolower(is_object($object) && method_exists($object, 'tableName') ? (string)$object::tableName() : 'object'));
     $objectKey = trim((string)$objectKey, '_');
     if ($objectKey === '') {

@@ -106,6 +106,6 @@ function adminEditInitHtmlFields(scope) {
             });
         });
     }).catch(function (error) {
-        console.warn('Impossible de charger l editeur HTML adminEdit.', error);
+        console.warn('Impossible de charger l’éditeur HTML adminEdit.', error);
     });
 }

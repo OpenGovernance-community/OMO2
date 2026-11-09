@@ -49,6 +49,9 @@ function omoSharesUiSourceLang(): array
         'autorise_l_ouverture_de_la_popup_detail_d_une_personne_visible' => ['text' => 'Autorise l’ouverture de la popup détail d’une personne visible.', 'context' => 'Interface label in api/shares/popup.php'],
         'retour_a_la_liste' => ['text' => 'Retour à la liste', 'context' => 'Interface label in api/shares/popup.php'],
         'creer_le_lien' => ['text' => 'Créer le lien', 'context' => 'Interface label in api/shares/popup.php'],
+
+        'copy.lien_cree' => ['text' => 'Lien créé.', 'context' => 'Interface text in omo/api/shares/create.php'],
+        'copy.creer_un_lien_de_partage' => ['text' => 'Créer un lien de partage', 'context' => 'Interface text in omo/api/shares/popup.php'],
     ];
     return $sourceLang;
 }

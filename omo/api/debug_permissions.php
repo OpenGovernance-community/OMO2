@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
+
 require_once __DIR__ . '/bootstrap.php';
 
 use dbObject\Holon;
@@ -25,7 +27,7 @@ if (!$organization->load($organizationId)) {
 
 if (!$organization->canViewDetail()) {
     http_response_code(403);
-    echo 'Acces refuse.';
+    echo omoInterfaceUiT('copy.acces_refuse');
     exit;
 }
 
@@ -169,7 +171,7 @@ $renderJson = static function ($value) {
         </section>
 
         <section class="debug-panel">
-            <h2><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Holons de l utilisateur connecte', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></h2>
+            <h2><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Holons de l’utilisateur connecté', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></h2>
             <?php if (count((array)($debug['activeUserHolonRows'] ?? [])) === 0): ?>
                 <div class="debug-empty"><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Aucun holon effectif trouve pour cet utilisateur dans cette organisation.', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></div>
             <?php else: ?>
@@ -203,7 +205,7 @@ $renderJson = static function ($value) {
         <section class="debug-panel">
             <h2>Arbre des droits</h2>
             <?php if (count((array)($debug['activeUserHolonRows'] ?? [])) === 0): ?>
-                <div class="debug-empty"><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Impossible de construire l arbre sans holon utilisateur effectif.', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></div>
+                <div class="debug-empty"><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Impossible de construire l’arbre sans holon utilisateur effectif.', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></div>
             <?php else: ?>
                 <div class="debug-tree">
                     <?php foreach ((array)$debug['activeUserHolonRows'] as $membershipRow): ?>
@@ -221,7 +223,7 @@ $renderJson = static function ($value) {
                                         <div class="debug-item">
                                             <strong>Source:</strong> <?= omoApiEscape($formatHolonLabel($sourceHolonId)) ?>
                                             <?php if (count($assignmentRows) === 0): ?>
-                                                <div class="debug-empty"><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Aucun droit defini sur ce holon source.', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></div>
+                                                <div class="debug-empty"><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Aucun droit défini sur ce holon source.', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></div>
                                             <?php else: ?>
                                                 <div class="debug-chip-row">
                                                     <?php foreach ($assignmentRows as $assignmentRow): ?>
@@ -255,7 +257,7 @@ $renderJson = static function ($value) {
                             <strong><?= omoApiEscape($formatPermissionLabel((string)$permissionKey)) ?></strong>
                             <div class="debug-chip-row">
                                 <?php if (!empty($scope['organization'])): ?>
-                                    <span class="debug-chip debug-chip--ok">portee: toute l organisation</span>
+                                    <span class="debug-chip debug-chip--ok"><?= htmlspecialchars(omoInterfaceUiT('copy.portee_toute_l_organisation'), ENT_QUOTES, 'UTF-8') ?></span>
                                 <?php endif; ?>
                                 <?php foreach (array_keys((array)($scope['exact'] ?? [])) as $holonId): ?>
                                     <span class="debug-chip">exact: <?= omoApiEscape($formatHolonLabel((int)$holonId)) ?></span>

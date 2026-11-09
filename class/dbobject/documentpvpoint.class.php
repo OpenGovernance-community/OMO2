@@ -30,7 +30,7 @@ class DocumentPvPoint extends DbObject
                 'base_de_donnees_indisponible' => ['text' => 'Base de données indisponible.', 'context' => 'Validation or action feedback for documentpvpoint.'],
                 'ce_point_est_indisponible_deplace_ou_sans_suivi_supplementaire' => ['text' => 'Ce point est indisponible, déplacé ou sans suivi supplémentaire.', 'context' => 'Validation or action feedback for documentpvpoint.'],
                 'le_titre_du_point_est_obligatoire' => ['text' => 'Le titre du point est obligatoire.', 'context' => 'Validation or action feedback for documentpvpoint.'],
-                'le_point_doit_etre_rattache_a_un_document_pv' => ['text' => 'Le point doit être rattaché a un document PV.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'le_point_doit_etre_rattache_a_un_document_pv' => ['text' => 'Le point doit être rattaché à un document PV.', 'context' => 'Validation or action feedback for documentpvpoint.'],
                 'le_document_cible_n_est_pas_un_pv_valide' => ['text' => 'Le document cible n’est pas un PV valide.', 'context' => 'Validation or action feedback for documentpvpoint.'],
                 'l_adresse_e_mail_de_l_auteur_est_invalide' => ['text' => 'L’adresse e-mail de l’auteur est invalide.', 'context' => 'Validation or action feedback for documentpvpoint.'],
                 'document_pv_invalide' => ['text' => 'Document PV invalide.', 'context' => 'Validation or action feedback for documentpvpoint.'],
@@ -42,12 +42,27 @@ class DocumentPvPoint extends DbObject
                 'le_groupe_cible_est_invalide' => ['text' => 'Le groupe cible est invalide.', 'context' => 'Validation or action feedback for documentpvpoint.'],
                 'les_groupes_ne_peuvent_pas_former_une_boucle' => ['text' => 'Les groupes ne peuvent pas former une boucle.', 'context' => 'Validation or action feedback for documentpvpoint.'],
                 'le_deplacement_des_points_personnels_est_limite_a_la_preparation' => ['text' => 'Le déplacement des points personnels est limité à la préparation.', 'context' => 'Validation or action feedback for documentpvpoint.'],
-                'aucun_element_ne_peut_etre_deplace' => ['text' => 'Aucun élément ne peut être deplace.', 'context' => 'Validation or action feedback for documentpvpoint.'],
+                'aucun_element_ne_peut_etre_deplace' => ['text' => 'Aucun élément ne peut être déplacé.', 'context' => 'Validation or action feedback for documentpvpoint.'],
                 'vous_ne_pouvez_deplacer_que_vos_propres_points' => ['text' => 'Vous ne pouvez déplacer que vos propres points.', 'context' => 'Validation or action feedback for documentpvpoint.'],
                 'impossible_de_sauver_la_structure_de_l_ordre_du_jour' => ['text' => 'Impossible de sauver la structure de l’ordre du jour.', 'context' => 'Validation or action feedback for documentpvpoint.'],
                 'vous_ne_pouvez_pas_classer_cet_ordre_du_jour' => ['text' => 'Vous ne pouvez pas classer cet ordre du jour.', 'context' => 'Validation or action feedback for documentpvpoint.'],
                 'impossible_de_classer_l_ordre_du_jour' => ['text' => 'Impossible de classer l’ordre du jour.', 'context' => 'Validation or action feedback for documentpvpoint.'],
-            ];
+
+                'copy.decision' => ['text' => 'Décision', 'context' => 'Interface text in class/dbobject/documentpvpoint.class.php'],
+                'copy.reunion_destination_indisponible' => ['text' => 'Réunion destination indisponible.', 'context' => 'Interface text in class/dbobject/documentpvpoint.class.php'],
+                'copy.un_point_selectionne_est_indisponible' => ['text' => 'Un point sélectionné est indisponible.', 'context' => 'Interface text in class/dbobject/documentpvpoint.class.php'],
+                'copy.un_point_selectionne_a_change_ou_ne_peut_plus_etre_importe' => ['text' => 'Un point sélectionné a change ou ne peut plus être importé.', 'context' => 'Interface text in class/dbobject/documentpvpoint.class.php'],
+                'copy.un_point_selectionne_est_en_cours_d_edition' => ['text' => 'Un point sélectionné est en cours d’édition.', 'context' => 'Interface text in class/dbobject/documentpvpoint.class.php'],
+                'copy.impossible_de_deplacer_le_point' => ['text' => 'Impossible de déplacer le point.', 'context' => 'Interface text in class/dbobject/documentpvpoint.class.php'],
+                'copy.impossible_de_transferer_les_propositions_du_point' => ['text' => 'Impossible de transférer les propositions du point.', 'context' => 'Interface text in class/dbobject/documentpvpoint.class.php'],
+                'copy.impossible_de_signaler_le_deplacement_du_point' => ['text' => 'Impossible de signaler le déplacement du point.', 'context' => 'Interface text in class/dbobject/documentpvpoint.class.php'],
+                'copy.ce_point_est_deja_en_cours_d_edition_dans_une_autre_session' => ['text' => 'Ce point est déjà en cours d’édition dans une autre session.', 'context' => 'Interface text in class/dbobject/documentpvpoint.class.php'],
+                'copy.ce_point_est_deja_en_cours_d_edition' => ['text' => 'Ce point est déjà en cours d’édition.', 'context' => 'Interface text in class/dbobject/documentpvpoint.class.php'],
+                'copy.reessayez_dans_quelques_minutes' => ['text' => ' Réessayez dans quelques minutes.', 'context' => 'Interface text in class/dbobject/documentpvpoint.class.php'],
+                'copy.un_point_du_pv_a_ete_modifie_value' => ['text' => 'Un point du PV a été modifié : {value}', 'context' => 'Interface text in class/dbobject/documentpvpoint.class.php'],
+                'option.information' => ['text' => 'Information', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+                'option.consultation' => ['text' => 'Consultation', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+        ];
         }
 
     public const TYPE_INFORMATION = 'information';
@@ -88,7 +103,7 @@ class DocumentPvPoint extends DbObject
             'title' => 'Titre',
             'IDuser_author' => 'Auteur',
             'author_email' => 'E-mail auteur externe',
-            'IDholon_concerned' => 'Holon concerne',
+            'IDholon_concerned' => 'Holon concerné',
             'content' => 'Texte HTML',
             'position' => 'Ordre',
             'priority' => 'Priorité',
@@ -123,26 +138,26 @@ class DocumentPvPoint extends DbObject
             'IDparent' => 'Groupe parent direct dans l’ordre du jour.',
             'IDuser_author' => 'Membre qui porte ou présente ce point.',
             'author_email' => 'Adresse e-mail de la personne externe qui porte ce point.',
-            'IDholon_concerned' => 'Holon principal directement concerne par ce point.',
-            'content' => 'Contenu HTML formate du point.',
+            'IDholon_concerned' => 'Holon principal directement concerné par ce point.',
+            'content' => 'Contenu HTML formaté du point.',
             'position' => 'Ordre d’affichage dans le PV.',
             'priority' => 'Priorité du point, de P1 (la plus haute) a P5.',
-            'desired_duration_minutes' => 'Durée visee en minutes.',
-            'actual_duration_minutes' => 'Durée observee en minutes.',
+            'desired_duration_minutes' => 'Durée visée en minutes.',
+            'actual_duration_minutes' => 'Durée observée en minutes.',
             'pointtype' => 'Nature du point: information, normal, consultation ou décision.',
             'IDuser_modification' => 'Dernière personne ayant change ce point, son ordre ou son statut.',
-            'IDuser_editing' => 'Personne qui detient actuellement le verrou d’édition.',
+            'IDuser_editing' => 'Personne qui détient actuellement le verrou d’édition.',
             'edit_lock_token' => 'Jeton technique de verrouillage d’une session d’édition.',
             'IDuser_edit_takeover_request' => 'Éditeur du PV qui demande le transfert du verrou.',
-            'edit_takeover_request_token' => 'Session a laquelle le verrou doit être transfere.',
+            'edit_takeover_request_token' => 'Session à laquelle le verrou doit être transféré.',
             'edit_takeover_target_token' => 'Session invitée a enregistrer avant le transfert.',
             'date_edit_takeover_request' => 'Début du délai laisse à la session actuelle pour enregistrer.',
             'is_handled' => 'Indique si le point a déjà été traité en réunion.',
             'handled_at' => 'Date et heure du dernier passage du point au statut traite.',
-            'IDpoint_moved_to' => 'Point copie dans une réunion suivante ; le point source reste non traité et ne peut plus être importe.',
-            'date_moved' => 'Conserve le déplacement même si le point de destination est supprime.',
+            'IDpoint_moved_to' => 'Point copie dans une réunion suivante ; le point source reste non traité et ne peut plus être importé.',
+            'date_moved' => 'Conserve le déplacement même si le point de destination est supprimé.',
             'date_abandoned' => 'Point conservé dans son PV, sans traitement supplémentaire attendu.',
-            'is_confidential' => 'Reserve ce point aux personnes presentes à la réunion, à l’éditeur du PV et à la personne qui le porte.',
+            'is_confidential' => 'Réserve ce point aux personnes présentes à la réunion, à l’éditeur du PV et à la personne qui le porte.',
         ];
     }
 
@@ -195,9 +210,9 @@ class DocumentPvPoint extends DbObject
     public static function getPointTypeCatalog(): array
     {
         return [
-            self::TYPE_INFORMATION => 'Information',
-            self::TYPE_CONSULTATION => 'Consultation',
-            self::TYPE_DECISION => 'Decision',
+            self::TYPE_INFORMATION => self::uiMessage('option.information'),
+            self::TYPE_CONSULTATION => self::uiMessage('option.consultation'),
+            self::TYPE_DECISION => self::uiMessage('copy.decision'),
         ];
     }
 
@@ -896,10 +911,10 @@ class DocumentPvPoint extends DbObject
             if ($ownsTransaction) $pdo->beginTransaction();
             else $pdo->exec('SAVEPOINT pv_point_import');
             $destinationRow = self::fetchRow('SELECT * FROM document WHERE id = :id FOR UPDATE', ['id' => (int)$destination->getId()]);
-            if (!$destinationRow) throw new \RuntimeException('Reunion destination indisponible.');
+            if (!$destinationRow) throw new \RuntimeException(self::uiMessage('copy.reunion_destination_indisponible'));
             $destination->hydrateFromDatabaseRow($destinationRow, true);
             if (!self::canImportIntoDocument($destination, $userId)
-                || ($members === 'all' && !$destination->isPvEditor($userId))) throw new \RuntimeException('Importation refusee.');
+                || ($members === 'all' && !$destination->isPvEditor($userId))) throw new \RuntimeException(self::uiMessage('importation_refusee'));
             $placeholders = [];
             $params = [];
             foreach ($pointIds as $index => $id) {
@@ -907,7 +922,7 @@ class DocumentPvPoint extends DbObject
                 $params['point_' . $index] = $id;
             }
             $rows = self::fetchAll('SELECT * FROM document_pv_point WHERE id IN (' . implode(',', $placeholders) . ') ORDER BY id FOR UPDATE', $params);
-            if (!is_array($rows) || count($rows) !== count($pointIds)) throw new \RuntimeException('Un point selectionne est indisponible.');
+            if (!is_array($rows) || count($rows) !== count($pointIds)) throw new \RuntimeException(self::uiMessage('copy.un_point_selectionne_est_indisponible'));
             $sources = [];
             $sourceStages = [];
             foreach ($rows as $row) {
@@ -917,9 +932,9 @@ class DocumentPvPoint extends DbObject
                 $sourceRow = self::fetchRow('SELECT * FROM document WHERE id = :id FOR UPDATE', ['id' => (int)$point->get('IDdocument')]);
                 if (!$sourceRow || !$source->hydrateFromDatabaseRow($sourceRow, true)
                     || !$point->canMoveToDocument($source, $destination, $userId, $scope, $members, $period)) {
-                    throw new \RuntimeException('Un point selectionne a change ou ne peut plus etre importe.');
+                    throw new \RuntimeException(self::uiMessage('copy.un_point_selectionne_a_change_ou_ne_peut_plus_etre_importe'));
                 }
-                if ($point->isEditLockActive()) throw new \RuntimeException('Un point selectionne est en cours d edition.');
+                if ($point->isEditLockActive()) throw new \RuntimeException(self::uiMessage('copy.un_point_selectionne_est_en_cours_d_edition'));
                 $sources[(int)$point->getId()] = $point;
                 $sourceStages[(int)$point->getId()] = $source->getPvStage();
             }
@@ -933,7 +948,7 @@ class DocumentPvPoint extends DbObject
                     $sourcePoint->set('IDuser_modification', $userId);
                     foreach (['IDuser_editing', 'edit_lock_token', 'dateedition', 'IDuser_edit_takeover_request', 'edit_takeover_request_token', 'edit_takeover_target_token', 'date_edit_takeover_request'] as $field) $sourcePoint->set($field, null);
                     // Both the source row and meeting stage are locked above.
-                    if (empty($sourcePoint->savePointValues()['status'])) throw new \RuntimeException('Impossible de deplacer le point.');
+                    if (empty($sourcePoint->savePointValues()['status'])) throw new \RuntimeException(self::uiMessage('copy.impossible_de_deplacer_le_point'));
                     $importedIds[] = $id;
                     continue;
                 }
@@ -962,7 +977,7 @@ class DocumentPvPoint extends DbObject
                 }
                 foreach (DeferredProposal::getForPvPoint($id, true) as $proposal) {
                     $proposal->set('IDdocument_pv_point', (int)$copy->getId());
-                    if (empty($proposal->save()['status'])) throw new \RuntimeException('Impossible de transferer les propositions du point.');
+                    if (empty($proposal->save()['status'])) throw new \RuntimeException(self::uiMessage('copy.impossible_de_transferer_les_propositions_du_point'));
                 }
                 $link = self::movementDestinationLink($destination);
                 $sourcePoint->set('content', '<p>' . str_replace('{meeting}', $link, htmlspecialchars($notice, ENT_QUOTES, 'UTF-8')) . '</p>');
@@ -970,7 +985,7 @@ class DocumentPvPoint extends DbObject
                 $sourcePoint->set('date_moved', new \DateTimeImmutable());
                 $sourcePoint->set('IDuser_modification', $userId);
                 foreach (['IDuser_editing', 'edit_lock_token', 'dateedition', 'IDuser_edit_takeover_request', 'edit_takeover_request_token', 'edit_takeover_target_token', 'date_edit_takeover_request'] as $field) $sourcePoint->set($field, null);
-                if (empty($sourcePoint->save()['status'])) throw new \RuntimeException('Impossible de signaler le deplacement du point.');
+                if (empty($sourcePoint->save()['status'])) throw new \RuntimeException(self::uiMessage('copy.impossible_de_signaler_le_deplacement_du_point'));
                 $importedIds[] = (int)$copy->getId();
             }
             if ($ownsTransaction) $pdo->commit();
@@ -1332,14 +1347,14 @@ class DocumentPvPoint extends DbObject
         $isOwnedByCurrentUser = $currentUserId > 0 && $editingUserId === $currentUserId;
         $isOwnedByCurrentSession = $currentLockToken !== '' && $this->getEditingLockToken() === trim($currentLockToken);
         $message = $isOwnedByCurrentUser
-            ? 'Ce point est deja en cours d edition dans une autre session.'
-            : 'Ce point est deja en cours d edition.';
+            ? self::uiMessage('copy.ce_point_est_deja_en_cours_d_edition_dans_une_autre_session')
+            : self::uiMessage('copy.ce_point_est_deja_en_cours_d_edition');
 
         if (!$isOwnedByCurrentUser && $editingUserName !== '') {
             $message .= ' Utilisateur: ' . $editingUserName . '.';
         }
 
-        $message .= ' Reessayez dans quelques minutes.';
+        $message .= self::uiMessage('copy.reessayez_dans_quelques_minutes');
 
         return [
             'status' => false,
@@ -2196,7 +2211,7 @@ class DocumentPvPoint extends DbObject
             if ($thread instanceof \dbObject\ChatThread) {
                 \dbObject\ChatMessage::createSystemMessage(
                     $thread,
-                    'Un point du PV a ete modifie : ' . ($title !== '' ? $title : 'Point sans titre'),
+                    self::uiMessage('copy.un_point_du_pv_a_ete_modifie_value', ['value' => $title !== '' ? $title : 'Point sans titre']),
                     (int)$this->get('IDuser_modification'),
                     [
                         'action' => 'pv_point_saved',

@@ -26,7 +26,9 @@ class DecisionProcess extends DbObject
                 'impossible_de_supprimer_cette_prise_de_decision_pour_le_moment' => ['text' => 'Impossible de supprimer cette prise de décision pour le moment.', 'context' => 'Validation or action feedback for decisionprocess.'],
                 'la_prise_de_decision_doit_etre_enregistree_avant_de_synchroniser_les_participants' => ['text' => 'La prise de décision doit être enregistrée avant de synchroniser les participants.', 'context' => 'Validation or action feedback for decisionprocess.'],
                 'impossible_de_synchroniser_les_participants_a_la_prise_de_decision' => ['text' => 'Impossible de synchroniser les participants à la prise de décision.', 'context' => 'Validation or action feedback for decisionprocess.'],
-            ];
+
+                'copy.resultats_disponibles' => ['text' => 'Résultats disponibles.', 'context' => 'Interface text in class/dbobject/decisionprocess.class.php'],
+    ];
         }
 
     private bool $participantRefreshLocked = false;
@@ -323,8 +325,8 @@ class DecisionProcess extends DbObject
 
         $animals = [
             'Renard', 'Lynx', 'Hibou', 'Faucon', 'Castor', 'Panda', 'Koala', 'Jaguar',
-            'Bison', 'Dauphin', 'Gecko', 'Lama', 'Manchot', 'Pelican', 'Blaireau', 'Chamois',
-            'Corbeau', 'Ecureuil', 'Heron', 'Leopard', 'Morse', 'Orque', 'Puma', 'Toucan',
+            'Bison', 'Dauphin', 'Gecko', 'Lama', 'Manchot', 'Pélican', 'Blaireau', 'Chamois',
+            'Corbeau', 'Écureuil', 'Héron', 'Léopard', 'Morse', 'Orque', 'Puma', 'Toucan',
         ];
         $traits = [
             'serein', 'curieux', 'vaillant', 'patient', 'inventif', 'attentif', 'jovial', 'paisible',
@@ -1719,7 +1721,7 @@ class DecisionProcess extends DbObject
                 $summary = self::truncateCompactEmbedSummary($this->getCompactEmbedComputedResult());
             }
 
-            return $summary !== '' ? $summary : 'Resultats disponibles.';
+            return $summary !== '' ? $summary : self::uiMessage('copy.resultats_disponibles');
         }
 
         $participantCount = 0;

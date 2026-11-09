@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../omo/api/parameters/translation.php';
+
 require_once __DIR__ . '/site_update_changelog.php';
 
 function siteUpdateAdminGetRepoRoot()
@@ -19,7 +21,7 @@ function siteUpdateAdminEnsureRuntimeDir()
     }
 
     if (!@mkdir($runtimeDir, 0775, true) && !is_dir($runtimeDir)) {
-        throw new RuntimeException('Impossible de preparer le dossier temporaire de mise a jour.');
+        throw new RuntimeException(omoSiteUpdateT('parameters.site_update.error.prepare_runtime'));
     }
 
     return $runtimeDir;
@@ -114,7 +116,7 @@ function siteUpdateAdminGetPhpBinary()
             return $candidate;
         }
     }
-    throw new RuntimeException('PHP CLI compatible introuvable. Configurez SITE_UPDATE_PHP_BINARY dans .env avec le chemin absolu du PHP CLI de meme version que le site (pas php-fpm ni php-cgi).');
+    throw new RuntimeException(omoSiteUpdateT('copy.php_cli_compatible_introuvable_configurez_site_update_php_binary_dans_'));
 }
 
 function siteUpdateAdminHasGitRepository()
@@ -135,14 +137,14 @@ function siteUpdateAdminBuildCommand(array $parts, $mergeErrorOutput = true)
 function siteUpdateAdminRunCommand(array $parts, $cwd = null, &$exitCode = null, $preservePathOutput = false)
 {
     if (!siteUpdateAdminIsExecAvailable()) {
-        throw new RuntimeException('Les commandes systeme sont indisponibles sur ce serveur.');
+        throw new RuntimeException(omoSiteUpdateT('parameters.site_update.error.exec_unavailable'));
     }
 
     $cwd = is_string($cwd) && $cwd !== '' ? $cwd : siteUpdateAdminGetRepoRoot();
     $originalDirectory = getcwd();
 
     if (!@chdir($cwd)) {
-        throw new RuntimeException('Impossible d acceder au dossier du depot Git.');
+        throw new RuntimeException(omoSiteUpdateT('copy.impossible_d_acceder_au_dossier_du_depot_git'));
     }
 
     $stdoutFile = null;
@@ -154,7 +156,7 @@ function siteUpdateAdminRunCommand(array $parts, $cwd = null, &$exitCode = null,
             $stdoutFile = tmpfile();
             $stderrFile = tmpfile();
             if ($stdoutFile === false || $stderrFile === false) {
-                throw new RuntimeException('Impossible de lire les chemins Git sans alteration.');
+                throw new RuntimeException(omoSiteUpdateT('copy.impossible_de_lire_les_chemins_git_sans_alteration'));
             }
             $stdoutPath = stream_get_meta_data($stdoutFile)['uri'];
             $stderrPath = stream_get_meta_data($stderrFile)['uri'];
@@ -168,7 +170,7 @@ function siteUpdateAdminRunCommand(array $parts, $cwd = null, &$exitCode = null,
             $output = stream_get_contents($stdoutFile);
             $errors = stream_get_contents($stderrFile);
             if ($output === false || $errors === false) {
-                throw new RuntimeException('Lecture incomplete des chemins Git.');
+                throw new RuntimeException(omoSiteUpdateT('copy.lecture_incomplete_des_chemins_git'));
             }
             if ($errors !== '') {
                 error_log('Site update Git: ' . trim($errors));
@@ -256,7 +258,7 @@ function siteUpdateAdminBuildUpdatingPayload()
         'supported' => true,
         'updating' => true,
         'available' => false,
-        'message' => (string)($state['message'] ?? 'Une mise a jour est deja en cours.'),
+        'message' => (string)($state['message'] ?? omoSiteUpdateT('parameters.site_update.status.already_running')),
         'branch' => (string)($state['branch'] ?? ''),
         'behindCount' => (int)($state['behindCount'] ?? 0),
         'localCommit' => (string)($state['localCommit'] ?? ''),
@@ -373,7 +375,7 @@ function siteUpdateAdminFetchRemoteCommit(array $context)
     );
 
     if ($exitCode !== 0) {
-        throw new RuntimeException($output !== '' ? $output : 'Impossible de contacter le depot distant.');
+        throw new RuntimeException($output !== '' ? $output : omoSiteUpdateT('parameters.site_update.error.remote_unreachable'));
     }
 
     $remoteCommit = siteUpdateAdminRunCommand(
@@ -383,7 +385,7 @@ function siteUpdateAdminFetchRemoteCommit(array $context)
     );
 
     if ($exitCode !== 0 || trim((string)$remoteCommit) === '') {
-        throw new RuntimeException('Impossible de determiner le commit distant.');
+        throw new RuntimeException(omoSiteUpdateT('parameters.site_update.error.remote_commit'));
     }
 
     return trim((string)$remoteCommit);
@@ -448,15 +450,15 @@ function siteUpdateAdminBuildAvailableMessage($behindCount, array $remoteSummary
 
     if ($headline === '') {
         return $behindCount <= 1
-            ? 'Une mise a jour est disponible.'
-            : $behindCount . ' mises a jour sont disponibles.';
+            ? omoSiteUpdateT('parameters.site_update.status.available')
+            : omoSiteUpdateT('copy.behindcount_mises_a_jour_sont_disponibles', ['behindCount' => $behindCount]);
     }
 
     if ($behindCount <= 1) {
-        return 'Une mise a jour est disponible : ' . $headline;
+        return omoSiteUpdateT('parameters.site_update.status.available_headline', ['headline' => $headline]);
     }
 
-    return $behindCount . ' mises a jour sont disponibles. Derniere version : ' . $headline;
+    return omoSiteUpdateT('copy.behindcount_mises_a_jour_sont_disponibles_derniere_version_headline', ['behindCount' => $behindCount, 'headline' => $headline]);
 }
 
 function siteUpdateAdminCollectChangedPaths(array &$changesByPath, $output, $state)
@@ -499,7 +501,7 @@ function siteUpdateAdminGetLocalChanges(array $context)
         $exitCode = 0;
         $output = siteUpdateAdminRunCommand($parts, $repoRoot, $exitCode, true);
         if ($exitCode !== 0) {
-            throw new RuntimeException('Impossible de verifier les fichiers locaux avant la mise a jour.');
+            throw new RuntimeException(omoSiteUpdateT('copy.impossible_de_verifier_les_fichiers_locaux_avant_la_mise_a_jour'));
         }
         siteUpdateAdminCollectChangedPaths($changesByPath, $output, $state);
     }
@@ -542,17 +544,17 @@ function siteUpdateAdminValidateRelativePath(string $path, string $context = 'sa
     if ($path === '') {
         $reason = 'chemin vide';
     } elseif (preg_match('/[\x00-\x1f\x7f]/', $path)) {
-        $reason = 'caractere de controle dans le nom';
+        $reason = omoSiteUpdateT('copy.caractere_de_controle_dans_le_nom');
     } elseif (array_intersect($segments, array('', '.', '..'))) {
-        $reason = 'chemin absolu ou segment de chemin non autorise';
+        $reason = omoSiteUpdateT('copy.chemin_absolu_ou_segment_de_chemin_non_autorise');
     } elseif (in_array('.git', array_map('strtolower', $segments), true)) {
-        $reason = 'metadonnees Git a proteger ; le dossier en conflit contient peut-etre un depot imbrique';
+        $reason = omoSiteUpdateT('copy.metadonnees_git_a_proteger_le_dossier_en_conflit_contient_peut_etre_un');
     } elseif (DIRECTORY_SEPARATOR === '\\' && preg_match('/[\\\\:*?"<>|]/', $path)) {
         $reason = 'nom de fichier incompatible avec Windows';
     }
     if ($reason !== '') {
         $displayPath = json_encode($path, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
-        throw new RuntimeException('Chemin refuse (' . $context . ') : ' . $displayPath . '. Motif : ' . $reason . '. Aucune synchronisation lancee.');
+        throw new RuntimeException(omoSiteUpdateT('copy.chemin_refuse_context_displaypath_motif_reason_aucune_synchronisation_', ['context' => $context, 'displayPath' => $displayPath, 'reason' => $reason]));
     }
 }
 
@@ -560,8 +562,7 @@ function siteUpdateAdminAssertUploadStorageExcluded(array $remoteFiles): void
 {
     foreach (array_keys($remoteFiles) as $path) {
         if ($path === 'img/upload' || str_starts_with($path, 'img/upload/')) {
-            throw new RuntimeException('Mise a jour refusee : le depot distant contient ' . $path
-                . '. Le stockage img/upload doit rester hors de Git pour conserver les images et les liens vers le stockage partage. Le mode force ne peut pas contourner cette protection.');
+            throw new RuntimeException(omoSiteUpdateT('copy.mise_a_jour_refusee_le_depot_distant_contient_path_le_stockage_img_upl', ['path' => $path]));
         }
     }
 }
@@ -582,7 +583,7 @@ function siteUpdateAdminGetRemoteFiles(array $context, string $commit): array
             continue;
         }
         if (!preg_match('/^(\d+) (blob|commit) ([a-f0-9]{40}|[a-f0-9]{64})\t(.+)$/D', $entry, $parts)) {
-            throw new RuntimeException('Entree Git distante non prise en charge : ' . json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE));
+            throw new RuntimeException(omoSiteUpdateT('copy.entree_git_distante_non_prise_en_charge_value', ['value' => json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE)]));
         }
         siteUpdateAdminValidateRelativePath($parts[4], 'arbre distant');
         $files[$parts[4]] = array('mode' => $parts[1], 'hash' => $parts[3]);
@@ -616,7 +617,7 @@ function siteUpdateAdminFileMatchesRemote(string $path, ?array $remote): bool
         $hash = hash_init(strlen($remote['hash']) === 64 ? 'sha256' : 'sha1');
         hash_update($hash, 'blob ' . $stat['size'] . "\0");
         if (hash_update_stream($hash, $handle) !== $stat['size']) {
-            throw new RuntimeException('Lecture incomplete pendant la comparaison locale.');
+            throw new RuntimeException(omoSiteUpdateT('copy.lecture_incomplete_pendant_la_comparaison_locale'));
         }
         return hash_equals($remote['hash'], hash_final($hash));
     } finally {
@@ -726,7 +727,7 @@ function siteUpdateAdminBackupLocalChanges(array $context, array $payload, array
         $parent = dirname($path);
         while ($parent !== $root) {
             if (is_link($parent)) {
-                throw new RuntimeException('Un lien de dossier doit etre traite manuellement avant la mise a jour : ' . $relative);
+                throw new RuntimeException(omoSiteUpdateT('copy.un_lien_de_dossier_doit_etre_traite_manuellement_avant_la_mise_a_jour_', ['relative' => $relative]));
             }
             $parent = dirname($parent);
         }
@@ -738,7 +739,7 @@ function siteUpdateAdminBackupLocalChanges(array $context, array $payload, array
         }
         if (is_dir($path) && !is_link($path)) {
             if (($remoteFiles[$relative]['mode'] ?? '') === '160000') {
-                throw new RuntimeException('Un sous-module Git doit etre synchronise manuellement : ' . $relative);
+                throw new RuntimeException(omoSiteUpdateT('copy.un_sous_module_git_doit_etre_synchronise_manuellement_relative', ['relative' => $relative]));
             }
             $children = scandir($path);
             if ($children === false) {
@@ -769,7 +770,7 @@ function siteUpdateAdminBackupLocalChanges(array $context, array $payload, array
         } elseif (is_file($path)) {
             $entries[$relative] = array('type' => 'file', 'mode' => fileperms($path) & 0777);
         } else {
-            throw new RuntimeException('Type de fichier a traiter manuellement : ' . $relative);
+            throw new RuntimeException(omoSiteUpdateT('copy.type_de_fichier_a_traiter_manuellement_relative', ['relative' => $relative]));
         }
     }
     if ($entries === array()) {
@@ -779,7 +780,7 @@ function siteUpdateAdminBackupLocalChanges(array $context, array $payload, array
     require_once __DIR__ . '/../common/runtime_log.php';
     $directory = commonRuntimeLogPath('site-update-backups');
     if (!is_dir($directory) && !mkdir($directory, 0700, true) && !is_dir($directory)) {
-        throw new RuntimeException('Impossible de creer le dossier de sauvegarde. La mise a jour est annulee.');
+        throw new RuntimeException(omoSiteUpdateT('copy.impossible_de_creer_le_dossier_de_sauvegarde_la_mise_a_jour_est_annule'));
     }
     $directory = realpath($directory);
     $publicRoots = array($root, realpath($_SERVER['DOCUMENT_ROOT'] ?? '') ?: $root);
@@ -787,12 +788,12 @@ function siteUpdateAdminBackupLocalChanges(array $context, array $payload, array
         $prefix = rtrim(str_replace('\\', '/', $publicRoot), '/') . '/';
         $resolved = rtrim(str_replace('\\', '/', (string)$directory), '/') . '/';
         if ($directory === false || strncasecmp($resolved, $prefix, strlen($prefix)) === 0) {
-            throw new RuntimeException('Configurez RUNTIME_LOG_DIR hors de la racine web pour les sauvegardes de mise a jour.');
+            throw new RuntimeException(omoSiteUpdateT('copy.configurez_runtime_log_dir_hors_de_la_racine_web_pour_les_sauvegardes_'));
         }
     }
     $backup['backupPath'] = $directory . '/' . gmdate('Ymd-His') . '-' . bin2hex(random_bytes(6));
     if (!mkdir($backup['backupPath'], 0700)) {
-        throw new RuntimeException('Impossible de preparer la sauvegarde. La mise a jour est annulee.');
+        throw new RuntimeException(omoSiteUpdateT('copy.impossible_de_preparer_la_sauvegarde_la_mise_a_jour_est_annulee'));
     }
     foreach ($entries as $relative => $entry) {
         if ($entry['type'] !== 'file') {
@@ -801,14 +802,14 @@ function siteUpdateAdminBackupLocalChanges(array $context, array $payload, array
         $source = $root . '/' . $relative;
         $destination = $backup['backupPath'] . '/files/' . $relative;
         if (!is_dir(dirname($destination)) && !mkdir(dirname($destination), 0700, true)) {
-            throw new RuntimeException('Impossible de preparer la copie de sauvegarde : ' . $relative);
+            throw new RuntimeException(omoSiteUpdateT('copy.impossible_de_preparer_la_copie_de_sauvegarde_relative', ['relative' => $relative]));
         }
         if (!copy($source, $destination) || !chmod($destination, 0600)) {
-            throw new RuntimeException('Impossible de sauvegarder : ' . $relative . '. Aucune synchronisation lancee.');
+            throw new RuntimeException(omoSiteUpdateT('copy.impossible_de_sauvegarder_relative_aucune_synchronisation_lancee', ['relative' => $relative]));
         }
         $sourceHash = hash_file('sha256', $source);
         if ($sourceHash === false || $sourceHash !== hash_file('sha256', $destination)) {
-            throw new RuntimeException('La sauvegarde differe du fichier local : ' . $relative . '. Aucune synchronisation lancee.');
+            throw new RuntimeException(omoSiteUpdateT('copy.la_sauvegarde_differe_du_fichier_local_relative_aucune_synchronisation', ['relative' => $relative]));
         }
         $entries[$relative]['sha256'] = $sourceHash;
         $backup['backedUpFileCount']++;
@@ -820,7 +821,7 @@ function siteUpdateAdminBackupLocalChanges(array $context, array $payload, array
         }
         $children = scandir($root . '/' . $relative);
         if ($children === false || array_values(array_diff($children, array('.', '..'))) !== $entry['children']) {
-            throw new RuntimeException('Le dossier a change pendant la sauvegarde : ' . $relative . '. Aucune synchronisation lancee.');
+            throw new RuntimeException(omoSiteUpdateT('copy.le_dossier_a_change_pendant_la_sauvegarde_relative_aucune_synchronisat', ['relative' => $relative]));
         }
     }
     $manifest = array(
@@ -833,7 +834,7 @@ function siteUpdateAdminBackupLocalChanges(array $context, array $payload, array
     $manifestPath = $backup['backupPath'] . '/manifest.json';
     if (file_put_contents($manifestPath, json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR), LOCK_EX) === false
         || !chmod($manifestPath, 0600)) {
-        throw new RuntimeException('Impossible de finaliser la sauvegarde. Aucune synchronisation lancee.');
+        throw new RuntimeException(omoSiteUpdateT('copy.impossible_de_finaliser_la_sauvegarde_aucune_synchronisation_lancee'));
     }
     error_log('Site update backup: ' . $backup['backupPath']);
     return $backup;
@@ -917,7 +918,7 @@ function siteUpdateAdminCheckVersionStatus()
         'remoteDate' => (string)($remoteSummary['date'] ?? ''),
         'message' => $remoteCommit !== $context['localCommit']
             ? siteUpdateAdminBuildAvailableMessage($behindCount, $remoteSummary)
-            : 'Le site est deja a jour.',
+            : omoSiteUpdateT('parameters.site_update.status.already_current'),
     ), $localChangesPayload);
 }
 
@@ -929,7 +930,7 @@ function siteUpdateAdminPublishInstalledNews(array $state): int
     if (empty($state['requiresCompletion']) || $from === '' || $to === '' || $from === $to) { return 0; }
     $context = siteUpdateAdminGetGitContext();
     if (empty($context['supported']) || $context['localCommit'] !== $to) {
-        throw new RuntimeException('La version installee ne correspond pas aux nouveautes a publier.');
+        throw new RuntimeException(omoSiteUpdateT('copy.la_version_installee_ne_correspond_pas_aux_nouveautes_a_publier'));
     }
     $changelog = (array)($state['changelog'] ?? siteUpdateAdminGetChangelog($context, $from, $to));
     $changelog = array_merge($changelog, siteUpdateAdminRecoverNewsContent($context, $from, $to,
@@ -951,13 +952,13 @@ function siteUpdateAdminRunUpdate($actorUserId, $force = false, $completeOnly = 
     $backup = array('backupPath' => '', 'backedUpFileCount' => 0, 'identicalFileCount' => 0);
     $lockHandle = siteUpdateAdminTryAcquireLock();
     if ($lockHandle === false) {
-        throw new RuntimeException('Une mise a jour est deja en cours.');
+        throw new RuntimeException(omoSiteUpdateT('parameters.site_update.status.already_running'));
     }
 
     try {
         $context = siteUpdateAdminGetGitContext();
         if (empty($context['supported'])) {
-            throw new RuntimeException('La mise a jour automatique n est pas disponible sur ce serveur.');
+            throw new RuntimeException(omoSiteUpdateT('copy.la_mise_a_jour_automatique_n_est_pas_disponible_sur_ce_serveur'));
         }
 
         $localCommit = (string)$context['localCommit'];
@@ -977,7 +978,7 @@ function siteUpdateAdminRunUpdate($actorUserId, $force = false, $completeOnly = 
         $changelog = $completeOnly ? (array)($previousState['changelog'] ?? siteUpdateAdminGetChangelog($context, $newsFrom, $remoteCommit))
             : siteUpdateAdminGetChangelog($context, $localCommit, $remoteCommit);
         if ($completeOnly && ($previousState['remoteCommit'] ?? $localCommit) !== $localCommit) {
-            throw new RuntimeException('La version installee a change depuis la mise a jour interrompue.');
+            throw new RuntimeException(omoSiteUpdateT('copy.la_version_installee_a_change_depuis_la_mise_a_jour_interrompue'));
         }
         $remoteFiles = $completeOnly ? array() : siteUpdateAdminGetRemoteFiles($context, $remoteCommit);
         $localChangesPayload = $completeOnly ? array() : siteUpdateAdminBuildLocalChangesPayload($context, $localCommit, $remoteCommit, $remoteFiles);
@@ -986,7 +987,7 @@ function siteUpdateAdminRunUpdate($actorUserId, $force = false, $completeOnly = 
             return array_merge(array(
                 'status' => false,
                 'requiresForce' => true,
-                'message' => 'Des fichiers non suivis seraient remplaces. Vous pouvez forcer la mise a jour : seuls les contenus differents de la version distante seront sauvegardes avant remplacement.',
+                'message' => omoSiteUpdateT('copy.des_fichiers_non_suivis_seraient_remplaces_vous_pouvez_forcer_la_mise_'),
                 'behindCount' => $behindCount,
                 'localCommit' => $localCommit,
                 'remoteCommit' => $remoteCommit,
@@ -1002,7 +1003,7 @@ function siteUpdateAdminRunUpdate($actorUserId, $force = false, $completeOnly = 
             return array_merge(array(
                 'status' => false,
                 'requiresForce' => true,
-                'message' => 'Le depot contient des modifications locales. La mise a jour automatique est bloquee pour eviter un ecrasement.',
+                'message' => omoSiteUpdateT('parameters.site_update.error.local_changes'),
                 'behindCount' => $behindCount,
                 'localCommit' => $localCommit,
                 'remoteCommit' => $remoteCommit,
@@ -1020,7 +1021,7 @@ function siteUpdateAdminRunUpdate($actorUserId, $force = false, $completeOnly = 
 
         siteUpdateAdminWriteState(array(
             'status' => 'running',
-            'message' => 'Mise a jour en cours.',
+            'message' => omoSiteUpdateT('parameters.site_update.status.running'),
             'requiresCompletion' => (bool)$completeOnly,
             'newsFrom' => $newsFrom,
             'changelog' => $changelog,
@@ -1043,7 +1044,7 @@ function siteUpdateAdminRunUpdate($actorUserId, $force = false, $completeOnly = 
             return array(
                 'status' => true,
                 'updated' => false,
-                'message' => 'Le site est deja a jour.',
+                'message' => omoSiteUpdateT('parameters.site_update.status.already_current'),
                 'behindCount' => 0,
                 'localCommit' => $localCommit,
                 'remoteCommit' => $remoteCommit,
@@ -1067,13 +1068,13 @@ function siteUpdateAdminRunUpdate($actorUserId, $force = false, $completeOnly = 
             $exitCode
         );
         if ($exitCode !== 0) {
-            throw new RuntimeException(siteUpdateAdminFormatCommandOutput($resetOutput) ?: 'Impossible de synchroniser le code avec le depot distant.');
+            throw new RuntimeException(siteUpdateAdminFormatCommandOutput($resetOutput) ?: omoSiteUpdateT('parameters.site_update.error.sync_failed'));
         }
         $requiresCompletion = true;
 
         siteUpdateAdminWriteState(array(
             'status' => 'running',
-            'message' => 'Synchronisation du code terminee. Installation des dependances en cours.',
+            'message' => omoSiteUpdateT('copy.synchronisation_du_code_terminee_installation_des_dependances_en_cours'),
             'newsFrom' => $newsFrom,
             'changelog' => $changelog,
             'requiresCompletion' => true,
@@ -1097,12 +1098,12 @@ function siteUpdateAdminRunUpdate($actorUserId, $force = false, $completeOnly = 
             $exitCode
         );
         if ($exitCode !== 0) {
-            throw new RuntimeException(siteUpdateAdminFormatCommandOutput($composerOutput) ?: 'L installation des dependances PHP a echoue.');
+            throw new RuntimeException(siteUpdateAdminFormatCommandOutput($composerOutput) ?: omoSiteUpdateT('copy.l_installation_des_dependances_php_a_echoue'));
         }
 
         siteUpdateAdminWriteState(array(
             'status' => 'running',
-            'message' => 'Installation des dependances terminee. Application des migrations en cours.',
+            'message' => omoSiteUpdateT('copy.installation_des_dependances_terminee_application_des_migrations_en_co'),
             'newsFrom' => $newsFrom,
             'changelog' => $changelog,
             'requiresCompletion' => true,
@@ -1126,7 +1127,7 @@ function siteUpdateAdminRunUpdate($actorUserId, $force = false, $completeOnly = 
             $exitCode
         );
         if ($exitCode !== 0) {
-            throw new RuntimeException(siteUpdateAdminFormatCommandOutput($migrationOutput) ?: 'Les migrations SQL ont echoue.');
+            throw new RuntimeException(siteUpdateAdminFormatCommandOutput($migrationOutput) ?: omoSiteUpdateT('parameters.site_update.error.migrations_failed'));
         }
 
         $updatedLocalCommit = siteUpdateAdminRunCommand(
@@ -1146,9 +1147,7 @@ function siteUpdateAdminRunUpdate($actorUserId, $force = false, $completeOnly = 
             'status' => true,
             'updated' => true,
             'newsId' => $newsId,
-            'message' => 'La mise a jour du site est terminee.'
-                . ($backup['backupPath'] !== '' ? ' Sauvegarde locale : ' . $backup['backupPath'] . '.' : '')
-                . ($backup['identicalFileCount'] > 0 ? ' ' . $backup['identicalFileCount'] . ' fichiers identiques non sauvegardes.' : ''),
+            'message' => omoSiteUpdateT('copy.la_mise_a_jour_du_site_est_terminee_value_value_2', ['value' => $backup['backupPath'] !== '' ? ' Sauvegarde locale : ' . $backup['backupPath'] . '.' : '', 'value_2' => $backup['identicalFileCount'] > 0 ? ' ' . $backup['identicalFileCount'] . ' fichiers identiques non sauvegardes.' : '']),
             'backupPath' => $backup['backupPath'],
             'backedUpFileCount' => $backup['backedUpFileCount'],
             'identicalFileCount' => $backup['identicalFileCount'],

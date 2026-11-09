@@ -274,9 +274,9 @@ var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; 
             return '';
         }
 
-        var title = changes.length + (changes.length > 1 ? ' fichiers locaux detectes' : omoUiText("fichier_local_detecte", " fichier local detecte"));
+        var title = omoUiText('copy.local_files', changes.length + (changes.length > 1 ? ' fichiers locaux détectés' : ' fichier local détecté'), {count: changes.length});
         if (overlapCount > 0) {
-            title += '. ' + overlapCount + (overlapCount > 1 ? ' sont aussi modifies par le patch distant.' : ' est aussi modifie par le patch distant.');
+            title += '. ' + omoUiText('copy.overlapping_files', overlapCount + (overlapCount > 1 ? ' sont aussi modifiés par le patch distant.' : ' est aussi modifié par le patch distant.'), {count: overlapCount});
         }
 
         var items = changes.map(function (change) {
@@ -399,7 +399,7 @@ var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; 
                     setBannerState(root, {
                         type: 'error',
                         title: omoUiText("finaliser_la_mise_a_jour", "Finaliser la mise à jour"),
-                        message: omoUiText("installer_les_dependances_php_et_executer_les_migrations_pour_le_code_deja_present_sur_le", "Installer les dépendances PHP et executer les migrations pour le code déjà présent sur le serveur."),
+                        message: omoUiText("installer_les_dependances_php_et_executer_les_migrations_pour_le_code_deja_present_sur_le", "Installer les dépendances PHP et exécuter les migrations pour le code déjà présent sur le serveur."),
                         metaHtml: renderMeta(payload),
                         showRun: true,
                         runLabel: omoUiText("finaliser", "Finaliser"),
@@ -483,7 +483,7 @@ var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; 
             if (force === true) {
                 var trackedCount = lastPayload && lastPayload.trackedLocalChangeCount ? Number(lastPayload.trackedLocalChangeCount) : 0;
                 var untrackedCount = lastPayload && lastPayload.untrackedOverlappingLocalChangeCount ? Number(lastPayload.untrackedOverlappingLocalChangeCount) : 0;
-                var warning = omoUiText("cette_action_synchronisera_le_site_avec_la_version_distante", "Cette action synchronisera le site avec la version distante : ") + trackedCount + ' fichiers suivis modifies et ' + untrackedCount + omoUiText("fichiers_non_suivis_en_conflit_les_contenus_identiques_ne_seront_pas_sauvegardes_les_conte", " fichiers non suivis en conflit. Les contenus identiques ne seront pas sauvegardés. Les contenus différents seront sauvegardes hors du dossier public avant remplacement. Les fichiers non suivis sans conflit seront conservés. Continuer ?");
+                var warning = omoUiText('copy.update_confirmation', 'Cette action synchronisera le site avec la version distante : ' + trackedCount + ' fichiers suivis modifiés et ' + untrackedCount + ' fichiers non suivis en conflit. Les contenus identiques ne seront pas sauvegardés. Les contenus différents seront sauvegardés hors du dossier public avant remplacement. Les fichiers non suivis sans conflit seront conservés. Continuer ?', {tracked: trackedCount, untracked: untrackedCount});
                 if (!window.confirm(warning)) {
                     return;
                 }
@@ -550,7 +550,7 @@ var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; 
                     lastPayload = payload;
                     setBannerState(root, {
                         type: 'error',
-                        title: omoUiText("fichiers_non_suivis_a_proteger", "Fichiers non suivis a protéger"),
+                        title: omoUiText("fichiers_non_suivis_a_proteger", "Fichiers non suivis à protéger"),
                         message: payload.message || omoUiText("des_fichiers_non_suivis_doivent_etre_deplaces_ou_supprimes_avant_la_mise_a_jour", "Des fichiers non suivis doivent être déplacés ou supprimés avant la mise à jour."),
                         metaHtml: renderMeta(payload),
                         localChangesHtml: renderLocalChanges(payload),

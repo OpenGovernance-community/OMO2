@@ -47,7 +47,7 @@ $sourceLang = [
         'context' => 'Label for the project status filter.',
     ],
     'timer.project.status.ready' => [
-        'text' => 'Pret',
+        'text' => 'Prêt',
         'context' => 'Project status available in the work time filter.',
     ],
     'timer.project.status.in_progress' => [
@@ -59,7 +59,7 @@ $sourceLang = [
         'context' => 'Project status available in the work time filter.',
     ],
     'timer.project.status.review' => [
-        'text' => 'A verifier',
+        'text' => 'À vérifier',
         'context' => 'Project status available in the work time filter.',
     ],
     'timer.project.loading' => [
@@ -87,7 +87,7 @@ $sourceLang = [
         'context' => 'Label for the project selection view.',
     ],
     'timer.selection.none' => [
-        'text' => 'Aucune cible selectionnee',
+        'text' => 'Aucune cible sélectionnée',
         'context' => 'Shown in the timer control before any work target is selected.',
     ],
     'timer.selection.organization' => [
@@ -103,7 +103,7 @@ $sourceLang = [
         'context' => 'Current selected project in the timer control.',
     ],
     'timer.navigation.need_organization' => [
-        'text' => 'Choisissez d abord une organisation.',
+        'text' => 'Choisissez d’abord une organisation.',
         'context' => 'Feedback shown when the holon view is unavailable.',
     ],
     'timer.navigation.need_holon' => [
@@ -115,19 +115,19 @@ $sourceLang = [
         'context' => 'Button label used to start the work timer.',
     ],
     'timer.control.stop' => [
-        'text' => 'Arreter',
+        'text' => 'Arrêter',
         'context' => 'Button label used to stop the work timer.',
     ],
     'timer.control.label_placeholder' => [
-        'text' => 'Decrivez ce que vous faites',
+        'text' => 'Décrivez ce que vous faites',
         'context' => 'Placeholder for the current work time label.',
     ],
     'timer.control.label_aria' => [
-        'text' => 'Legende du travail en cours',
+        'text' => 'Légende du travail en cours',
         'context' => 'Accessible label for the current work time label field.',
     ],
     'timer.history.open' => [
-        'text' => 'Afficher les pointages recents',
+        'text' => 'Afficher les pointages récents',
         'context' => 'Accessible label for the timer gesture handle that opens the recent work time sheet.',
     ],
     'timer.history.close' => [
@@ -135,7 +135,7 @@ $sourceLang = [
         'context' => 'Accessible label for the timer gesture handle that closes the recent work time sheet.',
     ],
     'timer.history.heading' => [
-        'text' => 'Pointages recents',
+        'text' => 'Pointages récents',
         'context' => 'Heading for the recent work time sheet.',
     ],
     'timer.history.add' => [
@@ -167,7 +167,7 @@ $sourceLang = [
         'context' => 'Button label to cancel a work time entry edit.',
     ],
     'timer.history.start' => [
-        'text' => 'Debut',
+        'text' => 'Début',
         'context' => 'Label for a work time entry start date field.',
     ],
     'timer.history.end' => [
@@ -175,11 +175,11 @@ $sourceLang = [
         'context' => 'Label for a work time entry end date field.',
     ],
     'timer.history.label' => [
-        'text' => 'Legende',
+        'text' => 'Légende',
         'context' => 'Label for a work time entry legend field.',
     ],
     'timer.history.delete_confirm' => [
-        'text' => 'Supprimer ce pointage ? Cette action est definitive.',
+        'text' => 'Supprimer ce pointage ? Cette action est définitive.',
         'context' => 'Confirmation before deleting a work time entry.',
     ],
     'timer.control.no_holon' => [
@@ -195,11 +195,11 @@ $sourceLang = [
         'context' => 'Status shown while a work timer is active.',
     ],
     'timer.status.recovered' => [
-        'text' => 'Suivi repris apres interruption',
+        'text' => 'Suivi repris après interruption',
         'context' => 'Notice shown when an open timer is recovered after a page or phone interruption.',
     ],
     'timer.status.interrupted' => [
-        'text' => 'Le suivi precedent a ete clos apres une longue interruption.',
+        'text' => 'Le suivi précédent a été clos après une longue interruption.',
         'context' => 'Notice shown when an open timer is automatically closed after more than eight hours without a signal.',
     ],
     'timer.status.last_signal' => [
@@ -207,11 +207,11 @@ $sourceLang = [
         'context' => 'Status line showing the last timer heartbeat.',
     ],
     'timer.error.generic' => [
-        'text' => 'Le suivi du temps est momentanement indisponible.',
+        'text' => 'Le suivi du temps est momentanément indisponible.',
         'context' => 'Generic error shown when a timer request fails.',
     ],
     'timer.error.network' => [
-        'text' => 'Connexion interrompue. Le dernier signal conserve reste enregistre.',
+        'text' => 'Connexion interrompue. Le dernier signal conserve reste enregistré.',
         'context' => 'Error shown after a failed heartbeat request.',
     ],
     'timer.organization.aria' => [

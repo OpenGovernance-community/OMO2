@@ -110,7 +110,7 @@ if ($isUpdate) {
 
 echo json_encode(array(
     'status' => true,
-    'message' => $isUpdate ? 'Lien mis a jour.' : 'Lien cree.',
+    'message' => $isUpdate ? 'Lien mis a jour.' : omoSharesUiT('copy.lien_cree'),
     'url' => $shareLink->buildShareUrl(),
     'shareId' => (int)$shareLink->getId(),
     'token' => (string)$shareLink->get('token'),

@@ -111,7 +111,7 @@ $sourceLang = [
         'context' => 'Feedback shown when files are dragged over a document list or folder where the user cannot create files.',
     ],
     'documents.upload.storage_missing' => [
-        'text' => 'Configurez un stockage de fichiers dans les parametres Documents pour pouvoir televerser des fichiers.',
+        'text' => 'Configurez un stockage de fichiers dans les paramètres Documents pour pouvoir téléverser des fichiers.',
         'context' => 'Feedback shown when file dropping is unavailable because the organization has no document storage.',
     ],
     'documents.move.drop_root' => [

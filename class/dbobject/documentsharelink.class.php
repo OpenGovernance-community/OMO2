@@ -27,8 +27,8 @@
 				'id' => 'ID',
 				'IDorganization' => 'Organisation',
 				'IDdocument' => 'Document',
-				'IDuser' => 'Createur',
-				'label' => 'Libelle',
+				'IDuser' => 'Créateur',
+				'label' => 'Libellé',
 				'token' => 'Token',
 				'password_hash' => 'Mot de passe',
 				'allow_live_follow' => 'Suivi temps reel',
@@ -46,15 +46,15 @@
 			return [
 				'IDorganization' => 'Organisation du document partage.',
 				'IDdocument' => 'Document partage.',
-				'IDuser' => 'Utilisateur ayant cree le lien.',
-				'label' => 'Libelle interne du lien.',
+				'IDuser' => 'Utilisateur ayant créé le lien.',
+				'label' => 'Libellé interne du lien.',
 				'token' => 'Token unique partageable.',
 				'password_hash' => 'Hash du mot de passe optionnel.',
-				'allow_live_follow' => 'Autorise l affichage du brouillon temporaire pendant l edition.',
-				'allow_pv_contribution' => 'Autorise le participant invite a ajouter et modifier ses propres points avant la validation.',
-				'recipient_email' => 'Adresse e-mail a laquelle est attribue le lien de participation.',
-				'recipient_user_id' => 'Utilisateur deja connu correspondant au participant invite.',
-				'dateexpiration' => 'Date de fin de validite du lien.',
+				'allow_live_follow' => 'Autorise l’affichage du brouillon temporaire pendant l’édition.',
+				'allow_pv_contribution' => 'Autorise le participant invité à ajouter et modifier ses propres points avant la validation.',
+				'recipient_email' => 'Adresse e-mail à laquelle est attribué le lien de participation.',
+				'recipient_user_id' => 'Utilisateur déjà connu correspondant au participant invité.',
+				'dateexpiration' => 'Date de fin de validité du lien.',
 			];
 		}
 

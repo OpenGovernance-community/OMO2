@@ -25,9 +25,9 @@ $downloaded = commonInfomaniakWaitForTranscription('batch-2', 'fixture-key', '45
     });
 audioCheck($downloaded['text'] === 'Downloaded transcript' && $paths === ['/1/ai/456/results/batch-2', '/1/ai/456/results/batch-2/download'], 'Download through the trusted product route, ignoring arbitrary returned URLs');
 foreach (['failed', 'cancelled', 'unknown'] as $status) {
-    audioReject(fn () => commonInfomaniakWaitForTranscription('batch-3', 'fixture-key', '456', microtime(true) + 5, static fn () => ['status' => $status]), $status === 'unknown' ? 'invalide' : 'echoue');
+    audioReject(fn () => commonInfomaniakWaitForTranscription('batch-3', 'fixture-key', '456', microtime(true) + 5, static fn () => ['status' => $status]), $status === 'unknown' ? 'invalide' : 'échoué');
 }
-audioReject(fn () => commonInfomaniakWaitForTranscription('batch-3', 'fixture-key', '456', microtime(true) - 1, static fn () => []), 'delai imparti');
+audioReject(fn () => commonInfomaniakWaitForTranscription('batch-3', 'fixture-key', '456', microtime(true) - 1, static fn () => []), 'délai imparti');
 audioReject(fn () => commonInfomaniakWaitForTranscription('../bad', 'fixture-key', '456', microtime(true) + 5, static fn () => []), 'Identifiant');
 audioReject(fn () => commonInfomaniakWaitForTranscription('batch-3', 'fixture-key', '456', microtime(true) + 5, static fn () => ['status' => 'success', 'data' => ['text' => '']]), 'vide');
 echo "PASS Infomaniak asynchronous transcription, trusted download, failure and deadline handling\n";

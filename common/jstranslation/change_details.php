@@ -59,7 +59,20 @@ $sourceLang = [
     'frequencyQuarterly' => ['text' => 'Chaque trimestre', 'context' => 'Quarterly frequency'],
     'frequencySemiannual' => ['text' => 'Chaque semestre', 'context' => 'Semiannual frequency'],
     'frequencyYearly' => ['text' => 'Chaque année', 'context' => 'Yearly frequency'],
-];
+
+        'copy_regle' => ['text' => 'Règle', 'context' => 'JavaScript interface text in common/choice/change-details.js'],
+        'copy_echeance' => ['text' => 'Échéance', 'context' => 'JavaScript interface text in common/choice/change-details.js'],
+        'copy_debut_planifie' => ['text' => 'Début planifié', 'context' => 'JavaScript interface text in common/choice/change-details.js'],
+        'copy_fin_planifiee' => ['text' => 'Fin planifiée', 'context' => 'JavaScript interface text in common/choice/change-details.js'],
+        'copy_priorite' => ['text' => 'Priorité', 'context' => 'JavaScript interface text in common/choice/change-details.js'],
+        'copy_importance_strategique' => ['text' => 'Importance stratégique', 'context' => 'JavaScript interface text in common/choice/change-details.js'],
+        'copy_frequence' => ['text' => 'Fréquence', 'context' => 'JavaScript interface text in common/choice/change-details.js'],
+        'copy_unite_d_anticipation' => ['text' => 'Unité d’anticipation', 'context' => 'JavaScript interface text in common/choice/change-details.js'],
+        'copy_delai_avant_retard' => ['text' => 'Délai avant retard', 'context' => 'JavaScript interface text in common/choice/change-details.js'],
+        'copy_unite_du_delai' => ['text' => 'Unité du délai', 'context' => 'JavaScript interface text in common/choice/change-details.js'],
+        'copy_frequence_de_mesure' => ['text' => 'Fréquence de mesure', 'context' => 'JavaScript interface text in common/choice/change-details.js'],
+        'copy_autorite' => ['text' => 'Autorité ', 'context' => 'JavaScript interface text in common/choice/change-details.js'],
+    ];
 $bundle = omoLoadTranslationBundle('common_choice_change_details', $sourceLang);
 $payload = [];
 foreach ($sourceLang as $key => $definition) $payload[$key] = t($key, [], $bundle, $sourceLang);

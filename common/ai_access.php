@@ -66,7 +66,7 @@ function commonAiRequestOrganization(): int
 function commonAiOrganizationBlockedMessage(): string
 {
     require_once __DIR__ . '/translation_bundles.php';
-    $sourceLang = ['organization_blocked' => ['text' => 'Les fonctions IA sont bloquees par cette organisation.',
+    $sourceLang = ['organization_blocked' => ['text' => 'Les fonctions IA sont bloquées par cette organisation.',
         'context' => 'Organization security policy blocks all internal AI tools regardless of personal subscriptions.']];
     static $lang = null;
     $locale = function_exists('omoGetTranslationLocale') ? omoGetTranslationLocale() : (string)($_COOKIE['lang'] ?? 'fr');

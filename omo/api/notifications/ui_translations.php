@@ -11,6 +11,11 @@ function omoNotificationsUiSourceLang(): array
         'connexion_requise' => ['text' => 'Connexion requise.', 'context' => 'Validation or action feedback in api/notifications/push_subscription.php'],
         'donnees_de_notification_invalides' => ['text' => 'Données de notification invalides.', 'context' => 'Validation or action feedback in api/notifications/push_subscription.php'],
         'souscription_navigateur_invalide' => ['text' => 'Souscription navigateur invalide.', 'context' => 'Validation or action feedback in api/notifications/push_subscription.php'],
+
+        'copy.notifications_desactivees_pour_cet_appareil' => ['text' => 'Notifications désactivées pour cet appareil.', 'context' => 'Interface text in omo/api/notifications/push_subscription.php'],
+        'copy.impossible_de_desactiver_les_notifications' => ['text' => 'Impossible de désactiver les notifications.', 'context' => 'Interface text in omo/api/notifications/push_subscription.php'],
+        'copy.notifications_activees_pour_cet_appareil' => ['text' => 'Notifications activées pour cet appareil.', 'context' => 'Interface text in omo/api/notifications/push_subscription.php'],
+        'copy.impossible_d_enregistrer_les_notifications_pour_cet_appareil' => ['text' => 'Impossible d’enregistrer les notifications pour cet appareil.', 'context' => 'Interface text in omo/api/notifications/push_subscription.php'],
     ];
     return $sourceLang;
 }

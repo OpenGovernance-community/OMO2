@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../common/account-translations.php';
+
 
 	require_once("../config.php");
 	require_once("../shared_functions.php");
@@ -23,7 +25,7 @@
 		echo json_encode([
 			'status' => false,
 			'success' => false,
-			'message' => "Aucune organisation n'est selectionnee.",
+			'message' => commonAccountUiT('copy.aucune_organisation_n_est_selectionnee'),
 		], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 		exit;
 	}
@@ -34,7 +36,7 @@
 		['IDorganization', $currentOrganizationId],
 	])) {
 		http_response_code(403);
-		echo json_encode(['status' => false, 'message' => 'Adhesion requise.']);
+		echo json_encode(['status' => false, 'message' => commonAccountUiT('copy.adhesion_requise')]);
 		exit;
 	}
 
@@ -42,21 +44,21 @@
 		echo json_encode([
 			'status' => false,
 			'success' => false,
-			'message' => "Vous n'avez pas le droit d'editer ce profil d'organisation.",
+			'message' => commonAccountUiT('copy.vous_n_avez_pas_le_droit_d_editer_ce_profil_d_organisation'),
 		], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 		exit;
 	}
 
 	if (!(bool)$object->get('active')) {
 		http_response_code(403);
-		echo json_encode(['status' => false, 'message' => 'Adhesion inactive.']);
+		echo json_encode(['status' => false, 'message' => commonAccountUiT('copy.adhesion_inactive')]);
 		exit;
 	}
 	try {
 		$object->loadProfileInput($_POST);
 	} catch (\InvalidArgumentException $error) {
 		http_response_code(400);
-		echo json_encode(['status' => false, 'message' => 'Donnees ou image invalides.']);
+		echo json_encode(['status' => false, 'message' => commonAccountUiT('copy.donnees_ou_image_invalides')]);
 		exit;
 	}
 	$saveResult = $object->save();

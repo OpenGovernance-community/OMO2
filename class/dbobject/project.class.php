@@ -10,7 +10,25 @@ class Project extends DbObject
                 'la_personne_proposant_le_projet_doit_etre_membre_de_l_organisation' => ['text' => 'La personne proposant le projet doit être membre de l’organisation.', 'context' => 'Validation or action feedback for project.'],
                 'invalid_project_parent' => ['text' => 'Invalid project parent.', 'context' => 'Validation or action feedback for project.'],
                 'impossible_d_enregistrer_le_projet_et_son_suivi' => ['text' => 'Impossible d’enregistrer le projet et son suivi.', 'context' => 'Validation or action feedback for project.'],
-            ];
+
+                'copy.un_jour_peut_etre' => ['text' => 'Un jour peut-être', 'context' => 'Interface text in class/dbobject/project.class.php'],
+                'copy.projet_conserve_pour_plus_tard' => ['text' => 'Projet conservé pour plus tard.', 'context' => 'Interface text in class/dbobject/project.class.php'],
+                'copy.pret' => ['text' => 'Prêt', 'context' => 'Interface text in class/dbobject/project.class.php'],
+                'copy.projet_pret_a_demarrer' => ['text' => 'Projet prêt a démarrer.', 'context' => 'Interface text in class/dbobject/project.class.php'],
+                'copy.a_verifier' => ['text' => 'À vérifier', 'context' => 'Interface text in class/dbobject/project.class.php'],
+                'copy.projet_en_attente_de_verification' => ['text' => 'Projet en attente de vérification.', 'context' => 'Interface text in class/dbobject/project.class.php'],
+                'copy.termine' => ['text' => 'Terminé', 'context' => 'Interface text in class/dbobject/project.class.php'],
+                'copy.chaque_capture_cree_un_document_distinct' => ['text' => 'Chaque capture crée un document distinct.', 'context' => 'Interface text in class/dbobject/project.class.php'],
+
+                'option.en_cours' => ['text' => 'En cours', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+                'option.projet_actuellement_travaille' => ['text' => 'Projet actuellement travaillé.', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+                'option.bloque' => ['text' => 'Bloqué', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+                'option.projet_bloque_par_un_obstacle' => ['text' => 'Projet bloqué par un obstacle.', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+                'option.projet_acheve' => ['text' => 'Projet acheve.', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+                'option.documents_multiples' => ['text' => 'Documents multiples', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+                'option.journal_unique' => ['text' => 'Journal unique', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+                'option.les_captures_alimentent_un_document_journal' => ['text' => 'Les captures alimentent un document journal.', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+        ];
         }
 
     public const KIND_STANDARD = 'standard';
@@ -120,16 +138,16 @@ class Project extends DbObject
             'blocked_until' => 'Date à partir de laquelle le blocage doit être réévalué.',
             'blocked_auto_reactivate' => 'Réactive automatiquement le projet à la date de relance.',
             'blocked_reactivate_status' => 'État appliqué lors de la réactivation automatique.',
-            'planned_start_date' => 'Date a laquelle le projet devrait commencer.',
-            'planned_end_date' => 'Date a laquelle le projet devrait être termine.',
-            'closed_at' => 'Date a laquelle le projet est passe à l’état termine.',
-            'archived_at' => 'Date a laquelle le projet a été retire de la vue active.',
-            'priority' => 'Niveau a considerer tant que les dates ne sont pas renseignees.',
-            'importance' => 'Niveau stratégique a considerer quand le temps disponible manque.',
+            'planned_start_date' => 'Date à laquelle le projet devrait commencer.',
+            'planned_end_date' => 'Date à laquelle le projet devrait être terminé.',
+            'closed_at' => 'Date à laquelle le projet est passe à l’état terminé.',
+            'archived_at' => 'Date à laquelle le projet a été retiré de la vue active.',
+            'priority' => 'Niveau a considérer tant que les dates ne sont pas renseignées.',
+            'importance' => 'Niveau stratégique a considérer quand le temps disponible manque.',
             'calculated_importance' => 'Score calculé automatiquement à partir de l’importance stratégique déclarée, de la chaîne de projets et de la position holarchique.',
             'capture_mode' => 'Indique si les captures Telegram doivent créer plusieurs documents ou alimenter un journal unique.',
-            'project_size' => 'Taille relative du projet, utilisée pour ponderer sa place dans les barres de synthèse.',
-            'project_kind' => 'Distingue un projet operationnel d’un projet utilise comme modèle de processus.',
+            'project_size' => 'Taille relative du projet, utilisée pour pondérer sa place dans les barres de synthèse.',
+            'project_kind' => 'Distingue un projet opérationnel d’un projet utilisé comme modèle de processus.',
             'IDproject_template' => 'Projet modèle à l’origine de cette instance.',
             'proposal_status' => 'Conserve le cycle de validation d’un projet proposé avant qu’il devienne un projet normal.',
         ];
@@ -156,12 +174,12 @@ class Project extends DbObject
             $statusValues[] = [$status, (string)$catalog['label']];
         }
 
-        $priorityValues = [['', 'Non definie']];
+        $priorityValues = [['', 'Non définie']];
         for ($level = 1; $level <= 5; $level++) {
             $priorityValues[] = [(string)$level, 'P' . (string)$level];
         }
 
-        $importanceValues = [['', 'Non definie']];
+        $importanceValues = [['', 'Non définie']];
         for ($level = 1; $level <= 5; $level++) {
             $importanceValues[] = [(string)$level, (string)$level . '/5'];
         }
@@ -184,7 +202,7 @@ class Project extends DbObject
             ],
             'project_kind' => [
                 [self::KIND_STANDARD, 'Projet'],
-                [self::KIND_CHECKLIST_TEMPLATE, 'Modele de processus'],
+                [self::KIND_CHECKLIST_TEMPLATE, 'Modèle de processus'],
             ],
         ];
     }
@@ -340,28 +358,28 @@ class Project extends DbObject
     {
         return [
             self::STATUS_SOMEDAY => [
-                'label' => 'Un jour peut-etre',
-                'description' => 'Projet conserve pour plus tard.',
+                'label' => self::uiMessage('copy.un_jour_peut_etre'),
+                'description' => self::uiMessage('copy.projet_conserve_pour_plus_tard'),
             ],
             self::STATUS_READY => [
-                'label' => 'Pret',
-                'description' => 'Projet pret a demarrer.',
+                'label' => self::uiMessage('copy.pret'),
+                'description' => self::uiMessage('copy.projet_pret_a_demarrer'),
             ],
             self::STATUS_IN_PROGRESS => [
-                'label' => 'En cours',
-                'description' => 'Projet actuellement travaille.',
+                'label' => self::uiMessage('option.en_cours'),
+                'description' => self::uiMessage('option.projet_actuellement_travaille'),
             ],
             self::STATUS_BLOCKED => [
-                'label' => 'Bloque',
-                'description' => 'Projet bloque par un obstacle.',
+                'label' => self::uiMessage('option.bloque'),
+                'description' => self::uiMessage('option.projet_bloque_par_un_obstacle'),
             ],
             self::STATUS_REVIEW => [
-                'label' => 'A verifier',
-                'description' => 'Projet en attente de verification.',
+                'label' => self::uiMessage('copy.a_verifier'),
+                'description' => self::uiMessage('copy.projet_en_attente_de_verification'),
             ],
             self::STATUS_DONE => [
-                'label' => 'Termine',
-                'description' => 'Projet acheve.',
+                'label' => self::uiMessage('copy.termine'),
+                'description' => self::uiMessage('option.projet_acheve'),
             ],
         ];
     }
@@ -423,12 +441,12 @@ class Project extends DbObject
     {
         return [
             self::CAPTURE_MULTIPLE_DOCUMENTS => [
-                'label' => 'Documents multiples',
-                'description' => 'Chaque capture cree un document distinct.',
+                'label' => self::uiMessage('option.documents_multiples'),
+                'description' => self::uiMessage('copy.chaque_capture_cree_un_document_distinct'),
             ],
             self::CAPTURE_SINGLE_JOURNAL => [
-                'label' => 'Journal unique',
-                'description' => 'Les captures alimentent un document journal.',
+                'label' => self::uiMessage('option.journal_unique'),
+                'description' => self::uiMessage('option.les_captures_alimentent_un_document_journal'),
             ],
         ];
     }
@@ -746,8 +764,8 @@ class Project extends DbObject
     {
         return match (self::normalizeProposalStatus($status)) {
             self::PROPOSAL_PENDING => 'En attente',
-            self::PROPOSAL_ACCEPTED => 'Acceptee',
-            self::PROPOSAL_REFUSED => 'Refusee',
+            self::PROPOSAL_ACCEPTED => 'Acceptée',
+            self::PROPOSAL_REFUSED => 'Refusée',
             default => '',
         };
     }
@@ -800,10 +818,10 @@ class Project extends DbObject
     private static function buildHistoryChanges(array $before, array $after)
     {
         $labels = [
-            'visibility_type' => 'Visibilite',
+            'visibility_type' => 'Visibilité',
             'title' => 'Intitulé',
             'status' => 'Statut',
-            'proposal_status' => 'Etat de la proposition',
+            'proposal_status' => 'État de la proposition',
             'planned_start_date' => 'Début planifié',
             'planned_end_date' => 'Fin planifiée',
             'blocked_reason' => 'Motif du blocage',
@@ -880,7 +898,7 @@ class Project extends DbObject
             case 'status':
                 return $transition('Le statut du projet ' . $projectToken);
             case 'proposal_status':
-                return $transition('L etat de la proposition du projet ' . $projectToken);
+                return $transition('L’état de la proposition du projet ' . $projectToken);
             case 'title':
                 return $transition('L’intitulé du projet ' . $projectToken);
             case 'planned_start_date':
@@ -946,7 +964,7 @@ class Project extends DbObject
         } elseif ($historyActionOverride === self::HISTORY_ACTION_AUTO_REACTIVATED) {
             $action = self::HISTORY_ACTION_AUTO_REACTIVATED;
             $content = 'Réactivation automatique du projet ' . $projectToken
-                . ' à l état ' . (string)$afterState['status'] . '.';
+                . ' à l’état ' . (string)$afterState['status'] . '.';
             $blockedReason = trim((string)($beforeState['blocked_reason'] ?? ''));
             if ($blockedReason !== '') {
                 $content .= ' Motif du blocage : ' . $blockedReason . '.';

@@ -25,27 +25,27 @@ class ChecklistItemRecurrence extends DbObject
     {
         return [
             'id' => 'ID',
-            'IDchecklistitem' => 'Activite de processus',
-            'frequency' => 'Frequence',
+            'IDchecklistitem' => 'Activité de processus',
+            'frequency' => 'Fréquence',
             'schedule' => 'Moment attendu',
             'display_lead_value' => 'Affichage en avance',
-            'display_lead_unit' => 'Unite d anticipation',
-            'execution_duration_value' => 'Delai de realisation',
-            'execution_duration_unit' => 'Unite du delai de realisation',
-            'next_trigger_at' => 'Prochain declenchement',
+            'display_lead_unit' => 'Unité d’anticipation',
+            'execution_duration_value' => 'Délai de réalisation',
+            'execution_duration_unit' => 'Unité du délai de réalisation',
+            'next_trigger_at' => 'Prochain déclenchement',
             'enabled' => 'Active',
-            'created_at' => 'Creation',
-            'updated_at' => 'Mise a jour',
+            'created_at' => 'Création',
+            'updated_at' => 'Mise à jour',
         ];
     }
 
     public static function attributeDescriptions()
     {
         return [
-            'display_lead_value' => 'Nombre d heures, jours, semaines ou mois avant la date attendue pour afficher le projet.',
-            'display_lead_unit' => 'Unite utilisee pour l anticipation d affichage.',
-            'execution_duration_value' => 'Duree accordee pour realiser le projet a partir de sa date attendue.',
-            'execution_duration_unit' => 'Unite utilisee pour le delai de realisation.',
+            'display_lead_value' => 'Nombre d’heures, jours, semaines ou mois avant la date attendue pour afficher le projet.',
+            'display_lead_unit' => 'Unité utilisée pour l’anticipation d’affichage.',
+            'execution_duration_value' => 'Durée accordée pour réaliser le projet à partir de sa date attendue.',
+            'execution_duration_unit' => 'Unité utilisée pour le délai de réalisation.',
         ];
     }
 

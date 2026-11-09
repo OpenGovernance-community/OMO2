@@ -23,10 +23,10 @@ class ChecklistItemOccurrence extends DbObject
     {
         return [
             'id' => 'ID',
-            'IDchecklistitem' => 'Activite de processus',
-            'scheduled_for' => 'Occurrence prevue',
-            'IDproject' => 'Projet genere',
-            'created_at' => 'Creation',
+            'IDchecklistitem' => 'Activité de processus',
+            'scheduled_for' => 'Occurrence prévue',
+            'IDproject' => 'Projet généré',
+            'created_at' => 'Création',
         ];
     }
 

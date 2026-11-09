@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/account-translations.php';
+
 
 require_once '../shared_functions.php';
 require_once __DIR__ . '/auth.php';
@@ -96,7 +98,7 @@ $organizationId = (int)($_GET['organization_id'] ?? 0);
 if ($organizationId > 0 && (!patreonUserCanManageOrganization($currentUserId, $organizationId)
     || !is_string($_GET['csrf'] ?? null) || empty($_SESSION['patreon_organization_csrf'])
     || !hash_equals($_SESSION['patreon_organization_csrf'], $_GET['csrf']))) {
-    http_response_code(403); patreonRenderConnectErrorPage('Acces refuse.'); exit;
+    http_response_code(403); patreonRenderConnectErrorPage(commonAccountUiT('copy.acces_refuse_a0bd21')); exit;
 }
 $connectUrl = patreonGetConnectUrl();
 $handoffToken = bin2hex(random_bytes(32));

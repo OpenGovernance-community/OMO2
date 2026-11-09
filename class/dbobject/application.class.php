@@ -55,10 +55,10 @@
 		{
 			return [
 				'id' => 'ID',
-				'label' => 'LibellÃ©',
+				'label' => 'Libellé',
 				'hash' => 'Hash',
-				'directory' => 'RÃ©pertoire',
-				'icon' => 'IcÃ´ne',
+				'directory' => 'Répertoire',
+				'icon' => 'Icône',
 				'drawer' => 'Drawer',
 				'url' => 'URL',
 				'navigationmode' => 'Mode de navigation',
@@ -71,16 +71,16 @@
 		public static function attributeDescriptions()
 		{
 			return [
-				'label' => 'Texte visible dans la barre latÃ©rale',
-				'hash' => 'Hash utilisÃ© pour le routage OMO',
-				'directory' => 'RÃ©pertoire du module dans /omo/api',
-				'icon' => 'Chemin de lâ€™icÃ´ne Ã  afficher',
-				'drawer' => 'Identifiant du drawer Ã  ouvrir',
-				'url' => 'URL du contenu Ã  charger pour ce module',
-				'navigationmode' => 'panel pour revenir Ã  la structure, drawer pour ouvrir un module',
-				'position' => 'Ordre dâ€™affichage',
-				'requires_login' => 'Masque le module aux visiteurs non connectÃ©s',
-				'active' => 'Permet de dÃ©sactiver globalement le module',
+				'label' => 'Texte visible dans la barre latérale',
+				'hash' => 'Hash utilisé pour le routage OMO',
+				'directory' => 'Répertoire du module dans /omo/api',
+				'icon' => 'Chemin de l’icône à afficher',
+				'drawer' => 'Identifiant du drawer à ouvrir',
+				'url' => 'URL du contenu à charger pour ce module',
+				'navigationmode' => 'panel pour revenir à la structure, drawer pour ouvrir un module',
+				'position' => 'Ordre d’affichage',
+				'requires_login' => 'Masque le module aux visiteurs non connectés',
+				'active' => 'Permet de désactiver globalement le module',
 			];
 		}
 

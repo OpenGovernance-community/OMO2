@@ -54,13 +54,13 @@ $adminCheckboxHint = '';
 if ($adminMinimum > $adminCount) {
     $adminCheckboxChecked = true;
     $adminCheckboxDisabled = true;
-    $adminCheckboxHint = 'Le statut ' . $adminLabelLower . ' est requis tant que le minimum de ' . $adminMinimum . ' n est pas atteint.';
+    $adminCheckboxHint = omoHolonsUiT('copy.le_statut_adminlabellower_est_requis_tant_que_le_minimum_de_adminminim', ['adminLabelLower' => $adminLabelLower, 'adminMinimum' => $adminMinimum]);
 } elseif ($adminMaximum !== null && $adminCount >= (int)$adminMaximum) {
     $adminCheckboxDisabled = true;
-    $adminCheckboxHint = 'Le maximum de ' . (int)$adminMaximum . ' ' . $adminLabelLower . ' est deja atteint.';
+    $adminCheckboxHint = omoHolonsUiT('copy.le_maximum_de_adminmaximum_adminlabellower_est_deja_atteint', ['adminMaximum' => (int)$adminMaximum, 'adminLabelLower' => $adminLabelLower]);
 } elseif (!$canAddAdmin) {
     $adminCheckboxDisabled = true;
-    $adminCheckboxHint = 'Vous n avez pas le droit de definir ce statut dans ce contexte.';
+    $adminCheckboxHint = omoHolonsUiT('copy.vous_n_avez_pas_le_droit_de_definir_ce_statut_dans_ce_contexte');
 }
 
 if (!$canAddMember) {
@@ -74,7 +74,7 @@ if (!$canAddMember) {
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' && $adminMinimum > 0 && $adminCount < $adminMinimum && !$canAddAdmin) {
     http_response_code(403);
     ?>
-    <div class="omo-holon-member-popup__empty generic-description">Ce role exige au moins <?= (int)$adminMinimum ?> <?= omoApiEscape($adminLabelLower) ?> avant l ajout d un membre normal. Vous ne pouvez pas definir ce statut dans ce contexte.</div>
+    <div class="omo-holon-member-popup__empty generic-description"><?= htmlspecialchars(omoHolonsUiT('copy.ce_role_exige_au_moins_value1_value2_avant_l_ajout_d_un_membre_normal_vous_ne_po', ['value1' => (int)$adminMinimum, 'value2' => $adminLabelLower]), ENT_QUOTES, 'UTF-8') ?></div>
     <?php
     exit;
 }
@@ -258,8 +258,8 @@ foreach ($directMembers as $member) {
             <?= $adminCheckboxHint !== ''
                 ? omoApiEscape($adminCheckboxHint)
                 : ($canAddAdmin
-                ? 'La personne recevra le statut ' . $adminLabelLower . ' de ce contexte, maintenant ou apres validation de l invitation.'
-                : 'Vous n avez pas le droit de definir ce statut dans ce contexte.') ?>
+                ? omoHolonsUiT('copy.la_personne_recevra_le_statut_adminlabellower_de_ce_contexte_maintenan', ['adminLabelLower' => $adminLabelLower])
+                : omoHolonsUiT('copy.vous_n_avez_pas_le_droit_de_definir_ce_statut_dans_ce_contexte')) ?>
             <?php if ($adminMinimum > 0 || $adminMaximum !== null): ?>
                 <br><?= omoApiEscape($adminLabel) ?> : <?= (int)$adminCount ?><?= $adminMinimum > 0 ? ' (minimum : ' . (int)$adminMinimum . ')' : '' ?><?= $adminMaximum !== null ? ' (maximum : ' . (int)$adminMaximum . ')' : '' ?>.
             <?php endif; ?>

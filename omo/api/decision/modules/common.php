@@ -959,7 +959,7 @@ if (!function_exists('omoDecisionRenderProposalSupplementHtml')) {
 
         if ($infoUrl !== null) {
             $classAttribute = trim((string)$linkClass) !== '' ? ' class="' . $escape(trim((string)$linkClass)) . '"' : '';
-            $html .= '<a' . $classAttribute . ' href="' . $escape($infoUrl) . '" target="_blank" rel="noopener noreferrer">Plus d infos</a>';
+            $html .= '<a' . $classAttribute . ' href="' . $escape($infoUrl) . '" target="_blank" rel="noopener noreferrer">Plus d’infos</a>';
         }
 
         return $html;
@@ -2741,7 +2741,7 @@ if (!function_exists('omoDecisionBuildInvitationEditorState')) {
             'allowPublicSelfRegistration' => $allowPublicSelfRegistration,
             'holonTree' => $holonTree,
             'hasHolonStructure' => is_array($holonTree),
-            'currentContextLabel' => $effectiveHolon instanceof Holon ? 'du contexte courant' : 'de l organisation',
+            'currentContextLabel' => $effectiveHolon instanceof Holon ? omoDecisionUiT('copy.du_contexte_courant') : 'de l’organisation',
             'memberships' => $memberships,
         ];
     }
@@ -2772,7 +2772,7 @@ if (!function_exists('omoDecisionApplyInvitationSelections')) {
             if (!$holon->load($holonId) || !$organization->containsHolon($holon) || !$holon->canViewDetail()) {
                 return [
                     'status' => false,
-                    'message' => \dbObject\Organization::formatLexiconText('Un holon selectionne est invalide.'),
+                    'message' => \dbObject\Organization::formatLexiconText('Un holon sélectionné est invalide.'),
                 ];
             }
 

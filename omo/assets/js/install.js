@@ -190,7 +190,7 @@ var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; 
                     return;
                 }
             } catch (error) {
-                console.warn('Impossible de verifier l installation OMO.', error);
+                console.warn((window.omoUiText || function (key, fallback) { return fallback; })("copy_impossible_de_verifier_l_installation_omo", "Impossible de vérifier l’installation OMO."), error);
             }
         }
 

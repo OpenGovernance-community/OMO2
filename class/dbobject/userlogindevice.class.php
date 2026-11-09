@@ -21,7 +21,7 @@ class UserLoginDevice extends DbObject
     public static function attributeLabels()
     {
         return ['IDuser' => 'Utilisateur', 'token_hash' => 'Empreinte du navigateur',
-            'expires_at' => 'Expiration', 'created_at' => 'Creation', 'last_login_at' => 'Derniere connexion'];
+            'expires_at' => 'Expiration', 'created_at' => 'Création', 'last_login_at' => 'Dernière connexion'];
     }
 
     public static function attributeLength() { return ['token_hash' => 64]; }

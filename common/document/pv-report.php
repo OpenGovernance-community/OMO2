@@ -8,7 +8,7 @@ function commonPvReportT(string $key, array $replace = []): string
         'pv.report.handled_at' => ['text' => 'Traite le {date} a {time}', 'context' => 'Completion date and time below an agenda point in reviewed or validated minutes.'],
         'pv.report.unhandled' => ['text' => 'Points non traités', 'context' => 'Final list of non-confidential unfinished agenda points in reviewed and validated minutes.'],
         'pv.report.empty' => ['text' => 'Aucun point traité dans ce PV.', 'context' => 'Empty reviewed or validated minutes, with no handled point or public unfinished title.'],
-        'pv.report.proposals' => ['text' => 'Propositions validees', 'context' => 'Validated changes listed inside a read-only meeting minutes point'],
+        'pv.report.proposals' => ['text' => 'Propositions validées', 'context' => 'Validated changes listed inside a read-only meeting minutes point'],
         'pv.report.proposal.summary' => ['text' => '{operation} : {type} "{title}"', 'context' => 'Summary of a validated change in read-only minutes'],
         'pv.report.proposal.create' => ['text' => 'Création', 'context' => 'Validated object creation in read-only minutes'],
         'pv.report.proposal.propose' => ['text' => 'Proposition de projet', 'context' => 'Project submitted for acceptance after collective validation'],
@@ -23,7 +23,7 @@ function commonPvReportT(string $key, array $replace = []): string
         'pv.report.type.information' => ['text' => 'Information', 'context' => 'Accessible label and tooltip of the information agenda point icon.'],
         'pv.report.type.consultation' => ['text' => 'Consultation', 'context' => 'Accessible label and tooltip of the consultation agenda point icon.'],
         'pv.report.type.decision' => ['text' => 'Décision', 'context' => 'Accessible label and tooltip of the decision agenda point icon.'],
-        'pv.report.moved_to' => ['text' => 'Deplace vers', 'context' => 'Label before the linked destination minutes name of an unfinished moved agenda point.'],
+        'pv.report.moved_to' => ['text' => 'Déplace vers', 'context' => 'Label before the linked destination minutes name of an unfinished moved agenda point.'],
         'pv.report.abandoned' => ['text' => 'Ce point ne nécessite plus de traitement supplémentaire : il a été abandonné ou a trouvé une autre voie de résolution.', 'context' => 'Notice in original minutes for an unhandled agenda point whose follow-up was explicitly closed.'],
     ];
     if ($lang === null) {

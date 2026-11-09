@@ -93,6 +93,16 @@ function omoDocumentsUiSourceLang(): array
         'document_introuvable_ou_inaccessible' => ['text' => 'Document introuvable ou inaccessible.', 'context' => 'Validation or action feedback in api/documents/upload/download.php'],
         'stockage_distant_indisponible' => ['text' => 'Stockage distant indisponible.', 'context' => 'Validation or action feedback in api/documents/upload/download.php'],
         'min_2' => ['text' => 'min', 'context' => 'Interface text in api/documents/pv/helpers.php'],
+
+        'copy.les_documents_doivent_appartenir_a_la_meme_organisation' => ['text' => 'Les documents doivent appartenir à la même organisation.', 'context' => 'Interface text in omo/api/documents/lifecycle_action.php'],
+        'copy.ce_document_est_deja_archive' => ['text' => 'Ce document est déjà archive.', 'context' => 'Interface text in omo/api/documents/lifecycle_action.php'],
+        'copy.impossible_d_archiver_le_document' => ['text' => 'Impossible d’archiver le document.', 'context' => 'Interface text in omo/api/documents/lifecycle_action.php'],
+        'copy.recurrence_inaccessible' => ['text' => 'Récurrence inaccessible.', 'context' => 'Interface text in omo/api/documents/pv/action.php'],
+        'copy.cette_action_doit_etre_envoyee_en_post' => ['text' => 'Cette action doit être envoyée en POST.', 'context' => 'Interface text in omo/api/documents/pv/application_tabs.php'],
+        'copy.jeton_de_securite_invalide' => ['text' => 'Jeton de sécurité invalide.', 'context' => 'Interface text in omo/api/documents/pv/application_tabs.php'],
+        'copy.ce_point_a_ete_deplace_vers_une_autre_reunion' => ['text' => 'Ce point a été déplacé vers une autre réunion.', 'context' => 'Interface text in omo/api/documents/pv/helpers.php'],
+        'copy.deplacement' => ['text' => 'Déplacement', 'context' => 'Interface text in omo/api/documents/pv/helpers.php'],
+        'copy.enregistre' => ['text' => 'Enregistré', 'context' => 'Interface text in omo/api/documents/pv/helpers.php'],
     ];
     return $sourceLang;
 }

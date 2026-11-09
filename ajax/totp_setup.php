@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../common/account-translations.php';
+
 
 require_once dirname(__DIR__) . '/config.php';
 require_once dirname(__DIR__) . '/shared_functions.php';
@@ -48,7 +50,7 @@ function totpSetupIsSameOriginRequest()
 }
 
 if ((string)($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || !totpSetupIsSameOriginRequest()) {
-    totpSetupReply(['status' => false, 'message' => 'Requete refusee.'], 403);
+    totpSetupReply(['status' => false, 'message' => commonAccountUiT('copy.requete_refusee')], 403);
 }
 
 if (!checklogin()) {
@@ -64,10 +66,10 @@ if ($userId <= 0 || !$user->load($userId)) {
 $action = strtolower(trim((string)($_POST['action'] ?? '')));
 if ($action === 'start') {
     if (commonUserHasTotpEnabled($user)) {
-        totpSetupReply(['status' => false, 'message' => 'La double authentification est deja activee.'], 409);
+        totpSetupReply(['status' => false, 'message' => commonAccountUiT('copy.la_double_authentification_est_deja_activee')], 409);
     }
     if (commonTotpGetEncryptionKey() === null) {
-        totpSetupReply(['status' => false, 'message' => 'La cle de protection TOTP du serveur est manquante.'], 503);
+        totpSetupReply(['status' => false, 'message' => commonAccountUiT('copy.la_cle_de_protection_totp_du_serveur_est_manquante')], 503);
     }
 
     $secret = commonTotpGenerateSecret();
@@ -93,45 +95,45 @@ if ($action === 'confirm') {
         || (int)($pending['created_at'] ?? 0) < (time() - 900)
         || !is_string($pending['secret'] ?? null)) {
         unset($_SESSION['pending_totp_setup']);
-        totpSetupReply(['status' => false, 'message' => 'La configuration a expire. Recommencez la procedure.'], 400);
+        totpSetupReply(['status' => false, 'message' => commonAccountUiT('copy.la_configuration_a_expire_recommencez_la_procedure')], 400);
     }
 
     if (!commonTotpVerifyCode($pending['secret'], $_POST['code'] ?? '')) {
-        totpSetupReply(['status' => false, 'message' => 'Le code de verification est invalide.'], 422);
+        totpSetupReply(['status' => false, 'message' => commonAccountUiT('copy.le_code_de_verification_est_invalide')], 422);
     }
 
     $encryptedSecret = commonTotpEncryptSecret($pending['secret']);
     if ($encryptedSecret === null) {
-        totpSetupReply(['status' => false, 'message' => 'Le secret ne peut pas etre protege par le serveur.'], 503);
+        totpSetupReply(['status' => false, 'message' => commonAccountUiT('copy.le_secret_ne_peut_pas_etre_protege_par_le_serveur')], 503);
     }
 
     $user->set('totp_secret', $encryptedSecret);
     $user->set('totp_enabled', 1);
     $result = totpSetupSave($user);
     if (!is_array($result) || empty($result['status'])) {
-        totpSetupReply(['status' => false, 'message' => 'Impossible d activer la double authentification.'], 500);
+        totpSetupReply(['status' => false, 'message' => commonAccountUiT('copy.impossible_d_activer_la_double_authentification')], 500);
     }
 
     unset($_SESSION['pending_totp_setup']);
     commonAuthSecurityLog('totp_setup', 'enabled', ['user_id' => $userId]);
-    totpSetupReply(['status' => true, 'message' => 'La double authentification est activee.']);
+    totpSetupReply(['status' => true, 'message' => commonAccountUiT('copy.la_double_authentification_est_activee')]);
 }
 
 if ($action === 'disable') {
     $secret = commonUserGetTotpSecret($user);
     if ($secret === null || !is_string($_POST['code'] ?? null) || !commonTotpVerifyCode($secret, $_POST['code'])) {
-        totpSetupReply(['status' => false, 'message' => 'Le code de verification est invalide.'], 422);
+        totpSetupReply(['status' => false, 'message' => commonAccountUiT('copy.le_code_de_verification_est_invalide')], 422);
     }
     $user->set('totp_secret', null);
     $user->set('totp_enabled', 0);
     $result = totpSetupSave($user);
     if (!is_array($result) || empty($result['status'])) {
-        totpSetupReply(['status' => false, 'message' => 'Impossible de desactiver la double authentification.'], 500);
+        totpSetupReply(['status' => false, 'message' => commonAccountUiT('copy.impossible_de_desactiver_la_double_authentification')], 500);
     }
 
     unset($_SESSION['pending_totp_setup']);
     commonAuthSecurityLog('totp_setup', 'disabled', ['user_id' => $userId]);
-    totpSetupReply(['status' => true, 'message' => 'La double authentification est desactivee.']);
+    totpSetupReply(['status' => true, 'message' => commonAccountUiT('copy.la_double_authentification_est_desactivee')]);
 }
 
 totpSetupReply(['status' => false, 'message' => 'Action invalide.'], 400);

@@ -22,9 +22,9 @@
     </p>
     <iframe width="560" height="315" src="https://www.youtube.com/embed/u9XqUqnNBaw?si=Gg0Iy_cKQQkZR5pZ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
   </div>
-  <h3><?=T_("Où sont stoquées les données ?")?></h3>
+  <h3><?=T_("Où sont stockées les données ?")?></h3>
   <div>
-    <?=T_("<p>Dans la version tout public, les données sont stoquées sur votre ordinateur. Aucune information n'est envoyée sur le réseau. En conséquent, si vous changer d'ordinateur (et même si vous changez de navigateur, par exemple en passant de Firefox à Edge), vous ne retrouverez pas le PV en cours.</p><p>Cela signifie que vous pouvez travailler sur plusieurs documents en même temps, si vous avez plusieurs navigateurs. Mais cela signifie également que pour un navigateur donné, vous ne pouvez travailler que sur un seul PV à la fois: vous devez le terminer, l'imprimer (par exemple en PDF), puis en recommencer un nouveau sans pouvoir revenir en arrière.</p>")?>
+    <?=T_("<p>Dans la version tout public, les données sont stockées sur votre ordinateur. Aucune information n'est envoyée sur le réseau. Par conséquent, si vous changez d'ordinateur (et même si vous changez de navigateur, par exemple en passant de Firefox à Edge), vous ne retrouverez pas le PV en cours.</p><p>Cela signifie que vous pouvez travailler sur plusieurs documents en même temps, si vous avez plusieurs navigateurs. Mais cela signifie également que pour un navigateur donné, vous ne pouvez travailler que sur un seul PV à la fois: vous devez le terminer, l'imprimer (par exemple en PDF), puis en recommencer un nouveau sans pouvoir revenir en arrière.</p>")?>
   </div>
   <h3><?=T_("A quoi ça sert ?")?></h3>
   <div>
@@ -32,7 +32,7 @@
     <?=T_("En gouvernance partagée, une des particularité des réunions dite opérationnelles est de fonctionner avec un ordre du jour à la volée: il est construit en début de réunion avec ce que chaque personne amène, et parfois se complète même en cours de réunion.")?>
     </p>
    <p>
-    <?=T_("C'est pourquoi il est nécessire d'avoir une bonne vision de l'ordre du jour et de l'avancement de l'équipe dans celui-ci. Grâce à l'affichage dans la partie de droite de celui-ci, et avec le rappel du temps estimé de chaque point ainsi que de l'heure de fin qui en découle permet de mieux piloter la réunion.")?>
+    <?=T_("C'est pourquoi il est nécessaire d'avoir une bonne vision de l'ordre du jour et de l'avancement de l'équipe dans celui-ci. Grâce à l'affichage dans la partie de droite de celui-ci, et avec le rappel du temps estimé de chaque point ainsi que de l'heure de fin qui en découle permet de mieux piloter la réunion.")?>
     </p> 
    <p>
     <?=T_("Dans la version de base, le système est prévu pour être aux mains du rôle mémoire, et son contenu projeté sur un écran à la vue de l'équipe et du rôle facilitation.")?>

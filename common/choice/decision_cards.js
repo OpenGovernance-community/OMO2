@@ -65,7 +65,7 @@
 
     function renderCard(item, options) {
         var config = options && typeof options === 'object' ? options : {};
-        var fallbackTitle = String(config.fallbackTitle || 'Decision').trim() || 'Decision';
+        var fallbackTitle = String(config.fallbackTitle || (window.omoUiText || function (key, fallback) { return fallback; })("copy_decision", "Décision")).trim() || (window.omoUiText || function (key, fallback) { return fallback; })("copy_decision", "Décision");
         var openUrlAttribute = resolveDataAttribute(config.openUrlAttribute, 'data-open-url');
         var openTitleAttribute = resolveDataAttribute(config.openTitleAttribute, 'data-open-title');
         var article = document.createElement('article');

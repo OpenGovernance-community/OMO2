@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../common/account-translations.php';
+
 
 define('BASE_PATH', dirname(__DIR__));
 require_once BASE_PATH . '/config.php';
@@ -17,7 +19,7 @@ function accountDeletionRespond(array $payload, int $statusCode = 200): void
 }
 
 if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
-    accountDeletionRespond(array('status' => false, 'message' => 'Requete invalide.'), 405);
+    accountDeletionRespond(array('status' => false, 'message' => commonAccountUiT('copy.requete_invalide')), 405);
 }
 
 $connected = checklogin();
@@ -28,7 +30,7 @@ if (!$connected || $currentUserId <= 0) {
     accountDeletionRespond(array('status' => false, 'message' => 'Connexion requise.'), 401);
 }
 if (!commonAccountDeletionVerifyCsrfToken($_POST['csrf_token'] ?? null)) {
-    accountDeletionRespond(array('status' => false, 'message' => 'La demande a expire. Rechargez la page avant de recommencer.'), 403);
+    accountDeletionRespond(array('status' => false, 'message' => commonAccountUiT('copy.la_demande_a_expire_rechargez_la_page_avant_de_recommencer')), 403);
 }
 
 $action = trim((string)($_POST['action'] ?? 'plan'));
@@ -48,7 +50,7 @@ commonLogoutUser();
 unset($_SESSION['account_deletion_csrf']);
 accountDeletionRespond(array(
     'status' => true,
-    'message' => 'Votre profil a ete supprime.',
+    'message' => commonAccountUiT('copy.votre_profil_a_ete_supprime'),
     'redirect' => '/',
 ));
 

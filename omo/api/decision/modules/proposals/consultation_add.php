@@ -70,9 +70,9 @@ function omoDecisionConsultationProposalRespond(array $context, $status, $count 
         $deniedReason = trim((string)($context['consultationProposalDeniedReason'] ?? ''));
         $messages = [
             'success' => (int)$count > 1
-                ? $count . ' propositions ajoutees a la consultation.'
-                : 'Proposition ajoutee a la consultation.',
-            'duplicate' => 'Toutes les propositions soumises existent deja.',
+                ? omoDecisionUiT('copy.count_propositions_ajoutees_a_la_consultation', ['count' => $count])
+                : omoDecisionUiT('copy.proposition_ajoutee_a_la_consultation'),
+            'duplicate' => omoDecisionUiT('copy.toutes_les_propositions_soumises_existent_deja'),
             'empty' => 'Ajoutez au moins une proposition.',
             'denied' => omoDecisionGetConsultationProposalDeniedMessage($deniedReason),
             'error' => omoDecisionUiT('impossible_d_ajouter_la_proposition_pour_le_moment'),

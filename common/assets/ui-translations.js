@@ -1,5 +1,6 @@
 (function () {
     'use strict';
+    if (window.omoUiReady && typeof window.omoUiText === 'function') return;
     var texts = window.omoUiTranslations || (window.omoConfig && window.omoConfig.uiTexts) || null;
 
     window.omoUiText = function (key, fallback, variables) {
@@ -17,9 +18,11 @@
         });
     };
 
-    // The main OMO page hydrates the bundle before loading its application scripts.
+    // OMO hydrates the shared bundle before loading its application scripts.
     // Standalone consumers use the same shared source through the JSON endpoint.
-    window.omoUiReady = texts ? Promise.resolve() : fetch('/common/jstranslation/omo_ui.php', {credentials: 'same-origin'})
+    var locale = typeof document !== 'undefined' ? document.documentElement.lang : '';
+    var endpoint = '/common/jstranslation/omo_ui.php' + (locale ? '?lang=' + encodeURIComponent(locale) : '');
+    window.omoUiReady = texts ? Promise.resolve() : fetch(endpoint, {credentials: 'same-origin'})
         .then(function (response) { if (!response.ok) throw new Error('translation_unavailable'); return response.json(); })
         .then(function (payload) { if (payload && typeof payload === 'object' && !Array.isArray(payload)) texts = payload; })
         .catch(function () { /* Keep each control's local French fallback available. */ });

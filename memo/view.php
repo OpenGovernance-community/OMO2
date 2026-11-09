@@ -18,7 +18,7 @@ if (!$hasAccess && $currentUserId <= 0) {
     commonRenderMagicLoginPage(array(
         'title' => 'Connexion EasyMEMO',
         'appName' => 'EasyMEMO',
-        'intro' => 'Connectez-vous pour retrouver vos documents ou ouvrir ce memo.',
+        'intro' => 'Connectez-vous pour retrouver vos documents ou ouvrir ce mémo.',
         'returnTo' => $requestUri,
         'organization' => commonResolveOrganizationContext(1),
         'headHtml' => implode(PHP_EOL, array(

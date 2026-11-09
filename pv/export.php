@@ -195,7 +195,7 @@ function pvExportCalloutStyles(): array
 {
     // EasyPV uses h4/h5 as semantic blocks, with 30% green/yellow on white.
     return [
-        'h4' => ['style' => 'Heading4', 'fill' => 'B3FFB3', 'icon' => 'thumb-up.png', 'label' => 'Decision'],
+        'h4' => ['style' => 'Heading4', 'fill' => 'B3FFB3', 'icon' => 'thumb-up.png', 'label' => 'Décision'],
         'h5' => ['style' => 'Heading5', 'fill' => 'FFFFB3', 'icon' => 'clipboard.png', 'label' => 'Action'],
     ];
 }

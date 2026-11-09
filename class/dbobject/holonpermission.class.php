@@ -3,6 +3,21 @@ namespace dbObject;
 
 class HolonPermission extends DbObject
 {
+    protected static function uiMessageSourceLang(): array
+    {
+        return parent::uiMessageSourceLang() + [
+            'copy.element_courant' => ['text' => 'Élément courant', 'context' => 'Interface text in class/dbobject/holonpermission.class.php'],
+
+            'option.enfants_directs' => ['text' => 'Enfants directs', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+            'option.descendants' => ['text' => 'Descendants', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+            'option.parent_seul' => ['text' => 'Parent seul', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+            'option.enfants_direct_du_parent' => ['text' => 'Enfants direct du parent', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+            'option.descendants_du_parent' => ['text' => 'Descendants du parent', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+            'option.l_organisation' => ['text' => 'L\'organisation', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+            'option.toute_l_organisation' => ['text' => 'Toute l\'organisation', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+        ];
+    }
+
     const PERMISSION_CACHE_VERSION = 29;
     const MEMBER_TYPE_MEMBER = 'member';
     const MEMBER_TYPE_ADMIN = 'admin';
@@ -41,22 +56,22 @@ class HolonPermission extends DbObject
             'id' => 'ID',
             'IDholon' => 'Holon',
             'IDpermission' => 'Droit',
-            'range' => 'Portee',
+            'range' => 'Portée',
             'member_type' => 'Profil membre',
             'is_extended' => 'Autorité étendue',
-            'created_at' => 'Creation',
-            'updated_at' => 'Mise a jour',
+            'created_at' => 'Création',
+            'updated_at' => 'Mise à jour',
         ];
     }
 
     public static function attributeDescriptions()
     {
         return [
-            'IDholon' => 'Holon auquel le droit est attribue.',
-            'IDpermission' => 'Droit accorde a ce holon.',
-            'range' => 'Zone sur laquelle le droit peut etre exerce.',
+            'IDholon' => 'Holon auquel le droit est attribué.',
+            'IDpermission' => 'Droit accorde à ce holon.',
+            'range' => 'Zone sur laquelle le droit peut être exerce.',
             'member_type' => 'Indique si le droit concerne les membres, les admins ou le collectif.',
-            'is_extended' => 'Droit personnel disponible uniquement apres activation des autorites etendues.',
+            'is_extended' => 'Droit personnel disponible uniquement après activation des autorités étendues.',
         ];
     }
 
@@ -93,14 +108,14 @@ class HolonPermission extends DbObject
     public static function getRangeLabels()
     {
         return [
-            self::RANGE_SELF => 'Element courant',
-            self::RANGE_DIRECT_CHILDREN => 'Enfants directs',
-            self::RANGE_DESCENDANTS => 'Descendants',
-            self::RANGE_PARENT_CIRCLE => 'Parent seul',
-            self::RANGE_PARENT_CIRCLE_ELEMENTS => 'Enfants direct du parent',
-            self::RANGE_PARENT_CIRCLE_DESCENDANTS => 'Descendants du parent',
-            self::RANGE_ORGANIZATION_ROOT => "L'organisation",
-            self::RANGE_ORGANIZATION => "Toute l'organisation",
+            self::RANGE_SELF => self::uiMessage('copy.element_courant'),
+            self::RANGE_DIRECT_CHILDREN => self::uiMessage('option.enfants_directs'),
+            self::RANGE_DESCENDANTS => self::uiMessage('option.descendants'),
+            self::RANGE_PARENT_CIRCLE => self::uiMessage('option.parent_seul'),
+            self::RANGE_PARENT_CIRCLE_ELEMENTS => self::uiMessage('option.enfants_direct_du_parent'),
+            self::RANGE_PARENT_CIRCLE_DESCENDANTS => self::uiMessage('option.descendants_du_parent'),
+            self::RANGE_ORGANIZATION_ROOT => self::uiMessage('option.l_organisation'),
+            self::RANGE_ORGANIZATION => self::uiMessage('option.toute_l_organisation'),
         ];
     }
 

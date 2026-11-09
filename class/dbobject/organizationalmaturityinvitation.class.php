@@ -3,6 +3,18 @@ namespace dbObject;
 
 class OrganizationalMaturityInvitation extends DbObject
 {
+    protected static function uiMessageSourceLang(): array
+    {
+        return parent::uiMessageSourceLang() + [
+            'copy.generation_de_lien_impossible' => ['text' => 'Génération de lien impossible.', 'context' => 'Interface text in class/dbobject/organizationalmaturityinvitation.class.php'],
+            'copy.partagez_votre_perception_de_name' => ['text' => 'Partagez votre perception de {name}', 'context' => 'Interface text in class/dbobject/organizationalmaturityinvitation.class.php'],
+            'copy.votre_regard_aidera_cette_organisation_a_mieux_comprendre_sa_maturite_' => ['text' => 'Votre regard aidera cette organisation à mieux comprendre sa maturité et ses ambitions.', 'context' => 'Interface text in class/dbobject/organizationalmaturityinvitation.class.php'],
+            'copy.le_questionnaire_prend_environ_dix_minutes_vous_pourrez_revenir_sur_vo' => ['text' => 'Le questionnaire prend environ dix minutes. Vous pourrez revenir sur vos réponses avec ce même lien.', 'context' => 'Interface text in class/dbobject/organizationalmaturityinvitation.class.php'],
+            'copy.evaluer_l_organisation' => ['text' => 'Évaluer l’organisation', 'context' => 'Interface text in class/dbobject/organizationalmaturityinvitation.class.php'],
+            'copy.votre_acces_a_l_evaluation_de_name' => ['text' => 'Votre accès à l’évaluation de {name}', 'context' => 'Interface text in class/dbobject/organizationalmaturityinvitation.class.php'],
+        ];
+    }
+
     public static function tableName() { return 'organizational_maturity_invitation'; }
     public static function rules()
     {
@@ -16,7 +28,7 @@ class OrganizationalMaturityInvitation extends DbObject
     }
     public static function attributeLabels()
     {
-        return ['id' => 'ID', 'IDorganization' => 'Organisation', 'IDuser' => 'Utilisateur', 'email' => 'E-mail', 'token' => 'Lien invitation', 'public_access' => 'Acces public', 'access_code_hash' => 'Code acces', 'access_code_expires_at' => 'Code expire le', 'created_at' => 'Cree le', 'updated_at' => 'Modifie le', 'last_sent_at' => 'Envoye le'];
+        return ['id' => 'ID', 'IDorganization' => 'Organisation', 'IDuser' => 'Utilisateur', 'email' => 'E-mail', 'token' => 'Lien invitation', 'public_access' => 'Accès public', 'access_code_hash' => 'Code accès', 'access_code_expires_at' => 'Code expire le', 'created_at' => 'Créé le', 'updated_at' => 'Modifié le', 'last_sent_at' => 'Envoyé le'];
     }
     public static function findByToken($token)
     {
@@ -55,7 +67,7 @@ class OrganizationalMaturityInvitation extends DbObject
         foreach (array_values(array_unique(array_filter(array_map([self::class, 'normalizeEmail'], $emails)))) as $email) {
             $item = new self();
             if (!$item->load([['IDorganization', $organizationId], ['email', $email]])) {
-                try { $token = bin2hex(random_bytes(16)); } catch (\Throwable $error) { return ['status' => false, 'message' => 'Generation de lien impossible.']; }
+                try { $token = bin2hex(random_bytes(16)); } catch (\Throwable $error) { return ['status' => false, 'message' => self::uiMessage('copy.generation_de_lien_impossible')]; }
                 $item->set('IDorganization', $organizationId); $item->set('email', $email); $item->set('token', $token); $item->set('created_at', new \DateTimeImmutable());
             }
             $user = new User();
@@ -205,7 +217,7 @@ class OrganizationalMaturityInvitation extends DbObject
         $organization = $this->getOrganizationObject(); if (!$organization) return false;
         $name = trim((string)$organization->get('name')) ?: 'votre organisation';
         $url = appBuildAbsoluteUrl('/survey/?invitation=' . rawurlencode((string)$this->get('token')));
-        $message = \commonRenderMailLayout(['brand_name' => $name, 'brand_color' => (string)$organization->get('color'), 'logo_url' => \commonBuildAbsoluteAssetUrl((string)$organization->get('logo')), 'banner_url' => \commonBuildAbsoluteAssetUrl((string)$organization->get('banner')), 'heading' => 'Partagez votre perception de ' . $name, 'intro_html' => '<p style="margin:0; color:#475569; line-height:1.7;">Votre regard aidera cette organisation a mieux comprendre sa maturite et ses ambitions.</p>', 'body_html' => '<p style="margin:0; color:#475569; line-height:1.7;">Le questionnaire prend environ dix minutes. Vous pourrez revenir sur vos reponses avec ce meme lien.</p>', 'button_label' => 'Evaluer l organisation', 'button_url' => $url]);
+        $message = \commonRenderMailLayout(['brand_name' => $name, 'brand_color' => (string)$organization->get('color'), 'logo_url' => \commonBuildAbsoluteAssetUrl((string)$organization->get('logo')), 'banner_url' => \commonBuildAbsoluteAssetUrl((string)$organization->get('banner')), 'heading' => self::uiMessage('copy.partagez_votre_perception_de_name', ['name' => $name]), 'intro_html' => ('<p style="margin:0; color:#475569; line-height:1.7;">' . self::uiMessage('copy.votre_regard_aidera_cette_organisation_a_mieux_comprendre_sa_maturite_') . '</p>'), 'body_html' => ('<p style="margin:0; color:#475569; line-height:1.7;">' . self::uiMessage('copy.le_questionnaire_prend_environ_dix_minutes_vous_pourrez_revenir_sur_vo') . '</p>'), 'button_label' => self::uiMessage('copy.evaluer_l_organisation'), 'button_url' => $url]);
         $from = trim((string)($GLOBALS['mailUser'] ?? '')); if ($from === '') $from = 'noreply@' . (preg_replace('/:\d+$/', '', \commonGetRootHost() ?: 'localhost'));
         return \myHTMLMail([$from, $name], (string)$this->get('email'), 'Votre perception de ' . $name, $message, organizationId: (int)$organization->getId());
     }
@@ -239,14 +251,14 @@ class OrganizationalMaturityInvitation extends DbObject
             'intro_html' => '<p style="margin:0;color:#475569;line-height:1.7;">Voici votre code personnel pour participer au questionnaire.</p>',
             'details_html' => $codeHtml,
             'body_html' => '<p style="margin:0;color:#475569;line-height:1.7;">Vous pouvez aussi reprendre vos réponses à tout moment avec votre lien personnel.</p>',
-            'button_label' => 'Evaluer l organisation',
+            'button_label' => self::uiMessage('copy.evaluer_l_organisation'),
             'button_url' => $directUrl !== '' ? $directUrl : (string)$publicAccessUrl,
         ]);
         $from = trim((string)($GLOBALS['mailUser'] ?? ''));
         if ($from === '') {
             $from = 'noreply@' . (preg_replace('/:\d+$/', '', \commonGetRootHost() ?: 'localhost'));
         }
-        if (!\myHTMLMail([$from, $name], (string)$this->get('email'), 'Votre accès à l évaluation de ' . $name, $message, organizationId: (int)$organization->getId())) {
+        if (!\myHTMLMail([$from, $name], (string)$this->get('email'), self::uiMessage('copy.votre_acces_a_l_evaluation_de_name', ['name' => $name]), $message, organizationId: (int)$organization->getId())) {
             $this->clearPublicAccessCode();
             return false;
         }

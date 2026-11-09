@@ -19,7 +19,7 @@
             '[data-deferred-object-cancel]', '[data-deferred-cancel]', '[data-deferred-project-cancel]',
             '[data-cancel]'
         ].join(', ');
-        var discardMessage = "Terminer l'edition en cours ? Les donnees non enregistrees seront perdues.";
+        var discardMessage = "Terminer l'édition en cours ? Les données non enregistrées seront perdues.";
 
         function guardedForms(container) {
             var forms = Array.prototype.slice.call(container.querySelectorAll('form'));

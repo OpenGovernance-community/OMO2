@@ -12,8 +12,8 @@ class EventPublicRegistration extends DbObject
     }
     public static function attributeLabels()
     {
-        return ['id' => 'ID', 'IDevent' => 'Evenement', 'name' => 'Nom',
-            'email' => 'E-mail', 'token' => 'Confirmation', 'created_at' => 'Creation',
+        return ['id' => 'ID', 'IDevent' => 'Événement', 'name' => 'Nom',
+            'email' => 'E-mail', 'token' => 'Confirmation', 'created_at' => 'Création',
             'confirmed_at' => 'Confirmation'];
     }
     public static function attributeLength() { return ['name' => 190, 'email' => 254, 'token' => 64]; }

@@ -97,6 +97,19 @@
 
 	abstract class DbObject
 	{
+        private static int $sourceUiMessageDepth = 0;
+
+        /** Metadata bundles always collect French source labels, even in a translated request. */
+        public static function withSourceUiMessages(callable $callback): mixed
+        {
+            self::$sourceUiMessageDepth++;
+            try {
+                return $callback();
+            } finally {
+                self::$sourceUiMessageDepth--;
+            }
+        }
+
         /** Translate model feedback before it is returned to an OMO screen or API. */
         protected static function uiMessage(string $key, array $variables = []): string
         {
@@ -107,6 +120,10 @@
             $class = str_starts_with($key, 'record.') ? self::class : static::class;
             $sourceLang = $sources[$class] ??= $class === self::class
                 ? self::commonUiMessageSourceLang() : static::uiMessageSourceLang();
+            if (self::$sourceUiMessageDepth > 0) {
+                $entry = \translationBundleSanitizeEntry($sourceLang[$key] ?? null);
+                return $entry === null ? $key : \translationBundleInterpolate(\translationBundleResolveText($entry, $variables), $variables);
+            }
             // Refresh jobs also save dbObjects. Their own feedback must not queue another refresh.
             if ($loadingBundle) return \t($key, $variables, $sourceLang, $sourceLang);
             $locale = \translationBundleResolveRequestLocale('lang', \translationBundleGetSupportedLocales(), 'fr');

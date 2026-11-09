@@ -36,7 +36,7 @@ class ExternalCalendar extends DbObject
             'source_ctag' => 'Version source',
             'active' => 'Actif',
             'availability_only' => 'Définit mes plages de disponibilité',
-            'last_sync_at' => 'Derniere synchronisation',
+            'last_sync_at' => 'Dernière synchronisation',
             'last_sync_error' => 'Erreur de synchronisation',
         ];
     }

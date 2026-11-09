@@ -21,7 +21,7 @@ class MeetingProfile extends DbObject
     {
         return ['IDuser' => 'Utilisateur', 'slug' => 'Nom public', 'enabled' => 'Activer la prise de rendez-vous',
             'IDexternalcalendar' => 'Calendrier de destination', 'timezone' => 'Fuseau horaire', 'weekly_hours' => 'Horaires',
-            'preparation_minutes' => 'Preparation (minutes)', 'closing_minutes' => 'Cloture (minutes)',
+            'preparation_minutes' => 'Préparation (minutes)', 'closing_minutes' => 'Clôture (minutes)',
             'max_duration_minutes' => 'Durée maximale (minutes)', 'meeting_methods' => 'Moyens de rencontre'];
     }
     public static function attributeLength() { return ['slug' => 48, 'timezone' => 64]; }

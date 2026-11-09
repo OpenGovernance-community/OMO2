@@ -1,8 +1,18 @@
 # Journal des nouveautés
 
-Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
+Ce fichier garde une vue d'ensemble courte des évolutions récentes, avec un angle plus fonctionnel que technique.
 
-Les dates deja indiquees sont conservees. Les dates manquantes sont reconstituees a partir de la premiere apparition des entrees dans l historique GitHub, en heure Europe/Zurich ; elles correspondent a leur ajout au journal, pas necessairement a leur mise en production.
+Les dates déjà indiquées sont conservées. Les dates manquantes sont reconstituées à partir de la première apparition des entrées dans l'historique GitHub, en heure Europe/Zurich ; elles correspondent à leur ajout au journal, pas nécessairement à leur mise en production.
+
+## 2026-11-09
+
+- OMO / traductions : raccordement des textes corrigés aux bundles des modules et des composants communs, avec paramètres nommés et pluriels. Libellés des choix traduits sans changer les valeurs SQL ; sources françaises d'adminEdit préservées quelle que soit la langue affichée.
+
+- Telegram / assistant : questions textuelles en privé avec le même moteur de consultation que le chat interne, les droits du compte lié et les contrôles IA de l’organisation. Choix par /organization, historique isolé par compte et organisation, remise à zéro par /new. Réponses sans tableaux, liens vers OMO et découpage des messages longs. Dans un groupe, seuls une mention du bot, une réponse à l’un de ses messages ou une commande explicitement adressée à son nom déclenchent le traitement ; les réponses de l’assistant restent privées et les échanges ordinaires sont ignorés.
+
+- Textes français : correction des accents, apostrophes, fautes et accords dans les libellés, aides et messages des différents modules. Consignes AGENTS.md clarifiées pour imposer un français correctement orthographié et préserver l'UTF-8.
+
+- Paramètres / suivi des sauvegardes : suppression des fausses alertes de perte de données après enregistrement des notifications, du dictionnaire, de l’affichage de la structure, des trucs et astuces et des réglages Projets, Décisions et Documents. Les échecs de sauvegarde et les modifications suivantes restent protégés.
 
 ## 2026-11-08
 

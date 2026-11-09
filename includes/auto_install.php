@@ -67,10 +67,10 @@ function autoInstallHandleRequest($envPath)
             if ($action === 'send_verification_code') {
                 $sendResult = autoInstallSendVerificationCode($values);
                 if (empty($sendResult['status'])) {
-                    $errors[] = (string)($sendResult['error'] ?? 'Impossible d envoyer l e-mail de verification.');
+                    $errors[] = (string)($sendResult['error'] ?? 'Impossible d’envoyer l’e-mail de vérification.');
                     $verificationState = autoInstallGetMailVerificationState($values);
                 } else {
-                    $messages[] = 'Un code de verification vient d etre envoye a l adresse administrateur.';
+                    $messages[] = 'Un code de vérification vient d’être envoyé à l’adresse administrateur.';
                     $verificationState = autoInstallGetMailVerificationState($values);
                 }
             } else {
@@ -80,7 +80,7 @@ function autoInstallHandleRequest($envPath)
                 );
 
                 if (empty($verifyResult['status'])) {
-                    $errors[] = (string)($verifyResult['error'] ?? 'La verification e-mail a echoue.');
+                    $errors[] = (string)($verifyResult['error'] ?? 'La vérification e-mail a échoué.');
                     $verificationState = autoInstallGetMailVerificationState($values);
                 } else {
                     if (!empty($verifyResult['message'])) {
@@ -118,21 +118,21 @@ function autoInstallGetFieldDefinitions()
     $definitions = [
         'general' => [
             'title' => 'Le site',
-            'intro' => 'L adresse publique sert aux liens de connexion. Les autres reglages pourront etre completes apres l installation.',
+            'intro' => 'L’adresse publique sert aux liens de connexion. Les autres réglages pourront être complétés après l’installation.',
             'fields' => [],
         ],
         'database' => [
-            'title' => 'Base de donnees',
-            'intro' => 'Acces MySQL fournis par votre hebergeur. La connexion est verifiee avant la creation du fichier .env.',
+            'title' => 'Base de données',
+            'intro' => 'Accès MySQL fournis par votre hébergeur. La connexion est vérifiée avant la création du fichier .env.',
             'fields' => [],
         ],
         'admin' => [
             'title' => 'Compte administrateur',
-            'intro' => 'Ce compte est cree pendant l installation. Il devient admin du site et peut se connecter des le premier demarrage.',
+            'intro' => 'Ce compte est créé pendant l’installation. Il devient admin du site et peut se connecter des le premier démarrage.',
             'fields' => [
                 [
                     'key' => 'INSTALL_ADMIN_FIRSTNAME',
-                    'label' => 'Prenom',
+                    'label' => 'Prénom',
                     'type' => 'text',
                     'required' => true,
                     'persist' => false,
@@ -158,7 +158,7 @@ function autoInstallGetFieldDefinitions()
                     'required' => true,
                     'persist' => false,
                     'placeholder' => 'Choisissez un mot de passe solide',
-                    'help' => 'Preferez une phrase de passe longue, unique et difficile a deviner.',
+                    'help' => 'Préférez une phrase de passe longue, unique et difficile a deviner.',
                 ],
                 [
                     'key' => 'INSTALL_ADMIN_PASSWORD_CONFIRM',
@@ -171,8 +171,8 @@ function autoInstallGetFieldDefinitions()
             ],
         ],
         'mail' => [
-            'title' => 'Verification e-mail',
-            'intro' => 'SMTP necessaire pour verifier l adresse de l administrateur. Les identifiants ne sont requis que si le serveur demande une authentification.',
+            'title' => 'Vérification e-mail',
+            'intro' => 'SMTP nécessaire pour vérifier l’adresse de l’administrateur. Les identifiants ne sont requis que si le serveur demande une authentification.',
             'fields' => [],
         ],
     ];
@@ -189,7 +189,7 @@ function autoInstallGetFieldDefinitions()
                 unset($field['help']);
             }
             if ($key === 'AUTH_PUBLIC_URL') {
-                $field['help'] = 'Origine HTTPS de ce site, par exemple https://exemple.org, sans chemin ni parametre. Elle sert aux e-mails de connexion et de recuperation. HTTP est accepte uniquement pour localhost et 127.0.0.1.';
+                $field['help'] = 'Origine HTTPS de ce site, par exemple https://exemple.org, sans chemin ni paramètre. Elle sert aux e-mails de connexion et de récupération. HTTP est accepte uniquement pour localhost et 127.0.0.1.';
             }
             $field['initial'] = ['SITE_TITLE' => $exampleDefaults['SITE_TITLE'] ?? 'OMO', 'APP_LANG' => 'FR', 'MAIL_PORT' => '587', 'MAIL_SECURE' => 'tls', 'MAIL_AUTH' => 'true'][$key] ?? '';
             $definitions[$sectionKey]['fields'][] = $field;
@@ -338,15 +338,15 @@ function autoInstallValidateValues(array $definitions, array $values, $envPath)
 
     $directory = dirname((string)$envPath);
     if (!is_dir($directory) || !is_writable($directory)) {
-        $errors[] = 'Le dossier cible n est pas accessible en ecriture pour creer le fichier .env.';
+        $errors[] = 'Le dossier cible n’est pas accessible en écriture pour créer le fichier .env.';
     }
 
     if (!serverEnvAdminIsValidPublicOrigin((string)($values['AUTH_PUBLIC_URL'] ?? ''))) {
-        $errors[] = 'L adresse publique doit etre une origine HTTPS sans chemin ni parametre. HTTP est reserve a localhost et 127.0.0.1.';
+        $errors[] = 'L’adresse publique doit être une origine HTTPS sans chemin ni paramètre. HTTP est réservé à localhost et 127.0.0.1.';
     }
 
     if (!filter_var((string)($values['INSTALL_ADMIN_EMAIL'] ?? ''), FILTER_VALIDATE_EMAIL)) {
-        $errors[] = 'L adresse e-mail de l administrateur est invalide.';
+        $errors[] = 'L’adresse e-mail de l’administrateur est invalide.';
     }
 
     $passwordCheck = autoInstallEvaluateAdminPassword(
@@ -354,7 +354,7 @@ function autoInstallValidateValues(array $definitions, array $values, $envPath)
         (string)($values['INSTALL_ADMIN_EMAIL'] ?? '')
     );
     if (!$passwordCheck['valid']) {
-        $errors[] = 'Le mot de passe administrateur doit faire au moins 12 caracteres et contenir une minuscule, une majuscule, un chiffre et un caractere special.';
+        $errors[] = 'Le mot de passe administrateur doit faire au moins 12 caractères et contenir une minuscule, une majuscule, un chiffre et un caractère spécial.';
     }
 
     if ((string)($values['INSTALL_ADMIN_PASSWORD'] ?? '') !== (string)($values['INSTALL_ADMIN_PASSWORD_CONFIRM'] ?? '')) {
@@ -378,11 +378,11 @@ function autoInstallValidateMailConfiguration(array $values)
     $mailPass = (string)($values['MAIL_PASS'] ?? '');
 
     if ($mailHost === '') {
-        $errors[] = 'Le serveur SMTP est obligatoire pour verifier l envoi d e-mail.';
+        $errors[] = 'Le serveur SMTP est obligatoire pour vérifier l’envoi d’e-mail.';
     }
 
     if ($mailPort === '' || !ctype_digit($mailPort) || (int)$mailPort <= 0 || (int)$mailPort > 65535) {
-        $errors[] = 'Le port SMTP doit etre renseigne avec une valeur numerique valide.';
+        $errors[] = 'Le port SMTP doit être renseigne avec une valeur numérique valide.';
     }
 
     if ($mailAuth === '') {
@@ -390,16 +390,16 @@ function autoInstallValidateMailConfiguration(array $values)
     }
 
     if ($mailAuth !== '' && !in_array($mailAuth, ['true', 'false', '1', '0', 'yes', 'no', 'on', 'off'], true)) {
-        $errors[] = 'La valeur d authentification SMTP est invalide.';
+        $errors[] = 'La valeur d’authentification SMTP est invalide.';
     }
 
     $shouldAuth = autoInstallResolveMailAuth($values);
     if ($shouldAuth && $mailUser === '') {
-        $errors[] = 'L utilisateur SMTP est obligatoire quand l authentification est active.';
+        $errors[] = 'L’utilisateur SMTP est obligatoire quand l’authentification est active.';
     }
 
     if ($shouldAuth && $mailPass === '') {
-        $errors[] = 'Le mot de passe SMTP est obligatoire quand l authentification est active.';
+        $errors[] = 'Le mot de passe SMTP est obligatoire quand l’authentification est active.';
     }
 
     return $errors;
@@ -584,17 +584,17 @@ function autoInstallSendVerificationMail(array $values, array $mailConfig, $code
         $fromAddress = autoInstallResolveVerificationFromAddress($values, $mailConfig);
         $mail->setFrom($fromAddress, $siteTitle);
         $mail->addAddress(trim((string)($values['INSTALL_ADMIN_EMAIL'] ?? '')));
-        $mail->Subject = 'Code de verification e-mail';
+        $mail->Subject = 'Code de vérification e-mail';
         $mail->isHTML(true);
         $mail->Body =
-            '<p>Voici votre code de verification pour finaliser l installation du site :</p>'
+            '<p>Voici votre code de vérification pour finaliser l’installation du site :</p>'
             . '<p style="font:700 30px/1.2 Consolas, monospace; letter-spacing:0.18em;">' . htmlspecialchars($code, ENT_QUOTES, 'UTF-8') . '</p>'
-            . '<p>Entrez ce code dans la page d installation pour confirmer que les e-mails sortants fonctionnent bien.</p>'
-            . '<p>Ce code expire dans 15 minutes.</p>';
+            . '<p>Entrez ce code dans la page d’installation pour confirmer que les e-mails sortants fonctionnent bien.</p>'
+            . '<p>Ce code expiré dans 15 minutes.</p>';
         $mail->AltBody =
-            "Code de verification : " . $code . "\n\n"
-            . "Entrez ce code dans la page d installation pour confirmer que les e-mails sortants fonctionnent bien.\n"
-            . "Ce code expire dans 15 minutes.";
+            "Code de vérification : " . $code . "\n\n"
+            . "Entrez ce code dans la page d’installation pour confirmer que les e-mails sortants fonctionnent bien.\n"
+            . "Ce code expiré dans 15 minutes.";
 
         $mail->send();
 
@@ -602,7 +602,7 @@ function autoInstallSendVerificationMail(array $values, array $mailConfig, $code
     } catch (\Throwable $exception) {
         return [
             'status' => false,
-            'error' => 'Le test e-mail a echoue : ' . $exception->getMessage(),
+            'error' => 'Le test e-mail a échoué : ' . $exception->getMessage(),
         ];
     }
 }
@@ -613,14 +613,14 @@ function autoInstallVerifyOrReuseMailCode(array $values, $submittedCode)
     if (!is_array($state)) {
         return [
             'status' => false,
-            'error' => 'Envoyez d abord un code de verification e-mail.',
+            'error' => 'Envoyez d’abord un code de vérification e-mail.',
         ];
     }
 
     if (!empty($state['verified'])) {
         return [
             'status' => true,
-            'message' => 'Adresse e-mail deja verifiee pour cette configuration.',
+            'message' => 'Adresse e-mail déjà vérifiée pour cette configuration.',
         ];
     }
 
@@ -628,7 +628,7 @@ function autoInstallVerifyOrReuseMailCode(array $values, $submittedCode)
         autoInstallClearMailVerificationState();
         return [
             'status' => false,
-            'error' => 'Le code de verification a expire. Envoyez-en un nouveau.',
+            'error' => 'Le code de vérification a expiré. Envoyez-en un nouveau.',
         ];
     }
 
@@ -636,14 +636,14 @@ function autoInstallVerifyOrReuseMailCode(array $values, $submittedCode)
     if ($submittedCode === '') {
         return [
             'status' => false,
-            'error' => 'Saisissez le code recu par e-mail avant de finaliser l installation.',
+            'error' => 'Saisissez le code reçu par e-mail avant de finaliser l’installation.',
         ];
     }
 
     if (!hash_equals((string)($state['code'] ?? ''), $submittedCode)) {
         return [
             'status' => false,
-            'error' => 'Le code de verification e-mail est incorrect.',
+            'error' => 'Le code de vérification e-mail est incorrect.',
         ];
     }
 
@@ -654,7 +654,7 @@ function autoInstallVerifyOrReuseMailCode(array $values, $submittedCode)
 
     return [
         'status' => true,
-        'message' => 'Verification e-mail confirmee.',
+        'message' => 'Vérification e-mail confirmée.',
     ];
 }
 
@@ -669,8 +669,8 @@ function autoInstallPrepareDatabase(array $values)
         autoInstallImportSeed($databasePdo);
     } elseif (!autoInstallDatabaseLooksSeeded($databasePdo)) {
         throw new RuntimeException(
-            'La base cible contient deja des tables qui ne correspondent pas au seed de demo. '
-            . 'Utilisez une base vide ou nettoyez-la avant de relancer l installation.'
+            'La base cible contient déjà des tables qui ne correspondent pas au seed de démo. '
+            . 'Utilisez une base vide ou nettoyez-la avant de relancer l’installation.'
         );
     }
 
@@ -709,7 +709,7 @@ function autoInstallCreateDatabaseIfNeeded(PDO $pdo, $databaseName)
 {
     $databaseName = trim((string)$databaseName);
     if ($databaseName === '') {
-        throw new RuntimeException('Le nom de base ne peut pas etre vide.');
+        throw new RuntimeException('Le nom de base ne peut pas être vide.');
     }
 
     $pdo->exec(
@@ -813,7 +813,7 @@ function autoInstallCreateOrUpdateAdminAccount(array $values)
 
     $email = trim((string)($values['INSTALL_ADMIN_EMAIL'] ?? ''));
     if ($email === '') {
-        throw new RuntimeException('Impossible de creer le compte admin sans adresse e-mail.');
+        throw new RuntimeException('Impossible de créer le compte admin sans adresse e-mail.');
     }
 
     $user = new \dbObject\User();
@@ -832,12 +832,12 @@ function autoInstallCreateOrUpdateAdminAccount(array $values)
 
     $saveResult = $user->save();
     if (empty($saveResult['status']) || (int)$user->getId() <= 0) {
-        throw new RuntimeException('Impossible de creer le compte administrateur.');
+        throw new RuntimeException('Impossible de créer le compte administrateur.');
     }
 
     $siteAdminResult = $user->setSiteAdmin(true);
     if (empty($siteAdminResult['status'])) {
-        throw new RuntimeException('Impossible d attribuer le statut admin du site au compte cree.');
+        throw new RuntimeException('Impossible d’attribuer le statut admin du site au compte créé.');
     }
 
     autoInstallEnsureAdminMemberships((int)$user->getId(), $email);
@@ -888,12 +888,12 @@ function autoInstallEnsureAdminMemberships($userId, $email)
 
         $saveResult = $membership->save();
         if (empty($saveResult['status'])) {
-            throw new RuntimeException('Impossible de lier le compte admin aux organisations de demonstration.');
+            throw new RuntimeException('Impossible de lier le compte admin aux organisations de démonstration.');
         }
 
         $adminResult = $membership->setOrganizationAdmin(true);
         if (empty($adminResult['status'])) {
-            throw new RuntimeException('Impossible de definir le compte admin comme admin d organisation.');
+            throw new RuntimeException('Impossible de définir le compte admin comme admin d’organisation.');
         }
     }
 }
@@ -927,7 +927,7 @@ function autoInstallWriteEnvFile($envPath, array $definitions, array $values)
     $envValues = autoInstallBuildEnvValues($definitions, $values);
     $lines = file(dirname(__DIR__) . '/.env.example', FILE_IGNORE_NEW_LINES);
     if ($lines === false) {
-        throw new RuntimeException('Impossible de lire le modele .env.example.');
+        throw new RuntimeException('Impossible de lire le modèle .env.example.');
     }
     $written = [];
     foreach ($lines as &$line) {
@@ -944,7 +944,7 @@ function autoInstallWriteEnvFile($envPath, array $definitions, array $values)
     }
     $content = rtrim(implode("\n", $lines)) . "\n";
     if (@file_put_contents($envPath, $content, LOCK_EX) === false) {
-        throw new RuntimeException('Impossible d ecrire le fichier .env.');
+        throw new RuntimeException('Impossible d’écrire le fichier .env.');
     }
 }
 
@@ -1300,7 +1300,7 @@ function autoInstallRenderPage(array $definitions, array $values, array $errors,
             <?php if ($messages !== []): ?>
                 <div class="auto-install-flash auto-install-success generic-soft-panel generic-soft-panel--stack" data-auto-install-flash data-auto-dismiss-ms="6000" role="status">
                     <div class="auto-install-flash-header">
-                        <h2 class="auto-install-flash-title">Verification en cours</h2>
+                        <h2 class="auto-install-flash-title">Vérification en cours</h2>
                         <button type="button" class="auto-install-flash-close" data-auto-install-flash-close aria-label="Fermer">&times;</button>
                     </div>
                     <ul class="auto-install-error-list">
@@ -1315,11 +1315,11 @@ function autoInstallRenderPage(array $definitions, array $values, array $errors,
 
     <main class="auto-install-page">
         <section class="auto-install-hero generic-hero-panel accent">
-            <p class="auto-install-eyebrow">Premier demarrage</p>
+            <p class="auto-install-eyebrow">Premier démarrage</p>
             <h1 class="auto-install-title">Configuration initiale du site</h1>
             <p class="auto-install-intro">
-                Aucun fichier <span class="auto-install-code">.env</span> n a ete detecte.
-                Renseignez les parametres obligatoires pour demarrer le site. Les champs laisses vides utilisent les valeurs par defaut du projet quand elles existent.
+                Aucun fichier <span class="auto-install-code">.env</span> n’a été détecté.
+                Renseignez les paramètres obligatoires pour démarrer le site. Les champs laisses vides utilisent les valeurs par défaut du projet quand elles existent.
             </p>
         </section>
 
@@ -1360,7 +1360,7 @@ function autoInstallRenderPage(array $definitions, array $values, array $errors,
                                             <?= !empty($field['required']) ? 'required' : '' ?>
                                         >
                                             <?php if (empty($field['required'])): ?>
-                                                <option value=""<?= $fieldValue === '' ? ' selected' : '' ?>>Choisir si necessaire</option>
+                                                <option value=""<?= $fieldValue === '' ? ' selected' : '' ?>>Choisir si nécessaire</option>
                                             <?php endif; ?>
                                             <?php foreach (($field['options'] ?? []) as $optionValue => $optionLabel): ?>
                                                 <option value="<?= htmlspecialchars((string)$optionValue, ENT_QUOTES, 'UTF-8') ?>"<?= $fieldValue === (string)$optionValue ? ' selected' : '' ?>>
@@ -1388,20 +1388,20 @@ function autoInstallRenderPage(array $definitions, array $values, array $errors,
 
                                     <?php if ($key === 'INSTALL_ADMIN_PASSWORD'): ?>
                                         <div class="auto-install-password-panel" data-password-panel>
-                                            <span class="auto-install-password-status" data-password-status aria-live="polite">Le mot de passe doit respecter les criteres ci-dessous.</span>
+                                            <span class="auto-install-password-status" data-password-status aria-live="polite">Le mot de passe doit respecter les critères ci-dessous.</span>
                                             <ul class="auto-install-password-rules">
-                                                <li class="auto-install-password-rule" data-password-rule="length">Au moins 12 caracteres</li>
+                                                <li class="auto-install-password-rule" data-password-rule="length">Au moins 12 caractères</li>
                                                 <li class="auto-install-password-rule" data-password-rule="lower">Au moins une minuscule</li>
                                                 <li class="auto-install-password-rule" data-password-rule="upper">Au moins une majuscule</li>
                                                 <li class="auto-install-password-rule" data-password-rule="digit">Au moins un chiffre</li>
-                                                <li class="auto-install-password-rule" data-password-rule="special">Au moins un caractere special ou un espace</li>
-                                                <li class="auto-install-password-rule" data-password-rule="email">Evitez de reprendre votre e-mail ou votre nom d'utilisateur</li>
+                                                <li class="auto-install-password-rule" data-password-rule="special">Au moins un caractère spécial ou un espace</li>
+                                                <li class="auto-install-password-rule" data-password-rule="email">Évitez de reprendre votre e-mail ou votre nom d'utilisateur</li>
                                             </ul>
                                         </div>
                                     <?php endif; ?>
 
                                     <?php if ($key === 'INSTALL_ADMIN_PASSWORD_CONFIRM'): ?>
-                                        <span class="auto-install-password-match" data-password-match aria-live="polite">Retapez le meme mot de passe pour confirmation.</span>
+                                        <span class="auto-install-password-match" data-password-match aria-live="polite">Retapez le même mot de passe pour confirmation.</span>
                                     <?php endif; ?>
                                 </label>
                             <?php endforeach; ?>
@@ -1411,23 +1411,23 @@ function autoInstallRenderPage(array $definitions, array $values, array $errors,
 
                 <section id="mail-verification" class="auto-install-section generic-section generic-section--stack">
                     <div class="auto-install-section-header">
-                        <p class="generic-card-title generic-card-title--small">Verification e-mail</p>
-                        <p class="auto-install-section-intro">Le site envoie un code a l adresse administrateur pour confirmer que le SMTP fonctionne vraiment avant la fin de l installation.</p>
+                        <p class="generic-card-title generic-card-title--small">Vérification e-mail</p>
+                        <p class="auto-install-section-intro">Le site envoie un code à l’adresse administrateur pour confirmer que le SMTP fonctionne vraiment avant la fin de l’installation.</p>
                     </div>
 
                     <div class="auto-install-verification-box">
                         <p class="auto-install-verification-status">
                             <?php if ($isMailVerified): ?>
-                                L adresse e-mail administrateur est deja verifiee pour cette configuration.
+                                L’adresse e-mail administrateur est déjà vérifiée pour cette configuration.
                             <?php elseif ($hasVerificationCode): ?>
-                                Un code a deja ete envoye. Vous pouvez le saisir ci-dessous ou en demander un nouveau.
+                                Un code a déjà été envoyé. Vous pouvez le saisir ci-dessous ou en demander un nouveau.
                             <?php else: ?>
-                                Envoyez un code de verification a l adresse administrateur avant de finaliser l installation.
+                                Envoyez un code de vérification à l’adresse administrateur avant de finaliser l’installation.
                             <?php endif; ?>
                         </p>
 
                         <label class="auto-install-field auto-install-field--full" for="INSTALL_MAIL_VERIFICATION_CODE">
-                            <span class="auto-install-label">Code de verification e-mail</span>
+                            <span class="auto-install-label">Code de vérification e-mail</span>
                             <input
                                 class="generic-form-control"
                                 type="text"
@@ -1438,20 +1438,20 @@ function autoInstallRenderPage(array $definitions, array $values, array $errors,
                                 inputmode="numeric"
                                 autocomplete="one-time-code"
                             >
-                            <span class="auto-install-help">Le code est memorise en session jusqu a verification ou expiration.</span>
+                            <span class="auto-install-help">Le code est mémorisé en session jusqu’à vérification ou expiration.</span>
                         </label>
                     </div>
                 </section>
 
                 <section class="auto-install-section generic-section generic-section--stack">
                     <div class="auto-install-actions">
-                        <button type="submit" name="install_action" value="send_verification_code" class="generic-action-button">Envoyer un code de verification</button>
-                        <button type="submit" name="install_action" value="complete_install" class="generic-action-button generic-action-button--main"<?= $canCompleteInstall ? '' : ' disabled aria-disabled="true"' ?>><?= $isMailVerified ? 'Creer le fichier .env' : 'Verifier le code et terminer' ?></button>
+                        <button type="submit" name="install_action" value="send_verification_code" class="generic-action-button">Envoyer un code de vérification</button>
+                        <button type="submit" name="install_action" value="complete_install" class="generic-action-button generic-action-button--main"<?= $canCompleteInstall ? '' : ' disabled aria-disabled="true"' ?>><?= $isMailVerified ? 'Créer le fichier .env' : 'Vérifier le code et terminer' ?></button>
                         <p class="auto-install-meta">
-                            La connexion MySQL est testee avant l ecriture, puis un e-mail de verification doit etre confirme. Les services optionnels pourront etre completes plus tard en modifiant le fichier <span class="auto-install-code">.env</span>.
+                            La connexion MySQL est testée avant l’écriture, puis un e-mail de vérification doit être confirme. Les services optionnels pourront être complétés plus tard en modifiant le fichier <span class="auto-install-code">.env</span>.
                         </p>
                         <?php if (!$canCompleteInstall): ?>
-                            <p class="auto-install-meta">Le bouton principal sera active apres un premier envoi de code.</p>
+                            <p class="auto-install-meta">Le bouton principal sera active après un premier envoi de code.</p>
                         <?php endif; ?>
                     </div>
                 </section>
@@ -1461,17 +1461,17 @@ function autoInstallRenderPage(array $definitions, array $values, array $errors,
                 <section class="generic-section generic-section--stack">
                     <p class="generic-card-title generic-card-title--small">Ce qui se passe</p>
                     <div class="auto-install-stack">
-                            <p class="auto-install-note">1. Vous renseignez les parametres de base.</p>
-                        <p class="auto-install-note">2. Le site cree la base si besoin et importe le seed Docker de demo.</p>
-                        <p class="auto-install-note">3. Le fichier <span class="auto-install-code">.env</span> est cree a la racine du projet.</p>
-                        <p class="auto-install-note">4. Le chargement normal du site reprend avec l organisation exemple.</p>
+                            <p class="auto-install-note">1. Vous renseignez les paramètres de base.</p>
+                        <p class="auto-install-note">2. Le site crée la base si besoin et importe le seed Docker de démo.</p>
+                        <p class="auto-install-note">3. Le fichier <span class="auto-install-code">.env</span> est créé à la racine du projet.</p>
+                        <p class="auto-install-note">4. Le chargement normal du site reprend avec l’organisation exemple.</p>
                     </div>
                 </section>
 
                 <section class="generic-section generic-section--stack">
                     <p class="generic-card-title generic-card-title--small">A savoir</p>
-                    <p class="auto-install-note">Apres connexion, ouvrez Parametres > Administration du serveur pour completer les services et les reglages avances. Les integrations sont optionnelles et les secrets techniques de base sont generes automatiquement.</p>
-                    <p class="auto-install-note">La base cible doit etre vide ou deja correspondre au seed de demo. Sinon, l installation s arrete pour eviter d ecraser des donnees existantes.</p>
+                    <p class="auto-install-note">Après connexion, ouvrez Paramètres > Administration du serveur pour compléter les services et les réglages avancés. Les intégrations sont optionnelles et les secrets techniques de base sont générés automatiquement.</p>
+                    <p class="auto-install-note">La base cible doit être vide ou déjà correspondre au seed de démo. Sinon, l’installation s’arrête pour éviter d’écraser des données existantes.</p>
                 </section>
             </aside>
         </div>

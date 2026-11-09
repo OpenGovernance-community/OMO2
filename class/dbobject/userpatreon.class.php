@@ -3,6 +3,15 @@
 
 	class UserPatreon extends DbObject
 	{
+    protected static function uiMessageSourceLang(): array
+    {
+        return parent::uiMessageSourceLang() + [
+            'copy.une_connexion_patreon_est_en_cours_reessayez' => ['text' => 'Une connexion Patreon est en cours. Réessayez.', 'context' => 'Interface text in class/dbobject/userpatreon.class.php'],
+            'copy.ce_compte_patreon_est_deja_connecte_a_une_autre_organisation' => ['text' => 'Ce compte Patreon est déjà connecté à une autre organisation.', 'context' => 'Interface text in class/dbobject/userpatreon.class.php'],
+            'copy.ce_compte_patreon_est_deja_connecte_a_une_autre_personne' => ['text' => 'Ce compte Patreon est déjà connecté à une autre personne.', 'context' => 'Interface text in class/dbobject/userpatreon.class.php'],
+        ];
+    }
+
 		protected static $storageAvailable = null;
 
 		public static function tableName()
@@ -127,7 +136,7 @@
         {
             $name = 'omo-patreon-' . substr(hash('sha256', (string)$GLOBALS['dbName']), 0, 40);
             if ((int)self::fetchValue('SELECT GET_LOCK(:name, 15)', ['name' => $name]) !== 1) {
-                throw new \RuntimeException('Une connexion Patreon est en cours. Reessayez.');
+                throw new \RuntimeException(self::uiMessage('copy.une_connexion_patreon_est_en_cours_reessayez'));
             }
             try { return $callback(); }
             finally { self::fetchValue('SELECT RELEASE_LOCK(:name)', ['name' => $name]); }
@@ -146,8 +155,8 @@
             $other = self::fetchValue('SELECT id FROM `' . $table . '` WHERE patreon_user_id = :identity AND is_connected = 1 AND `' . $field . '` <> :owner LIMIT 1',
                 ['identity' => $identity, 'owner' => (int)$this->get($field)]);
             if ($other) throw new \DomainException($organization
-                ? 'Ce compte Patreon est deja connecte a une autre organisation.'
-                : 'Ce compte Patreon est deja connecte a une autre personne.');
+                ? self::uiMessage('copy.ce_compte_patreon_est_deja_connecte_a_une_autre_organisation')
+                : self::uiMessage('copy.ce_compte_patreon_est_deja_connecte_a_une_autre_personne'));
         }
 
         /** Patreon can rotate a shared OAuth identity's tokens. Keep permitted links in sync. */

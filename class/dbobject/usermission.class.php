@@ -24,7 +24,7 @@
 				'IDuser' => 'Utilisateur',
 				'IDmission' => 'Mission',
 				'IDparcours' => 'Parcours',
-				'done' => 'Termine le',
+				'done' => 'Terminé le',
 			];
 		}
 

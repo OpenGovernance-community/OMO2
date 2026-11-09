@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../common/account-translations.php';
+
 
 	require_once("../config.php");
 	require_once("../shared_functions.php");
@@ -40,7 +42,7 @@
 		echo json_encode([
 			'status' => false,
 			'success' => false,
-			'message' => "Vous n'avez pas le droit d'editer les informations de cet utilisateur",
+			'message' => commonAccountUiT('copy.vous_n_avez_pas_le_droit_d_editer_les_informations_de_cet_utilisateur'),
 		], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 		exit;
 	}
@@ -49,7 +51,7 @@
 	foreach (['current_password', 'new_password', 'new_password_confirm', 'allow_password_login'] as $field) {
 		if (isset($data[$field]) && !is_string($data[$field])) {
 			http_response_code(400);
-			echo json_encode(['status' => false, 'message' => 'Donnees invalides.']);
+			echo json_encode(['status' => false, 'message' => commonAccountUiT('copy.donnees_invalides')]);
 			exit;
 		}
 	}
@@ -79,7 +81,7 @@
 		$object->loadProfileInput($data);
 	} catch (\InvalidArgumentException $error) {
 		http_response_code(400);
-		echo json_encode(['status' => false, 'message' => 'Donnees ou image invalides.']);
+		echo json_encode(['status' => false, 'message' => commonAccountUiT('copy.donnees_ou_image_invalides')]);
 		exit;
 	}
 	if (!empty($passwordValidation['shouldUpdate'])) {
@@ -97,7 +99,7 @@
 	} catch (\Throwable $error) {
 		error_log('Profile security save failed: ' . get_class($error));
 		http_response_code(503);
-		echo json_encode(['status' => false, 'message' => 'Impossible d enregistrer ce profil.']);
+		echo json_encode(['status' => false, 'message' => commonAccountUiT('copy.impossible_d_enregistrer_ce_profil')]);
 		exit;
 	}
 
@@ -116,8 +118,8 @@
 		session_regenerate_id(true);
 	}
 	$msg = !empty($passwordValidation['shouldUpdate'])
-		? 'Profil et mot de passe enregistres'
-		: 'Enregistrement reussi';
+		? commonAccountUiT('copy.profil_et_mot_de_passe_enregistres')
+		: commonAccountUiT('copy.enregistrement_reussi');
 	$formCode = "";
 	if (isset($_GET["origin"]) && $_GET["origin"] == "profil") {
 		$scope = (isset($_GET["scope"]) && $_GET["scope"] == "organization") ? "organization" : "general";

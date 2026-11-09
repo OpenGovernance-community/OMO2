@@ -36,19 +36,19 @@ class ChecklistItem extends DbObject
         return [
             'id' => 'ID',
             'IDchecklist' => 'Processus',
-            'IDproject_template' => 'Projet modele',
-            'stable_key' => 'Cle stable',
+            'IDproject_template' => 'Projet modèle',
+            'stable_key' => 'Clé stable',
             'activation_type' => 'Activation',
-            'delay_value' => 'Delai',
-            'delay_unit' => 'Unite du delai',
-            'display_lead_value' => 'Affichage anticipe',
-            'display_lead_unit' => 'Unite d affichage anticipe',
-            'execution_duration_value' => 'Delai de realisation',
-            'execution_duration_unit' => 'Unite du delai de realisation',
+            'delay_value' => 'Délai',
+            'delay_unit' => 'Unité du délai',
+            'display_lead_value' => 'Affichage anticipé',
+            'display_lead_unit' => 'Unité d’affichage anticipé',
+            'execution_duration_value' => 'Délai de réalisation',
+            'execution_duration_unit' => 'Unité du délai de réalisation',
             'position' => 'Position',
             'active' => 'Active',
-            'created_at' => 'Creation',
-            'updated_at' => 'Mise a jour',
+            'created_at' => 'Création',
+            'updated_at' => 'Mise à jour',
         ];
     }
 
@@ -67,9 +67,9 @@ class ChecklistItem extends DbObject
     {
         return [
             'activation_type' => [
-                [self::ACTIVATION_IMMEDIATE, 'Immediate'],
-                [self::ACTIVATION_AFTER_START, 'Apres le demarrage'],
-                [self::ACTIVATION_AFTER_COMPLETION, 'Apres une etape'],
+                [self::ACTIVATION_IMMEDIATE, 'Immédiate'],
+                [self::ACTIVATION_AFTER_START, 'Après le démarrage'],
+                [self::ACTIVATION_AFTER_COMPLETION, 'Après une étape'],
                 [self::ACTIVATION_MANUAL, 'Manuelle'],
             ],
             'delay_unit' => [

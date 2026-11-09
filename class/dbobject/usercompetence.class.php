@@ -3,6 +3,37 @@
 
 	class UserCompetence extends DbObject
 	{
+    protected static function uiMessageSourceLang(): array
+    {
+        return parent::uiMessageSourceLang() + [
+            'copy.debutant' => ['text' => 'Débutant', 'context' => 'Interface text in class/dbobject/usercompetence.class.php'],
+            'copy.avance' => ['text' => 'Avancé', 'context' => 'Interface text in class/dbobject/usercompetence.class.php'],
+            'copy.aucune_organisation_n_est_disponible_pour_cette_competence' => ['text' => 'Aucune organisation n\'est disponible pour cette compétence.', 'context' => 'Interface text in class/dbobject/usercompetence.class.php'],
+            'copy.vous_ne_pouvez_pas_enregistrer_de_competence_pour_cette_organisation' => ['text' => 'Vous ne pouvez pas enregistrer de compétence pour cette organisation.', 'context' => 'Interface text in class/dbobject/usercompetence.class.php'],
+            'copy.le_nom_de_la_competence_est_obligatoire' => ['text' => 'Le nom de la compétence est obligatoire.', 'context' => 'Interface text in class/dbobject/usercompetence.class.php'],
+            'copy.le_niveau_doit_etre_choisi' => ['text' => 'Le niveau doit être choisi.', 'context' => 'Interface text in class/dbobject/usercompetence.class.php'],
+            'copy.competence_introuvable' => ['text' => 'Compétence introuvable.', 'context' => 'Interface text in class/dbobject/usercompetence.class.php'],
+            'copy.vous_ne_pouvez_pas_modifier_cette_competence' => ['text' => 'Vous ne pouvez pas modifier cette compétence.', 'context' => 'Interface text in class/dbobject/usercompetence.class.php'],
+            'copy.impossible_d_enregistrer_cette_competence' => ['text' => 'Impossible d\'enregistrer cette compétence.', 'context' => 'Interface text in class/dbobject/usercompetence.class.php'],
+            'copy.cette_competence_existe_deja_dans_ce_profil' => ['text' => 'Cette compétence existe déjà dans ce profil.', 'context' => 'Interface text in class/dbobject/usercompetence.class.php'],
+            'copy.competence_ajoutee' => ['text' => 'Compétence ajoutée.', 'context' => 'Interface text in class/dbobject/usercompetence.class.php'],
+            'copy.competence_mise_a_jour' => ['text' => 'Compétence mise à jour.', 'context' => 'Interface text in class/dbobject/usercompetence.class.php'],
+            'copy.competence_invalide' => ['text' => 'Compétence invalide.', 'context' => 'Interface text in class/dbobject/usercompetence.class.php'],
+            'copy.vous_ne_pouvez_pas_supprimer_cette_competence' => ['text' => 'Vous ne pouvez pas supprimer cette compétence.', 'context' => 'Interface text in class/dbobject/usercompetence.class.php'],
+            'copy.impossible_de_supprimer_cette_competence' => ['text' => 'Impossible de supprimer cette compétence.', 'context' => 'Interface text in class/dbobject/usercompetence.class.php'],
+            'copy.competence_supprimee' => ['text' => 'Compétence supprimée.', 'context' => 'Interface text in class/dbobject/usercompetence.class.php'],
+            'copy.utilisateur_introuvable_pour_cette_competence' => ['text' => 'Utilisateur introuvable pour cette compétence.', 'context' => 'Interface text in class/dbobject/usercompetence.class.php'],
+            'copy.vous_ne_pouvez_pas_valider_votre_propre_competence' => ['text' => 'Vous ne pouvez pas valider votre propre compétence.', 'context' => 'Interface text in class/dbobject/usercompetence.class.php'],
+            'copy.cette_competence_n_est_pas_visible_dans_cette_organisation' => ['text' => 'Cette compétence n\'est pas visible dans cette organisation.', 'context' => 'Interface text in class/dbobject/usercompetence.class.php'],
+            'copy.validation_enregistree' => ['text' => 'Validation enregistrée.', 'context' => 'Interface text in class/dbobject/usercompetence.class.php'],
+            'copy.validation_mise_a_jour' => ['text' => 'Validation mise à jour.', 'context' => 'Interface text in class/dbobject/usercompetence.class.php'],
+
+            'option.notions' => ['text' => 'Notions', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+            'option.autonome' => ['text' => 'Autonome', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+            'option.expert' => ['text' => 'Expert', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+        ];
+    }
+
 		public static function tableName()
 		{
 			return 'user_competence';
@@ -57,11 +88,11 @@
 		public static function getLevelOptions()
 		{
 			return [
-				1 => 'Debutant',
-				2 => 'Notions',
-				3 => 'Autonome',
-				4 => 'Avance',
-				5 => 'Expert',
+				1 => self::uiMessage('copy.debutant'),
+				2 => self::uiMessage('option.notions'),
+				3 => self::uiMessage('option.autonome'),
+				4 => self::uiMessage('copy.avance'),
+				5 => self::uiMessage('option.expert'),
 			];
 		}
 
@@ -424,28 +455,28 @@
 			if ($scope === 'organization' && $scopeOrganizationId <= 0) {
 				return [
 					'status' => false,
-					'message' => "Aucune organisation n'est disponible pour cette competence.",
+					'message' => self::uiMessage('copy.aucune_organisation_n_est_disponible_pour_cette_competence'),
 				];
 			}
 
 			if ($scope === 'organization' && function_exists('commonUserHasOrganizationMembership') && !\commonUserHasOrganizationMembership($userId, $scopeOrganizationId)) {
 				return [
 					'status' => false,
-					'message' => "Vous ne pouvez pas enregistrer de competence pour cette organisation.",
+					'message' => self::uiMessage('copy.vous_ne_pouvez_pas_enregistrer_de_competence_pour_cette_organisation'),
 				];
 			}
 
 			if ($name === '') {
 				return [
 					'status' => false,
-					'message' => 'Le nom de la competence est obligatoire.',
+					'message' => self::uiMessage('copy.le_nom_de_la_competence_est_obligatoire'),
 				];
 			}
 
 			if ($level <= 0) {
 				return [
 					'status' => false,
-					'message' => 'Le niveau doit etre choisi.',
+					'message' => self::uiMessage('copy.le_niveau_doit_etre_choisi'),
 				];
 			}
 
@@ -455,14 +486,14 @@
 				if (!$item instanceof self) {
 					return [
 						'status' => false,
-						'message' => 'Competence introuvable.',
+						'message' => self::uiMessage('copy.competence_introuvable'),
 					];
 				}
 
 				if ((int)$item->get('IDuser') !== $userId) {
 					return [
 						'status' => false,
-						'message' => "Vous ne pouvez pas modifier cette competence.",
+						'message' => self::uiMessage('copy.vous_ne_pouvez_pas_modifier_cette_competence'),
 					];
 				}
 			}
@@ -471,7 +502,7 @@
 			if (!$competence instanceof Competence) {
 				return [
 					'status' => false,
-					'message' => "Impossible d'enregistrer cette competence.",
+					'message' => self::uiMessage('copy.impossible_d_enregistrer_cette_competence'),
 				];
 			}
 
@@ -479,7 +510,7 @@
 			if ($existing instanceof self && (int)$existing->getId() !== (int)$item->getId()) {
 				return [
 					'status' => false,
-					'message' => 'Cette competence existe deja dans ce profil.',
+					'message' => self::uiMessage('copy.cette_competence_existe_deja_dans_ce_profil'),
 				];
 			}
 
@@ -498,13 +529,13 @@
 			if (!is_array($saveResult) || empty($saveResult['status'])) {
 				return [
 					'status' => false,
-					'message' => "Impossible d'enregistrer cette competence.",
+					'message' => self::uiMessage('copy.impossible_d_enregistrer_cette_competence'),
 				];
 			}
 
 			return [
 				'status' => true,
-				'message' => $isNew ? 'Competence ajoutee.' : 'Competence mise a jour.',
+				'message' => $isNew ? self::uiMessage('copy.competence_ajoutee') : self::uiMessage('copy.competence_mise_a_jour'),
 				'item' => $item,
 			];
 		}
@@ -517,7 +548,7 @@
 			if ($userCompetenceId <= 0 || $userId <= 0) {
 				return [
 					'status' => false,
-					'message' => 'Competence invalide.',
+					'message' => self::uiMessage('copy.competence_invalide'),
 				];
 			}
 
@@ -525,14 +556,14 @@
 			if (!$item instanceof self) {
 				return [
 					'status' => false,
-					'message' => 'Competence introuvable.',
+					'message' => self::uiMessage('copy.competence_introuvable'),
 				];
 			}
 
 			if ((int)$item->get('IDuser') !== $userId) {
 				return [
 					'status' => false,
-					'message' => "Vous ne pouvez pas supprimer cette competence.",
+					'message' => self::uiMessage('copy.vous_ne_pouvez_pas_supprimer_cette_competence'),
 				];
 			}
 
@@ -548,13 +579,13 @@
 			if (!$deleted) {
 				return [
 					'status' => false,
-					'message' => "Impossible de supprimer cette competence.",
+					'message' => self::uiMessage('copy.impossible_de_supprimer_cette_competence'),
 				];
 			}
 
 			return [
 				'status' => true,
-				'message' => 'Competence supprimee.',
+				'message' => self::uiMessage('copy.competence_supprimee'),
 			];
 		}
 
@@ -590,7 +621,7 @@
 			if (!$item instanceof self) {
 				return [
 					'status' => false,
-					'message' => 'Competence introuvable.',
+					'message' => self::uiMessage('copy.competence_introuvable'),
 				];
 			}
 
@@ -598,14 +629,14 @@
 			if ($ownerUserId <= 0) {
 				return [
 					'status' => false,
-					'message' => 'Utilisateur introuvable pour cette competence.',
+					'message' => self::uiMessage('copy.utilisateur_introuvable_pour_cette_competence'),
 				];
 			}
 
 			if ($ownerUserId === $validatorUserId) {
 				return [
 					'status' => false,
-					'message' => 'Vous ne pouvez pas valider votre propre competence.',
+					'message' => self::uiMessage('copy.vous_ne_pouvez_pas_valider_votre_propre_competence'),
 				];
 			}
 
@@ -613,7 +644,7 @@
 			if ($scopeOrganizationId > 0 && $scopeOrganizationId !== $organizationId) {
 				return [
 					'status' => false,
-					'message' => "Cette competence n'est pas visible dans cette organisation.",
+					'message' => self::uiMessage('copy.cette_competence_n_est_pas_visible_dans_cette_organisation'),
 				];
 			}
 
@@ -621,7 +652,7 @@
 			if (!$owner->load($ownerUserId) || !$owner->hasOrganizationAccess($organizationId)) {
 				return [
 					'status' => false,
-					'message' => "Cette competence n'est pas visible dans cette organisation.",
+					'message' => self::uiMessage('copy.cette_competence_n_est_pas_visible_dans_cette_organisation'),
 				];
 			}
 
@@ -648,7 +679,7 @@
 
 			return [
 				'status' => true,
-				'message' => $isNew ? 'Validation enregistree.' : 'Validation mise a jour.',
+				'message' => $isNew ? self::uiMessage('copy.validation_enregistree') : self::uiMessage('copy.validation_mise_a_jour'),
 			];
 		}
 

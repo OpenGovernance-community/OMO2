@@ -21,5 +21,5 @@ $result = \dbObject\UserCompetence::saveValidationForViewer($userCompetenceId, $
 
 echo json_encode([
 	'status' => !empty($result['status']),
-	'message' => (string)($result['message'] ?? ($result['status'] ? 'Validation enregistree.' : "Impossible d'enregistrer cette validation.")),
+	'message' => (string)($result['message'] ?? ($result['status'] ? omoInterfaceUiT('copy.validation_enregistree') : omoInterfaceUiT('copy.impossible_d_enregistrer_cette_validation'))),
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

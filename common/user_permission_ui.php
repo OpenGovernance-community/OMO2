@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/team/profile-translations.php';
+
 
 if (!function_exists('commonUserPermissionBuildCatalogMap')) {
     function commonUserPermissionBuildCatalogMap(int $organizationId = 0)
@@ -75,7 +77,7 @@ if (!function_exists('commonUserPermissionDescribeScope')) {
         $scopeHolonId = (int)$scopeHolonId;
 
         if ($scopeType === 'organization') {
-            return 'Toute l organisation';
+            return 'Toute l’organisation';
         }
 
         if ($scopeType === 'subtree') {
@@ -86,10 +88,10 @@ if (!function_exists('commonUserPermissionDescribeScope')) {
 
         if ($scopeType === 'exact') {
             return $scopeHolonId > 0
-                ? 'Element exact: ' . $formatHolonLabel($scopeHolonId)
-                : 'Element exact';
+                ? commonUserProfileT('copy.element_exact_value', ['value' => $formatHolonLabel($scopeHolonId)])
+                : commonUserProfileT('copy.element_exact');
         }
 
-        return 'Portee inconnue';
+        return commonUserProfileT('copy.portee_inconnue');
     }
 }

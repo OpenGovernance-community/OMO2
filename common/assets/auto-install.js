@@ -68,7 +68,7 @@ window.commonPageScripts["/common/assets/auto-install.js"] = function (pageConfi
                 });
 
                 if (isEmpty) {
-                    statusNode.textContent = 'Le mot de passe doit respecter les criteres ci-dessous.';
+                    statusNode.textContent = 'Le mot de passe doit respecter les critères ci-dessous.';
                     setNodeState(statusNode, false, false);
                 } else if (isValid) {
                     statusNode.textContent = 'Mot de passe OK.';
@@ -82,7 +82,7 @@ window.commonPageScripts["/common/assets/auto-install.js"] = function (pageConfi
                     var confirmation = confirmInput.value || '';
 
                     if (confirmation === '') {
-                        matchNode.textContent = 'Retapez le meme mot de passe pour confirmation.';
+                        matchNode.textContent = 'Retapez le même mot de passe pour confirmation.';
                         setNodeState(matchNode, false, false);
                     } else if (confirmation === password) {
                         matchNode.textContent = 'Confirmation OK.';

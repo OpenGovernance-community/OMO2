@@ -23,8 +23,8 @@ function omoSearchPreviewT(string $key): string
 {
     static $bundle;
     $sourceLang = [
-        'preview' => ['text' => 'Aperçu', 'context' => 'Recherche : ouvrir une vue condensee'],
-        'open' => ['text' => 'Ouvrir', 'context' => 'Recherche : ouvrir la fiche complete'],
+        'preview' => ['text' => 'Aperçu', 'context' => 'Recherche : ouvrir une vue condensée'],
+        'open' => ['text' => 'Ouvrir', 'context' => 'Recherche : ouvrir la fiche complète'],
         'close' => ['text' => 'Fermer', 'context' => 'Fermer uniquement l apercu'],
         'loading' => ['text' => 'Chargement de l’aperçu...', 'context' => 'Recherche'],
         'error' => ['text' => 'Aperçu indisponible. Cet objet a peut-être été supprimé ou son accès a changé.', 'context' => 'Recherche'],
@@ -57,11 +57,11 @@ function omoSearchPreviewT(string $key): string
         'presentation' => ['text' => 'Présentation', 'context' => 'Apercu de membre'],
         'skills' => ['text' => 'Compétences', 'context' => 'Aperçu de membre'],
         'tutorial' => ['text' => 'Parcours', 'context' => 'Apercu de tutoriel'],
-        'content' => ['text' => 'Contenu', 'context' => 'Texte ou extraits du contenu dans un apercu'],
+        'content' => ['text' => 'Contenu', 'context' => 'Texte ou extraits du contenu dans un aperçu'],
         'matches' => ['text' => 'Termes retrouvés', 'context' => 'Badge sur une section contenant des termes de la recherche'],
-        'points' => ['text' => 'Points du PV', 'context' => 'Points visibles de la reunion dans un apercu'],
+        'points' => ['text' => 'Points du PV', 'context' => 'Points visibles de la réunion dans un aperçu'],
         'matching_points' => ['text' => 'Points correspondant à la recherche', 'context' => 'Points du PV contenant les termes recherches'],
-        'children' => ['text' => 'Sous-projets', 'context' => 'Sous-projets directs accessibles dans un apercu'],
+        'children' => ['text' => 'Sous-projets', 'context' => 'Sous-projets directs accessibles dans un aperçu'],
         'documents' => ['text' => 'Documents associés', 'context' => 'Nombre de documents accessibles lies au projet'],
         'events' => ['text' => 'Dates associées', 'context' => 'Evenements accessibles lies au projet, passes et futurs'],
         'more' => ['text' => 'Autres éléments à consulter dans la fiche complète', 'context' => 'Nombre d elements supplementaires non affiches dans l apercu'],

@@ -23,13 +23,13 @@ class AuthRateLimit extends DbObject
     {
         return [
             'id' => 'ID',
-            'scope' => 'Perimetre',
-            'key_hash' => 'Cle anonymisee',
-            'window_started_at' => 'Debut de fenetre',
+            'scope' => 'Périmètre',
+            'key_hash' => 'Clé anonymisée',
+            'window_started_at' => 'Début de fenêtre',
             'attempt_count' => 'Tentatives',
             'blocked_until' => 'Bloque jusqu au',
-            'created_at' => 'Cree le',
-            'updated_at' => 'Mis a jour le',
+            'created_at' => 'Créé le',
+            'updated_at' => 'Mis à jour le',
         ];
     }
 

@@ -20,7 +20,7 @@ class ChatMessageReaction extends DbObject
     public static function attributeLabels()
     {
         return ['id' => 'ID', 'IDchat_message' => 'Message', 'actor_key' => 'Participant',
-            'reaction' => 'Reaction', 'created_at' => 'Creation', 'updated_at' => 'Mise a jour'];
+            'reaction' => 'Réaction', 'created_at' => 'Création', 'updated_at' => 'Mise à jour'];
     }
     public static function attributeLength() { return ['actor_key' => 80, 'reaction' => 16]; }
 

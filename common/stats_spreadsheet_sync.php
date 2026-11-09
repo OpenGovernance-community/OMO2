@@ -1,6 +1,20 @@
 <?php
 require_once __DIR__ . '/spreadsheet.php';
 
+function commonStatsSpreadsheetSyncUiT(string $key, array $variables = []): string
+{
+    static $sourceLang = [
+        'copy.impossible_de_telecharger_le_document_tableur' => ['text' => 'Impossible de télécharger le document tableur.', 'context' => 'Interface text in common/stats_spreadsheet_sync.php'],
+    ];
+    require_once __DIR__ . '/translation_bundles.php';
+    static $bundles = [];
+    $locale = translationBundleResolveRequestLocale();
+    $bundle = class_exists(\dbObject\TranslationBundle::class)
+        ? ($bundles[$locale] ??= loadTranslationBundle('common_stats_spreadsheet_sync', $locale, $sourceLang)) : $sourceLang;
+    return t($key, $variables, $bundle, $sourceLang);
+}
+
+
 if (!class_exists('PhpOffice\\PhpSpreadsheet\\IOFactory')) {
     $autoloadPath = dirname(__DIR__) . '/vendor/autoload.php';
     if (is_file($autoloadPath)) {
@@ -97,7 +111,7 @@ if (!function_exists('omoStatsSpreadsheetLoadWorksheet')) {
         }
         $download = $organization->downloadDocumentFileFromStorage((string)$document->get('storedfilepath'));
         if (!is_array($download) || empty($download['status']) || !isset($download['body'])) {
-            return ['status' => false, 'text' => (string)($download['text'] ?? 'Impossible de telecharger le document tableur.')];
+            return ['status' => false, 'text' => (string)($download['text'] ?? commonStatsSpreadsheetSyncUiT('copy.impossible_de_telecharger_le_document_tableur'))];
         }
 
         $extension = omoSpreadsheetFilenameExtension($document->getStoredFileDownloadName());

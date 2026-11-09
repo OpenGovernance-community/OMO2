@@ -263,14 +263,14 @@ var omoUiText = window.omoUiText || function (key, fallback) { return fallback; 
             try {
                 const result = await request(root.getAttribute('data-submit-url'), { method: 'POST', body: new FormData(form) });
                 if (disposed) { return; }
-                setFeedback(result.message || omoUiText('tension_enregistree', 'Tension enregistree.'), 'success');
+                setFeedback(result.message || omoUiText('tension_enregistree', 'Tension enregistrée.'), 'success');
                 titleInput.value = '';
                 form.elements.description.value = '';
                 refreshTitleHint();
                 titleInput.focus();
                 loadList();
             } catch (error) {
-                setFeedback(errorMessage(error, omoUiText('impossible_d_enregistrer_la_tension', 'Impossible d enregistrer la tension.')), 'error');
+                setFeedback(errorMessage(error, omoUiText('impossible_d_enregistrer_la_tension', 'Impossible d’enregistrer la tension.')), 'error');
             } finally {
                 saving = false;
                 if (!disposed) {

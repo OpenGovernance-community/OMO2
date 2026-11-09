@@ -3,6 +3,13 @@ namespace dbObject;
 
 class ChatMessage extends DbObject
 {
+    protected static function uiMessageSourceLang(): array
+    {
+        return parent::uiMessageSourceLang() + [
+            'copy.decision' => ['text' => 'Décision', 'context' => 'Interface text in class/dbobject/chatmessage.class.php'],
+        ];
+    }
+
     const TYPE_USER = 'user';
     const TYPE_SYSTEM = 'system';
 
@@ -36,9 +43,9 @@ class ChatMessage extends DbObject
             'IDdocument_share_link' => 'Lien de participation au PV',
             'message_type' => 'Type',
             'content' => 'Message',
-            'author_name' => 'Nom de l auteur',
+            'author_name' => 'Nom de l’auteur',
             'parameters' => 'Paramètres',
-            'reactions' => 'Reactions',
+            'reactions' => 'Réactions',
             'created_at' => 'Création',
             'updated_at' => 'Mise à jour',
         ];
@@ -47,7 +54,7 @@ class ChatMessage extends DbObject
     public static function attributeDescriptions()
     {
         return [
-            'author_name' => 'Copie du nom affiché au moment de l envoi.',
+            'author_name' => 'Copie du nom affiché au moment de l’envoi.',
             'parameters' => 'Métadonnées du message système ou de son objet source.',
         ];
     }
@@ -347,7 +354,7 @@ class ChatMessage extends DbObject
         $fieldLabels = [
             'title' => 'Titre',
             'description' => 'Description',
-            'info_url' => 'Lien d information',
+            'info_url' => 'Lien d’information',
         ];
         $changes = [];
         foreach ($fieldLabels as $field => $label) {
@@ -386,7 +393,7 @@ class ChatMessage extends DbObject
         $pointTypeLabels = [
             'information' => 'Information',
             'consultation' => 'Consultation',
-            'decision' => 'Decision',
+            'decision' => self::uiMessage('copy.decision'),
         ];
         $userLabel = static function ($userId) use ($organizationId): string {
             $userId = (int)$userId;
@@ -448,7 +455,7 @@ class ChatMessage extends DbObject
                 'value' => $authorLabel,
             ],
             'concerned_holon_id' => [
-                'label' => \dbObject\Organization::formatLexiconText('Holon concerne'),
+                'label' => \dbObject\Organization::formatLexiconText('Holon concerné'),
                 'value' => static function (array $values) use ($holonLabel): string {
                     return $holonLabel($values['concerned_holon_id'] ?? 0);
                 },

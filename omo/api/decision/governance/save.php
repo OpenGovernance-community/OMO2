@@ -642,7 +642,7 @@ try {
             }
             if ((string)$existingAction->get('status') === DecisionGovernanceAction::STATUS_PENDING) {
                 $existingAction->set('status', DecisionGovernanceAction::STATUS_REMOVED);
-                $existingAction->set('status_message', 'Modification retiree pendant la consultation.');
+                $existingAction->set('status_message', 'Modification retirée pendant la consultation.');
                 $existingAction->set('updated_at', new DateTimeImmutable('now'));
                 $existingAction->save();
             }

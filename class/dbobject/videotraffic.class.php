@@ -6,7 +6,7 @@ class VideoTraffic extends DbObject
 {
     public static function tableName() { return 'video_traffic'; }
     public static function rules() { return [[['endpoint_key', 'room_code'], 'string'], [['IDuser', 'IDorganization'], 'fk'], [['sampled_at'], 'datetime'], [['received_total', 'sent_total', 'received_bytes', 'sent_bytes'], 'integer']]; }
-    public static function attributeLabels() { return ['received_bytes' => 'Octets recus', 'sent_bytes' => 'Octets envoyes']; }
+    public static function attributeLabels() { return ['received_bytes' => 'Octets reçus', 'sent_bytes' => 'Octets envoyés']; }
 
     // Sender branches share one counter. Taking the maximum avoids counting it several times.
     private static function packetBytes(array $tree): ?int

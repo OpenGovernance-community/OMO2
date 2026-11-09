@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/calendar/external-translations.php';
+
 
 use dbObject\ArrayExternalCalendar;
 use dbObject\ExternalCalendar;
@@ -180,7 +182,7 @@ function commonExternalCalendarHttpRequest($url, $username, $password, $requestB
         return ['status' => false, 'message' => 'Le délai de synchronisation est dépassé.'];
     }
     if (!function_exists('curl_init')) {
-        return ['status' => false, 'message' => 'L extension cURL est indisponible sur le serveur.'];
+        return ['status' => false, 'message' => commonExternalCalendarT('copy.l_extension_curl_est_indisponible_sur_le_serveur')];
     }
 
     $url = commonExternalCalendarNormalizeUrl($url);
@@ -243,7 +245,7 @@ function commonExternalCalendarHttpRequest($url, $username, $password, $requestB
     $statusCode = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
     if ($result === false) {
         return ['status' => false, 'message' => $method === 'GET'
-            ? 'Lecture du flux ICS impossible (reseau, certificat ou reponse trop volumineuse).'
+            ? commonExternalCalendarT('copy.lecture_du_flux_ics_impossible_reseau_certificat_ou_reponse_trop_volum')
             : 'Connexion CalDAV impossible (réseau, certificat ou réponse trop volumineuse).'];
     }
     if (in_array($statusCode, [301, 302, 303, 307, 308], true)) {
@@ -252,17 +254,17 @@ function commonExternalCalendarHttpRequest($url, $username, $password, $requestB
             : commonExternalCalendarResolveHref($url, $location);
         if ($target === null || $redirects >= 4) {
             return ['status' => false, 'message' => $method === 'GET'
-                ? 'Redirection du flux ICS refusee.'
+                ? commonExternalCalendarT('copy.redirection_du_flux_ics_refusee')
                 : 'Redirection CalDAV refusée. Utilisez directement l’adresse HTTPS du serveur de synchronisation.'];
         }
         return commonExternalCalendarHttpRequest($target, $username, $password, $requestBody, $method, $depth, $redirects + 1, $extraHeaders, $deadline);
     }
     if ($statusCode < 200 || $statusCode >= 300) {
         return ['status' => false, 'code' => $statusCode, 'message' => $method === 'GET'
-            ? 'Le flux ICS a repondu avec le code HTTP ' . $statusCode . '.'
+            ? commonExternalCalendarT('copy.le_flux_ics_a_repondu_avec_le_code_http_statuscode', ['statusCode' => $statusCode])
             : (in_array($statusCode, [401, 403], true)
             ? 'Accès refusé : vérifiez l’identifiant de synchronisation et le mot de passe d’application.'
-            : 'Le serveur CalDAV a repondu avec le code HTTP ' . $statusCode . '.')];
+            : commonExternalCalendarT('copy.le_serveur_caldav_a_repondu_avec_le_code_http_statuscode', ['statusCode' => $statusCode]))];
     }
 
     return ['status' => true, 'code' => $statusCode, 'body' => $responseBody, 'url' => $url];
@@ -299,12 +301,12 @@ function commonExternalCalendarCanCreate(ExternalCalendar $calendar, ?callable $
 function commonExternalCalendarDiscoveryRecords($xml, $baseUrl)
 {
     if (!class_exists('DOMDocument') || stripos($xml, '<!DOCTYPE') !== false) {
-        throw new \RuntimeException('Reponse CalDAV XML invalide ou extension DOM indisponible.');
+        throw new \RuntimeException(commonExternalCalendarT('copy.reponse_caldav_xml_invalide_ou_extension_dom_indisponible'));
     }
     $document = new \DOMDocument();
     if (!@$document->loadXML($xml, LIBXML_NONET | LIBXML_NOCDATA)
         || $document->documentElement->namespaceURI !== 'DAV:' || $document->documentElement->localName !== 'multistatus') {
-        throw new \RuntimeException('Le serveur ne renvoie pas une reponse CalDAV valide.');
+        throw new \RuntimeException(commonExternalCalendarT('copy.le_serveur_ne_renvoie_pas_une_reponse_caldav_valide'));
     }
     $xpath = new \DOMXPath($document);
     $xpath->registerNamespace('d', 'DAV:');
@@ -401,7 +403,7 @@ function commonExternalCalendarDiscover($url, $username, $password, ?callable $r
                     'color' => $record['color'],
                 ];
                 if (count($calendars) > 200) {
-                    return ['status' => false, 'message' => 'Trop d agendas. Utilisez une adresse CalDAV plus precise.'];
+                    return ['status' => false, 'message' => commonExternalCalendarT('copy.trop_d_agendas_utilisez_une_adresse_caldav_plus_precise')];
                 }
             }
             // Only follow discovery properties on the requested resource, not on every calendar.
@@ -422,7 +424,7 @@ function commonExternalCalendarDiscover($url, $username, $password, ?callable $r
         }
     }
     if ($queue) {
-        return ['status' => false, 'message' => 'Decouverte CalDAV trop longue. Utilisez une adresse plus precise.'];
+        return ['status' => false, 'message' => commonExternalCalendarT('copy.decouverte_caldav_trop_longue_utilisez_une_adresse_plus_precise')];
     }
     return $calendars ? ['status' => true, 'calendars' => array_values($calendars)] : ['status' => false, 'message' => $error];
 }
@@ -650,7 +652,7 @@ function commonExternalCalendarParseEvents($calendarData, $etag = '', $strict = 
             'single_source_prefix' => !isset($properties['RRULE']) && !isset($properties['RDATE'])
                 && !isset($properties['RECURRENCE-ID']) ? $uid . '|' : null,
             'source_etag' => trim((string)$etag),
-            'title' => trim((string)commonExternalCalendarUnescapeText($properties['SUMMARY']['value'] ?? '')) ?: 'Evenement externe',
+            'title' => trim((string)commonExternalCalendarUnescapeText($properties['SUMMARY']['value'] ?? '')) ?: commonExternalCalendarT('copy.evenement_externe'),
             'description' => trim((string)commonExternalCalendarUnescapeText($properties['DESCRIPTION']['value'] ?? '')),
             'location' => trim((string)commonExternalCalendarUnescapeText($properties['LOCATION']['value'] ?? '')),
             'timezone' => $start['timezone']->getName(),
@@ -669,12 +671,12 @@ function commonExternalCalendarParseEvents($calendarData, $etag = '', $strict = 
 function commonExternalCalendarParseReport($xml, $strict = false)
 {
     if (!class_exists('DOMDocument')) {
-        return ['status' => false, 'message' => 'L extension DOM est indisponible sur le serveur.'];
+        return ['status' => false, 'message' => commonExternalCalendarT('copy.l_extension_dom_est_indisponible_sur_le_serveur')];
     }
     $document = new \DOMDocument();
     if (stripos((string)$xml, '<!DOCTYPE') !== false || !@$document->loadXML((string)$xml, LIBXML_NONET | LIBXML_NOCDATA)
         || $document->documentElement->namespaceURI !== 'DAV:' || $document->documentElement->localName !== 'multistatus') {
-        return ['status' => false, 'message' => 'La reponse CalDAV est invalide.'];
+        return ['status' => false, 'message' => commonExternalCalendarT('copy.la_reponse_caldav_est_invalide')];
     }
     $xpath = new \DOMXPath($document);
     $xpath->registerNamespace('d', 'DAV:');
@@ -696,15 +698,15 @@ function commonExternalCalendarParseReport($xml, $strict = false)
         }
         if ($calendarData !== '') {
             if ($strict && (!str_contains($calendarData, 'BEGIN:VCALENDAR') || !str_contains($calendarData, 'END:VCALENDAR'))) {
-                return ['status' => false, 'message' => 'Reponse calendrier incomplete.'];
+                return ['status' => false, 'message' => commonExternalCalendarT('copy.reponse_calendrier_incomplete')];
             }
             try { $parsedEvents = commonExternalCalendarParseEvents($calendarData, $etag, $strict); }
-            catch (\RuntimeException $exception) { return ['status' => false, 'message' => 'Les disponibilites ne peuvent pas etre verifiees.']; }
+            catch (\RuntimeException $exception) { return ['status' => false, 'message' => commonExternalCalendarT('copy.les_disponibilites_ne_peuvent_pas_etre_verifiees')]; }
             foreach ($parsedEvents as $event) {
                 $events[$event['source_key']] = $event;
             }
         } elseif ($strict) {
-            return ['status' => false, 'message' => 'Les disponibilites ne peuvent pas etre verifiees.'];
+            return ['status' => false, 'message' => commonExternalCalendarT('copy.les_disponibilites_ne_peuvent_pas_etre_verifiees')];
         }
     }
 
@@ -718,7 +720,7 @@ function commonExternalCalendarSynchronize(ExternalCalendar $calendar, $rangeSta
     $secret = commonExternalCalendarDecryptPassword($calendar->get('password_encrypted'));
     $url = commonExternalCalendarNormalizeUrl($isIcs ? $secret : $calendar->get('calendar_url'));
     if ($calendarId <= 0 || $url === null || (!$isIcs && (trim((string)$calendar->get('username')) === '' || $secret === null))) {
-        $message = 'La configuration du calendrier est incomplete ou ne peut pas etre lue.';
+        $message = commonExternalCalendarT('copy.la_configuration_du_calendrier_est_incomplete_ou_ne_peut_pas_etre_lue');
         $calendar->markSyncResult(false, $message);
         return ['status' => false, 'message' => $message];
     }
@@ -746,7 +748,7 @@ function commonExternalCalendarSynchronize(ExternalCalendar $calendar, $rangeSta
         ? commonExternalCalendarParseIcsFeed((string)$response['body'], $rangeStart, $rangeEnd)
         : commonExternalCalendarParseReport((string)$response['body'], $strict);
     if (empty($parsed['status'])) {
-        $message = trim((string)($parsed['message'] ?? 'La reponse CalDAV ne peut pas etre lue.'));
+        $message = trim((string)($parsed['message'] ?? commonExternalCalendarT('copy.la_reponse_caldav_ne_peut_pas_etre_lue')));
         $calendar->markSyncResult(false, $message);
         return ['status' => false, 'message' => $message];
     }
@@ -762,7 +764,7 @@ function commonExternalCalendarSynchronize(ExternalCalendar $calendar, $rangeSta
     try {
         ExternalCalendarEvent::synchronizeImportedEvents($calendarId, (array)$parsed['events'], $rangeStart, $rangeEnd, $replaceCache);
     } catch (\Throwable $exception) {
-        $message = 'La synchronisation du calendrier a echoue.';
+        $message = commonExternalCalendarT('copy.la_synchronisation_du_calendrier_a_echoue');
         error_log('OMO external calendar synchronization failed: ' . $exception->getMessage());
         $calendar->markSyncResult(false, $message);
         return ['status' => false, 'message' => $message];
@@ -795,7 +797,7 @@ function commonExternalCalendarRefreshForAvailability(int $userId, float $deadli
                 // Availability remains advisory: preserve cached events on a timeout
                 // or provider failure, and apply the usual retry cooldown.
                 error_log('External calendar availability refresh failed: ' . get_class($exception));
-                $calendar->markSyncResult(false, 'Synchronisation indisponible. Donnees existantes conservees.');
+                $calendar->markSyncResult(false, commonExternalCalendarT('copy.synchronisation_indisponible_donnees_existantes_conservees'));
             }
         }
     } finally {

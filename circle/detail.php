@@ -127,9 +127,9 @@
 			<div><?=T_("Holarchie");?>
 
 			<span class='noPrint menuNode' style='float:right; background:#FFF; border-radius:var(--radius-md) var(--radius-md) 0px 0px'>
-			<img src='/img/addentry.png' class='imgbutton' style='margin:0px;' id='btn_add_role'  data-toggle='tooltip' data-placement='bottom' title='<?=T_('Ajouter un noeud',true)?>'>
+			<img src='/img/addentry.png' class='imgbutton' style='margin:0px;' id='btn_add_role'  data-toggle='tooltip' data-placement='bottom' title='<?=T_('Ajouter un nœud',true)?>'>
 			<img src='/img/icon_edit.png' class='imgbutton' style='margin:0px;' id='btn_edit_role'  data-toggle='tooltip' data-placement='bottom' title='<?=T_('Modifier le nœud',true)?>'>
-			<img src='/img/expand-arrows.png' class='imgbutton' style='margin:0px;' id='btn_move_role'  data-toggle='tooltip' data-placement='bottom' title='<?=T_('Déplacer le noeud',true)?>'>
+			<img src='/img/expand-arrows.png' class='imgbutton' style='margin:0px;' id='btn_move_role'  data-toggle='tooltip' data-placement='bottom' title='<?=T_('Déplacer le nœud',true)?>'>
 			<img src='/img/icon_delete.png' class='imgbutton' style='margin:0px;' id='btn_delete_role'  data-toggle='tooltip' data-placement='bottom' title='<?=T_('Supprimer le noeud',true)?>'>
 
 			</span>

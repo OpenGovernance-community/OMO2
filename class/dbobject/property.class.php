@@ -4,6 +4,31 @@
 
 	class Property extends DbObject
 	{
+    protected static function uiMessageSourceLang(): array
+    {
+        return parent::uiMessageSourceLang() + [
+            'copy.type_de_propriete_invalide' => ['text' => 'Type de propriété invalide.', 'context' => 'Interface text in class/dbobject/property.class.php'],
+            'copy.liste_detaillee' => ['text' => 'Liste détaillée', 'context' => 'Interface text in class/dbobject/property.class.php'],
+            'copy.autorite' => ['text' => 'Autorité', 'context' => 'Interface text in class/dbobject/property.class.php'],
+            'copy.veuillez_confirmer_la_conversion_de_la_liste_avant_de_l_enregistrer' => ['text' => 'Veuillez confirmer la conversion de la liste avant de l’enregistrer.', 'context' => 'Interface text in class/dbobject/property.class.php'],
+            'copy.une_liste_heritee_doit_etre_convertie_depuis_le_modele_qui_la_definit' => ['text' => 'Une liste héritée doit être convertie depuis le modèle qui la definit.', 'context' => 'Interface text in class/dbobject/property.class.php'],
+            'copy.l_organisation_de_la_liste_est_introuvable' => ['text' => 'L’organisation de la liste est introuvable.', 'context' => 'Interface text in class/dbobject/property.class.php'],
+            'copy.les_valeurs_de_la_liste_ne_peuvent_pas_etre_chargees' => ['text' => 'Les valeurs de la liste ne peuvent pas être chargées.', 'context' => 'Interface text in class/dbobject/property.class.php'],
+            'copy.la_liste_contient_une_valeur_qui_n_est_pas_un_texte' => ['text' => 'La liste contient une valeur qui n’est pas un texte.', 'context' => 'Interface text in class/dbobject/property.class.php'],
+            'copy.creation_d_autorite_impossible' => ['text' => 'Création d’autorité impossible.', 'context' => 'Interface text in class/dbobject/property.class.php'],
+            'copy.context_une_reference_d_autorite_est_invalide_la_conversion_est_annule' => ['text' => '{context}une référence d’autorité est invalide. La conversion est annulée.', 'context' => 'Interface text in class/dbobject/property.class.php'],
+            'copy.context_l_autorite_id_n_existe_plus_reparez_cette_reference_avant_la_c' => ['text' => '{context}l’autorité #{id} n’existe plus. Réparez cette référence avant la conversion.', 'context' => 'Interface text in class/dbobject/property.class.php'],
+            'copy.context_l_autorite_id_appartient_a_une_autre_organisation_la_conversio' => ['text' => '{context}l’autorité #{id} appartient à une autre organisation. La conversion est annulée.', 'context' => 'Interface text in class/dbobject/property.class.php'],
+
+            'option.texte' => ['text' => 'Texte', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+            'option.chiffre' => ['text' => 'Chiffre', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+            'option.date' => ['text' => 'Date', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+            'option.espace' => ['text' => 'Espace', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+            'option.projet' => ['text' => 'Projet', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+            'option.valeur' => ['text' => 'Valeur', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+        ];
+    }
+
 		public const TYPES = ['type1', 'type2', 'type3', 'type4', 'type5'];
 
 		public static function isTypeEnabled($type, array $lexicon): bool
@@ -21,7 +46,7 @@
 		{
 			$type = $type === null || $type === '' ? 'type1' : (string)$type;
 			if (!in_array($type, self::TYPES, true)) {
-				throw new \InvalidArgumentException('Type de propriete invalide.');
+				throw new \InvalidArgumentException(self::uiMessage('copy.type_de_propriete_invalide'));
 			}
 			return $type;
 		}
@@ -81,7 +106,7 @@
 		{
 			return 'property'; // Nom de la table correspondante
 		}	
-		
+
 		// Défini le contenu de la table
 		public static function rules()
 		{
@@ -95,7 +120,7 @@
 				[['id'], 'safe'],								// Champs protégés (n'apparaissent pas dans les formulaires)
 			];
 		}
-		
+
 		// Défini les labels standarts pour cet objet, affichés dans les formulaires automatiques
 		public static function attributeLabels()
 		{
@@ -145,27 +170,27 @@
 		public static function getListItemTypeOptions()
 		{
 			return array(
-				array('id' => self::LIST_ITEM_TEXT, 'name' => 'Texte'),
-				array('id' => self::LIST_ITEM_NUMBER, 'name' => 'Chiffre'),
-				array('id' => self::LIST_ITEM_DATE, 'name' => 'Date'),
-				array('id' => self::LIST_ITEM_DETAIL, 'name' => 'Liste detaillee'),
-				array('id' => self::LIST_ITEM_HOLON, 'name' => 'Espace'),
-				array('id' => self::LIST_ITEM_PROJECT, 'name' => 'Projet'),
-				array('id' => self::LIST_ITEM_AUTHORITY, 'name' => 'Autorite'),
-				array('id' => self::LIST_ITEM_VALUE, 'name' => 'Valeur'),
+				array('id' => self::LIST_ITEM_TEXT, 'name' => self::uiMessage('option.texte')),
+				array('id' => self::LIST_ITEM_NUMBER, 'name' => self::uiMessage('option.chiffre')),
+				array('id' => self::LIST_ITEM_DATE, 'name' => self::uiMessage('option.date')),
+				array('id' => self::LIST_ITEM_DETAIL, 'name' => self::uiMessage('copy.liste_detaillee')),
+				array('id' => self::LIST_ITEM_HOLON, 'name' => self::uiMessage('option.espace')),
+				array('id' => self::LIST_ITEM_PROJECT, 'name' => self::uiMessage('option.projet')),
+				array('id' => self::LIST_ITEM_AUTHORITY, 'name' => self::uiMessage('copy.autorite')),
+				array('id' => self::LIST_ITEM_VALUE, 'name' => self::uiMessage('option.valeur')),
 			);
 		}
 
 		public static function getTemplateListItemTypeOptions()
 		{
 			return array(
-				array('id' => self::LIST_ITEM_TEXT, 'name' => 'Texte'),
-				array('id' => self::LIST_ITEM_NUMBER, 'name' => 'Chiffre'),
-				array('id' => self::LIST_ITEM_DATE, 'name' => 'Date'),
-				array('id' => self::LIST_ITEM_DETAIL, 'name' => 'Liste detaillee'),
-				array('id' => self::LIST_ITEM_PROJECT, 'name' => 'Projet'),
-				array('id' => self::LIST_ITEM_AUTHORITY, 'name' => 'Autorite'),
-				array('id' => self::LIST_ITEM_VALUE, 'name' => 'Valeur'),
+				array('id' => self::LIST_ITEM_TEXT, 'name' => self::uiMessage('option.texte')),
+				array('id' => self::LIST_ITEM_NUMBER, 'name' => self::uiMessage('option.chiffre')),
+				array('id' => self::LIST_ITEM_DATE, 'name' => self::uiMessage('option.date')),
+				array('id' => self::LIST_ITEM_DETAIL, 'name' => self::uiMessage('copy.liste_detaillee')),
+				array('id' => self::LIST_ITEM_PROJECT, 'name' => self::uiMessage('option.projet')),
+				array('id' => self::LIST_ITEM_AUTHORITY, 'name' => self::uiMessage('copy.autorite')),
+				array('id' => self::LIST_ITEM_VALUE, 'name' => self::uiMessage('option.valeur')),
 			);
 		}
 
@@ -257,28 +282,28 @@
 						continue;
 					}
 					if ($confirmedFrom !== $from || $sourceFormat !== $targetFormat) {
-						throw new \RuntimeException('Veuillez confirmer la conversion de la liste avant de l enregistrer.');
+						throw new \RuntimeException(self::uiMessage('copy.veuillez_confirmer_la_conversion_de_la_liste_avant_de_l_enregistrer'));
 					}
 					$template = $holon->getTemplateHolon();
 					if ($template instanceof Holon) {
 						foreach ($template->getTemplatePropertyDefinitions() as $inherited) {
 							if ((int)($inherited['id'] ?? 0) === $propertyId) {
-								throw new \RuntimeException('Une liste heritee doit etre convertie depuis le modele qui la definit.');
+								throw new \RuntimeException(self::uiMessage('copy.une_liste_heritee_doit_etre_convertie_depuis_le_modele_qui_la_definit'));
 							}
 						}
 					}
 					$local = new HolonProperty();
 					$root = new Holon();
 					if (!$root->load((int)$stored['IDholon_organization'])) {
-						throw new \RuntimeException('L organisation de la liste est introuvable.');
+						throw new \RuntimeException(self::uiMessage('copy.l_organisation_de_la_liste_est_introuvable'));
 					}
 					if (!$local->load([['IDholon', $holon->getId()], ['IDproperty', $propertyId]])
 						|| (int)$stored['IDholon_organization'] !== (int)($holon->get('IDholon_org') ?: $holon->getId())) {
-						throw new \RuntimeException(\dbObject\Organization::formatLexiconText('Cette definition de liste ne peut pas etre convertie depuis ce holon.'));
+						throw new \RuntimeException(\dbObject\Organization::formatLexiconText('Cette définition de liste ne peut pas être convertie depuis ce holon.'));
 					}
 					$rows = self::fetchAll('SELECT id FROM `holonproperty` WHERE IDproperty = :id ORDER BY id FOR UPDATE', ['id' => $propertyId]);
 					if (!is_array($rows)) {
-						throw new \RuntimeException('Les valeurs de la liste ne peuvent pas etre chargees.');
+						throw new \RuntimeException(self::uiMessage('copy.les_valeurs_de_la_liste_ne_peuvent_pas_etre_chargees'));
 					}
 					$authoritiesToDelete = [];
 					foreach ($rows as $row) {
@@ -295,7 +320,7 @@
 						foreach ($parts['items'] as $item) {
 							if ($from === self::LIST_ITEM_TEXT) {
 								if (!is_scalar($item)) {
-									throw new \RuntimeException('La liste contient une valeur qui n est pas un texte.');
+									throw new \RuntimeException(self::uiMessage('copy.la_liste_contient_une_valeur_qui_n_est_pas_un_texte'));
 								}
 								$label = trim((string)$item);
 								if ($label === '') { continue; }
@@ -304,7 +329,7 @@
 								$authority->set('label', $label);
 								$authority->set('is_local', true);
 								$result = $authority->save();
-								if (empty($result['status'])) { throw new \RuntimeException($result['text'] ?? 'Creation d autorite impossible.'); }
+								if (empty($result['status'])) { throw new \RuntimeException($result['text'] ?? self::uiMessage('copy.creation_d_autorite_impossible')); }
 								$items[] = (int)$authority->getId();
 							} else {
 								$id = self::listAuthorityReferenceId($item);
@@ -315,14 +340,14 @@
 								}
 								$context = 'Liste "' . (string)$stored['name'] . \dbObject\Organization::formatLexiconText('", holon #') . (int)$value->get('IDholon') . ' : ';
 								if ($id === 0) {
-									throw new \RuntimeException($context . 'une reference d autorite est invalide. La conversion est annulee.');
+									throw new \RuntimeException(self::uiMessage('copy.context_une_reference_d_autorite_est_invalide_la_conversion_est_annule', ['context' => $context]));
 								}
 								$authority = new Authority();
 								if (!$authority->load($id)) {
-									throw new \RuntimeException($context . 'l autorite #' . $id . ' n existe plus. Reparez cette reference avant la conversion.');
+									throw new \RuntimeException(self::uiMessage('copy.context_l_autorite_id_n_existe_plus_reparez_cette_reference_avant_la_c', ['context' => $context, 'id' => $id]));
 								}
 								if ((int)$authority->getOrganizationId() !== (int)$root->get('IDorganization')) {
-									throw new \RuntimeException($context . 'l autorite #' . $id . ' appartient a une autre organisation. La conversion est annulee.');
+									throw new \RuntimeException(self::uiMessage('copy.context_l_autorite_id_appartient_a_une_autre_organisation_la_conversio', ['context' => $context, 'id' => $id]));
 								}
 								$items[] = (string)$authority->get('label');
 								$authoritiesToDelete[$id] = $id;
@@ -378,5 +403,5 @@
 			return $parts;
 		}
 	}
-	
+
 ?>

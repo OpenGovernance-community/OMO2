@@ -4,14 +4,16 @@
 - All text files must use LF line endings.
 - Never add invisible characters such as BOM, zero-width spaces, or directional markers.
 - Keep UTF-8 intact across the project.
-- Keep French accents in user-visible strings when the product copy is meant to display them.
-- Do not replace intended visible accents with ASCII unless explicitly requested.
-- Write French user-visible copy with its normal accents, apostrophes, quotation marks, and punctuation.
+- Les textes français affichés doivent être correctement orthographiés, avec leurs accents et apostrophes, y compris dans les libellés, boutons, aides, notifications, messages d'erreur, e-mails et sources de traduction.
+- Préserver et vérifier l'UTF-8 en cas de problème d'encodage ; ne jamais retirer les accents des textes affichés pour le contourner.
+- Avant de terminer une modification de texte, relire le français et rechercher les élisions incorrectes telles que « l utilisateur », « d acces », « n est » ou « aujourd hui ». Vérifier aussi les accents des majuscules (« État », « À », « Échec »).
+- Conserver les identifiants techniques, clés de traduction, noms de champs, valeurs utilisées comme clés textuelles SQL, chemins et formats machine existants ; corriger uniquement leurs libellés et descriptions affichés.
 - When reading or checking UTF-8 text with Windows PowerShell, use an explicit UTF-8 encoding (for example `Get-Content -Encoding utf8`) or PowerShell 7. Do not treat mojibake in a legacy console as proof that a UTF-8 file is corrupted; verify its bytes before changing it.
 - Prefer the existing dbObject autoload over direct `require_once` of dbObject class files. Only add a direct class include when a file is intentionally isolated from the shared bootstrap that normally initializes autoloading.
 - In `dbObject::rules()`, never declare a foreign key field in an `integer` rule. Foreign keys must live only in their `fk` rule, otherwise `adminEdit` can render them as plain text inputs instead of automatic selects.
 - Name SQL migrations with an explicit sortable sequence when several files share the same date, using `YYYY-MM-DD-NN-description.sql`, so dependency order is guaranteed by filename sorting.
 - For PHP-rendered UI translations, keep the module or page source strings close to the file that renders them, define a local `$sourceLang` array with `text` or `one`/`other` plus `context`, load a single bundle once near the top of the file, and render visible text through `t(...)` or a shared wrapper instead of hardcoding strings in markup.
+- Lors d'une correction de texte affiché, mettre à jour sa source dans le bundle du module et raccorder les textes encore en dur au mécanisme de traduction. Préserver les paramètres nommés et les formes de pluriel ; l'ancien raccourci `T_()` ne constitue pas à lui seul une traduction active.
 - For shared JavaScript used by multiple pages, do not duplicate translated strings in every page. Prefer a dedicated PHP JSON endpoint under a shared location such as `/common/jstranslation/`, keep the JS source strings in one shared PHP file, load one bundle server-side, and let the JS fetch that payload at startup with a small local fallback only when needed.
 - When several PHP files or JS endpoints share the same translation domain, extract the source language arrays and bundle-loading wrappers into a shared helper instead of duplicating them, but keep page-specific strings in the page or module that owns them.
 - For PHP background workers, cron scripts, and async CLI dispatch, do not trust `PHP_BINARY` blindly on hosted environments. It may point to `php-fpm` or `php-cgi` under FPM. Prefer an explicit CLI binary, reject FPM/CGI executables for worker launchers, and add enough logging to diagnose failed async dispatch.

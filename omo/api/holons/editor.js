@@ -1027,7 +1027,7 @@ function updateAuthorityDeletionCounts(authorityRow) {
     const counts = {
         authority: formatAuthorityDeletionCount(1, omoUiText("autorite", "autorité"), omoUiText("autorites", "autorités")),
         children: formatAuthorityDeletionCount(impact.descendants, 'sous-autorité', 'sous-autorités'),
-        rules: formatAuthorityDeletionCount(impact.rules, omoUiText("regle_concernee", "règle concernée"), 'regles concernees')
+        rules: formatAuthorityDeletionCount(impact.rules, omoUiText("regle_concernee", "règle concernée"), (window.omoUiText || function (key, fallback) { return fallback; })("copy_regles_concernees", "règles concernées"))
     };
     Object.keys(counts).forEach(function (name) {
         authorityRow.querySelectorAll('[data-authority-deletion-count="' + name + '"]').forEach(function (element) {
@@ -1098,7 +1098,7 @@ function renderAuthorityDeletionChoices(authorityId, draft) {
         + '<div class="omo-holon-create__authority-deletion" data-authority-deletion-options>'
         + ("  <p>" + omoUiHtml("choisissez_ce_qui_doit_etre_conserve_avant_validation", "Choisissez ce qui doit être conservé avant validation.") + "</p>")
         + ("  <fieldset><legend>" + omoUiHtml("cette_autorite", "Cette autorité") + "</legend>")
-        + '    <label><input type="radio" name="' + prefix + '-authority" value="delete" data-authority-deletion-choice="authority"' + checked('authority', 'delete', 'reassign') + '> Supprimer definitivement</label>'
+        + '    <label><input type="radio" name="' + prefix + '-authority" value="delete" data-authority-deletion-choice="authority"' + checked('authority', 'delete', 'reassign') + (">" + (window.omoUiText || function (key, fallback) { return fallback; })("copy_supprimer_definitivement", " Supprimer définitivement") + "</label>")
             + '    <label><input type="radio" name="' + prefix + '-authority" value="reassign" data-authority-deletion-choice="authority"' + checked('authority', 'reassign', 'reassign') + '> Remonter à l’espace parent</label>'
         + '  </fieldset>'
         + ("  <p>" + omoUiHtml("les_sous_autorites_et_les_regles_seront_conservees_et_rattachees_a_leur_autorite_parente_s", "Les sous-autorités et les règles seront conservées et rattachées à leur autorité parente si possible.") + "</p>")
@@ -1162,8 +1162,8 @@ function renderAuthorityListRow(value) {
     const rootAuthoritySelected = canCreateRootAuthority() && parentId <= 0;
     const delegationField = authorityId > 0 || rootAuthoritySelected ? '' : ''
         + '      <select class="omo-holon-create__authority-delegation generic-form-control"' + (parentId <= 0 ? ' disabled' : '') + '>'
-        + '          <option value="partial"' + (delegationMode !== 'complete' ? ' selected' : '') + (partialAllowed ? '' : ' disabled') + '>Delegation partielle</option>'
-        + '          <option value="complete"' + (delegationMode === 'complete' ? ' selected' : '') + (completeAllowed ? '' : ' disabled') + '>Delegation complete</option>'
+        + '          <option value="partial"' + (delegationMode !== 'complete' ? ' selected' : '') + (partialAllowed ? '' : ' disabled') + (">" + (window.omoUiText || function (key, fallback) { return fallback; })("copy_delegation_partielle", "Délégation partielle") + "</option>")
+        + '          <option value="complete"' + (delegationMode === 'complete' ? ' selected' : '') + (completeAllowed ? '' : ' disabled') + (">" + (window.omoUiText || function (key, fallback) { return fallback; })("copy_delegation_complete", "Délégation complète") + "</option>")
         + '      </select>';
     const authorityDetails = (authorityId > 0 || parentId > 0 || rootAuthoritySelected) && (authorityId > 0 || delegationMode !== 'complete')
         ? '      <input type="text" class="omo-holon-create__authority-label generic-form-control" value="' + escapeHtml(label) + '" placeholder="Nouvelle autorité">'
@@ -1456,7 +1456,7 @@ function renderPropertyInput(property) {
     if (formatId === 6) {
         let parts = {};
         try { parts = JSON.parse(localValue) || {}; } catch (error) {}
-        return '<input type="text" class="omo-holon-create__property-value-text-html-title generic-form-control" value="' + escapeHtml(parts.text || '') + '" placeholder="Texte affiche">'
+        return '<input type="text" class="omo-holon-create__property-value-text-html-title generic-form-control" value="' + escapeHtml(parts.text || '') + ("\" placeholder=\"" + String((window.omoUiText || function (key, fallback) { return fallback; })("displayed_text_placeholder", "Texte affiché")).replace(/[&<>"']/g, function (c) { return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]; }) + "\">")
             + ("<textarea class=\"omo-holon-create__property-value-text-html-detail generic-form-control\" rows=\"5\" placeholder=\"" + omoUiHtml("detail_html", "Détail HTML") + "\">") + escapeHtml(parts.detail || '') + '</textarea>';
     }
 

@@ -4,6 +4,20 @@ if (!function_exists('commonChoiceDecisionCardsEscape')) {
     function commonChoiceDecisionCardsEscape($value)
     {
         return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+
+function commonChoiceDecisionCardsUiT(string $key, array $variables = []): string
+{
+    static $sourceLang = [
+        'copy.decision' => ['text' => 'Décision', 'context' => 'Interface text in common/choice/decision_cards.php'],
+    ];
+    require_once __DIR__ . '/../translation_bundles.php';
+    static $bundles = [];
+    $locale = translationBundleResolveRequestLocale();
+    $bundle = class_exists(\dbObject\TranslationBundle::class)
+        ? ($bundles[$locale] ??= loadTranslationBundle('common_choice_decision_cards', $locale, $sourceLang)) : $sourceLang;
+    return t($key, $variables, $bundle, $sourceLang);
+}
+
     }
 }
 
@@ -27,7 +41,7 @@ if (!function_exists('commonChoiceRenderDecisionCard')) {
             $escape = 'commonChoiceDecisionCardsEscape';
         }
 
-        $fallbackTitle = trim((string)($options['fallbackTitle'] ?? 'Decision'));
+        $fallbackTitle = trim((string)($options['fallbackTitle'] ?? commonChoiceDecisionCardsUiT('copy.decision')));
         $openUrlAttribute = commonChoiceDecisionCardsResolveDataAttribute($options['openUrlAttribute'] ?? 'data-open-url', 'data-open-url');
         $openTitleAttribute = commonChoiceDecisionCardsResolveDataAttribute($options['openTitleAttribute'] ?? 'data-open-title', 'data-open-title');
         $preserveDescriptionBreaks = !empty($options['preserveDescriptionBreaks']);

@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/account-translations.php';
+
 
 require_once '../shared_functions.php';
 require_once __DIR__ . '/patreon.php';
@@ -129,11 +131,11 @@ if ($code === '') {
 try {
     $organizationId = (int)$transaction->get('IDorganization');
     if ($organizationId > 0 && !patreonUserCanManageOrganization($userId, $organizationId)) {
-        throw new RuntimeException('Les droits de gestion de cette organisation ont ete retires.');
+        throw new RuntimeException(commonAccountUiT('copy.les_droits_de_gestion_de_cette_organisation_ont_ete_retires'));
     }
     \dbObject\UserPatreon::withConnectionLock(static function () use ($userId, $organizationId, $code) {
         if ($organizationId > 0 && !patreonUserCanManageOrganization($userId, $organizationId)) {
-            throw new RuntimeException('Les droits de gestion de cette organisation ont ete retires.');
+            throw new RuntimeException(commonAccountUiT('copy.les_droits_de_gestion_de_cette_organisation_ont_ete_retires'));
         }
         $tokens = patreonExchangeCodeForTokens($code);
         $profile = patreonExtractProfile(patreonFetchIdentity($tokens['access_token']));

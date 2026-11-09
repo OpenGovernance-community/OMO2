@@ -143,7 +143,7 @@ try {
         if ($isCreatingDecision && $decisionId <= 0) {
             $decisionId = (int)($response->payload['decisionId'] ?? 0);
             if ($decisionId <= 0) {
-                throw new RuntimeException('Impossible de creer le scrutin.');
+                throw new RuntimeException(omoDecisionUiT('copy.impossible_de_creer_le_scrutin'));
             }
         }
         $results[$groupPayload['originalIndex']] = $response->payload;

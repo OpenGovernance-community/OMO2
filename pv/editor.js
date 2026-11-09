@@ -331,7 +331,7 @@ function drawPieChart(data) {
 					{ title: 'Titre 1', tag: 'h1', className: '', value: 'h1' },
 					{ title: 'Titre 2', tag: 'h2', className: '', value: 'h2' },
 					{ title: 'Titre 3', tag: 'h3', className: '', value: 'h3' },
-					{ title: 'Decision', tag: 'div', className: 'monstyledemenu', value: 'h4' },
+					{ title: 'Décision', tag: 'div', className: 'monstyledemenu', value: 'h4' },
 					{ title: 'Tâche/action', tag: 'div', className: 'monstyledemenu', value: 'h5' },
 					   
 				];

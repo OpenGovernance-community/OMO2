@@ -33,7 +33,7 @@ class ChatThread extends DbObject
             'id' => 'ID',
             'IDorganization' => 'Organisation',
             'IDuser_created' => 'Créateur',
-            'subject_type' => 'Type d objet',
+            'subject_type' => 'Type d’objet',
             'subject_id' => 'Objet',
             'title' => 'Titre',
             'parameters' => 'Paramètres',
@@ -46,8 +46,8 @@ class ChatThread extends DbObject
     public static function attributeDescriptions()
     {
         return [
-            'subject_type' => 'Type générique de l objet auquel cette discussion est liée.',
-            'subject_id' => 'Identifiant de l objet dans son type.',
+            'subject_type' => 'Type générique de l’objet auquel cette discussion est liée.',
+            'subject_id' => 'Identifiant de l’objet dans son type.',
         ];
     }
 

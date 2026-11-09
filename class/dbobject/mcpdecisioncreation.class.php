@@ -12,7 +12,7 @@ class McpDecisionCreation extends DbObject
     }
     public static function attributeLabels()
     {
-        return ['id' => 'ID', 'created_at' => 'Creation', 'completed' => 'Termine', 'IDuser' => 'Personne',
+        return ['id' => 'ID', 'created_at' => 'Création', 'completed' => 'Terminé', 'IDuser' => 'Personne',
             'IDorganization' => 'Organisation', 'IDdecision_process' => 'Scrutin', 'key_hash' => 'Demande', 'payload_hash' => 'Contenu'];
     }
     public static function attributeLength() { return ['key_hash' => 64, 'payload_hash' => 64]; }

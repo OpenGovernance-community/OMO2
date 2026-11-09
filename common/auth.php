@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/account-translations.php';
+
 
 require_once __DIR__ . '/environment_subdomains.php';
 require_once __DIR__ . '/runtime_log.php';
@@ -2375,7 +2377,7 @@ function commonGetPasswordPolicyValidationMessage($minLength = null)
         ? (int)$minLength
         : commonGetPasswordPolicyMinLength();
 
-    return 'Le mot de passe doit faire au moins ' . $minLength . ' caracteres et contenir une minuscule, une majuscule, un chiffre et un caractere special.';
+    return commonAccountUiT('copy.le_mot_de_passe_doit_faire_au_moins_minlength_caracteres_et_contenir_u', ['minLength' => $minLength]);
 }
 
 function commonUserHasPasswordHash($hash)
@@ -3707,7 +3709,7 @@ function commonRenderMagicLoginPage(array $options = [])
                 <div class="auth-logo">
                     <img src="<?= htmlspecialchars($organizationLogo) ?>" alt="<?= htmlspecialchars(commonAuthT('auth.page.logo_alt', [], $lang, $sourceLang)) ?>">
                 </div>
-                
+
                 <h1><?= htmlspecialchars($organizationContext['name'] ?: $appName) ?></h1>
                 <p><?= htmlspecialchars($intro) ?></p>
                 <div class="auth-kicker"><?= htmlspecialchars($appName) ?></div>

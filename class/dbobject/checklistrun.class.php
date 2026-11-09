@@ -30,16 +30,16 @@ class ChecklistRun extends DbObject
         return [
             'id' => 'ID',
             'IDchecklist' => 'Processus',
-            'IDchecklisttrigger' => 'Declencheur',
+            'IDchecklisttrigger' => 'Déclencheur',
             'IDorganization' => 'Organisation',
             'IDholon' => 'Contexte',
             'IDproject_root' => 'Projet racine',
-            'IDuser_created' => 'Declenchee par',
-            'scheduled_for' => 'Date de reference',
+            'IDuser_created' => 'Déclenchée par',
+            'scheduled_for' => 'Date de référence',
             'status' => 'Statut',
-            'created_at' => 'Creation',
-            'updated_at' => 'Mise a jour',
-            'completed_at' => 'Terminee le',
+            'created_at' => 'Création',
+            'updated_at' => 'Mise à jour',
+            'completed_at' => 'Terminée le',
         ];
     }
 
@@ -53,8 +53,8 @@ class ChecklistRun extends DbObject
         return [
             'status' => [
                 [self::STATUS_RUNNING, 'En cours'],
-                [self::STATUS_COMPLETED, 'Terminee'],
-                [self::STATUS_CANCELLED, 'Annulee'],
+                [self::STATUS_COMPLETED, 'Terminée'],
+                [self::STATUS_CANCELLED, 'Annulée'],
                 [self::STATUS_ERROR, 'Erreur'],
             ],
         ];

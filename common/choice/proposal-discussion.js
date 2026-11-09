@@ -168,7 +168,7 @@
             ? '<label class="generic-form-field"><span class="generic-form-label">Description</span><div data-omo-proposal-html-field><div class="omo-proposal-html-editor" data-omo-proposal-html-editor data-omo-proposal-editor-description></div><textarea hidden aria-hidden="true" name="description" data-omo-proposal-html-value></textarea></div></label>'
             : '<input type="hidden" name="description" value="">';
         var urlField = proposalContent.url !== false
-            ? '<label class="generic-form-field"><span class="generic-form-label">Lien d information</span><input class="generic-form-control generic-form-control--compact" type="url" name="info_url" maxlength="500" placeholder="https://..."></label>'
+            ? '<label class="generic-form-field"><span class="generic-form-label">Lien d’information</span><input class="generic-form-control generic-form-control--compact" type="url" name="info_url" maxlength="500" placeholder="https://..."></label>'
             : '<input type="hidden" name="info_url" value="">';
         return ''
             + '<form class="omo-proposal-popup-content omo-proposal-editor generic-form-stack generic-form-stack--compact" data-omo-proposal-editor data-topbar-modal-max-width="660px">'
@@ -698,7 +698,7 @@
             knownLink.className = 'omo-proposal-live-link';
             knownLink.target = '_blank';
             knownLink.rel = 'noopener noreferrer';
-            knownLink.textContent = 'Plus d infos';
+            knownLink.textContent = 'Plus d’infos';
             actions.parentNode.insertBefore(knownLink, actions);
         }
         if (knownLink) {
@@ -860,9 +860,9 @@
                         window.commonTopbarCloseModal();
                     }
                     if (typeof window.omoDecisionOpenNestedDrawer === 'function') {
-                        window.omoDecisionOpenNestedDrawer('Modifier la decision hors reorg', payload.governanceEditorUrl, '');
+                        window.omoDecisionOpenNestedDrawer((window.omoUiText || function (key, fallback) { return fallback; })("copy_modifier_la_decision_hors_reorg", "Modifier la décision hors reorg"), payload.governanceEditorUrl, '');
                     } else if (typeof window.commonTopbarOpenDrawer === 'function') {
-                        window.commonTopbarOpenDrawer('Modifier la decision hors reorg', payload.governanceEditorUrl, 'fetch');
+                        window.commonTopbarOpenDrawer((window.omoUiText || function (key, fallback) { return fallback; })("copy_modifier_la_decision_hors_reorg", "Modifier la décision hors reorg"), payload.governanceEditorUrl, 'fetch');
                     } else {
                         window.location.href = payload.governanceEditorUrl;
                     }

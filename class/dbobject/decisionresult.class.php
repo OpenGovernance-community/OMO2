@@ -46,7 +46,7 @@ class DecisionResult extends DbObject
     public static function attributeDescriptions()
     {
         return [
-            'parameters' => 'Structure de résultat libre dependant de la méthode d’évaluation.',
+            'parameters' => 'Structure de résultat libre dépendant de la méthode d’évaluation.',
         ];
     }
 

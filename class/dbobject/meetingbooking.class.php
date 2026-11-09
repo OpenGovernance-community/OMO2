@@ -21,13 +21,13 @@ class MeetingBooking extends DbObject
     }
     public static function attributeLabels()
     {
-        return ['IDuser' => 'Utilisateur', 'IDexternalcalendar' => 'Calendrier', 'token' => 'Reference',
+        return ['IDuser' => 'Utilisateur', 'IDexternalcalendar' => 'Calendrier', 'token' => 'Référence',
             'IDuser_guest' => 'Visiteur identifié', 'IDexternalcalendar_guest' => 'Calendrier du visiteur',
             'guest_resource_url' => 'Ressource CalDAV du visiteur', 'guest_calendar_status' => 'Ajout dans le calendrier du visiteur',
-            'status' => 'Etat', 'guest_name' => 'Nom', 'guest_email' => 'E-mail', 'reason' => 'Motif',
-            'preparation_minutes' => 'Preparation (minutes)', 'closing_minutes' => 'Cloture (minutes)',
-            'start_at' => 'Debut', 'end_at' => 'Fin', 'resource_url' => 'Ressource CalDAV',
-            'calendar_data' => 'Evenement', 'created_at' => 'Creation', 'email_sent_at' => 'E-mail envoye', 'meeting_method' => 'Moyen de rencontre'];
+            'status' => 'État', 'guest_name' => 'Nom', 'guest_email' => 'E-mail', 'reason' => 'Motif',
+            'preparation_minutes' => 'Préparation (minutes)', 'closing_minutes' => 'Clôture (minutes)',
+            'start_at' => 'Début', 'end_at' => 'Fin', 'resource_url' => 'Ressource CalDAV',
+            'calendar_data' => 'Événement', 'created_at' => 'Création', 'email_sent_at' => 'E-mail envoyé', 'meeting_method' => 'Moyen de rencontre'];
     }
     public function meetingMethod(): ?array { return json_decode((string)$this->get('meeting_method'), true) ?: null; }
     public static function pendingIntervals(int $userId, \DateTimeInterface $start, \DateTimeInterface $end, string $except = ''): array

@@ -30,8 +30,8 @@
 				'ip' => 'IP',
 				'user_agent' => 'User agent',
 				'browser' => 'Navigateur',
-				'os' => 'Systeme',
-				'created_at' => 'Cree le',
+				'os' => 'Système',
+				'created_at' => 'Créé le',
 			];
 		}
 

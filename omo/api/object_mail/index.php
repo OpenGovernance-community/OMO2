@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../../ui_translations.php';
+
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once dirname(__DIR__, 3) . '/common/object_mail/ui.php';
 require_once dirname(__DIR__, 3) . '/common/object_mail/delivery.php';
@@ -14,7 +16,7 @@ try {
     $_SESSION['objectMailCsrf'] ??= bin2hex(random_bytes(32));
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!is_string($_POST['csrf'] ?? null) || !hash_equals($_SESSION['objectMailCsrf'], $_POST['csrf'])) throw new DomainException('Formulaire invalide. Rechargez la page.');
-        if (array_diff(array_keys($_POST), ['csrf', 'subject', 'message', 'message_format', 'request_key', 'audience_token', 'recipient_selection', 'recipient_ids'])) throw new InvalidArgumentException('Champ non autorise.');
+        if (array_diff(array_keys($_POST), ['csrf', 'subject', 'message', 'message_format', 'request_key', 'audience_token', 'recipient_selection', 'recipient_ids'])) throw new InvalidArgumentException(omoInterfaceUiT('copy.champ_non_autorise'));
         if (($_POST['recipient_selection'] ?? null) !== '1' || !is_array($_POST['recipient_ids'] ?? null)) throw new InvalidArgumentException(omoObjectMailT('selection_empty'));
         $args = ['object_type' => $type, 'object_id' => $id] + array_diff_key($_POST, ['csrf' => true, 'recipient_selection' => true, 'recipient_ids' => true]);
         $result = \dbObject\ObjectMail::send($oid, $args, null, $_POST['recipient_ids']);

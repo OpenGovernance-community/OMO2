@@ -27,10 +27,10 @@ class OrganizationalMaturityAssessment extends DbObject
             'IDuser' => 'Utilisateur',
             'IDorganization' => 'Organisation',
             'public_token' => 'Lien public',
-            'private_token_hash' => 'Cle de modification',
-            'created_at' => 'Cree le',
-            'updated_at' => 'Modifie le',
-            'completed_at' => 'Termine le',
+            'private_token_hash' => 'Clé de modification',
+            'created_at' => 'Créé le',
+            'updated_at' => 'Modifié le',
+            'completed_at' => 'Terminé le',
         ];
     }
 

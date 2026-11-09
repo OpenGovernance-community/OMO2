@@ -7,7 +7,12 @@ class DecisionResponse extends DbObject
         {
             return [
                 'impossible_de_sauvegarder_le_bulletin_et_son_agenda' => ['text' => 'Impossible de sauvegarder le bulletin et son agenda.', 'context' => 'Validation or action feedback for decisionresponse.'],
-            ];
+
+                'copy.invalidee' => ['text' => 'Invalidée', 'context' => 'Interface text in class/dbobject/decisionresponse.class.php'],
+
+                'option.brouillon' => ['text' => 'Brouillon', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+                'option.soumise' => ['text' => 'Soumise', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+        ];
         }
 
     const STATUS_DRAFT = 'draft';
@@ -50,7 +55,7 @@ class DecisionResponse extends DbObject
     public static function attributeDescriptions()
     {
         return [
-            'parameters' => 'Charge utile libre dependant de la méthode d’évaluation.',
+            'parameters' => 'Charge utile libre dépendant de la méthode d’évaluation.',
         ];
     }
 
@@ -69,9 +74,9 @@ class DecisionResponse extends DbObject
     public static function getStatusCatalog()
     {
         return [
-            self::STATUS_DRAFT => 'Brouillon',
-            self::STATUS_SUBMITTED => 'Soumise',
-            self::STATUS_INVALIDATED => 'Invalidee',
+            self::STATUS_DRAFT => self::uiMessage('option.brouillon'),
+            self::STATUS_SUBMITTED => self::uiMessage('option.soumise'),
+            self::STATUS_INVALIDATED => self::uiMessage('copy.invalidee'),
         ];
     }
 

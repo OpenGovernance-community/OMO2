@@ -5,11 +5,11 @@ function commonLmsRenderContentIndicators(array $indicators, bool $inverse = fal
 {
     static $lang = null;
     $sourceLang = [
-        'video.present' => ['text' => 'Video presente', 'context' => 'Tooltip for a course containing video content.'],
-        'video.absent' => ['text' => 'Aucune video', 'context' => 'Tooltip for a course without video content.'],
-        'homework.present' => ['text' => 'Devoirs presents', 'context' => 'Tooltip for a course containing homework.'],
+        'video.present' => ['text' => 'Vidéo présente', 'context' => 'Tooltip for a course containing video content.'],
+        'video.absent' => ['text' => 'Aucune vidéo', 'context' => 'Tooltip for a course without video content.'],
+        'homework.present' => ['text' => 'Devoirs présents', 'context' => 'Tooltip for a course containing homework.'],
         'homework.absent' => ['text' => 'Aucun devoir', 'context' => 'Tooltip for a course without homework.'],
-        'quiz.present' => ['text' => 'Quiz present', 'context' => 'Tooltip for a course containing a quiz.'],
+        'quiz.present' => ['text' => 'Quiz présent', 'context' => 'Tooltip for a course containing a quiz.'],
         'quiz.absent' => ['text' => 'Aucun quiz', 'context' => 'Tooltip for a course without quizzes.'],
     ];
     $lang ??= loadTranslationBundle('lms_content_indicators', translationBundleResolveRequestLocale('lang'), $sourceLang);

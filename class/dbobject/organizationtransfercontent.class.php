@@ -4,6 +4,19 @@ namespace dbObject;
 /** OMO 2 additions kept separate from the legacy OMO 1 conversion. */
 class OrganizationTransferContent
 {
+        private static function uiMessage(string $key, array $variables = []): string
+{
+    static $sourceLang = [
+        'copy.competence_importee_invalide' => ['text' => 'Compétence importée invalide.', 'context' => 'Interface text in class/dbobject/organizationtransfercontent.class.php'],
+    ];
+    require_once __DIR__ . '/../../common/translation_bundles.php';
+    static $bundles = [];
+    $locale = \translationBundleResolveRequestLocale();
+    $bundle = class_exists(\dbObject\TranslationBundle::class)
+        ? ($bundles[$locale] ??= \loadTranslationBundle('class_dbobject_organizationtransfercontent_class', $locale, $sourceLang)) : $sourceLang;
+    return \t($key, $variables, $bundle, $sourceLang);
+}
+
     private static function collection(string $class, array $where): array
     {
         $items = new $class();
@@ -90,7 +103,7 @@ class OrganizationTransferContent
             }
             foreach ($record['skills'] ?? [] as $skill) {
                 $competence = Competence::findOrCreate($skill['name'] ?? '', $skill['category'] ?? '', (int)$organization->getId());
-                if (!$competence) { throw new \RuntimeException('Competence importee invalide.'); }
+                if (!$competence) { throw new \RuntimeException(self::uiMessage('copy.competence_importee_invalide')); }
                 $link = new UserCompetence();
                 $link->set('IDuser', $userId);
                 $link->set('IDorganization', (int)$organization->getId());

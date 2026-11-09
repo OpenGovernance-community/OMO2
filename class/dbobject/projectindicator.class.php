@@ -18,7 +18,7 @@ class ProjectIndicator extends DbObject
 
     public static function attributeLabels()
     {
-        return ['id' => 'ID', 'IDproject' => 'Projet', 'IDstatindicator' => 'Indicateur', 'datecreation' => 'Date d ajout'];
+        return ['id' => 'ID', 'IDproject' => 'Projet', 'IDstatindicator' => 'Indicateur', 'datecreation' => 'Date d’ajout'];
     }
 
     public function save()

@@ -2,7 +2,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
-const source = fs.readFileSync(require('node:path').join(__dirname, '../omo/assets/js/ui-translations.js'), 'utf8');
+const source = fs.readFileSync(require('node:path').join(__dirname, '../common/assets/ui-translations.js'), 'utf8');
 
 (async function () {
     const window = {omoConfig: {uiTexts: {
@@ -28,6 +28,16 @@ const source = fs.readFileSync(require('node:path').join(__dirname, '../omo/asse
     await standalone.omoUiReady;
     assert.equal(requested, '/common/jstranslation/omo_ui.php');
     assert.equal(standalone.omoUiText('greeting', '', {name: 'Zoé'}), 'Guten Tag, Zoé.');
+    const sharedTranslator = standalone.omoUiText;
+    vm.runInNewContext(source, {window: standalone, Promise});
+    assert.equal(standalone.omoUiText, sharedTranslator, 'Loading the shared topbar and OMO must keep one translator.');
+    const localized = {};
+    vm.runInNewContext(source, {window: localized, Promise, document: {documentElement: {lang: 'de'}}, fetch: async (url) => {
+        assert.equal(url, '/common/jstranslation/omo_ui.php?lang=de');
+        return {ok: true, json: async () => ({greeting: 'Guten Tag, {name}.'})};
+    }});
+    await localized.omoUiReady;
+    assert.equal(localized.omoUiText('greeting', '', {name: 'Zoé'}), 'Guten Tag, Zoé.');
     const offline = {};
     vm.runInNewContext(source, {window: offline, Promise, fetch: async () => { throw new Error('offline'); }});
     await offline.omoUiReady;

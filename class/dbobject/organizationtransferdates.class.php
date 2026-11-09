@@ -4,6 +4,19 @@ namespace dbObject;
 /** Shift typed dates together; export metadata and free text keep their contents. */
 class OrganizationTransferDates
 {
+        private static function uiMessage(string $key, array $variables = []): string
+{
+    static $sourceLang = [
+        'copy.le_mode_jeu_de_role_exige_une_date_d_export_valide_dans_le_fichier' => ['text' => 'Le mode jeu de rôle exige une date d’export valide dans le fichier.', 'context' => 'Interface text in class/dbobject/organizationtransferdates.class.php'],
+    ];
+    require_once __DIR__ . '/../../common/translation_bundles.php';
+    static $bundles = [];
+    $locale = \translationBundleResolveRequestLocale();
+    $bundle = class_exists(\dbObject\TranslationBundle::class)
+        ? ($bundles[$locale] ??= \loadTranslationBundle('class_dbobject_organizationtransferdates_class', $locale, $sourceLang)) : $sourceLang;
+    return \t($key, $variables, $bundle, $sourceLang);
+}
+
     private const FIELDS = [
         'createdAt', 'updatedAt', 'archivedAt', 'closedAt', 'openedAt', 'statusAt',
         'lastConnectionAt', 'plannedStartAt', 'plannedEndAt', 'blockedUntil',
@@ -16,12 +29,12 @@ class OrganizationTransferDates
     {
         $exportedAt = $payload['exportedAt'] ?? null;
         if (!is_string($exportedAt) || !preg_match('/^\d{4}-\d{2}-\d{2}(?:T.*)?$/D', $exportedAt)) {
-            throw new \RuntimeException('Le mode jeu de role exige une date d export valide dans le fichier.');
+            throw new \RuntimeException(self::uiMessage('copy.le_mode_jeu_de_role_exige_une_date_d_export_valide_dans_le_fichier'));
         }
         try { $exportDate = new \DateTimeImmutable($exportedAt); }
-        catch (\Throwable $e) { throw new \RuntimeException('Date d export invalide.'); }
+        catch (\Throwable $e) { throw new \RuntimeException('Date d’export invalide.'); }
         $errors = \DateTimeImmutable::getLastErrors();
-        if ($errors !== false && ($errors['warning_count'] || $errors['error_count'])) { throw new \RuntimeException('Date d export invalide.'); }
+        if ($errors !== false && ($errors['warning_count'] || $errors['error_count'])) { throw new \RuntimeException('Date d’export invalide.'); }
         $today ??= new \DateTimeImmutable('today');
         $zone = new \DateTimeZone('UTC');
         $from = new \DateTimeImmutable($exportDate->format('Y-m-d'), $zone);

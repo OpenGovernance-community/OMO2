@@ -160,5 +160,5 @@ omoDecisionModuleJsonResponse(200, [
     'status' => true,
     'message' => $draftRequested ? 'Brouillon enregistre.' : 'Vote enregistre.',
     'redirectUrl' => omoDecisionBuildContextualEditorUrl($context, 'participate'),
-    'drawerTitle' => 'Prises de decision',
+    'drawerTitle' => omoDecisionUiT('prises_de_decision'),
 ]);

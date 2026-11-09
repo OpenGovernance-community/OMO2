@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/account-translations.php';
+
 define('BASE_PATH', dirname(__DIR__));
 require_once BASE_PATH . '/shared_functions.php';
 require_once __DIR__ . '/auth.php';
@@ -13,7 +15,7 @@ if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
     http_response_code(405);
     echo json_encode([
         'status' => false,
-        'message' => 'Requete invalide.',
+        'message' => commonAccountUiT('copy.requete_invalide'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -23,7 +25,7 @@ if ($currentUserId <= 0) {
     http_response_code(401);
     echo json_encode([
         'status' => false,
-        'message' => 'Utilisateur non connecte.',
+        'message' => commonAccountUiT('copy.utilisateur_non_connecte'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -71,7 +73,7 @@ if (!is_array($saveResult) || empty($saveResult['status'])) {
     http_response_code(500);
     echo json_encode([
         'status' => false,
-        'message' => 'Impossible d enregistrer la langue.',
+        'message' => commonAccountUiT('copy.impossible_d_enregistrer_la_langue'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }

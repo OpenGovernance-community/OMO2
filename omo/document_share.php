@@ -154,7 +154,7 @@ $documentDescription = trim((string)($livePayload['description'] ?? ''));
     </main>
 
     <script>window.omoUiTranslations = <?= json_encode(omoUiJsPayload(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
-    <script src="<?= commonAssetUrl('/omo/assets/js/ui-translations.js') ?>"></script>
+    <script src="<?= commonAssetUrl('/common/assets/ui-translations.js') ?>"></script>
     <?php if ($shareLink->allowsLiveFollow()): ?>
     <?= commonPageScriptTags('/omo/document_share.js', [
     'token' => $token,

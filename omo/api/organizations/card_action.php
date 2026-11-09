@@ -79,8 +79,8 @@ switch ($action) {
 		$response = array(
 			'status' => is_array($saveResult) && !empty($saveResult['status']),
 			'message' => $willShareAsModel
-				? 'Organisation partagee comme modele public.'
-				: 'Organisation retiree des modeles publics.',
+				? omoOrganizationsUiT('copy.organisation_partagee_comme_modele_public')
+				: omoOrganizationsUiT('copy.organisation_retiree_des_modeles_publics'),
 		);
 		break;
 
@@ -117,8 +117,8 @@ switch ($action) {
 		$response = array(
 			'status' => (bool)$deleted,
 			'message' => $deleted
-				? (($organizationName !== '' ? $organizationName : 'L organisation') . ' a ete supprimee.')
-				: ($deleteError !== '' ? $deleteError : "L'organisation n'a pas pu etre supprimee."),
+				? (omoOrganizationsUiT('copy.value_a_ete_supprimee', ['value' => $organizationName !== '' ? $organizationName : 'L’organisation']))
+				: ($deleteError !== '' ? $deleteError : omoOrganizationsUiT('copy.l_organisation_n_a_pas_pu_etre_supprimee')),
 		);
 		break;
 }

@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
+
 require_once __DIR__ . '/bootstrap.php';
 
 use dbObject\Holon;
@@ -19,7 +21,7 @@ $respond = static function ($status, $message = '', array $extra = array(), $sta
 };
 
 if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
-    $respond(false, 'Cette action doit etre envoyee en POST.', array(), 405);
+    $respond(false, omoInterfaceUiT('copy.cette_action_doit_etre_envoyee_en_post'), array(), 405);
 }
 
 $payload = json_decode((string)file_get_contents('php://input'), true);
@@ -39,10 +41,10 @@ if ($currentUserId <= 0) {
     $respond(false, 'Connexion requise.', array(), 401);
 }
 if ($csrfToken === '' || $expectedCsrfToken === '' || !hash_equals($expectedCsrfToken, $csrfToken)) {
-    $respond(false, 'Jeton de securite invalide.', array(), 403);
+    $respond(false, omoInterfaceUiT('copy.jeton_de_securite_invalide'), array(), 403);
 }
 if (!in_array($scope, array('temporary', 'temporary_reset', 'personal', 'personal_reset', 'holon', 'holon_reset', 'organization_template', 'organization_template_reset', 'organization_model', 'organization_model_reset', 'application_type', 'application_type_reset', 'global', 'global_reset'), true)) {
-    $respond(false, 'Portee d enregistrement invalide.', array(), 400);
+    $respond(false, omoInterfaceUiT('copy.portee_d_enregistrement_invalide'), array(), 400);
 }
 
 $organization = new Organization();
@@ -164,7 +166,7 @@ if ($scope === 'temporary') {
     }
 }
 if (!is_array($saveResult) || empty($saveResult['status'])) {
-    $respond(false, 'Impossible d enregistrer le tableau de pilotage.', array(), 422);
+    $respond(false, omoInterfaceUiT('copy.impossible_d_enregistrer_le_tableau_de_pilotage'), array(), 422);
 }
 
 $respond(true, '', array('layout' => $layout, 'scope' => $scope));

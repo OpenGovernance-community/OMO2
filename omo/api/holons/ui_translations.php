@@ -83,7 +83,18 @@ function omoHolonsUiSourceLang(): array
         'espace_cree' => ['text' => 'Espace créé.', 'context' => 'Validation or action feedback in api/holons/save.php'],
         'focus_maximum' => ['text' => 'Le focus ne peut pas dépasser {count} caractères.', 'context' => 'Translated interface feedback with named interpolation variables.'],
         'manage_admin_denied' => ['text' => 'Vous n’avez pas le droit de gérer le statut {admin} dans ce contexte.', 'context' => 'Translated interface feedback with named interpolation variables.'],
-    ];
+
+        'copy.s_seront_aussi_supprimes' => ['text' => 's seront aussi supprimés.', 'context' => 'Interface text in omo/api/holons/delete_popup.php'],
+        'copy.sera_aussi_supprime' => ['text' => ' sera aussi supprimé.', 'context' => 'Interface text in omo/api/holons/delete_popup.php'],
+        'copy.le_flux_couvre_l_ensemble_de_l_historique_de_cette_organisation' => ['text' => 'Le flux couvre l’ensemble de l’historique de cette organisation.', 'context' => 'Interface text in omo/api/holons/history_popup.php'],
+        'copy.faites_defiler_pour_charger_la_suite' => ['text' => 'Faites défiler pour charger la suite.', 'context' => 'Interface text in omo/api/holons/history_popup.php'],
+        'copy.le_statut_adminlabellower_est_requis_tant_que_le_minimum_de_adminminim' => ['text' => 'Le statut {adminLabelLower} est requis tant que le minimum de {adminMinimum} n’est pas atteint.', 'context' => 'Interface text in omo/api/holons/member_popup.php'],
+        'copy.le_maximum_de_adminmaximum_adminlabellower_est_deja_atteint' => ['text' => 'Le maximum de {adminMaximum} {adminLabelLower} est déjà atteint.', 'context' => 'Interface text in omo/api/holons/member_popup.php'],
+        'copy.vous_n_avez_pas_le_droit_de_definir_ce_statut_dans_ce_contexte' => ['text' => 'Vous n’avez pas le droit de définir ce statut dans ce contexte.', 'context' => 'Interface text in omo/api/holons/member_popup.php'],
+        'copy.la_personne_recevra_le_statut_adminlabellower_de_ce_contexte_maintenan' => ['text' => 'La personne recevra le statut {adminLabelLower} de ce contexte, maintenant ou après validation de l’invitation.', 'context' => 'Interface text in omo/api/holons/member_popup.php'],
+
+        'copy.ce_role_exige_au_moins_value1_value2_avant_l_ajout_d_un_membre_normal_vous_ne_po' => ['text' => 'Ce rôle exige au moins {value1} {value2} avant l’ajout d’un membre normal. Vous ne pouvez pas définir ce statut dans ce contexte.', 'context' => 'Interface text rendered by omo/api/holons/member_popup.php'],
+];
     return $sourceLang;
 }
 

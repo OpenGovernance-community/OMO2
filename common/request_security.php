@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/account-translations.php';
+
 
 /** Browser mutations require the same origin or a token bound to this session. */
 function commonCsrfToken(): string
@@ -59,7 +61,7 @@ function commonGuardBrowserMutation(): void
     http_response_code(403);
     header('Content-Type: application/json; charset=UTF-8');
     header('Cache-Control: no-store');
-    echo json_encode(['status' => false, 'success' => false, 'error' => 'csrf', 'message' => 'Requete refusee. Rechargez la page.']);
+    echo json_encode(['status' => false, 'success' => false, 'error' => 'csrf', 'message' => commonAccountUiT('copy.requete_refusee_rechargez_la_page')]);
     exit;
 }
 

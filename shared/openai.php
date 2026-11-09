@@ -8,7 +8,7 @@ function say($demand, $systemInstruction = null, ?int $userId = null)
     if (!commonAiUserCanUse($userId ?? commonAiGetCurrentUserId())) return '';
     $instruction = is_string($systemInstruction) && trim($systemInstruction) !== ''
         ? $systemInstruction
-        : 'Tu es un assistant specialise dans les syntheses efficaces et pertinentes. Tu ne rajoutes pas de titre, de fioritures ou de contexte aux resumes et listes produits.';
+        : 'Tu es un assistant spécialisé dans les synthèses efficaces et pertinentes. Tu ne rajoutes pas de titre, de fioritures ou de contexte aux résumés et listes produits.';
     $result = commonAiRequestText(commonAiGetApiKey(), [
         'model' => commonAiGetModel(),
         'messages' => [

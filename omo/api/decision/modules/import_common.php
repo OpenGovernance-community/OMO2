@@ -422,7 +422,7 @@ if (!function_exists('omoDecisionImportNormalizeCsvData')) {
 
         return [
             'status' => count($blocks) > 0,
-            'message' => count($blocks) > 0 ? '' : 'Aucune ligne importable trouvee dans ce CSV.',
+            'message' => count($blocks) > 0 ? '' : omoDecisionUiT('copy.aucune_ligne_importable_trouvee_dans_ce_csv'),
             'process' => [
                 'title' => omoDecisionImportBuildFallbackTitleFromFilename($fallbackTitle),
                 'description' => '',

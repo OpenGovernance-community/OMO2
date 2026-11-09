@@ -932,7 +932,7 @@ window.commonPageScripts["/omo/api/decision/modules/vote/module.js"] = function 
                                     return;
                                 }
                                 if (maxChoices > 0 && checkedChoices.length > maxChoices) {
-                                    setFeedback(payload.texts && payload.texts.multipleHint ? payload.texts.multipleHint : 'Trop de propositions selectionnees.', true);
+                                    setFeedback(payload.texts && payload.texts.multipleHint ? payload.texts.multipleHint : (window.omoUiText || function (key, fallback) { return fallback; })("copy_trop_de_propositions_selectionnees", "Trop de propositions sélectionnées."), true);
                                     return;
                                 }
                             }

@@ -154,7 +154,7 @@ function omoChecklistActionConvertItemToActivity(Checklist $checklist, Checklist
     $activity->set('IDorganization', (int)$organizationId);
     $activity->set('IDholon', $holon instanceof Holon ? (int)$holon->getId() : null);
     $activity->set('IDuser_responsible', (int)$checklist->get('IDuser_responsible') > 0 ? (int)$checklist->get('IDuser_responsible') : null);
-    $activity->set('title', mb_substr(trim((string)$project->get('title')) ?: ('Activite de processus #' . (int)$item->getId()), 0, 255, 'UTF-8'));
+    $activity->set('title', mb_substr(trim((string)$project->get('title')) ?: ('Activité de processus #' . (int)$item->getId()), 0, 255, 'UTF-8'));
     $activity->set('description', trim(strip_tags((string)$project->get('description'))) ?: null);
     $activity->set('frequency', $frequency);
     $activity->set('schedule', $schedule);

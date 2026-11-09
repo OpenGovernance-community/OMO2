@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
+
 require_once __DIR__ . '/bootstrap.php';
 
 use dbObject\ApplicationSetting;
@@ -17,7 +19,7 @@ $respond = static function ($status, $message = '', array $extra = array(), $sta
 };
 
 if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
-    $respond(false, 'Cette action doit etre envoyee en POST.', array(), 405);
+    $respond(false, omoInterfaceUiT('copy.cette_action_doit_etre_envoyee_en_post'), array(), 405);
 }
 
 $payload = json_decode((string)file_get_contents('php://input'), true);
@@ -42,7 +44,7 @@ if ($applicationKey === '' || !in_array($scope, array('temporary', 'personal', '
     $respond(false, 'Configuration de vue invalide.', array(), 400);
 }
 if ($csrfToken === '' || $expectedCsrfToken === '' || !hash_equals($expectedCsrfToken, $csrfToken)) {
-    $respond(false, 'Jeton de securite invalide.', array(), 403);
+    $respond(false, omoInterfaceUiT('copy.jeton_de_securite_invalide'), array(), 403);
 }
 
 $organization = new Organization();
@@ -80,12 +82,12 @@ if ($pvApplicationTabId > 0) {
         || (int)$document->get('IDorganization') !== $organizationId
         || !$document->canUserManagePvDocument($currentUserId)
     ) {
-        $respond(false, 'Configuration de reunion indisponible.', array(), 403);
+        $respond(false, omoInterfaceUiT('copy.configuration_de_reunion_indisponible'), array(), 403);
     }
 
     $result = $tab->saveView($operation === 'clear' ? array() : $view);
     if (!is_array($result) || empty($result['status'])) {
-        $respond(false, 'Impossible d enregistrer cette vue de reunion.', array(), 422);
+        $respond(false, omoInterfaceUiT('copy.impossible_d_enregistrer_cette_vue_de_reunion'), array(), 422);
     }
 
     $respond(true, '', array(
@@ -107,7 +109,7 @@ $scopePermissions = array(
     'global' => 'canSaveGlobal',
 );
 if (empty($access[$scopePermissions[$scope]])) {
-    $respond(false, 'Droits insuffisants pour cette portee.', array(), 403);
+    $respond(false, omoInterfaceUiT('copy.droits_insuffisants_pour_cette_portee'), array(), 403);
 }
 
 if ($scope === 'temporary') {
@@ -150,7 +152,7 @@ if ($scope === 'temporary') {
 }
 
 if (!is_array($result) || empty($result['status'])) {
-    $respond(false, 'Impossible d enregistrer cette vue par defaut.', array(), 422);
+    $respond(false, omoInterfaceUiT('copy.impossible_d_enregistrer_cette_vue_par_defaut'), array(), 422);
 }
 
 $respond(true, '', array('scope' => $scope, 'operation' => $operation, 'view' => $view));

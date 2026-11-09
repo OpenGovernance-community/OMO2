@@ -22,7 +22,9 @@ class DecisionProposal extends DbObject
                 'le_contexte_de_la_proposition_est_invalide' => ['text' => 'Le contexte de la proposition est invalide.', 'context' => 'Validation or action feedback for decisionproposal.'],
                 'la_proposition_ne_peut_pas_etre_enregistree_pour_le_moment' => ['text' => 'La proposition ne peut pas être enregistrée pour le moment.', 'context' => 'Validation or action feedback for decisionproposal.'],
                 'proposition_modifiee' => ['text' => 'Proposition modifiée.', 'context' => 'Validation or action feedback for decisionproposal.'],
-            ];
+
+                'copy.proposition_retiree_pendant_la_consultation' => ['text' => 'Proposition retirée pendant la consultation.', 'context' => 'Interface text in class/dbobject/decisionproposal.class.php'],
+    ];
         }
 
     protected $decisionMethodParametersCache = null;
@@ -426,7 +428,7 @@ class DecisionProposal extends DbObject
             \dbObject\DecisionGovernanceAction::setProposalActionStatus(
                 $this,
                 \dbObject\DecisionGovernanceAction::STATUS_REMOVED,
-                'Proposition retiree pendant la consultation.',
+                self::uiMessage('copy.proposition_retiree_pendant_la_consultation'),
                 \dbObject\DecisionGovernanceAction::STATUS_PENDING
             );
             foreach ($this->getDeferredProposals(true) as $deferredProposal) {

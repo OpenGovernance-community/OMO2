@@ -4,6 +4,19 @@ namespace dbObject;
 /** Shared configuration for archive imports and organization model mapping. */
 class OrganizationTransferConfiguration
 {
+        private static function uiMessage(string $key, array $variables = []): string
+{
+    static $sourceLang = [
+        'copy.impossible_de_copier_la_configuration_de_l_organisation' => ['text' => 'Impossible de copier la configuration de l’organisation.', 'context' => 'Interface text in class/dbobject/organizationtransferconfiguration.class.php'],
+    ];
+    require_once __DIR__ . '/../../common/translation_bundles.php';
+    static $bundles = [];
+    $locale = \translationBundleResolveRequestLocale();
+    $bundle = class_exists(\dbObject\TranslationBundle::class)
+        ? ($bundles[$locale] ??= \loadTranslationBundle('class_dbobject_organizationtransferconfiguration_class', $locale, $sourceLang)) : $sourceLang;
+    return \t($key, $variables, $bundle, $sourceLang);
+}
+
     public const ORGANIZATION_KEYS = [
         'lexicon', Organization::STRUCTURE_DISPLAY_SETTINGS_PARAMETER, Organization::TUTORIAL_SETTINGS_PARAMETER,
         UserHolon::APPLICATION_VIEW_TEMPLATE_DEFAULTS_PARAMETER,
@@ -110,7 +123,7 @@ class OrganizationTransferConfiguration
     private static function save(DbObject $object): void
     {
         if (empty($object->save()['status'])) {
-            throw new \RuntimeException('Impossible de copier la configuration de l organisation.');
+            throw new \RuntimeException(self::uiMessage('copy.impossible_de_copier_la_configuration_de_l_organisation'));
         }
     }
 }

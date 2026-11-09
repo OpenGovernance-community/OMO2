@@ -16,7 +16,7 @@ class McpOauthClient extends DbObject
     public static function attributeLabels()
     {
         return ['id' => 'ID', 'client_id' => 'Client OAuth', 'name' => 'Nom',
-            'redirect_uris' => 'Adresses de retour', 'created_at' => 'Creation'];
+            'redirect_uris' => 'Adresses de retour', 'created_at' => 'Création'];
     }
     public static function attributeLength() { return ['client_id' => 64, 'name' => 150]; }
 

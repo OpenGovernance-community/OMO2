@@ -251,7 +251,7 @@ if ($root === null) {
     echo json_encode(
         array(
             'error' => true,
-            'message' => \dbObject\Organization::formatLexiconText("Aucun holon racine de type organisation n'a ete trouve pour cette organisation."),
+            'message' => \dbObject\Organization::formatLexiconText("Aucun holon racine de type organisation n'a été trouve pour cette organisation."),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -272,7 +272,7 @@ if (!$navigationRoot->canViewDetail()) {
     echo json_encode(
         array(
             'error' => true,
-            'message' => \dbObject\Organization::formatLexiconText("Acces refuse a ce holon."),
+            'message' => \dbObject\Organization::formatLexiconText("Accès refusé à ce holon."),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );

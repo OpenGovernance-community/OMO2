@@ -32,7 +32,7 @@ function timerApiRequireCsrf(array $input)
     $providedToken = trim((string)($input['csrf_token'] ?? ''));
     $expectedToken = trim((string)($_SESSION['timer_csrf'] ?? ''));
     if ($providedToken === '' || $expectedToken === '' || !hash_equals($expectedToken, $providedToken)) {
-        timerApiReply(array('error' => true, 'message' => 'Session de securite invalide.'), 403);
+        timerApiReply(array('error' => true, 'message' => 'Session de sécurité invalide.'), 403);
     }
 }
 
@@ -174,7 +174,7 @@ if ($action === 'projects') {
 timerApiReply(array('error' => true, 'message' => 'L’espace choisi n’est pas accessible.'), 422);
     }
     if (!in_array($status, \dbObject\Project::getWorkTimeStatuses(), true)) {
-        timerApiReply(array('error' => true, 'message' => 'Le statut choisi ne peut pas etre suivi.'), 422);
+        timerApiReply(array('error' => true, 'message' => 'Le statut choisi ne peut pas être suivi.'), 422);
     }
 
     $projects = new \dbObject\ArrayProject();
@@ -214,7 +214,7 @@ if (in_array($action, array('start', 'switch'), true)) {
     $projectId = (int)($input['project_id'] ?? 0);
     $label = \dbObject\WorkTime::normalizeLabel($input['label'] ?? '');
     if (empty($label['status'])) {
-        timerApiReply(array('error' => true, 'message' => 'La legende est trop longue.'), 422);
+        timerApiReply(array('error' => true, 'message' => 'La légende est trop longue.'), 422);
     }
     if (!timerApiValidateTarget($userId, $organizationId, $holonId, $projectId)) {
 timerApiReply(array('error' => true, 'message' => 'L’espace choisi n’est pas accessible.'), 422);
@@ -222,7 +222,7 @@ timerApiReply(array('error' => true, 'message' => 'L’espace choisi n’est pas
 
     $active = \dbObject\WorkTime::startOrSwitch($userId, $organizationId, $holonId, $projectId, $label['value']);
     if (!($active instanceof \dbObject\WorkTime)) {
-        timerApiReply(array('error' => true, 'message' => 'Impossible d enregistrer le temps de travail.'), 500);
+        timerApiReply(array('error' => true, 'message' => 'Impossible d’enregistrer le temps de travail.'), 500);
     }
 
     timerApiReply(array(
@@ -237,12 +237,12 @@ $entryId = (int)($input['entry_id'] ?? 0);
 if ($action === 'label') {
     $label = \dbObject\WorkTime::normalizeLabel($input['label'] ?? '');
     if (empty($label['status'])) {
-        timerApiReply(array('error' => true, 'message' => 'La legende est trop longue.'), 422);
+        timerApiReply(array('error' => true, 'message' => 'La légende est trop longue.'), 422);
     }
 
     $active = \dbObject\WorkTime::updateOpenLabelForUser($userId, $entryId, $label['value']);
     if (!($active instanceof \dbObject\WorkTime)) {
-        timerApiReply(array('error' => true, 'message' => 'Aucun suivi actif n a ete trouve.'), 409);
+        timerApiReply(array('error' => true, 'message' => 'Aucun suivi actif n’a été trouve.'), 409);
     }
 
     timerApiReply(array(
@@ -256,7 +256,7 @@ if ($action === 'label') {
 if ($action === 'heartbeat') {
     $active = \dbObject\WorkTime::touchOpenForUser($userId, $entryId);
     if (!($active instanceof \dbObject\WorkTime)) {
-        timerApiReply(array('error' => true, 'message' => 'Aucun suivi actif n a ete trouve.'), 409);
+        timerApiReply(array('error' => true, 'message' => 'Aucun suivi actif n’a été trouve.'), 409);
     }
 
     timerApiReply(array(
@@ -270,7 +270,7 @@ if ($action === 'heartbeat') {
 if ($action === 'stop') {
     $closed = \dbObject\WorkTime::closeOpenForUser($userId, $entryId, \dbObject\WorkTime::END_REASON_STOP);
     if (!($closed instanceof \dbObject\WorkTime)) {
-        timerApiReply(array('error' => true, 'message' => 'Aucun suivi actif n a ete trouve.'), 409);
+        timerApiReply(array('error' => true, 'message' => 'Aucun suivi actif n’a été trouve.'), 409);
     }
 
     timerApiReply(array(
@@ -287,7 +287,7 @@ if ($action === 'create') {
     $projectId = (int)($input['project_id'] ?? 0);
     $label = \dbObject\WorkTime::normalizeLabel($input['label'] ?? '');
     if (empty($label['status'])) {
-        timerApiReply(array('error' => true, 'message' => 'La legende est trop longue.'), 422);
+        timerApiReply(array('error' => true, 'message' => 'La légende est trop longue.'), 422);
     }
     if (!timerApiValidateTarget($userId, $organizationId, $holonId, $projectId)) {
 timerApiReply(array('error' => true, 'message' => 'L’espace choisi n’est pas accessible.'), 422);
@@ -316,10 +316,10 @@ timerApiReply(array('error' => true, 'message' => 'L’espace choisi n’est pas
 if ($action === 'update') {
     $label = \dbObject\WorkTime::normalizeLabel($input['label'] ?? '');
     if (empty($label['status'])) {
-        timerApiReply(array('error' => true, 'message' => 'La legende est trop longue.'), 422);
+        timerApiReply(array('error' => true, 'message' => 'La légende est trop longue.'), 422);
     }
     if (!(\dbObject\WorkTime::findClosedForUser($userId, $entryId) instanceof \dbObject\WorkTime)) {
-        timerApiReply(array('error' => true, 'message' => 'Ce pointage n est plus disponible. Actualisez la liste.'), 404);
+        timerApiReply(array('error' => true, 'message' => 'Ce pointage n’est plus disponible. Actualisez la liste.'), 404);
     }
 
     $updated = \dbObject\WorkTime::updateClosedForUser(
@@ -342,7 +342,7 @@ if ($action === 'update') {
 
 if ($action === 'delete') {
     if (!\dbObject\WorkTime::deleteClosedForUser($userId, $entryId)) {
-        timerApiReply(array('error' => true, 'message' => 'Le pointage ne peut pas etre supprime.'), 422);
+        timerApiReply(array('error' => true, 'message' => 'Le pointage ne peut pas être supprimé.'), 422);
     }
 
     timerApiReply(array(

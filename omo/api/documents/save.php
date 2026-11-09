@@ -206,7 +206,7 @@ if ($canManageProjectVisibility && ($document->hasProjectAssociation() || $docum
         http_response_code(422);
         echo json_encode(array(
             'status' => false,
-            'message' => \dbObject\Organization::formatLexiconText('Impossible de modifier la visibilite du document dans le holon.'),
+            'message' => \dbObject\Organization::formatLexiconText('Impossible de modifier la visibilité du document dans le holon.'),
         ));
         exit;
     }

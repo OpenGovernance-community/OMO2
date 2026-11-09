@@ -182,7 +182,7 @@ var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; 
         if (moduleHasHtmlSetting(module.type)) {
             labels.push(String(module.settings && module.settings.html || '').trim() !== ''
                 ? (texts.htmlConfigured || 'Texte mis en forme')
-                : (texts.htmlMissing || 'Aucun texte configure'));
+                : (texts.htmlMissing || (window.omoUiText || function (key, fallback) { return fallback; })("copy_aucun_texte_configure", "Aucun texte configuré")));
         }
         return labels.join(' · ');
     }

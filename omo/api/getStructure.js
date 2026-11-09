@@ -3124,7 +3124,7 @@ window.addEventListener("omo-theme-change", function () {
     }
 
     if (attempts <= 0) {
-      console.error("D3 n'a pas pu etre charge.");
+      console.error((window.omoUiText || function (key, fallback) { return fallback; })("copy_d3_n_a_pas_pu_etre_charge", "D3 n'a pas pu être charge."));
       return;
     }
 

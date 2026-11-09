@@ -25,7 +25,7 @@ class CalDavSyncChange extends DbObject
         return array(
             'id' => 'ID',
             'IDorganization' => 'Organisation',
-            'event_id' => 'Evenement',
+            'event_id' => 'Événement',
             'change_type' => 'Type de changement',
             'changed_at' => 'Date du changement',
         );

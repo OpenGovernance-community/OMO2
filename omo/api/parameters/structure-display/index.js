@@ -60,6 +60,7 @@ window.commonPageScripts["/omo/api/parameters/structure-display/index.js"] = fun
                 });
             })
             .then(function (payload) {
+                if (typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(form);
                 setFeedback(payload.message || pageConfig.parametersStructureDisplayStatusSaved, 'success');
                 if (typeof window.omoInvalidateStructureDataCache === 'function') {
                     window.omoInvalidateStructureDataCache();

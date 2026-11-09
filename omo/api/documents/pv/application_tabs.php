@@ -14,7 +14,7 @@ $respond = static function (bool $status, string $message = '', array $extra = [
 };
 
 if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
-    $respond(false, 'Cette action doit etre envoyee en POST.', [], 405);
+    $respond(false, omoDocumentsUiT('copy.cette_action_doit_etre_envoyee_en_post'), [], 405);
 }
 
 $payload = json_decode((string)file_get_contents('php://input'), true);
@@ -33,7 +33,7 @@ if ($currentUserId <= 0) {
     $respond(false, 'Connexion requise.', [], 401);
 }
 if ($csrfToken === '' || $expectedCsrfToken === '' || !hash_equals($expectedCsrfToken, $csrfToken)) {
-    $respond(false, 'Jeton de securite invalide.', [], 403);
+    $respond(false, omoDocumentsUiT('copy.jeton_de_securite_invalide'), [], 403);
 }
 if (!in_array($action, ['add', 'remove'], true)) {
     $respond(false, 'Action invalide.', [], 400);

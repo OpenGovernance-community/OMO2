@@ -144,19 +144,19 @@ if ($requestFragment === 'items') {
 	<p class="omo-holon-history-popup__intro generic-description">
 		<?= omoApiEscape(\dbObject\Organization::formatLexiconText('Historique lie au holon', $organization->getLexicon())) ?> <strong><?= omoApiEscape($holon->getDisplayName()) ?></strong>.
 		<?= $isOrganizationHolon
-			? 'Le flux couvre l ensemble de l historique de cette organisation.'
-			: htmlspecialchars(\dbObject\Organization::formatLexiconText('Le flux inclut les modifications directes de ce holon et, pour un cercle, les elements qui lui sont rattaches.'), ENT_QUOTES, 'UTF-8') ?>
+			? omoHolonsUiT('copy.le_flux_couvre_l_ensemble_de_l_historique_de_cette_organisation')
+			: htmlspecialchars(\dbObject\Organization::formatLexiconText('Le flux inclut les modifications directes de ce holon et, pour un cercle, les éléments qui lui sont rattachés.'), ENT_QUOTES, 'UTF-8') ?>
 	</p>
 
 	<?php if (count($historyItems) === 0): ?>
 		<div class="omo-holon-history-popup__empty">
-			<?= omoApiEscape(\dbObject\Organization::formatLexiconText("Aucun element d'historique n'a ete trouve pour ce holon.", $organization->getLexicon())) ?>
+			<?= omoApiEscape(\dbObject\Organization::formatLexiconText("Aucun élément d'historique n'a été trouve pour ce holon.", $organization->getLexicon())) ?>
 		</div>
 	<?php endif; ?>
 
 	<div class="omo-holon-history-popup__list" data-history-list="1"><?= omoRenderHolonHistoryItems($historyItems) ?></div>
 	<div class="omo-holon-history-popup__feed-status<?= $hasMore ? '' : '' ?>" data-history-feed-status="1"<?= (!$hasMore && count($historyItems) === 0) ? ' hidden' : '' ?>>
-		<?= $hasMore ? 'Faites defiler pour charger la suite.' : 'Fin de l\'historique.' ?>
+		<?= $hasMore ? omoHolonsUiT('copy.faites_defiler_pour_charger_la_suite') : 'Fin de l\'historique.' ?>
 	</div>
 	</div>
 </div>

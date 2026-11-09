@@ -26,7 +26,7 @@ class Notification extends DbObject
         return [
             'IDuser' => 'Utilisateur',
             'IDorganization' => 'Organisation',
-            'event_key' => 'Evenement',
+            'event_key' => 'Événement',
             'source_key' => 'Source',
             'dedupe_key' => 'Code de regroupement',
             'title' => 'Titre',
@@ -34,7 +34,7 @@ class Notification extends DbObject
             'url' => 'Lien',
             'open_token' => 'Jeton de lien',
             'read_at' => 'Lu le',
-            'created_at' => 'Cree le',
+            'created_at' => 'Créé le',
         ];
     }
 

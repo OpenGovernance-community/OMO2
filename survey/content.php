@@ -282,7 +282,7 @@ $sourceLang = [
         'context' => 'Close button for the full principle manifesto drawer.',
     ],
     'survey.principle.video_title' => [
-        'text' => 'Presentation du principe : {principle}',
+        'text' => 'Présentation du principe : {principle}',
         'context' => 'Accessible title of the Vimeo player presenting the named principle.',
     ],
     'survey.phase.scale.label' => [

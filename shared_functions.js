@@ -461,7 +461,7 @@ function sendForm(formulaire, successfunction=null, failfunction=null) {
 	formulaire.addClass("disabled");
 	
 	if (successfunction===null) successfunction = success;
-	if (failfunction===null) failfunction = function() {(typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, "Echec lors de l'envoi de données.\n\nVeuillez réessayer après avoir vérifié votre connexion Internet.", 'error');
+	if (failfunction===null) failfunction = function() {(typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, "Échec lors de l'envoi de données.\n\nVeuillez réessayer après avoir vérifié votre connexion Internet.", 'error');
 }
 	// Sérialize le formulaire pour l'envoyer en ajax
 	$.ajax({

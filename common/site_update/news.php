@@ -4,13 +4,13 @@ function siteUpdateNewsT(string $key, array $variables = []): string
 {
     static $bundle = null;
     $sourceLang = [
-        'title' => ['text' => 'Nouveautes du site - {date}', 'context' => 'Installed site update announcement title.'],
-        'changes' => ['text' => 'Modifications de la mise a jour', 'context' => 'Update details popup title and help button label.'],
-        'journal' => ['text' => 'Journal des nouveautes', 'context' => 'Release notes added by this update.'],
+        'title' => ['text' => 'Nouveautés du site - {date}', 'context' => 'Installed site update announcement title.'],
+        'changes' => ['text' => 'Modifications de la mise à jour', 'context' => 'Update details popup title and help button label.'],
+        'journal' => ['text' => 'Journal des nouveautés', 'context' => 'Release notes added by this update.'],
         'history' => ['text' => 'Descriptions GitHub et historique Git', 'context' => 'Legacy update announcement section heading.'],
         'empty' => ['text' => 'Aucune description disponible.', 'context' => 'Update details without a description.'],
         'missing' => ['text' => 'Cette news est introuvable.', 'context' => 'Unknown update announcement.'],
-        'login' => ['text' => 'Connectez-vous pour consulter les nouveautes.', 'context' => 'Update announcement login requirement.'],
+        'login' => ['text' => 'Connectez-vous pour consulter les nouveautés.', 'context' => 'Update announcement login requirement.'],
     ];
     if ($bundle === null) {
         $bundle = function_exists('omoLoadTranslationBundle') ? omoLoadTranslationBundle('site_update_news', $sourceLang) : [];

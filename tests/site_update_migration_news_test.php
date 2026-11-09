@@ -53,7 +53,7 @@ PHP);
     $check($exitCode !== 0 && !is_file($fixture . '/published'), 'Failed migrations must not publish');
     unlink($fixture . '/fail');
     $output = siteUpdateAdminRunCommand([PHP_BINARY, $fixture . '/scripts/run-migrations.php'], $fixture, $exitCode);
-    $check($exitCode === 0 && str_contains($output, 'News de mise a jour : 42'), 'First deployment publishes through fresh worker');
+    $check($exitCode === 0 && str_contains($output, 'News de mise à jour : 42'), 'First deployment publishes through fresh worker');
     $check(json_decode(file_get_contents($fixture . '/published'), true) === $oldState, 'Preserve old updater revision range');
     unlink($fixture . '/published');
     $oldState['status'] = 'failed';

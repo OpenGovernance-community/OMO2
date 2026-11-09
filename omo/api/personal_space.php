@@ -113,7 +113,7 @@ $sourceLang = [
     'personal_space.calendar.month.09' => ['text' => 'Sept', 'context' => 'Short September label shown in the dashboard event date badge.'],
     'personal_space.calendar.month.10' => ['text' => 'Oct', 'context' => 'Short October label shown in the dashboard event date badge.'],
     'personal_space.calendar.month.11' => ['text' => 'Nov', 'context' => 'Short November label shown in the dashboard event date badge.'],
-    'personal_space.calendar.month.12' => ['text' => 'Dec', 'context' => 'Short December label shown in the dashboard event date badge.'],
+    'personal_space.calendar.month.12' => ['text' => 'Déc', 'context' => 'Short December label shown in the dashboard event date badge.'],
     'personal_space.team.empty' => [
         'text' => 'Aucun anniversaire proche à afficher.',
         'context' => 'Empty state shown when no upcoming personal or professional anniversaries are found.',
@@ -262,7 +262,7 @@ $sourceLang = [
     'personal_space.module.empty' => ['text' => 'Aucun élément à afficher.', 'context' => 'Empty dashboard module fallback.'],
     'personal_space.video.empty' => ['text' => 'Aucune vidéo n’est configurée pour ce module.', 'context' => 'Empty state for an unconfigured dashboard video module.'],
     'personal_space.video.player_title' => ['text' => 'Vidéo de présentation', 'context' => 'Title of the embedded video player in the dashboard.'],
-    'personal_space.html.empty' => ['text' => 'Aucun texte configure pour ce module.', 'context' => 'Empty state for an unconfigured dashboard HTML module.'],
+    'personal_space.html.empty' => ['text' => 'Aucun texte configuré pour ce module.', 'context' => 'Empty state for an unconfigured dashboard HTML module.'],
     'personal_space.html.configured' => ['text' => 'Texte mis en forme', 'context' => 'Summary for a configured dashboard HTML module in the layout editor.'],
     'personal_space.module.unavailable' => ['text' => 'Cette application n’est pas active dans ce contexte.', 'context' => 'Unavailable dashboard module message.'],
     'personal_space.module.more' => ['one' => 'Et {count} de plus', 'other' => 'Et {count} de plus', 'context' => 'Summary shown below a dashboard module when more items exist than are displayed.'],

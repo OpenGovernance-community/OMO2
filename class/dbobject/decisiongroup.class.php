@@ -45,7 +45,7 @@ class DecisionGroup extends DbObject
         return [
             'decision_type' => 'Nature du groupe: décision engageante ou consultation.',
             'evaluation_method' => 'Méthode de participation utilisée par ce groupe.',
-            'parameters' => 'Configuration propre à ce groupe et a sa méthode.',
+            'parameters' => 'Configuration propre à ce groupe et à sa méthode.',
         ];
     }
 

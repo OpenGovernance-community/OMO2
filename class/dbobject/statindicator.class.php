@@ -3,6 +3,20 @@ namespace dbObject;
 
 class StatIndicator extends DbObject
 {
+    protected static function uiMessageSourceLang(): array
+    {
+        return parent::uiMessageSourceLang() + [
+            'copy.chaque_annee' => ['text' => 'Chaque année', 'context' => 'Interface text in class/dbobject/statindicator.class.php'],
+
+            'option.toutes_les_heures' => ['text' => 'Toutes les heures', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+            'option.chaque_jour' => ['text' => 'Chaque jour', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+            'option.chaque_semaine' => ['text' => 'Chaque semaine', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+            'option.chaque_mois' => ['text' => 'Chaque mois', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+            'option.chaque_trimestre' => ['text' => 'Chaque trimestre', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+            'option.chaque_semestre' => ['text' => 'Chaque semestre', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+        ];
+    }
+
     const REFERENCE_NONE = 'none';
     const REFERENCE_CEILING = 'ceiling';
     const REFERENCE_OBJECTIVE = 'objective';
@@ -86,7 +100,7 @@ class StatIndicator extends DbObject
             'spreadsheet_last_sync_at' => 'Dernière synchronisation du tableur',
             'chart_min_value' => 'Valeur basse du graphique',
             'show_cumulative' => 'Afficher le cumul',
-            'project_visible_in_holon' => 'Afficher dans l’espace si lié a un projet',
+            'project_visible_in_holon' => 'Afficher dans l’espace si lié à un projet',
             'active' => 'Actif',
             'archived_at' => 'Date d’archivage',
             'created_at' => 'Création',
@@ -105,7 +119,7 @@ class StatIndicator extends DbObject
             'measurement_schedule' => 'Heure, jour ou mois attendu selon la cadence. Cette information est facultative.',
             'chart_min_value' => 'Borne facultative incluse dans l’échelle verticale du graphique.',
             'show_cumulative' => 'Affiche les mesures en barres et leur cumul sur une seconde échelle.',
-            'project_visible_in_holon' => 'Conserve cet indicateur dans les listes de l’espace lorsqu il est lié a un projet.',
+            'project_visible_in_holon' => 'Conserve cet indicateur dans les listes de l’espace lorsqu’il est lié à un projet.',
         ];
     }
 
@@ -225,13 +239,13 @@ class StatIndicator extends DbObject
     public static function getEthercalcFrequencyCatalog()
     {
         return [
-            self::ETHERCALC_FREQUENCY_HOURLY => 'Toutes les heures',
-            self::ETHERCALC_FREQUENCY_DAILY => 'Chaque jour',
-            self::ETHERCALC_FREQUENCY_WEEKLY => 'Chaque semaine',
-            self::ETHERCALC_FREQUENCY_MONTHLY => 'Chaque mois',
-            self::ETHERCALC_FREQUENCY_QUARTERLY => 'Chaque trimestre',
-            self::ETHERCALC_FREQUENCY_SEMIANNUAL => 'Chaque semestre',
-            self::ETHERCALC_FREQUENCY_YEARLY => 'Chaque annee',
+            self::ETHERCALC_FREQUENCY_HOURLY => self::uiMessage('option.toutes_les_heures'),
+            self::ETHERCALC_FREQUENCY_DAILY => self::uiMessage('option.chaque_jour'),
+            self::ETHERCALC_FREQUENCY_WEEKLY => self::uiMessage('option.chaque_semaine'),
+            self::ETHERCALC_FREQUENCY_MONTHLY => self::uiMessage('option.chaque_mois'),
+            self::ETHERCALC_FREQUENCY_QUARTERLY => self::uiMessage('option.chaque_trimestre'),
+            self::ETHERCALC_FREQUENCY_SEMIANNUAL => self::uiMessage('option.chaque_semestre'),
+            self::ETHERCALC_FREQUENCY_YEARLY => self::uiMessage('copy.chaque_annee'),
         ];
     }
 

@@ -1,5 +1,39 @@
 <?php
 require_once dirname(__DIR__) . '/shared_functions.php';
+
+function commonInvitationUiT(string $key, array $variables = []): string
+{
+    static $sourceLang = [
+        'copy.la_demande_n_a_pas_pu_etre_validee' => ['text' => 'La demande n\'a pas pu être validée.', 'context' => 'Interface text in common/invitation.php'],
+        'copy.demande_validee_la_personne_a_recu_un_e_mail_de_confirmation' => ['text' => 'Demande validée. La personne a reçu un e-mail de confirmation.', 'context' => 'Interface text in common/invitation.php'],
+        'copy.l_invitation_n_a_pas_pu_etre_acceptee' => ['text' => 'L\'invitation n\'a pas pu être acceptée.', 'context' => 'Interface text in common/invitation.php'],
+        'copy.invitation_acceptee_vous_pouvez_maintenant_acceder_a_votre_organisatio' => ['text' => 'Invitation acceptée. Vous pouvez maintenant accéder à votre organisation.', 'context' => 'Interface text in common/invitation.php'],
+        'copy.l_invitation_n_a_pas_pu_etre_refusee' => ['text' => 'L\'invitation n\'a pas pu être refusée.', 'context' => 'Interface text in common/invitation.php'],
+        'copy.invitation_refusee' => ['text' => 'Invitation refusée.', 'context' => 'Interface text in common/invitation.php'],
+        'copy.desole_cette_demande_a_ete_annulee' => ['text' => 'Désolé, cette demande a été annulée.', 'context' => 'Interface text in common/invitation.php'],
+        'copy.desole_cette_invitation_a_ete_annulee' => ['text' => 'Désolé, cette invitation a été annulée.', 'context' => 'Interface text in common/invitation.php'],
+        'copy.cette_demande_a_ete_refusee' => ['text' => 'Cette demande a été refusée.', 'context' => 'Interface text in common/invitation.php'],
+        'copy.cette_invitation_a_ete_refusee' => ['text' => 'Cette invitation a été refusée.', 'context' => 'Interface text in common/invitation.php'],
+        'copy.demande_d_acces' => ['text' => 'Demande d’accès', 'context' => 'Interface text in common/invitation.php'],
+        'copy.cette_demande_a_ete_annulee' => ['text' => 'Cette demande a été annulée.', 'context' => 'Interface text in common/invitation.php'],
+        'copy.cette_invitation_a_ete_annulee' => ['text' => 'Cette invitation a été annulée.', 'context' => 'Interface text in common/invitation.php'],
+        'copy.cette_demande_a_expire' => ['text' => 'Cette demande a expiré.', 'context' => 'Interface text in common/invitation.php'],
+        'copy.cette_invitation_a_expire' => ['text' => 'Cette invitation a expiré.', 'context' => 'Interface text in common/invitation.php'],
+        'copy.cette_demande_a_deja_ete_traitee' => ['text' => 'Cette demande a déjà été traitée.', 'context' => 'Interface text in common/invitation.php'],
+        'copy.cette_invitation_a_deja_recu_une_reponse' => ['text' => 'Cette invitation a déjà reçu une réponse.', 'context' => 'Interface text in common/invitation.php'],
+
+        'copy.demande_d_acces' => ['text' => 'Demande d\'accès', 'context' => 'Interface text rendered by common/invitation.php'],
+        'copy.aucun_message_complementaire_n_a_ete_ajoute_a_cette_demande' => ['text' => 'Aucun message complémentaire n\'a été ajoute à cette demande.', 'context' => 'Interface text rendered by common/invitation.php'],
+        'copy.votre_reponse' => ['text' => 'Votre réponse', 'context' => 'Interface text rendered by common/invitation.php'],
+];
+    require_once __DIR__ . '/translation_bundles.php';
+    static $bundles = [];
+    $locale = translationBundleResolveRequestLocale();
+    $bundle = class_exists(\dbObject\TranslationBundle::class)
+        ? ($bundles[$locale] ??= loadTranslationBundle('common_invitation', $locale, $sourceLang)) : $sourceLang;
+    return t($key, $variables, $bundle, $sourceLang);
+}
+
 require_once __DIR__ . '/auth.php';
 
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -31,10 +65,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' && $validInvitation instanceof \dbObje
 	]);
 
 	if (!($result['status'] ?? false)) {
-		$statusMessage = (string)($result['message'] ?? "La demande n'a pas pu etre validee.");
+		$statusMessage = (string)($result['message'] ?? commonInvitationUiT('copy.la_demande_n_a_pas_pu_etre_validee'));
 		$statusType = 'error';
 	} else {
-		$statusMessage = 'Demande validee. La personne a recu un e-mail de confirmation.';
+		$statusMessage = commonInvitationUiT('copy.demande_validee_la_personne_a_recu_un_e_mail_de_confirmation');
 		$statusType = 'success';
 	}
 
@@ -47,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' && $validInvitation instanceof \dbObje
 	} elseif ($decision === 'accept') {
 		$result = $validInvitation->accept();
 		if (!($result['status'] ?? false)) {
-			$statusMessage = (string)($result['message'] ?? "L'invitation n'a pas pu etre acceptee.");
+			$statusMessage = (string)($result['message'] ?? commonInvitationUiT('copy.l_invitation_n_a_pas_pu_etre_acceptee'));
 			$statusType = 'error';
 		} else {
 			$user = new \dbObject\User();
@@ -63,7 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' && $validInvitation instanceof \dbObje
 				$acceptedRedirectUrl = commonInvitationBuildRedirectUrl($organization);
 			}
 
-			$statusMessage = "Invitation acceptee. Vous pouvez maintenant acceder a votre organisation.";
+			$statusMessage = commonInvitationUiT('copy.invitation_acceptee_vous_pouvez_maintenant_acceder_a_votre_organisatio');
 			$statusType = 'success';
 			$invitation = \dbObject\Invitation::findByToken($token);
 			$validInvitation = false;
@@ -71,10 +105,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' && $validInvitation instanceof \dbObje
 	} elseif ($decision === 'decline') {
 		$result = $validInvitation->decline();
 		if (!($result['status'] ?? false)) {
-			$statusMessage = (string)($result['message'] ?? "L'invitation n'a pas pu etre refusee.");
+			$statusMessage = (string)($result['message'] ?? commonInvitationUiT('copy.l_invitation_n_a_pas_pu_etre_refusee'));
 			$statusType = 'error';
 		} else {
-			$statusMessage = 'Invitation refusee.';
+			$statusMessage = commonInvitationUiT('copy.invitation_refusee');
 			$statusType = 'success';
 			$invitation = \dbObject\Invitation::findByToken($token);
 			$validInvitation = false;
@@ -86,13 +120,13 @@ if ($statusMessage === '' && $token !== '' && !$validInvitation && $invitation i
 	$invitationStatus = trim((string)$invitation->get('status'));
 	if ($invitationStatus === 'canceled') {
 		$statusMessage = $invitation->isMemberInitiatedRequest()
-			? 'Desole, cette demande a ete annulee.'
-			: 'Desole, cette invitation a ete annulee.';
+			? commonInvitationUiT('copy.desole_cette_demande_a_ete_annulee')
+			: commonInvitationUiT('copy.desole_cette_invitation_a_ete_annulee');
 		$statusType = 'error';
 	} elseif ($invitationStatus === 'declined') {
 		$statusMessage = $invitation->isMemberInitiatedRequest()
-			? 'Cette demande a ete refusee.'
-			: 'Cette invitation a ete refusee.';
+			? commonInvitationUiT('copy.cette_demande_a_ete_refusee')
+			: commonInvitationUiT('copy.cette_invitation_a_ete_refusee');
 		$statusType = 'error';
 	}
 }
@@ -138,7 +172,7 @@ $requestMessage = $isMemberRequest ? $invitation->getRequestMessage() : '';
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title><?= commonInvitationEscape($isMemberRequest ? 'Demande d acces' : 'Invitation') ?></title>
+	<title><?= commonInvitationEscape($isMemberRequest ? commonInvitationUiT('copy.demande_d_acces') : 'Invitation') ?></title>
 	<link rel="stylesheet" href="/common/assets/auth.css">
 	<style>
 		:root {
@@ -319,18 +353,18 @@ $requestMessage = $isMemberRequest ? $invitation->getRequestMessage() : '';
 
 				<?php if ($isMemberRequest): ?>
 				<div class="invitation-section">
-					<h2>Demande d'acces</h2>
+					<h2><?= htmlspecialchars(commonInvitationUiT('copy.demande_d_acces'), ENT_QUOTES, 'UTF-8') ?></h2>
 					<?php if ($requestMessage !== ''): ?>
 						<p class="invitation-copy"><?= nl2br(commonInvitationEscape($requestMessage)) ?></p>
 					<?php else: ?>
-						<p class="invitation-copy">Aucun message complementaire n'a ete ajoute a cette demande.</p>
+						<p class="invitation-copy"><?= htmlspecialchars(commonInvitationUiT('copy.aucun_message_complementaire_n_a_ete_ajoute_a_cette_demande'), ENT_QUOTES, 'UTF-8') ?></p>
 					<?php endif; ?>
 				</div>
 				<?php else: ?>
 				<div class="invitation-section">
 					<h2><?= commonInvitationEscape(\dbObject\Organization::formatLexiconText('Holons concernes', $organization->getLexicon())) ?></h2>
 					<?php if (count($pendingHolons) === 0): ?>
-						<p class="invitation-copy"><?= commonInvitationEscape(\dbObject\Organization::formatLexiconText("Aucun holon en attente n'a ete retrouve pour cette invitation.", $organization->getLexicon())) ?></p>
+						<p class="invitation-copy"><?= commonInvitationEscape(\dbObject\Organization::formatLexiconText("Aucun holon en attente n'a été retrouve pour cette invitation.", $organization->getLexicon())) ?></p>
 					<?php else: ?>
 						<ul class="invitation-list">
 							<?php foreach ($pendingHolons as $holon): ?>
@@ -346,8 +380,8 @@ $requestMessage = $isMemberRequest ? $invitation->getRequestMessage() : '';
 
 				<?php if (!$isMemberRequest && $validInvitation): ?>
 				<div class="invitation-section">
-					<h2>Votre reponse</h2>
-					<p class="invitation-copy"><?= commonInvitationEscape(\dbObject\Organization::formatLexiconText('En acceptant, votre adhesion sera confirmee pour tous les holons listes ci-dessus en une seule fois.', $organization->getLexicon())) ?></p>
+					<h2><?= htmlspecialchars(commonInvitationUiT('copy.votre_reponse'), ENT_QUOTES, 'UTF-8') ?></h2>
+					<p class="invitation-copy"><?= commonInvitationEscape(\dbObject\Organization::formatLexiconText('En acceptant, votre adhésion sera confirmée pour tous les holons listes ci-dessus en une seule fois.', $organization->getLexicon())) ?></p>
 					<div class="invitation-actions">
 						<form method="post" style="margin:0;">
 							<input type="hidden" name="token" value="<?= commonInvitationEscape($token) ?>">
@@ -371,11 +405,11 @@ $requestMessage = $isMemberRequest ? $invitation->getRequestMessage() : '';
 					<p class="invitation-copy">
 						<?php $invitationStatus = trim((string)$invitation->get('status')); ?>
 						<?php if ($invitationStatus === 'canceled'): ?>
-							<?= commonInvitationEscape($isMemberRequest ? 'Cette demande a ete annulee.' : 'Cette invitation a ete annulee.') ?>
+							<?= commonInvitationEscape($isMemberRequest ? commonInvitationUiT('copy.cette_demande_a_ete_annulee') : commonInvitationUiT('copy.cette_invitation_a_ete_annulee')) ?>
 						<?php elseif ($invitation->isExpired()): ?>
-							<?= commonInvitationEscape($isMemberRequest ? 'Cette demande a expire.' : 'Cette invitation a expire.') ?>
+							<?= commonInvitationEscape($isMemberRequest ? commonInvitationUiT('copy.cette_demande_a_expire') : commonInvitationUiT('copy.cette_invitation_a_expire')) ?>
 						<?php else: ?>
-							<?= commonInvitationEscape($isMemberRequest ? 'Cette demande a deja ete traitee.' : 'Cette invitation a deja recu une reponse.') ?>
+							<?= commonInvitationEscape($isMemberRequest ? commonInvitationUiT('copy.cette_demande_a_deja_ete_traitee') : commonInvitationUiT('copy.cette_invitation_a_deja_recu_une_reponse')) ?>
 						<?php endif; ?>
 					</p>
 				</div>

@@ -236,7 +236,7 @@
 
     const createCompactListHeader = function () {
         const header = document.createElement('div');
-        header.className = 'memo-documents__list-header generic-file-list__header';
+        header.className = 'mémo-documents__list-header generic-file-list__header';
 
         [
             { label: 'Nom', className: 'memo-documents__list-header-cell--name' },
@@ -245,7 +245,7 @@
             { label: 'Date', className: 'memo-documents__list-header-cell--date' }
         ].forEach(function (column) {
             const cell = document.createElement('div');
-            cell.className = 'memo-documents__list-header-cell generic-file-list__header-cell ' + column.className;
+            cell.className = 'mémo-documents__list-header-cell generic-file-list__header-cell ' + column.className;
             cell.textContent = column.label;
             header.appendChild(cell);
         });
@@ -265,33 +265,33 @@
             container.classList.add('memo-documents__item--compact');
 
             const frame = document.createElement('div');
-            frame.className = 'memo-documents__compact-row generic-file-list__row';
+            frame.className = 'mémo-documents__compact-row generic-file-list__row';
 
             const nameCell = document.createElement('div');
-            nameCell.className = 'memo-documents__compact-cell memo-documents__compact-cell--name generic-file-list__cell generic-file-list__cell--name';
+            nameCell.className = 'mémo-documents__compact-cell mémo-documents__compact-cell--name generic-file-list__cell generic-file-list__cell--name';
 
             const iconBox = document.createElement('span');
-            iconBox.className = 'memo-documents__compact-icon-box generic-file-list__icon-box';
+            iconBox.className = 'mémo-documents__compact-icon-box generic-file-list__icon-box';
 
             const icon = document.createElement('img');
-            icon.className = 'memo-documents__compact-icon black-icon';
+            icon.className = 'mémo-documents__compact-icon black-icon';
             icon.src = getIconUrl(documentItem);
             icon.alt = getIconAlt(documentItem);
             icon.loading = 'lazy';
             iconBox.appendChild(icon);
 
             const titleBlock = document.createElement('div');
-            titleBlock.className = 'memo-documents__compact-title-block generic-file-list__title-block';
+            titleBlock.className = 'mémo-documents__compact-title-block generic-file-list__title-block';
 
             const title = document.createElement('strong');
-            title.className = 'memo-documents__compact-title generic-file-list__title';
+            title.className = 'mémo-documents__compact-title generic-file-list__title';
             title.textContent = documentItem.title || '';
             titleBlock.appendChild(title);
 
             if (documentItem.isFolder) {
                 const count = Number(documentItem.childCount || 0);
                 const countLabel = document.createElement('span');
-                countLabel.className = 'memo-documents__compact-count generic-file-list__count';
+                countLabel.className = 'mémo-documents__compact-count generic-file-list__count';
                 countLabel.textContent = count > 0
                     ? String(count) + ' élément' + (count > 1 ? 's' : '')
                     : 'Dossier';
@@ -302,15 +302,15 @@
             nameCell.appendChild(titleBlock);
 
             const contextCell = document.createElement('div');
-            contextCell.className = 'memo-documents__compact-cell memo-documents__compact-cell--context generic-file-list__cell';
+            contextCell.className = 'mémo-documents__compact-cell mémo-documents__compact-cell--context generic-file-list__cell';
             contextCell.textContent = documentItem.contextLabel || 'Sans contexte';
 
             const typeCell = document.createElement('div');
-            typeCell.className = 'memo-documents__compact-cell memo-documents__compact-cell--type generic-file-list__cell';
+            typeCell.className = 'mémo-documents__compact-cell mémo-documents__compact-cell--type generic-file-list__cell';
             typeCell.textContent = documentItem.typeLabel || 'Document';
 
             const dateCell = document.createElement('div');
-            dateCell.className = 'memo-documents__compact-cell memo-documents__compact-cell--date generic-file-list__cell';
+            dateCell.className = 'mémo-documents__compact-cell mémo-documents__compact-cell--date generic-file-list__cell';
             dateCell.textContent = state.sort === 'alpha'
                 ? (documentItem.fullDateLabel || documentItem.dateLabel || '')
                 : (documentItem.dateLabel || '');
@@ -327,10 +327,10 @@
         frame.className = 'memo-documents__item-frame';
 
         const iconBox = document.createElement('div');
-        iconBox.className = 'memo-documents__icon-box generic-file-list__icon-box';
+        iconBox.className = 'mémo-documents__icon-box generic-file-list__icon-box';
 
         const icon = document.createElement('img');
-        icon.className = 'memo-documents__icon black-icon';
+        icon.className = 'mémo-documents__icon black-icon';
         icon.src = getIconUrl(documentItem);
         icon.alt = getIconAlt(documentItem);
         icon.loading = 'lazy';
@@ -350,7 +350,7 @@
         titleRow.appendChild(title);
 
         const pill = document.createElement('span');
-        pill.className = 'omo-pill memo-documents__type-pill';
+        pill.className = 'omo-pill mémo-documents__type-pill';
         pill.textContent = documentItem.typeLabel || 'Document';
         titleRow.appendChild(pill);
 
@@ -392,7 +392,7 @@
 
     const createItem = function (documentItem) {
         const shell = document.createElement('article');
-        shell.className = 'memo-documents__item-shell generic-file-list__item-shell';
+        shell.className = 'mémo-documents__item-shell generic-file-list__item-shell';
 
         if (documentItem.isFolder) {
             shell.classList.add('memo-documents__item-shell--folder');
@@ -403,7 +403,7 @@
         }
 
         const card = document.createElement('div');
-        card.className = 'memo-documents__item omo-card omo-card--interactive';
+        card.className = 'mémo-documents__item omo-card omo-card--interactive';
         appendDocumentCardContent(card, documentItem);
         shell.appendChild(card);
 
@@ -436,7 +436,7 @@
 
     const renderTree = function (documentItems, depth) {
         const tree = document.createElement('div');
-        tree.className = 'memo-documents__tree memo-documents__tree--depth-' + String(Number(depth || 0));
+        tree.className = 'mémo-documents__tree mémo-documents__tree--depth-' + String(Number(depth || 0));
 
         documentItems.forEach(function (documentItem) {
             tree.appendChild(createItem(documentItem));
@@ -465,15 +465,15 @@
             }
 
             const section = document.createElement('section');
-            section.className = 'memo-documents__group omo-panel-group generic-file-list__group';
+            section.className = 'mémo-documents__group omo-panel-group generic-file-list__group';
 
             const title = document.createElement('h3');
-            title.className = 'memo-documents__group-title omo-panel-group__title generic-file-list__group-title';
+            title.className = 'mémo-documents__group-title omo-panel-group__title generic-file-list__group-title';
             title.textContent = group.label || '';
             section.appendChild(title);
 
             const list = document.createElement('div');
-            list.className = 'memo-documents__list omo-panel-view__body_content';
+            list.className = 'mémo-documents__list omo-panel-view__body_content';
 
             if (state.density === 'compact') {
                 list.classList.add('memo-documents__list--compact', 'generic-file-list__table');
@@ -493,15 +493,15 @@
 
     const renderByAlpha = function () {
         const section = document.createElement('section');
-        section.className = 'memo-documents__group omo-panel-group generic-file-list__group';
+        section.className = 'mémo-documents__group omo-panel-group generic-file-list__group';
 
         const title = document.createElement('h3');
-        title.className = 'memo-documents__group-title omo-panel-group__title generic-file-list__group-title';
+        title.className = 'mémo-documents__group-title omo-panel-group__title generic-file-list__group-title';
         title.textContent = 'Alphabétique';
         section.appendChild(title);
 
         const list = document.createElement('div');
-        list.className = 'memo-documents__list memo-documents__list--alphabetical omo-panel-view__body_content';
+        list.className = 'mémo-documents__list mémo-documents__list--alphabetical omo-panel-view__body_content';
 
         if (state.density === 'compact') {
             list.classList.add('memo-documents__list--compact', 'generic-file-list__table');
@@ -633,7 +633,7 @@
         }
 
         if (editorDrawerTitle) {
-            editorDrawerTitle.textContent = String(title || 'Editer le document').trim() || 'Editer le document';
+            editorDrawerTitle.textContent = String(title || 'Éditer le document').trim() || 'Éditer le document';
         }
 
         if (editorDrawerDescription) {
@@ -671,7 +671,7 @@
                 return executeFetchedScripts(editorDrawerBody);
             })
             .catch(function () {
-                editorDrawerBody.innerHTML = '<div class="omo-empty-state">Impossible de charger l editeur du document.</div>';
+                editorDrawerBody.innerHTML = '<div class="omo-empty-state">Impossible de charger l’éditeur du document.</div>';
             });
     };
 
@@ -710,7 +710,7 @@
         const fragment = ownerDocument.createDocumentFragment();
 
         if (editUrl !== '') {
-            fragment.appendChild(buildDocumentMenuItem('Editer', {
+            fragment.appendChild(buildDocumentMenuItem('Éditer', {
                 'data-memo-document-edit': '1',
                 'data-memo-document-edit-url': editUrl,
                 'data-memo-document-edit-title': documentTitle
@@ -919,7 +919,7 @@
             closeDocumentMenus();
             openEditorDrawer(
                 String(editButton.getAttribute('data-memo-document-edit-url') || '').trim(),
-                'Editer le document',
+                'Éditer le document',
                 'Modification du document dans EasyMEMO.'
             );
             return;

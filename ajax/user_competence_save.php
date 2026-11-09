@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../common/account-translations.php';
+
 
 	require_once("../config.php");
 	require_once("../shared_functions.php");
@@ -30,7 +32,7 @@
 
 	echo json_encode([
 		'status' => !empty($result['status']),
-		'message' => (string)($result['message'] ?? ($result['status'] ? 'Competence enregistree.' : "Impossible d'enregistrer cette competence.")),
+		'message' => (string)($result['message'] ?? ($result['status'] ? commonAccountUiT('copy.competence_enregistree') : commonAccountUiT('copy.impossible_d_enregistrer_cette_competence'))),
 	], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
 ?>

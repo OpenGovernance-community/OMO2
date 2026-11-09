@@ -4,6 +4,13 @@
 
 	class PropertyFormat extends DbObject
 	{
+    protected static function uiMessageSourceLang(): array
+    {
+        return parent::uiMessageSourceLang() + [
+            'copy.texte_avec_detail_html' => ['text' => 'Texte avec détail HTML', 'context' => 'Interface text in class/dbobject/propertyformat.class.php'],
+        ];
+    }
+
 		public const FORMAT_TEXT = 1;
 		public const FORMAT_LIST = 2;
 		public const FORMAT_NUMBER = 3;
@@ -47,7 +54,7 @@
 				array('id' => self::FORMAT_NUMBER, 'name' => 'Chiffre'),
 				array('id' => self::FORMAT_DATE, 'name' => 'Date'),
 				array('id' => self::FORMAT_HTML, 'name' => 'HTML'),
-				array('id' => self::FORMAT_TEXT_HTML, 'name' => 'Texte avec detail HTML'),
+				array('id' => self::FORMAT_TEXT_HTML, 'name' => self::uiMessage('copy.texte_avec_detail_html')),
 				array('id' => self::FORMAT_HTML_LIST, 'name' => 'HTML et liste'),
 			);
 		}
@@ -931,5 +938,5 @@
 			return $html;
 		}
 	}
-	
+
 ?>

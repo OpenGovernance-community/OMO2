@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
+
 require_once __DIR__ . '/bootstrap.php';
 
 use dbObject\Holon;
@@ -490,7 +492,7 @@ function omoExportBuildXmlContent(array $payload)
 
 $format = strtolower(trim((string)($_GET['format'] ?? 'json')));
 if (!in_array($format, array('json', 'xml', 'csv'), true)) {
-    omoStructureExportJsonError(400, 'Format d export invalide.');
+    omoStructureExportJsonError(400, 'Format d’export invalide.');
 }
 
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
@@ -499,7 +501,7 @@ if ($organizationId <= 0) {
 }
 
 if ((int)commonGetCurrentUserId() <= 0 || !commonCurrentUserHasOrganizationAccess($organizationId)) {
-    omoStructureExportJsonError(403, 'Acces refuse a cet export.');
+    omoStructureExportJsonError(403, omoInterfaceUiT('copy.acces_refuse_a_cet_export'));
 }
 
 $organization = new Organization();
@@ -508,12 +510,12 @@ if (!$organization->load($organizationId)) {
 }
 
 if (!$organization->canViewDetail()) {
-    omoStructureExportJsonError(403, 'Acces refuse a cette organisation.');
+    omoStructureExportJsonError(403, omoInterfaceUiT('acces_refuse_a_cette_organisation'));
 }
 
 $organizationRoot = $organization->getStructuralRootHolon();
 if ($organizationRoot === null) {
-    omoStructureExportJsonError(404, \dbObject\Organization::formatLexiconText("Aucun holon racine de type organisation n'a ete trouve pour cette organisation."));
+    omoStructureExportJsonError(404, \dbObject\Organization::formatLexiconText("Aucun holon racine de type organisation n'a été trouve pour cette organisation."));
 }
 
 $navigationRoot = $organizationRoot;
@@ -534,7 +536,7 @@ if ($currentHolonId > 0 && $currentHolonId !== (int)$navigationRoot->getId()) {
     }
 
     if (!$currentHolon->canViewDetail() || !$currentHolon->isDescendantOf($navigationRoot, true)) {
-        omoStructureExportJsonError(403, \dbObject\Organization::formatLexiconText('Acces refuse a ce holon.'));
+        omoStructureExportJsonError(403, \dbObject\Organization::formatLexiconText('Accès refusé à ce holon.'));
     }
 
     $exportRoot = $currentHolon;
@@ -577,7 +579,7 @@ $filenameBase = sprintf(
 if ($format === 'csv') {
     $content = omoExportBuildCsvContent($payload);
     if (!is_string($content)) {
-        omoStructureExportJsonError(500, 'Impossible de generer le CSV de structure.');
+        omoStructureExportJsonError(500, omoInterfaceUiT('copy.impossible_de_generer_le_csv_de_structure'));
     }
 
     header('Content-Type: text/csv; charset=UTF-8');
@@ -589,7 +591,7 @@ if ($format === 'csv') {
 if ($format === 'xml') {
     $content = omoExportBuildXmlContent($payload);
     if (!is_string($content) || $content === '') {
-        omoStructureExportJsonError(500, 'Impossible de generer le XML de structure.');
+        omoStructureExportJsonError(500, omoInterfaceUiT('copy.impossible_de_generer_le_xml_de_structure'));
     }
 
     header('Content-Type: application/xml; charset=UTF-8');

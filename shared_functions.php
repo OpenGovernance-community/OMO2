@@ -299,7 +299,7 @@
 		if ($isHtml) {
 			$footerHtml = '<div style="margin-top:28px; padding-top:18px; border-top:1px solid #e2e8f0;">'
 				. '<p style="margin:0 0 8px; color:#64748b; font-size:13px; line-height:1.6;">'
-				. 'Vous pouvez aussi soutenir le developpement du projet sur Patreon.'
+				. 'Vous pouvez aussi soutenir le développement du projet sur Patreon.'
 				. '</p>'
 				. '<p style="margin:0;">'
 				. '<a href="' . htmlspecialchars($patreonUrl, ENT_QUOTES, 'UTF-8') . '" target="_blank" rel="noopener noreferrer" style="color:#d1365f; font-weight:600; text-decoration:none;">'
@@ -321,7 +321,7 @@
 
 		return rtrim($body)
 			. "\n\n---\n"
-			. "Vous pouvez aussi soutenir le developpement du projet sur Patreon :\n"
+			. "Vous pouvez aussi soutenir le développement du projet sur Patreon :\n"
 			. $patreonUrl;
 	}
 

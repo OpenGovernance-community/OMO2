@@ -45,6 +45,7 @@ window.commonPageScripts["/omo/api/decision/params/index.js"] = function (pageCo
             .then(function (response) { return response.json().then(function (payload) { return {ok: response.ok, payload: payload}; }); })
             .then(function (response) {
                 if (!response.ok || !response.payload || response.payload.status !== true) throw new Error(response.payload && response.payload.message ? response.payload.message : omoUiText("erreur", "Erreur"));
+                if (typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(form);
                 showFeedback(response.payload.message || successLabel, false);
             })
             .catch(function (error) { showFeedback(error && error.message ? error.message : omoUiText("erreur", "Erreur"), true); })

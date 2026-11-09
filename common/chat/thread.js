@@ -28,10 +28,10 @@
     function requestJson(url, options) {
         return window.fetch(url, options || {}).then(function (response) {
             return response.json().catch(function () {
-                return {status: false, message: 'Reponse invalide du serveur.'};
+                return {status: false, message: (window.omoUiText || function (key, fallback) { return fallback; })("copy_reponse_invalide_du_serveur", "Réponse invalide du serveur.")};
             }).then(function (payload) {
                 if (!response.ok || !payload || payload.status !== true) {
-                    throw new Error(String(payload && payload.message ? payload.message : 'La requete a echoue.'));
+                    throw new Error(String(payload && payload.message ? payload.message : (window.omoUiText || function (key, fallback) { return fallback; })("copy_la_requete_a_echoue", "La requête a échoué.")));
                 }
                 return payload;
             });
@@ -384,7 +384,7 @@
 
     function openDiscussion(button) {
         if (typeof window.commonTopbarOpenModal !== 'function') {
-            notify('La fenetre de discussion ne peut pas etre ouverte.');
+            notify((window.omoUiText || function (key, fallback) { return fallback; })("copy_la_fenetre_de_discussion_ne_peut_pas_etre_ouverte", "La fenêtre de discussion ne peut pas être ouverte."));
             return;
         }
         var labels = parseJson(button.getAttribute('data-omo-chat-labels'));

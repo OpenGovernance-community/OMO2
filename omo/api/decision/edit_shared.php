@@ -696,7 +696,7 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
     <div class="omo-panel-view__body">
         <div class="omo-panel-view__body_content omo-decision-edit__stack generic-drawer-content generic-form-stack generic-form-stack--compact">
             <?php if ($isEditing && !$isDuplicate && ($context['accessMode'] ?? '') !== 'public'): require_once dirname(__DIR__, 3) . '/common/object_mail/ui.php'; omoObjectMailButton((int)$context['organizationId'], 'decision', (int)$decision->getId()); endif; ?>
-            
+
 
             <?php if (false && $isEditing && $intent === 'manage'): ?>
             <section class="generic-soft-panel generic-soft-panel--stack omo-decision-edit__group-switch">
@@ -987,8 +987,8 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                         <div class="generic-heading-with-help">
                             <h3 class="generic-card-title generic-card-title--section"><?= $escape(t('decisions.edit.choose_title', [], $lang, $baseSourceLang)) ?></h3>
                             <details class="generic-context-help">
-                                <summary aria-label="<?= $escape($isEditing ? 'Choisissez la methode du nouveau groupe.' : t('decisions.edit.choose_text', [], $lang, $baseSourceLang)) ?>">?</summary>
-                                <div class="generic-context-help__content"><?= $escape($isEditing ? 'Choisissez la methode du nouveau groupe.' : t('decisions.edit.choose_text', [], $lang, $baseSourceLang)) ?></div>
+                                <summary aria-label="<?= $escape($isEditing ? omoDecisionUiT('copy.choisissez_la_methode_du_nouveau_groupe') : t('decisions.edit.choose_text', [], $lang, $baseSourceLang)) ?>">?</summary>
+                                <div class="generic-context-help__content"><?= $escape($isEditing ? omoDecisionUiT('copy.choisissez_la_methode_du_nouveau_groupe') : t('decisions.edit.choose_text', [], $lang, $baseSourceLang)) ?></div>
                             </details>
                         </div>
                     </div>
@@ -1084,7 +1084,7 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                     </form>
                 </details>
                 <?php endif; ?>
-                
+
             </section>
             <?php elseif ($selectedDefinition && ($isEditing || !empty($selectedDefinition['available'])) && !empty($selectedDefinition['render_function']) && function_exists((string)$selectedDefinition['render_function'])): ?>
                 <?php

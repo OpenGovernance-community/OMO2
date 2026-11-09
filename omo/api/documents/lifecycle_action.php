@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
+
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 use dbObject\Document;
@@ -45,7 +47,7 @@ foreach ($documentIds as $requestedDocumentId) {
 
     $organizationId = (int)$document->get('IDorganization');
     if ($expectedOrganizationId > 0 && $organizationId !== $expectedOrganizationId) {
-        $error('Les documents doivent appartenir a la meme organisation.', 422);
+        $error(omoDocumentsUiT('copy.les_documents_doivent_appartenir_a_la_meme_organisation'), 422);
     }
     $expectedOrganizationId = $organizationId;
     if (!commonCurrentUserHasOrganizationAccess($organizationId) || ($action === 'delete'
@@ -55,7 +57,7 @@ foreach ($documentIds as $requestedDocumentId) {
     }
 
     if ($action === 'archive' && $document->isArchived()) {
-        $error('Ce document est deja archive.', 422);
+        $error(omoDocumentsUiT('copy.ce_document_est_deja_archive'), 422);
     }
 
     if ($action === 'delete' && !$document->canDeleteDocument($allowEventDocument)) {
@@ -70,7 +72,7 @@ if ($action === 'archive') {
         $document->set('active', 0);
         $result = $document->save();
         if (!is_array($result) || empty($result['status'])) {
-            $error('Impossible d archiver le document.', 422);
+            $error(omoDocumentsUiT('copy.impossible_d_archiver_le_document'), 422);
         }
     }
 

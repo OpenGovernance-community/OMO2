@@ -51,7 +51,7 @@
                 'impossible_d_initialiser_les_applications_de_l_organisation' => ['text' => 'Impossible d’initialiser les applications de l’organisation.', 'context' => 'Validation or action feedback for organization.'],
                 'impossible_de_configurer_les_applications_de_l_organisation_importee' => ['text' => 'Impossible de configurer les applications de l’organisation importée.', 'context' => 'Validation or action feedback for organization.'],
                 'membre_ou_organisation_invalide' => ['text' => 'Membre ou organisation invalide.', 'context' => 'Validation or action feedback for organization.'],
-                'le_compte_a_retirer_est_introuvable' => ['text' => 'Le compte a retirer est introuvable.', 'context' => 'Validation or action feedback for organization.'],
+                'le_compte_a_retirer_est_introuvable' => ['text' => 'Le compte à retirer est introuvable.', 'context' => 'Validation or action feedback for organization.'],
                 'le_dernier_superadmin_ne_peut_pas_quitter_l_organisation_de_base' => ['text' => 'Le dernier superadmin ne peut pas quitter l\'organisation de base.', 'context' => 'Validation or action feedback for organization.'],
                 'connexion_base_de_donnees_indisponible' => ['text' => 'Connexion base de données indisponible.', 'context' => 'Validation or action feedback for organization.'],
                 'ce_membre_n_est_pas_actif_dans_cette_organisation' => ['text' => 'Ce membre n\'est pas actif dans cette organisation.', 'context' => 'Validation or action feedback for organization.'],
@@ -87,30 +87,30 @@
                 'impossible_de_copier_les_types_de_proprietes_du_modele' => ['text' => 'Impossible de copier les types de propriétés du modèle.', 'context' => 'Validation or action feedback for organization.'],
                 'l_espace_racine_n_a_pas_pu_etre_cree' => ['text' => 'L’espace racine n’a pas pu être créé.', 'context' => 'Validation or action feedback for organization.'],
                 'les_droits_du_modele_n_ont_pas_pu_etre_dupliques' => ['text' => 'Les droits du modèle n\'ont pas pu être dupliques.', 'context' => 'Validation or action feedback for organization.'],
-                'organisation_initialisee_depuis_le_modele_selectionne' => ['text' => 'Organisation initialisée depuis le modèle selectionne.', 'context' => 'Validation or action feedback for organization.'],
-                'choisissez_un_modele_predefini_pour_initialiser_cette_organisation' => ['text' => 'Choisissez un modèle predefini pour initialiser cette organisation.', 'context' => 'Validation or action feedback for organization.'],
+                'organisation_initialisee_depuis_le_modele_selectionne' => ['text' => 'Organisation initialisée depuis le modèle sélectionné.', 'context' => 'Validation or action feedback for organization.'],
+                'choisissez_un_modele_predefini_pour_initialiser_cette_organisation' => ['text' => 'Choisissez un modèle prédéfini pour initialiser cette organisation.', 'context' => 'Validation or action feedback for organization.'],
                 'organisation_creee' => ['text' => 'Organisation créée.', 'context' => 'Validation or action feedback for organization.'],
                 'type_ou_definition_de_propriete_invalide' => ['text' => 'Type ou définition de propriété invalide.', 'context' => 'Validation or action feedback for organization.'],
                 'cette_propriete_heritee_est_verrouillee' => ['text' => 'Cette propriété héritée est verrouillée.', 'context' => 'Validation or action feedback for organization.'],
                 'vous_n_avez_pas_les_droits_pour_modifier_cet_espace' => ['text' => 'Vous n’avez pas les droits pour modifier cet espace.', 'context' => 'Validation or action feedback for organization.'],
                 'une_autorite_existante_ne_peut_pas_etre_ajoutee_a_cette_propriete' => ['text' => 'Une autorité existante ne peut pas être ajoutée à cette propriété.', 'context' => 'Validation or action feedback for organization.'],
                 'cette_autorite_ne_peut_pas_etre_modifiee_depuis_cet_espace' => ['text' => 'Cette autorité ne peut pas être modifiée depuis cet espace.', 'context' => 'Validation or action feedback for organization.'],
-                'cette_autorite_est_geree_par_son_modele_et_ne_peut_pas_etre_modifiee_ici' => ['text' => 'Cette autorité est geree par son modèle et ne peut pas être modifiée ici.', 'context' => 'Validation or action feedback for organization.'],
-                'l_autorite_parente_doit_etre_confiee_au_premier_cercle_parent' => ['text' => 'L’autorité parente doit être confiee au premier cercle parent.', 'context' => 'Validation or action feedback for organization.'],
+                'cette_autorite_est_geree_par_son_modele_et_ne_peut_pas_etre_modifiee_ici' => ['text' => 'Cette autorité est gérée par son modèle et ne peut pas être modifiée ici.', 'context' => 'Validation or action feedback for organization.'],
+                'l_autorite_parente_doit_etre_confiee_au_premier_cercle_parent' => ['text' => 'L’autorité parente doit être confiée au premier cercle parent.', 'context' => 'Validation or action feedback for organization.'],
                 'cette_autorite_n_a_pas_pu_etre_modifiee' => ['text' => 'Cette autorité n’a pas pu être modifiée.', 'context' => 'Validation or action feedback for organization.'],
                 'l_autorite_parente_est_introuvable' => ['text' => 'L’autorité parente est introuvable.', 'context' => 'Validation or action feedback for organization.'],
-                'une_coquille_de_delegation_complete_ne_peut_pas_etre_la_source_d_une_delegation_partielle' => ['text' => 'Une coquille de délégation complete ne peut pas être la source d’une délégation partielle.', 'context' => 'Validation or action feedback for organization.'],
+                'une_coquille_de_delegation_complete_ne_peut_pas_etre_la_source_d_une_delegation_partielle' => ['text' => 'Une coquille de délégation complète ne peut pas être la source d’une délégation partielle.', 'context' => 'Validation or action feedback for organization.'],
                 'la_nouvelle_autorite_n_a_pas_pu_etre_creee' => ['text' => 'La nouvelle autorité n’a pas pu être créée.', 'context' => 'Validation or action feedback for organization.'],
                 'l_espace_a_modifier_est_introuvable' => ['text' => 'L’espace à modifier est introuvable.', 'context' => 'Validation or action feedback for organization.'],
                 'les_modeles_d_espaces_ne_sont_pas_disponibles_en_mode_decouverte' => ['text' => 'Les modèles d’espaces ne sont pas disponibles en mode découverte.', 'context' => 'Validation or action feedback for organization.'],
                 'aucun_espace_racine_n_a_ete_trouve_pour_cette_organisation' => ['text' => 'Aucun espace racine n’a été trouvé pour cette organisation.', 'context' => 'Validation or action feedback for organization.'],
-                'le_modele_parent_selectionne_n_est_pas_disponible_ici' => ['text' => 'Le modèle parent selectionne n\'est pas disponible ici.', 'context' => 'Validation or action feedback for organization.'],
+                'le_modele_parent_selectionne_n_est_pas_disponible_ici' => ['text' => 'Le modèle parent sélectionné n\'est pas disponible ici.', 'context' => 'Validation or action feedback for organization.'],
                 'le_modele_parent_doit_etre_du_meme_type_que_cet_espace_modele' => ['text' => 'Le modèle parent doit être du même type que cet espace modèle.', 'context' => 'Validation or action feedback for organization.'],
                 'le_modele_parent_choisi_creerait_une_boucle' => ['text' => 'Le modèle parent choisi créerait une boucle.', 'context' => 'Validation or action feedback for organization.'],
                 'le_modele_de_reference_est_obligatoire' => ['text' => 'Le modèle de référence est obligatoire.', 'context' => 'Validation or action feedback for organization.'],
-                'le_modele_selectionne_n_est_pas_disponible_ici' => ['text' => 'Le modèle selectionne n\'est pas disponible ici.', 'context' => 'Validation or action feedback for organization.'],
+                'le_modele_selectionne_n_est_pas_disponible_ici' => ['text' => 'Le modèle sélectionné n\'est pas disponible ici.', 'context' => 'Validation or action feedback for organization.'],
                 'le_modele_choisi_ne_peut_pas_etre_instancie_ici' => ['text' => 'Le modèle choisi ne peut pas être instancie ici.', 'context' => 'Validation or action feedback for organization.'],
-                'le_nombre_maximum_d_admins_doit_etre_superieur_ou_egal_au_minimum' => ['text' => 'Le nombre maximum d’admins doit être supérieur ou egal au minimum.', 'context' => 'Validation or action feedback for organization.'],
+                'le_nombre_maximum_d_admins_doit_etre_superieur_ou_egal_au_minimum' => ['text' => 'Le nombre maximum d’admins doit être supérieur ou égal au minimum.', 'context' => 'Validation or action feedback for organization.'],
                 'le_nom_de_l_espace_est_obligatoire' => ['text' => 'Le nom de l’espace est obligatoire.', 'context' => 'Validation or action feedback for organization.'],
                 'l_espace_n_a_pas_pu_etre_enregistre' => ['text' => 'L’espace n’a pas pu être enregistré.', 'context' => 'Validation or action feedback for organization.'],
                 'les_droits_de_l_espace_n_ont_pas_pu_etre_enregistres' => ['text' => 'Les droits de l’espace n’ont pas pu être enregistrés.', 'context' => 'Validation or action feedback for organization.'],
@@ -141,15 +141,15 @@
                 'vous_n_avez_pas_les_droits_pour_modifier_les_modeles_de_cet_espace' => ['text' => 'Vous n’avez pas les droits pour modifier les modèles de cet espace.', 'context' => 'Validation or action feedback for organization.'],
                 'le_modele_d_heritage_choisi_est_invalide' => ['text' => 'Le modèle d\'héritage choisi est invalide.', 'context' => 'Validation or action feedback for organization.'],
                 'le_modele_d_heritage_choisi_creerait_une_boucle' => ['text' => 'Le modèle d\'héritage choisi créerait une boucle.', 'context' => 'Validation or action feedback for organization.'],
-                'un_modele_ne_peut_pas_heriter_de_lui_meme' => ['text' => 'Un modèle ne peut pas heriter de lui-même.', 'context' => 'Validation or action feedback for organization.'],
-                'le_modele_n_a_pas_pu_etre_enregistre' => ['text' => 'Le modèle n\'a pas pu être enregistre.', 'context' => 'Validation or action feedback for organization.'],
+                'un_modele_ne_peut_pas_heriter_de_lui_meme' => ['text' => 'Un modèle ne peut pas hériter de lui-même.', 'context' => 'Validation or action feedback for organization.'],
+                'le_modele_n_a_pas_pu_etre_enregistre' => ['text' => 'Le modèle n\'a pas pu être enregistré.', 'context' => 'Validation or action feedback for organization.'],
                 'les_droits_du_modele_n_ont_pas_pu_etre_enregistres' => ['text' => 'Les droits du modèle n\'ont pas pu être enregistrés.', 'context' => 'Validation or action feedback for organization.'],
-                'modele_enregistre' => ['text' => 'Modèle enregistre.', 'context' => 'Validation or action feedback for organization.'],
+                'modele_enregistre' => ['text' => 'Modèle enregistré.', 'context' => 'Validation or action feedback for organization.'],
                 'le_modele_a_supprimer_est_invalide' => ['text' => 'Le modèle à supprimer est invalide.', 'context' => 'Validation or action feedback for organization.'],
                 'le_modele_a_supprimer_est_introuvable' => ['text' => 'Le modèle à supprimer est introuvable.', 'context' => 'Validation or action feedback for organization.'],
                 'vous_n_avez_pas_les_droits_pour_supprimer_ce_modele' => ['text' => 'Vous n\'avez pas les droits pour supprimer ce modèle.', 'context' => 'Validation or action feedback for organization.'],
-                'le_modele_n_a_pas_pu_etre_supprime' => ['text' => 'Le modèle n\'a pas pu être supprime.', 'context' => 'Validation or action feedback for organization.'],
-                'modele_supprime' => ['text' => 'Modèle supprime.', 'context' => 'Validation or action feedback for organization.'],
+                'le_modele_n_a_pas_pu_etre_supprime' => ['text' => 'Le modèle n\'a pas pu être supprimé.', 'context' => 'Validation or action feedback for organization.'],
+                'modele_supprime' => ['text' => 'Modèle supprimé.', 'context' => 'Validation or action feedback for organization.'],
                 'l_espace_d_organisation_a_modifier_est_invalide' => ['text' => 'L’espace d’organisation à modifier est invalide.', 'context' => 'Validation or action feedback for organization.'],
                 'l_espace_d_organisation_a_modifier_est_introuvable' => ['text' => 'L’espace d’organisation à modifier est introuvable.', 'context' => 'Validation or action feedback for organization.'],
                 'vous_n_avez_pas_les_droits_pour_modifier_cette_organisation' => ['text' => 'Vous n\'avez pas les droits pour modifier cette organisation.', 'context' => 'Validation or action feedback for organization.'],
@@ -157,7 +157,170 @@
                 'l_organisation_n_a_pas_pu_etre_enregistree' => ['text' => 'L\'organisation n\'a pas pu être enregistrée.', 'context' => 'Validation or action feedback for organization.'],
                 'les_droits_de_l_organisation_n_ont_pas_pu_etre_enregistres' => ['text' => 'Les droits de l\'organisation n\'ont pas pu être enregistrés.', 'context' => 'Validation or action feedback for organization.'],
                 'organisation_enregistree' => ['text' => 'Organisation enregistrée.', 'context' => 'Validation or action feedback for organization.'],
-            ];
+
+                'copy.la_connexion_nextcloud_a_echoue' => ['text' => 'La connexion Nextcloud a échoué.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.la_requete_nextcloud_a_echoue' => ['text' => 'La requête Nextcloud a échoué.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.requete_nextcloud_refusee_httpcode_value' => ['text' => 'Requête Nextcloud refusée ({httpCode}){value}.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.impossible_de_preparer_le_dossier_distant' => ['text' => 'Impossible de préparer le dossier distant.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.impossible_d_envoyer_le_fichier_vers_nextcloud' => ['text' => 'Impossible d’envoyer le fichier vers Nextcloud.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.impossible_de_recuperer_le_fichier_distant' => ['text' => 'Impossible de récupérer le fichier distant.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.impossible_de_mettre_a_jour_le_fichier_distant' => ['text' => 'Impossible de mettre à jour le fichier distant.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.le_retrait_du_membre_n_a_pas_pu_etre_finalise' => ['text' => 'Le retrait du membre n’a pas pu être finalisé.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.le_membre_a_ete_retire_de_l_organisation' => ['text' => 'Le membre a été retiré de l\'organisation.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.l_ajout_en_attente_n_a_pas_pu_etre_finalise' => ['text' => 'L\'ajout en attente n\'a pas pu être finalisé.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.invitation_envoyee_email' => ['text' => 'Invitation envoyée : {email}', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.votre_demande_a_ete_envoyee_aux_administrateurs' => ['text' => 'Votre demande a été envoyée aux administrateurs.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.une_demande_est_deja_en_attente_pour_cette_organisation' => ['text' => 'Une demande est déjà en attente pour cette organisation.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.l_organisation_ne_peut_pas_etre_supprimee_avec_ce_profil' => ['text' => 'L\'organisation ne peut pas être supprimée avec ce profil.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.l_organisation_doit_avoir_exactement_un_membre_actif_pour_etre_supprim' => ['text' => 'L\'organisation doit avoir exactement un membre actif pour être supprimée avec ce profil.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.la_connexion_a_la_base_de_donnees_n_est_pas_disponible' => ['text' => 'La connexion à la base de données n\'est pas disponible.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.les_documents_de_l_organisation_n_ont_pas_pu_etre_supprimes' => ['text' => 'Les documents de l\'organisation n\'ont pas pu être supprimés.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.les_processus_de_l_organisation_n_ont_pas_pu_etre_supprimes' => ['text' => 'Les processus de l\'organisation n\'ont pas pu être supprimés.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.les_liens_de_partage_n_ont_pas_pu_etre_supprimes' => ['text' => 'Les liens de partage n\'ont pas pu être supprimés.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.les_invitations_n_ont_pas_pu_etre_supprimees' => ['text' => 'Les invitations n\'ont pas pu être supprimées.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.l_historique_n_a_pas_pu_etre_supprime' => ['text' => 'L\'historique n\'a pas pu être supprimé.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.les_applications_d_organisation_n_ont_pas_pu_etre_supprimees' => ['text' => 'Les applications d\'organisation n\'ont pas pu être supprimées.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.les_parcours_d_organisation_n_ont_pas_pu_etre_supprimes' => ['text' => 'Les parcours d\'organisation n\'ont pas pu être supprimés.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.les_regles_d_autorite_n_ont_pas_pu_etre_supprimees' => ['text' => 'Les règles d\'autorité n\'ont pas pu être supprimées.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.les_liens_entre_domaines_d_autorite_n_ont_pas_pu_etre_supprimes' => ['text' => 'Les liens entre domaines d\'autorité n\'ont pas pu être supprimés.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.les_domaines_d_autorite_n_ont_pas_pu_etre_supprimes' => ['text' => 'Les domaines d\'autorité n\'ont pas pu être supprimés.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.les_definitions_de_proprietes_n_ont_pas_pu_etre_supprimees' => ['text' => 'Les définitions de propriétés n\'ont pas pu être supprimées.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.la_structure_de_l_organisation_n_a_pas_pu_etre_supprimee' => ['text' => 'La structure de l\'organisation n\'a pas pu être supprimée.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.les_membres_de_l_organisation_n_ont_pas_pu_etre_supprimes' => ['text' => 'Les membres de l\'organisation n\'ont pas pu être supprimés.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.l_organisation_n_a_pas_pu_etre_supprimee' => ['text' => 'L\'organisation n\'a pas pu être supprimée.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.impossible_d_attacher_cette_personne_a_l_organisation' => ['text' => 'Impossible d\'attacher cette personne à l\'organisation.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.impossible_de_mettre_a_jour_les_documents_de_cette_personne' => ['text' => 'Impossible de mettre à jour les documents de cette personne.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.la_personne_selectionnee_est_introuvable' => ['text' => 'La personne sélectionnée est introuvable.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.selectionnez_une_personne_ou_saisissez_une_adresse_e_mail' => ['text' => 'Sélectionnez une personne ou saisissez une adresse e-mail.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.le_profil_n_a_pas_pu_etre_cree' => ['text' => 'Le profil n\'a pas pu être créé.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.une_liste_de_projets_n_a_pas_pu_etre_restauree' => ['text' => 'Une liste de projets n’a pas pu être restaurée', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.une_autorite_du_modele_n_a_pas_pu_etre_copiee' => ['text' => 'Une autorité du modèle n’a pas pu être copiée.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.la_hierarchie_des_autorites_du_modele_n_a_pas_pu_etre_copiee' => ['text' => 'La hiérarchie des autorités du modèle n’a pas pu être copiée.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.discardedcount_image_s_indisponible_s_sur_ce_serveur_ont_ete_ignorees' => ['text' => '{discardedCount} image(s) indisponible(s) sur ce serveur ont été ignorées.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.une_autorite_exportee_sans_libelle_a_ete_ignoree' => ['text' => 'Une autorité exportée sans libellé a été ignorée.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.une_autorite_exportee_n_a_pas_pu_etre_importee' => ['text' => 'Une autorité exportée n’a pas pu être importée.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.une_autorite_importee_a_perdu_son_rattachement_parent_hors_du_perimetr' => ['text' => 'Une autorité importée a perdu son rattachement parent hors du périmètre exporte.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.une_autorite_importee_a_perdu_son_lien_vers_son_autorite_source_de_mod' => ['text' => 'Une autorité importée a perdu son lien vers son autorité source de modèle.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.les_liens_entre_les_autorites_importees_n_ont_pas_pu_etre_restaures' => ['text' => 'Les liens entre les autorités importées n’ont pas pu être restaurés.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.une_regle_exportee_a_ete_ignoree_car_son_autorite_est_absente_de_l_imp' => ['text' => 'Une règle exportée a été ignorée car son autorité est absente de l’import.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.une_regle_exportee_incomplete_a_ete_ignoree' => ['text' => 'Une règle exportée incomplète a été ignorée.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.une_regle_exportee_n_a_pas_pu_etre_importee' => ['text' => 'Une règle exportée n’a pas pu être importée.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.un_template_du_modele_selectionne_n_a_pas_pu_etre_copie' => ['text' => 'Un template du modèle sélectionné n\'a pas pu être copie.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.les_droits_d_un_template_du_modele_n_ont_pas_pu_etre_copies' => ['text' => 'Les droits d\'un template du modèle n\'ont pas pu être copies.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.le_modele_d_organisation_selectionne_est_introuvable' => ['text' => 'Le modèle d\'organisation sélectionné est introuvable.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.la_configuration_du_modele_est_introuvable' => ['text' => 'La configuration du modèle est introuvable.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.impossible_de_copier_les_affichages_du_modele' => ['text' => 'Impossible de copier les affichages du modèle.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.un_template_importe_ne_peut_pas_etre_a_la_fois_remplace_et_exclu' => ['text' => 'Un template importe ne peut pas être à la fois remplace et exclu.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.un_template_du_modele_ne_peut_etre_associe_qu_a_un_seul_template_impor' => ['text' => 'Un template du modèle ne peut être associé qu à un seul template importe.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.une_correspondance_de_propriete_est_invalide_pour_le_template_selectio' => ['text' => 'Une correspondance de propriété est invalide pour le template sélectionné.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.une_propriete_du_modele_ne_peut_remplacer_qu_une_seule_propriete_impor' => ['text' => 'Une propriété du modèle ne peut remplacer qu’une seule propriété importée dans un même template.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.la_propriete_name_conserve_le_format_du_modele_applique' => ['text' => 'La propriété {name} conserve le format du modèle applique.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.impossible_d_importer_les_types_de_proprietes' => ['text' => 'Impossible d’importer les types de propriétés.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.le_graphe_compact_contient_des_dependances_de_parent_invalides' => ['text' => 'Le graphe compact contient des dépendances de parent invalides.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.document_n_a_pas_pu_etre_importe_car_son_holon_a_ete_supprime_il_exist' => ['text' => ' document n’a pas pu être importé car son holon a été supprimé. Il existe dans l’archive mais n’a pas été importé.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.documents_n_ont_pas_pu_etre_importes_car_leur_holon_a_ete_supprime_ils' => ['text' => ' documents n’ont pas pu être importés car leur holon a été supprimé. Ils existent dans l’archive mais n’ont pas été importés.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.un_espace_importe_n_a_pas_pu_etre_archive' => ['text' => 'Un espace importé n’a pas pu être archive.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.un_espace_importe_n_a_pas_pu_etre_archive_7caebe' => ['text' => 'Un espace importé n’a pas pu être archive', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.le_lien_membre_n_a_pas_pu_etre_cree' => ['text' => 'Le lien membre n’a pas pu être créé', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.un_membre_sans_adresse_e_mail_n_a_pas_pu_etre_importe' => ['text' => 'Un membre sans adresse e-mail n’a pas pu être importé.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.le_membre_email_n_a_pas_ete_importe_car_plusieurs_comptes_existants_ut' => ['text' => 'Le membre {email} n’a pas été importé car plusieurs comptes existants utilisent déjà cette adresse e-mail.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.le_compte_membre_n_a_pas_pu_etre_cree' => ['text' => 'Le compte membre n’a pas pu être créé', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.la_propriete_des_domaines_n_a_pas_pu_etre_convertie_en_liste_d_autorit' => ['text' => 'La propriété des domaines n’a pas pu être convertie en liste d’autorités', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.unmatchedcount_domaine_s_omo_1_n_ont_pas_pu_etre_reconnus_dans_les_pro' => ['text' => '{unmatchedCount} domaine(s) OMO 1 n’ont pas pu être reconnus dans les propriétés d’autorité.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.le_domaine_omo_1_n_a_pas_pu_etre_converti_en_autorite' => ['text' => 'Le domaine OMO 1 n’a pas pu être converti en autorité', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.le_rattachement_parent_de_l_autorite_omo_1_n_a_pas_pu_etre_cree' => ['text' => 'Le rattachement parent de l’autorité OMO 1 n’a pas pu être créé', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.le_marquage_de_l_autorite_omo_1_a_rattacher_n_a_pas_pu_etre_enregistre' => ['text' => 'Le marquage de l’autorité OMO 1 a rattacher n’a pas pu être enregistré', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.le_domaine_omo_1_sourceid_value' => ['text' => 'Le domaine OMO 1 {sourceId}{value}', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.unmatchedtemplatedomaincount_domaine_s_des_templates_omo_1_n_ont_pas_d' => ['text' => '{unmatchedTemplateDomainCount} domaine(s) des templates OMO 1 n’ont pas d’équivalence dans les autorités du modèle applique.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.manualparentcount_autorite_s_omo_1_restent_sans_parent_et_sont_signale' => ['text' => '{manualParentCount} autorité(s) OMO 1 restent sans parent et sont signalées en rouge pour rattachement manuel.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.la_regle_sourceid_value' => ['text' => 'La règle {sourceId}{value}', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.regle_omo_1_sourceid' => ['text' => 'Règle OMO 1 #{sourceId}', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.la_regle_sourceid_conserve_un_rattachement_local_car_son_domaine_omo_1' => ['text' => 'La règle {sourceId} conserve un rattachement local car son domaine OMO 1 n’a pas pu être converti en autorité.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.une_regle_n_a_pas_pu_etre_importee' => ['text' => 'Une règle n’a pas pu être importée', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.une_attribution_de_role_n_a_pas_pu_etre_creee' => ['text' => 'Une attribution de rôle n’a pas pu être créée', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.le_statut_admin_de_contexte_n_a_pas_pu_etre_importe_value' => ['text' => 'Le statut admin de contexte n’a pas pu être importé{value}', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.value_fichier_omo_1_a_transferer_manuellement_value_2' => ['text' => '{value}Fichier OMO 1 à transférer manuellement{value_2}', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.un_document_n_a_pas_pu_etre_cree' => ['text' => 'Un document n’a pas pu être créé', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.un_projet_n_a_pas_pu_etre_cree' => ['text' => 'Un projet n’a pas pu être créé', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.la_hierarchie_des_projets_n_a_pas_pu_etre_recreee' => ['text' => 'La hiérarchie des projets n’a pas pu être recréée', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.un_membre_de_projet_n_a_pas_pu_etre_importe' => ['text' => 'Un membre de projet n’a pas pu être importé', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.un_suivi_de_projet_n_a_pas_pu_etre_importe' => ['text' => 'Un suivi de projet n’a pas pu être importé', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.le_suivi_de_skippedsourceuserids_membre_s_n_a_pas_pu_etre_importe_car_' => ['text' => 'Le suivi de {skippedSourceUserIds} membre(s) n’a pas pu être importé car ces membres ne figurent pas dans l’import.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.la_tache_omo_1_sourcetaskid_a_ete_importee_sans_parent_car_son_projet_' => ['text' => 'La tâche OMO 1 #{sourceTaskId} a été importée sans parent car son projet parent est introuvable.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.la_tache_omo_1_sourcetaskid_au_statut_someday_a_ete_importee_sans_pare' => ['text' => 'La tâche OMO 1 #{sourceTaskId} au statut someday a été importée sans parent date.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.la_date_de_fin_de_la_tache_omo_1_sourcetaskid_a_ete_ramenee_a_celle_de' => ['text' => 'La date de fin de la tâche OMO 1 #{sourceTaskId} a été ramenée a celle de son projet parent.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.la_tache_omo_1_sourceid_etait_rattachee_a_un_projet_inaccessible_et_n_' => ['text' => 'La tâche OMO 1 #{sourceId} était rattachée à un projet inaccessible et n’a pas été importée.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.la_tache_source_sourceid_n_a_pas_pu_etre_importee' => ['text' => 'La tâche source #{sourceId} n’a pas pu être importée', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.la_hierarchie_des_sous_projets_n_a_pas_pu_etre_recreee' => ['text' => 'La hiérarchie des sous-projets n’a pas pu être recréée', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.un_lien_projet_document_n_a_pas_pu_etre_cree' => ['text' => 'Un lien projet-document n’a pas pu être créé', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.la_hierarchie_des_documents_n_a_pas_pu_etre_recreee' => ['text' => 'La hiérarchie des documents n’a pas pu être recréée', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.activite_omo_1_value' => ['text' => 'Activité OMO 1 #{value}', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.une_activite_recurrente_n_a_pas_pu_etre_creee' => ['text' => 'Une activité récurrente n’a pas pu être créée', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.une_validation_de_tache_recurrente_n_a_pas_pu_etre_importee' => ['text' => 'Une validation de tâche récurrente n’a pas pu être importée', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.le_projet_modele_d_un_processus_n_a_pas_pu_etre_cree' => ['text' => 'Le projet modèle d’un processus n’a pas pu être créé', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.un_processus_n_a_pas_pu_etre_cree' => ['text' => 'Un processus n’a pas pu être créé', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.le_declenchement_d_un_processus_n_a_pas_pu_etre_cree' => ['text' => 'Le déclenchement d’un processus n’a pas pu être créé', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.le_modele_d_une_etape_de_processus_n_a_pas_pu_etre_cree' => ['text' => 'Le modèle d’une étape de processus n’a pas pu être créé', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.une_etape_de_processus_n_a_pas_pu_etre_creee' => ['text' => 'Une étape de processus n’a pas pu être créée', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.la_recurrence_d_une_activite_de_processus_n_a_pas_pu_etre_creee' => ['text' => 'La récurrence d’une activité de processus n’a pas pu être créée', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.la_hierarchie_des_etapes_de_processus_n_a_pas_pu_etre_recreee' => ['text' => 'La hiérarchie des étapes de processus n’a pas pu être recréée', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.une_dependance_de_processus_n_a_pas_pu_etre_creee' => ['text' => 'Une dépendance de processus n’a pas pu être créée', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.une_execution_de_processus_n_a_pas_pu_etre_importee' => ['text' => 'Une exécution de processus n’a pas pu être importée', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.une_etape_d_execution_de_processus_n_a_pas_pu_etre_importee' => ['text' => 'Une étape d’exécution de processus n’a pas pu être importée', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.un_indicateur_n_a_pas_pu_etre_cree' => ['text' => 'Un indicateur n’a pas pu être créé', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.une_valeur_d_indicateur_n_a_pas_pu_etre_creee' => ['text' => 'Une valeur d’indicateur n’a pas pu être créée', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.reunion_omo_1' => ['text' => 'Réunion OMO 1', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.la_visibilite_omo_1_du_document_documentlabel_est_inconnue_le_document' => ['text' => 'La visibilité OMO 1 du document{documentLabel} est inconnue : le document est restreint à son propriétaire.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.la_visibilite_omo_1_du_document_documentlabel_value' => ['text' => 'La visibilité OMO 1 du document{documentLabel}{value}', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.la_visibilite_du_document_n_a_pas_pu_etre_creee_value' => ['text' => 'La visibilité du document n’a pas pu être créée{value}', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.la_portee_du_document_importe_n_a_pas_pu_etre_creee_value' => ['text' => 'La portée du document importé n’a pas pu être créée : {value}', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.la_portee_value_du_document_title_est_invalide_ou_sans_cible_importee_' => ['text' => 'La portée {value} du document "{title}" est invalide ou sans cible importée : accès restreint au propriétaire.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.un_proces_verbal_n_a_pas_pu_etre_cree' => ['text' => 'Un procès-verbal n’a pas pu être créé', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.un_point_de_proces_verbal_n_a_pas_pu_etre_cree' => ['text' => 'Un point de procès-verbal n’a pas pu être créé', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.la_hierarchie_des_points_de_proces_verbal_n_a_pas_pu_etre_recreee' => ['text' => 'La hiérarchie des points de procès-verbal n’a pas pu être recréée', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.reunion_de_gouvernance' => ['text' => 'Réunion de gouvernance', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.reunion_operationnelle' => ['text' => 'Réunion opérationnelle', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.reunion_mixte' => ['text' => 'Réunion mixte', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.reunion_de_strategie' => ['text' => 'Réunion de stratégie', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.reunion_de_travail' => ['text' => 'Réunion de travail', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.reunion_de_regulation' => ['text' => 'Réunion de régulation', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.reunion_informelle' => ['text' => 'Réunion informelle', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.reunion_legacymeetingtypelabel' => ['text' => 'Réunion {legacyMeetingTypeLabel}', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.une_reunion_du_calendrier_n_a_pas_pu_etre_creee' => ['text' => 'Une réunion du calendrier n’a pas pu être créée', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.la_structure_n_a_pas_pu_etre_importee' => ['text' => 'La structure n’a pas pu être importée.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.les_applications_de_l_organisation_n_ont_pas_pu_etre_configurees' => ['text' => 'Les applications de l’organisation n’ont pas pu être configurées.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.les_tutoriels_de_base_n_ont_pas_pu_etre_rattaches_a_l_organisation_imp' => ['text' => 'Les tutoriels de base n’ont pas pu être rattachés à l’organisation importée.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.l_invitation_pour_email_n_a_pas_pu_etre_envoyee' => ['text' => 'L’invitation pour {email} n’a pas pu être envoyée.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.impossible_de_copier_les_reglages_du_modele' => ['text' => 'Impossible de copier les réglages du modèle.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.un_parcours_du_modele_n_a_pas_pu_etre_rattache' => ['text' => 'Un parcours du modèle n’a pas pu être rattaché.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.le_modele_d_organisation_demande_est_introuvable' => ['text' => 'Le modèle d\'organisation demande est introuvable.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.le_modele_n_a_pas_pu_etre_duplique' => ['text' => 'Le modèle n\'a pas pu être duplique.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.cette_autorite_ne_peut_pas_etre_traitee' => ['text' => 'Cette autorité ne peut pas être traitée.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.annulation_de_la_delegation_complete_de_l_autorite_label_l_autorite_so' => ['text' => 'Annulation de la délégation complète de l’autorité "{label}" : l’autorité source a été réactivée.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.remontee_de_l_autorite_label_value' => ['text' => 'Remontée de l’autorité "{label}{value}', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.suppression_de_l_autorite_label' => ['text' => 'Suppression de l’autorité "{label}".', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.propertyreferencecount_rattachement_value_de_propriete_remonte_value_2' => ['text' => ' {propertyReferenceCount} rattachement{value} de propriété remonte{value_2}{value_3}', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.chaque_autorite_doit_avoir_un_nom' => ['text' => 'Chaque autorité doit avoir un nom.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.chaque_autorite_doit_avoir_un_nom_et_une_autorite_parente' => ['text' => 'Chaque autorité doit avoir un nom et une autorité parente.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.l_autorite_parente_est_maintenant_value' => ['text' => 'l’autorité parente est maintenant "{value}"', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.la_description_a_ete_modifiee' => ['text' => 'la description a été modifiée', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.modification_de_l_autorite_label_value' => ['text' => 'Modification de l’autorité "{label}" : {value}.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.chaque_nouvelle_autorite_doit_avoir_un_nom' => ['text' => 'Chaque nouvelle autorité doit avoir un nom.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.chaque_nouvelle_autorite_doit_avoir_un_nom_et_une_autorite_parente' => ['text' => 'Chaque nouvelle autorité doit avoir un nom et une autorité parente.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.la_delegation_complete_a_echoue' => ['text' => 'La délégation complète a échoué.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.delegation_complete_de_l_autorite_label_value' => ['text' => 'Délégation complète de l’autorité "{label}".{value}', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.la_propriete_value_est_obligatoire' => ['text' => 'La propriété "{value}" est obligatoire.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.les_autorites_n_ont_pas_pu_etre_enregistrees' => ['text' => 'Les autorités n’ont pas pu être enregistrées.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.les_autorites_du_modele_n_ont_pas_pu_etre_enregistrees' => ['text' => 'Les autorités du modèle n’ont pas pu être enregistrées.', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.role' => ['text' => 'Rôle', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.generique' => ['text' => 'Générique', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.regles' => ['text' => 'Règles', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.regle_value' => ['text' => 'Règle #{value}', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.decisions' => ['text' => 'Décisions', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.taches_recurrentes' => ['text' => 'Tâches récurrentes', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.tache_recurrente_id' => ['text' => 'Tâche récurrente #{id}', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+                'copy.evenement_value' => ['text' => 'Événement #{value}', 'context' => 'Interface text in class/dbobject/organization.class.php'],
+    ];
         }
 
 		public const SYSTEM_ORGANIZATION_ID = 1;
@@ -176,7 +339,7 @@
 		{
 			return 'organization'; // Nom de la table correspondante
 		}	
-		
+
 		// Defini le contenu de la table
 		public static function rules()
 		{
@@ -196,7 +359,7 @@
 				[['id'], 'safe'],									// Champs proteges
 			];
 		}
-		
+
 		// Defini les labels standards pour cet objet, affiches dans les formulaires automatiques
 		public static function attributeLabels()
 		{
@@ -222,13 +385,13 @@
 				'name' => 'Nom complet de l\'organisation',
 				'description' => 'Présentation libre en texte simple, affichée dans les fiches de modèles.',
 				'url' => 'Adresse HTTP ou HTTPS du lien En savoir plus dans les fiches de modèles.',
-				'shortname' => 'Identifiant utilise dans l\'URL de l\'organisation',
+				'shortname' => 'Identifiant utilisé dans l\'URL de l\'organisation',
 				'domain' => 'Nom de domaine principal de l\'organisation',
-				'interface_level' => 'Niveau global de complexite de l’interface, utilise pour afficher progressivement les options du logiciel.',
+				'interface_level' => 'Niveau global de complexité de l’interface, utilisé pour afficher progressivement les options du logiciel.',
 				'latlong' => 'Position géographique facultative de l’organisation pour l’affichage sur une carte.',
 				'logo' => 'Logo de l\'organisation',
 				'banner' => 'Image de bannière de l\'organisation',
-				'color' => 'Couleur principale au format hexadecimal ou texte court',
+				'color' => 'Couleur principale au format hexadécimal ou texte court',
 			];
 		}
 
@@ -251,7 +414,7 @@
 		{
 			return array(
 				self::INTERFACE_LEVEL_DISCOVERY => array(
-					'label' => 'Decouverte',
+					'label' => 'Découverte',
 					'description' => 'Les fonctions essentielles sont mises en avant.',
 				),
 				self::INTERFACE_LEVEL_AUTONOMOUS => array(
@@ -260,7 +423,7 @@
 				),
 				self::INTERFACE_LEVEL_EXPERT => array(
 					'label' => 'Expert',
-					'description' => 'Toutes les fonctions et options disponibles sont proposees.',
+					'description' => 'Toutes les fonctions et options disponibles sont proposées.',
 				),
 			);
 		}
@@ -1656,7 +1819,7 @@
 			$curlError = trim((string)curl_error($curl));
 			$httpCode = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
 			if ($response === false) {
-				return array('status' => false, 'text' => $curlError !== '' ? $curlError : 'La connexion Nextcloud a echoue.');
+				return array('status' => false, 'text' => $curlError !== '' ? $curlError : self::uiMessage('copy.la_connexion_nextcloud_a_echoue'));
 			}
 
 			if ($httpCode >= 200 && $httpCode < 300) {
@@ -1758,7 +1921,7 @@
 			if ($response === false) {
 				return array(
 					'status' => false,
-					'text' => $curlError !== '' ? $curlError : 'La requete Nextcloud a echoue.',
+					'text' => $curlError !== '' ? $curlError : self::uiMessage('copy.la_requete_nextcloud_a_echoue'),
 				);
 			}
 
@@ -1787,13 +1950,9 @@
 				'text' => ($httpCode >= 200 && $httpCode < 300)
 					? 'OK'
 					: (
-						'Requete Nextcloud refusee (' . $httpCode . ')'
-						. (
-							trim((string)parse_url($url, PHP_URL_PATH)) !== ''
+						self::uiMessage('copy.requete_nextcloud_refusee_httpcode_value', ['httpCode' => $httpCode, 'value' => trim((string)parse_url($url, PHP_URL_PATH)) !== ''
 								? ' pour ' . trim((string)parse_url($url, PHP_URL_PATH))
-								: ''
-						)
-						. '.'
+								: ''])
 					),
 			);
 		}
@@ -1827,7 +1986,7 @@
 				if (!in_array($httpCode, array(201, 405), true) && empty($result['status'])) {
 					return array(
 						'status' => false,
-						'text' => trim((string)($result['text'] ?? 'Impossible de preparer le dossier distant.')),
+						'text' => trim((string)($result['text'] ?? self::uiMessage('copy.impossible_de_preparer_le_dossier_distant'))),
 					);
 				}
 			}
@@ -1914,7 +2073,7 @@
 			if (!is_array($uploadResult) || empty($uploadResult['status'])) {
 				return array(
 					'status' => false,
-					'text' => trim((string)($uploadResult['text'] ?? 'Impossible d envoyer le fichier vers Nextcloud.')),
+					'text' => trim((string)($uploadResult['text'] ?? self::uiMessage('copy.impossible_d_envoyer_le_fichier_vers_nextcloud'))),
 				);
 			}
 
@@ -1974,7 +2133,7 @@
 			if (!is_array($result) || empty($result['status'])) {
 				return array(
 					'status' => false,
-					'text' => trim((string)($result['text'] ?? 'Impossible de recuperer le fichier distant.')),
+					'text' => trim((string)($result['text'] ?? self::uiMessage('copy.impossible_de_recuperer_le_fichier_distant'))),
 				);
 			}
 
@@ -2174,7 +2333,7 @@
 			if (!is_array($result) || empty($result['status'])) {
 				return array(
 					'status' => false,
-					'text' => trim((string)($result['text'] ?? 'Impossible de mettre a jour le fichier distant.')),
+					'text' => trim((string)($result['text'] ?? self::uiMessage('copy.impossible_de_mettre_a_jour_le_fichier_distant'))),
 				);
 			}
 
@@ -2256,7 +2415,7 @@
 
 			parent::set($field, $value);
 		}
-				
+
 		// Retourne la valeur de base pour le tri
 		public static function getOrder() {
 			return "name";
@@ -2729,21 +2888,21 @@
 				$ghostUser = \dbObject\User::getOrCreateHistoricalPlaceholder($organizationId, $user);
 				$scopeUpdateResult = \dbObject\Document::normalizeSelfScopedDocumentsForAuthorContext($organizationId, $userId);
 				if (!is_array($scopeUpdateResult) || empty($scopeUpdateResult['status'])) {
-					throw new \RuntimeException('Les portees des documents lies a ce membre n ont pas pu etre mises a jour.');
+					throw new \RuntimeException('Les portées des documents lies à ce membre n’ont pas pu être mises à jour.');
 				}
 				$handlers = array('Holon', 'Rule', 'Project', 'ProjectUser', 'ProjectFollower', 'StatIndicator', 'StatIndicatorValue', 'Checklist', 'ControlActivity', 'Document', 'DocumentPvPoint', 'Event', 'History', 'Tension', 'DecisionProcess', 'DecisionParticipant', 'DecisionProposal', 'ChatThread', 'ChatMessage', 'DeferredProposal', 'UserCompetenceValidation');
 				foreach ($handlers as $handler) {
 					$className = '\\dbObject\\' . $handler;
 					if (!$className::handleUserDeparture($organizationId, $userId, (int)$ghostUser->getId())) {
-						throw new \RuntimeException('Les references de ' . $handler . ' n ont pas pu etre mises a jour.');
+						throw new \RuntimeException('Les références de ' . $handler . ' n’ont pas pu être mises à jour.');
 					}
 				}
 				if (!$this->removeUserHolonLinks($userId, $this->getOrganizationHolonIds())) {
-					throw new \RuntimeException(self::formatLexiconText('Les liens aux holons n ont pas pu etre retires.', $this->getLexicon()));
+					throw new \RuntimeException(self::formatLexiconText('Les liens aux holons n’ont pas pu être retirés.', $this->getLexicon()));
 				}
 				$membership = $this->getMembership($userId);
 				if ($membership && !$membership->delete()) {
-					throw new \RuntimeException('L adhesion a l organisation n a pas pu etre retiree.');
+					throw new \RuntimeException('L’adhésion à l’organisation n’a pas pu être retirée.');
 				}
 				if ($ownsTransaction && $pdo->inTransaction()) {
 					$pdo->commit();
@@ -2961,7 +3120,7 @@
 
 				$departureResult = $this->disconnectUserPreservingHistory($userId);
 				if (empty($departureResult['status'])) {
-					throw new \RuntimeException((string)($departureResult['message'] ?? 'Le retrait du membre n a pas pu etre finalise.'));
+					throw new \RuntimeException((string)($departureResult['message'] ?? self::uiMessage('copy.le_retrait_du_membre_n_a_pas_pu_etre_finalise')));
 				}
 
 				$pdo->commit();
@@ -2970,7 +3129,7 @@
 					'status' => true,
 					'message' => $isSelfRemoval
 						? "Vous avez quitte l'organisation."
-						: "Le membre a ete retire de l'organisation.",
+						: self::uiMessage('copy.le_membre_a_ete_retire_de_l_organisation'),
 				);
 			} catch (\Throwable $exception) {
 				if ($pdo->inTransaction()) {
@@ -3029,7 +3188,7 @@
 						'sendConfirmationEmail' => false,
 					]);
 					if (!($approvalResult['status'] ?? false)) {
-						throw new \RuntimeException((string)($approvalResult['message'] ?? "L'ajout en attente n'a pas pu etre finalise."));
+						throw new \RuntimeException((string)($approvalResult['message'] ?? self::uiMessage('copy.l_ajout_en_attente_n_a_pas_pu_etre_finalise')));
 					}
 				} elseif ($keepsPendingInvitation) {
 					$this->ensureOrganizationMembershipState($user, $organizationId, false);
@@ -3058,7 +3217,7 @@
 					'message' => $isPendingAdd
 						? (
 							!empty($invitationIssue['created'])
-								? 'Invitation envoyee : ' . trim((string)$user->get('email'))
+								? self::uiMessage('copy.invitation_envoyee_email', ['email' => trim((string)$user->get('email'))])
 								: 'Ajout en attente de confirmation : ' . trim((string)$user->get('email'))
 						)
 						: (
@@ -3170,8 +3329,8 @@
 					'status' => true,
 					'created' => !empty($invitationIssue['created']),
 					'message' => !empty($invitationIssue['created'])
-						? 'Votre demande a ete envoyee aux administrateurs.'
-						: 'Une demande est deja en attente pour cette organisation.',
+						? self::uiMessage('copy.votre_demande_a_ete_envoyee_aux_administrateurs')
+						: self::uiMessage('copy.une_demande_est_deja_en_attente_pour_cette_organisation'),
 				);
 			} catch (\Throwable $exception) {
 				if ($pdo->inTransaction()) {
@@ -3199,7 +3358,7 @@
 		{
 			$userId = (int)$userId;
 			if ($userId <= 0 || $this->isSystemOrganization()) {
-				$this->lastDeleteError = "L'organisation ne peut pas etre supprimee avec ce profil.";
+				$this->lastDeleteError = self::uiMessage('copy.l_organisation_ne_peut_pas_etre_supprimee_avec_ce_profil');
 				return false;
 			}
 
@@ -3209,7 +3368,7 @@
 			);
 			$membership = $this->getMembership($userId, true);
 			if (!$membership || $activeMemberCount !== 1) {
-				$this->lastDeleteError = "L'organisation doit avoir exactement un membre actif pour etre supprimee avec ce profil.";
+				$this->lastDeleteError = self::uiMessage('copy.l_organisation_doit_avoir_exactement_un_membre_actif_pour_etre_supprim');
 				return false;
 			}
 
@@ -3233,7 +3392,7 @@
 
 			$pdo = \dbObject\DbObject::getPdo();
 			if (!$pdo) {
-				$this->lastDeleteError = "La connexion a la base de donnees n'est pas disponible.";
+				$this->lastDeleteError = self::uiMessage('copy.la_connexion_a_la_base_de_donnees_n_est_pas_disponible');
 				return false;
 			}
 
@@ -3247,11 +3406,11 @@
 				$holonIds = $this->getOrganizationHolonIds();
 
 				if (!$this->deleteOrganizationDocuments($holonIds)) {
-					throw new \RuntimeException("Les documents de l'organisation n'ont pas pu etre supprimes.");
+					throw new \RuntimeException(self::uiMessage('copy.les_documents_de_l_organisation_n_ont_pas_pu_etre_supprimes'));
 				}
 
 				if (!$this->deleteOrganizationChecklists()) {
-					throw new \RuntimeException("Les processus de l'organisation n'ont pas pu etre supprimes.");
+					throw new \RuntimeException(self::uiMessage('copy.les_processus_de_l_organisation_n_ont_pas_pu_etre_supprimes'));
 				}
 
 				if (!self::execute(
@@ -3259,7 +3418,7 @@
 					WHERE IDorganization = :organization_id",
 					array('organization_id' => $organizationId)
 				)) {
-					throw new \RuntimeException("Les liens de partage n'ont pas pu etre supprimes.");
+					throw new \RuntimeException(self::uiMessage('copy.les_liens_de_partage_n_ont_pas_pu_etre_supprimes'));
 				}
 
 				if (!self::execute(
@@ -3267,7 +3426,7 @@
 					WHERE IDorganization = :organization_id",
 					array('organization_id' => $organizationId)
 				)) {
-					throw new \RuntimeException("Les invitations n'ont pas pu etre supprimees.");
+					throw new \RuntimeException(self::uiMessage('copy.les_invitations_n_ont_pas_pu_etre_supprimees'));
 				}
 
 				if (!self::execute(
@@ -3275,7 +3434,7 @@
 					WHERE IDorganization = :organization_id",
 					array('organization_id' => $organizationId)
 				)) {
-					throw new \RuntimeException("L'historique n'a pas pu etre supprime.");
+					throw new \RuntimeException(self::uiMessage('copy.l_historique_n_a_pas_pu_etre_supprime'));
 				}
 
 				if (!self::execute(
@@ -3283,7 +3442,7 @@
 					WHERE IDorganization = :organization_id",
 					array('organization_id' => $organizationId)
 				)) {
-					throw new \RuntimeException("Les applications d'organisation n'ont pas pu etre supprimees.");
+					throw new \RuntimeException(self::uiMessage('copy.les_applications_d_organisation_n_ont_pas_pu_etre_supprimees'));
 				}
 
 				if (!self::execute(
@@ -3291,7 +3450,7 @@
 					WHERE IDorganization = :organization_id",
 					array('organization_id' => $organizationId)
 				)) {
-					throw new \RuntimeException("Les parcours d'organisation n'ont pas pu etre supprimes.");
+					throw new \RuntimeException(self::uiMessage('copy.les_parcours_d_organisation_n_ont_pas_pu_etre_supprimes'));
 				}
 
 				if (count($holonIds) > 0) {
@@ -3303,7 +3462,7 @@
 						WHERE IDholon IN (" . implode(', ', $holonPlaceholders) . ")",
 						$holonParams
 					)) {
-						throw new \RuntimeException(self::formatLexiconText("Les liens membres des holons n'ont pas pu etre supprimes.", $this->getLexicon()));
+						throw new \RuntimeException(self::formatLexiconText("Les liens membres des holons n'ont pas pu être supprimés.", $this->getLexicon()));
 					}
 
 					// Les regles rattachees a une autorite bloquent sa suppression (FK restrictive).
@@ -3316,7 +3475,7 @@
 						)",
 						$holonParams
 					)) {
-						throw new \RuntimeException("Les regles d'autorite n'ont pas pu etre supprimees.");
+						throw new \RuntimeException(self::uiMessage('copy.les_regles_d_autorite_n_ont_pas_pu_etre_supprimees'));
 					}
 
 					if (!self::execute(
@@ -3325,7 +3484,7 @@
 						WHERE IDholon IN (" . implode(', ', $holonPlaceholders) . ")",
 						$holonParams
 					)) {
-						throw new \RuntimeException("Les liens entre domaines d'autorite n'ont pas pu etre supprimes.");
+						throw new \RuntimeException(self::uiMessage('copy.les_liens_entre_domaines_d_autorite_n_ont_pas_pu_etre_supprimes'));
 					}
 
 					if (!self::execute(
@@ -3333,7 +3492,7 @@
 						WHERE IDholon IN (" . implode(', ', $holonPlaceholders) . ")",
 						$holonParams
 					)) {
-						throw new \RuntimeException("Les domaines d'autorite n'ont pas pu etre supprimes.");
+						throw new \RuntimeException(self::uiMessage('copy.les_domaines_d_autorite_n_ont_pas_pu_etre_supprimes'));
 					}
 				}
 
@@ -3346,13 +3505,13 @@
 						WHERE IDholon_organization IN (" . implode(', ', $rootPlaceholders) . ")",
 						$rootParams
 					)) {
-						throw new \RuntimeException("Les definitions de proprietes n'ont pas pu etre supprimees.");
+						throw new \RuntimeException(self::uiMessage('copy.les_definitions_de_proprietes_n_ont_pas_pu_etre_supprimees'));
 					}
 
 					foreach ($rootHolonIds as $rootHolonId) {
 						$rootHolon = new \dbObject\Holon();
 						if ($rootHolon->load((int)$rootHolonId) && !$rootHolon->delete()) {
-							throw new \RuntimeException("La structure de l'organisation n'a pas pu etre supprimee.");
+							throw new \RuntimeException(self::uiMessage('copy.la_structure_de_l_organisation_n_a_pas_pu_etre_supprimee'));
 						}
 					}
 				}
@@ -3362,11 +3521,11 @@
 					WHERE IDorganization = :organization_id",
 					array('organization_id' => $organizationId)
 				)) {
-					throw new \RuntimeException("Les membres de l'organisation n'ont pas pu etre supprimes.");
+					throw new \RuntimeException(self::uiMessage('copy.les_membres_de_l_organisation_n_ont_pas_pu_etre_supprimes'));
 				}
 
 				if (!parent::delete()) {
-					throw new \RuntimeException("L'organisation n'a pas pu etre supprimee.");
+					throw new \RuntimeException(self::uiMessage('copy.l_organisation_n_a_pas_pu_etre_supprimee'));
 				}
 
 				if ($ownsTransaction && $pdo->inTransaction()) {
@@ -3380,7 +3539,7 @@
 
 				$this->lastDeleteError = trim((string)$exception->getMessage());
 				if ($this->lastDeleteError === '') {
-					$this->lastDeleteError = "L'organisation n'a pas pu etre supprimee.";
+					$this->lastDeleteError = self::uiMessage('copy.l_organisation_n_a_pas_pu_etre_supprimee');
 				}
 				\dbObject\DbObject::registerDbError(
 					'organization_delete',
@@ -3734,13 +3893,13 @@
 			$membership->set('active', (bool)$isActive);
 			$saveResult = $membership->save();
 			if (!is_array($saveResult) || empty($saveResult['status'])) {
-				throw new \RuntimeException("Impossible d'attacher cette personne a l'organisation.");
+				throw new \RuntimeException(self::uiMessage('copy.impossible_d_attacher_cette_personne_a_l_organisation'));
 			}
 
 			if (!$isActive) {
 				$scopeUpdateResult = \dbObject\Document::normalizeSelfScopedDocumentsForAuthorContext($organizationId, (int)$user->getId());
 				if (!is_array($scopeUpdateResult) || empty($scopeUpdateResult['status'])) {
-					throw new \RuntimeException("Impossible de mettre a jour les documents de cette personne.");
+					throw new \RuntimeException(self::uiMessage('copy.impossible_de_mettre_a_jour_les_documents_de_cette_personne'));
 				}
 			}
 
@@ -3787,7 +3946,7 @@
 			}
 
 			$content = \dbObject\History::buildReferenceToken('user', (int)$memberUser->getId(), $memberLabel)
-				. ' a ete ajoute a '
+				. ' a été ajoute a '
 				. \dbObject\History::buildReferenceToken('organization', $organizationId, $organizationLabel)
 				. ' par '
 				. \dbObject\History::buildReferenceToken('user', $authorUserId, $authorLabel)
@@ -3808,7 +3967,7 @@
 			);
 
 			if (!is_array($saveResult) || empty($saveResult['status'])) {
-				throw new \RuntimeException("L'historique de l'ajout n'a pas pu etre enregistre.");
+				throw new \RuntimeException("L'historique de l'ajout n'a pas pu être enregistré.");
 			}
 		}
 
@@ -3820,14 +3979,14 @@
 			if ($userId > 0) {
 				$user = new \dbObject\User();
 				if (!$user->load($userId)) {
-					throw new \RuntimeException('La personne selectionnee est introuvable.');
+					throw new \RuntimeException(self::uiMessage('copy.la_personne_selectionnee_est_introuvable'));
 				}
 
 				return $user;
 			}
 
 			if ($email === '') {
-				throw new \RuntimeException('Selectionnez une personne ou saisissez une adresse e-mail.');
+				throw new \RuntimeException(self::uiMessage('copy.selectionnez_une_personne_ou_saisissez_une_adresse_e_mail'));
 			}
 
 			if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -3843,7 +4002,7 @@
 			$user->set('active', false);
 			$saveResult = $user->save();
 			if (!is_array($saveResult) || empty($saveResult['status']) || (int)$user->getId() <= 0) {
-				throw new \RuntimeException("Le profil n'a pas pu etre cree.");
+				throw new \RuntimeException(self::uiMessage('copy.le_profil_n_a_pas_pu_etre_cree'));
 			}
 
 			return $user;
@@ -4031,7 +4190,7 @@
 					}
 
 					$holonProperty->set('value', $remappedValue);
-					self::omo1ImportSave($holonProperty, 'Une liste de projets n a pas pu etre restauree');
+					self::omo1ImportSave($holonProperty, self::uiMessage('copy.une_liste_de_projets_n_a_pas_pu_etre_restauree'));
 				}
 			}
 		}
@@ -4181,7 +4340,7 @@
 					$targetAuthority->set('template_origin_lost', false);
 					$saveResult = $targetAuthority->save();
 					if (!is_array($saveResult) || empty($saveResult['status']) || (int)$targetAuthority->getId() <= 0) {
-						throw new \RuntimeException('Une autorite du modele n a pas pu etre copiee.');
+						throw new \RuntimeException(self::uiMessage('copy.une_autorite_du_modele_n_a_pas_pu_etre_copiee'));
 					}
 
 					$authorityIdMap[$sourceAuthorityId] = (int)$targetAuthority->getId();
@@ -4207,7 +4366,7 @@
 				$targetAuthority->set('IDauthority_template', $targetTemplateAuthorityId > 0 ? $targetTemplateAuthorityId : null);
 				$saveResult = $targetAuthority->save();
 				if (!is_array($saveResult) || empty($saveResult['status'])) {
-					throw new \RuntimeException('La hierarchie des autorites du modele n a pas pu etre copiee.');
+					throw new \RuntimeException(self::uiMessage('copy.la_hierarchie_des_autorites_du_modele_n_a_pas_pu_etre_copiee'));
 				}
 			}
 
@@ -4283,8 +4442,8 @@
 						: \dbObject\PropertyFormat::FORMAT_HTML;
 				}
 				$property = new \dbObject\Property();
-				$property->set('name', trim((string)($definition['name'] ?? '')) !== '' ? $definition['name'] : 'Propriete');
-				$property->set('shortname', trim((string)($definition['shortname'] ?? '')) !== '' ? $definition['shortname'] : \dbObject\Property::buildShortnameFromName((string)($definition['name'] ?? 'Propriete')));
+				$property->set('name', trim((string)($definition['name'] ?? '')) !== '' ? $definition['name'] : 'Propriété');
+				$property->set('shortname', trim((string)($definition['shortname'] ?? '')) !== '' ? $definition['shortname'] : \dbObject\Property::buildShortnameFromName((string)($definition['name'] ?? 'Propriété')));
 				$property->set('IDpropertyformat', $formatId);
 				$property->set('type', Property::normalizeType($definition['type'] ?? null));
 				$property->set('listitemtype', \dbObject\Property::normalizeListItemType($definition['listItemType'] ?? null));
@@ -4426,7 +4585,7 @@
 			}
 
 			if ($discardedCount > 0) {
-				$warnings[] = $discardedCount . ' image(s) indisponible(s) sur ce serveur ont ete ignorees.';
+				$warnings[] = self::uiMessage('copy.discardedcount_image_s_indisponible_s_sur_ce_serveur_ont_ete_ignorees', ['discardedCount' => $discardedCount]);
 			}
 
 			return $payload;
@@ -4677,14 +4836,14 @@
 				$targetHolon = $targetHolonsBySourceId[$sourceHolonId] ?? null;
 				if ($sourceAuthorityId <= 0 || !($targetHolon instanceof \dbObject\Holon)) {
 					if ($sourceAuthorityId > 0 && empty($ignoredSourceHolonIds[$sourceHolonId])) {
-						$warnings[] = self::formatLexiconText('Une autorite exportee n a pas pu etre rattachee a son holon importe.', $this->getLexicon());
+						$warnings[] = self::formatLexiconText('Une autorité exportée n’a pas pu être rattachée à son holon importé.', $this->getLexicon());
 					}
 					continue;
 				}
 
 				$label = trim((string)($record['label'] ?? ''));
 				if ($label === '') {
-					$warnings[] = 'Une autorite exportee sans libelle a ete ignoree.';
+					$warnings[] = self::uiMessage('copy.une_autorite_exportee_sans_libelle_a_ete_ignoree');
 					continue;
 				}
 
@@ -4699,7 +4858,7 @@
 				$authority->set('template_origin_lost', !empty($record['templateOriginLost']));
 				$saveResult = $authority->save();
 				if (!is_array($saveResult) || empty($saveResult['status']) || (int)$authority->getId() <= 0) {
-					throw new \RuntimeException('Une autorite exportee n a pas pu etre importee.');
+					throw new \RuntimeException(self::uiMessage('copy.une_autorite_exportee_n_a_pas_pu_etre_importee'));
 				}
 
 				$authorityIdMap[$sourceAuthorityId] = (int)$authority->getId();
@@ -4719,11 +4878,11 @@
 				$templateOriginLost = !empty($record['templateOriginLost']);
 
 				if ($sourceParentId > 0 && $targetParentId <= 0) {
-					$warnings[] = 'Une autorite importee a perdu son rattachement parent hors du perimetre exporte.';
+					$warnings[] = self::uiMessage('copy.une_autorite_importee_a_perdu_son_rattachement_parent_hors_du_perimetr');
 				}
 				if ($sourceTemplateAuthorityId > 0 && $targetTemplateAuthorityId <= 0) {
 					$templateOriginLost = true;
-					$warnings[] = 'Une autorite importee a perdu son lien vers son autorite source de modele.';
+					$warnings[] = self::uiMessage('copy.une_autorite_importee_a_perdu_son_lien_vers_son_autorite_source_de_mod');
 				}
 
 				$authority->set('IDauthority_parent', $targetParentId > 0 ? $targetParentId : null);
@@ -4731,7 +4890,7 @@
 				$authority->set('template_origin_lost', $templateOriginLost);
 				$saveResult = $authority->save();
 				if (!is_array($saveResult) || empty($saveResult['status'])) {
-					throw new \RuntimeException('Les liens entre les autorites importees n ont pas pu etre restaures.');
+					throw new \RuntimeException(self::uiMessage('copy.les_liens_entre_les_autorites_importees_n_ont_pas_pu_etre_restaures'));
 				}
 			}
 
@@ -4758,11 +4917,11 @@
 				$targetAuthorityId = $authorityIdMap[$sourceAuthorityId] ?? 0;
 				$targetHolon = $targetHolonsBySourceId[$sourceHolonId] ?? null;
 				if ($sourceAuthorityId > 0 && $targetAuthorityId <= 0) {
-					$warnings[] = 'Une regle exportee a ete ignoree car son autorite est absente de l import.';
+					$warnings[] = self::uiMessage('copy.une_regle_exportee_a_ete_ignoree_car_son_autorite_est_absente_de_l_imp');
 					continue;
 				}
 				if ($sourceAuthorityId <= 0 && !($targetHolon instanceof \dbObject\Holon)) {
-					$warnings[] = self::formatLexiconText('Une regle locale exportee a ete ignoree car son holon est absent de l import.', $this->getLexicon());
+					$warnings[] = self::formatLexiconText('Une règle locale exportée a été ignorée car son holon est absent de l’import.', $this->getLexicon());
 					continue;
 				}
 
@@ -4771,7 +4930,7 @@
 				$reviewDate = trim((string)($record['reviewDate'] ?? ''));
 				$expirationDate = trim((string)($record['expirationDate'] ?? ''));
 				if ($title === '' || $description === '' || $reviewDate === '' || $expirationDate === '') {
-					$warnings[] = 'Une regle exportee incomplete a ete ignoree.';
+					$warnings[] = self::uiMessage('copy.une_regle_exportee_incomplete_a_ete_ignoree');
 					continue;
 				}
 
@@ -4786,7 +4945,7 @@
 				$rule->set('expiration_date', $expirationDate);
 				$saveResult = $rule->save();
 				if (!is_array($saveResult) || empty($saveResult['status'])) {
-					throw new \RuntimeException('Une regle exportee n a pas pu etre importee.');
+					throw new \RuntimeException(self::uiMessage('copy.une_regle_exportee_n_a_pas_pu_etre_importee'));
 				}
 			}
 
@@ -5054,7 +5213,7 @@
 		protected function cloneImportTemplateNodes(\dbObject\Holon $sourceTemplateRoot, \dbObject\Holon $targetRootHolon, $userId = 0)
 		{
 			$this->setPropertyTypeSettings($sourceTemplateRoot->getPropertyTypeLexicon());
-			if (empty($this->save()['status'])) throw new \RuntimeException('Impossible de copier les types de proprietes du modele.');
+			if (empty($this->save()['status'])) throw new \RuntimeException(self::uiMessage('impossible_de_copier_les_types_de_proprietes_du_modele'));
 			$sourceNodesById = $this->getImportTemplateNodes($sourceTemplateRoot);
 			$targetNodesBySourceId = array();
 			$targetNodeIdMap = array();
@@ -5099,7 +5258,7 @@
 				OrganizationTransferConfiguration::setHolonDefaults($targetNode, OrganizationTransferConfiguration::holonDefaults($sourceNode));
 				$targetNode->save();
 				if ((int)$targetNode->getId() <= 0) {
-					throw new \RuntimeException("Un template du modele selectionne n'a pas pu etre copie.");
+					throw new \RuntimeException(self::uiMessage('copy.un_template_du_modele_selectionne_n_a_pas_pu_etre_copie'));
 				}
 
 				$targetNodesBySourceId[(int)$sourceNodeId] = $targetNode;
@@ -5130,7 +5289,7 @@
 					$authorityIdMap
 				);
 				if (!$this->cloneStructuralHolonPermissions($sourceNode, $targetNode)) {
-					throw new \RuntimeException("Les droits d'un template du modele n'ont pas pu etre copies.");
+					throw new \RuntimeException(self::uiMessage('copy.les_droits_d_un_template_du_modele_n_ont_pas_pu_etre_copies'));
 				}
 			}
 
@@ -5175,7 +5334,7 @@
 				|| !(bool)$templateRootHolon->get('active')
 				|| !self::isPublicModelRootHolon($templateRootHolon)
 			) {
-				throw new \RuntimeException("Le modele d'organisation selectionne est introuvable.");
+				throw new \RuntimeException(self::uiMessage('copy.le_modele_d_organisation_selectionne_est_introuvable'));
 			}
 			$authorityTemplateApplied = count($mappings) > 0
 				? $this->templateTreeUsesAuthorityProperties($templateRootHolon)
@@ -5187,12 +5346,12 @@
 			if (count($mappings) > 0) {
 				$model = new self();
 				if (!$model->load((int)$templateRootHolon->get('IDorganization'))) {
-					throw new \RuntimeException('La configuration du modele est introuvable.');
+					throw new \RuntimeException(self::uiMessage('copy.la_configuration_du_modele_est_introuvable'));
 				}
 				OrganizationTransferConfiguration::apply($this, OrganizationTransferConfiguration::capture($model));
 				OrganizationTransferConfiguration::setHolonDefaults($targetRootHolon, OrganizationTransferConfiguration::holonDefaults($templateRootHolon));
 				if (empty($targetRootHolon->save()['status'])) {
-					throw new \RuntimeException('Impossible de copier les affichages du modele.');
+					throw new \RuntimeException(self::uiMessage('copy.impossible_de_copier_les_affichages_du_modele'));
 				}
 			}
 			$targetTemplateNodes = $clonedTemplates['targetNodesBySourceId'];
@@ -5220,7 +5379,7 @@
 					throw new \RuntimeException('Un template a exclure est invalide.');
 				}
 				if (isset($mappings[$sourceTemplateId])) {
-					throw new \RuntimeException('Un template importe ne peut pas etre a la fois remplace et exclu.');
+					throw new \RuntimeException(self::uiMessage('copy.un_template_importe_ne_peut_pas_etre_a_la_fois_remplace_et_exclu'));
 				}
 				$excludedSourceTemplateIds[$sourceTemplateId] = true;
 			}
@@ -5262,10 +5421,10 @@
 					throw new \RuntimeException('Une correspondance de template est invalide.');
 				}
 				if ((int)($sourceRecord['typeId'] ?? 0) !== (int)$targetTemplate->get('IDtypeholon')) {
-					throw new \RuntimeException(self::formatLexiconText('Les templates associes doivent etre du meme type de holon.', $this->getLexicon()));
+					throw new \RuntimeException(self::formatLexiconText('Les templates associés doivent être du même type de holon.', $this->getLexicon()));
 				}
 				if (isset($mappedTargetTemplateIds[$targetTemplateSourceId])) {
-					throw new \RuntimeException('Un template du modele ne peut etre associe qu a un seul template importe.');
+					throw new \RuntimeException(self::uiMessage('copy.un_template_du_modele_ne_peut_etre_associe_qu_a_un_seul_template_impor'));
 				}
 
 				$holonIdMap[$sourceTemplateId] = (int)$targetTemplate->getId();
@@ -5360,12 +5519,12 @@
 					}
 					if ($targetPropertyId <= 0) {
 						if ($hasExplicitMapping) {
-							throw new \RuntimeException('Une correspondance de propriete est invalide pour le template selectionne.');
+							throw new \RuntimeException(self::uiMessage('copy.une_correspondance_de_propriete_est_invalide_pour_le_template_selectio'));
 						}
 						continue;
 					}
 					if (isset($mappedTargetPropertyIds[$targetPropertyId])) {
-						throw new \RuntimeException('Une propriete du modele ne peut remplacer qu une seule propriete importee dans un meme template.');
+						throw new \RuntimeException(self::uiMessage('copy.une_propriete_du_modele_ne_peut_remplacer_qu_une_seule_propriete_impor'));
 					}
 					$mappedTargetPropertyIds[$targetPropertyId] = true;
 
@@ -5389,7 +5548,7 @@
 							|| (string)$targetProperty->get('listholontypeids') !== (string)$sourceListHolonTypeIds
 						)
 					) {
-						$warnings[] = 'La propriete ' . trim((string)$targetProperty->get('name')) . ' conserve le format du modele applique.';
+						$warnings[] = self::uiMessage('copy.la_propriete_name_conserve_le_format_du_modele_applique', ['name' => trim((string)$targetProperty->get('name'))]);
 					}
 
 					$templatePropertyIdMaps[$sourceTemplateId][$sourcePropertyId] = $targetPropertyId;
@@ -5488,11 +5647,11 @@
 				if (is_array($payload['configuration'] ?? null)) {
 					OrganizationTransferConfiguration::apply($this, $payload['configuration']);
 				}
-				if (empty($this->save()['status'])) throw new \RuntimeException('Impossible d importer les types de proprietes.');
+				if (empty($this->save()['status'])) throw new \RuntimeException(self::uiMessage('copy.impossible_d_importer_les_types_de_proprietes'));
 
 				$targetRootHolon = $this->createStructuralRootHolon($userId);
 				if (!$targetRootHolon) {
-					throw new \RuntimeException(self::formatLexiconText("Le holon racine n'a pas pu etre cree.", $this->getLexicon()));
+					throw new \RuntimeException(self::formatLexiconText("Le holon racine n'a pas pu être créé.", $this->getLexicon()));
 				}
 
 				$targetRootHolonId = (int)$targetRootHolon->getId();
@@ -5550,7 +5709,7 @@
 						$targetParentId = $parentSourceId > 0 ? (int)$holonIdMap[$parentSourceId] : $targetRootHolonId;
 						$targetHolon = $this->createImportedHolonFromCompactRecord($record, $targetParentId, $targetRootHolonId, $userId);
 						if ((int)$targetHolon->getId() <= 0) {
-							throw new \RuntimeException(self::formatLexiconText("Un holon du fichier compact n'a pas pu etre cree.", $this->getLexicon()));
+							throw new \RuntimeException(self::formatLexiconText("Un holon du fichier compact n'a pas pu être créé.", $this->getLexicon()));
 						}
 
 						$holonIdMap[$sourceId] = (int)$targetHolon->getId();
@@ -5560,7 +5719,7 @@
 					}
 
 					if (!$progress) {
-						throw new \RuntimeException("Le graphe compact contient des dependances de parent invalides.");
+						throw new \RuntimeException(self::uiMessage('copy.le_graphe_compact_contient_des_dependances_de_parent_invalides'));
 					}
 
 					$guard += 1;
@@ -5701,7 +5860,7 @@
 						empty($mappedSourceTemplateIds[$templateSourceId])
 						&& !$this->importCompactHolonPermissionRows($record, $targetHolonsBySourceId[$sourceId])
 					) {
-						throw new \RuntimeException(self::formatLexiconText("Les droits d'un holon importe n'ont pas pu etre recrees.", $this->getLexicon()));
+						throw new \RuntimeException(self::formatLexiconText("Les droits d'un holon importé n'ont pas pu être recrees.", $this->getLexicon()));
 					}
 				}
 
@@ -5783,8 +5942,8 @@
 			}
 			if ($skipped > 0) {
 				$warnings[] = $skipped . ($skipped === 1
-					? ' document n a pas pu etre importe car son holon a ete supprime. Il existe dans l archive mais n a pas ete importe.'
-					: ' documents n ont pas pu etre importes car leur holon a ete supprime. Ils existent dans l archive mais n ont pas ete importes.');
+					? self::uiMessage('copy.document_n_a_pas_pu_etre_importe_car_son_holon_a_ete_supprime_il_exist')
+					: self::uiMessage('copy.documents_n_ont_pas_pu_etre_importes_car_leur_holon_a_ete_supprime_ils'));
 			}
 			return $payload;
 		}
@@ -5816,14 +5975,14 @@
 				);
 				$holon = new \dbObject\Holon();
 				if (!$holon->load((int)$holonIdMap[$sourceId], true)) {
-					throw new \RuntimeException('Un espace importe n a pas pu etre archive.');
+					throw new \RuntimeException(self::uiMessage('copy.un_espace_importe_n_a_pas_pu_etre_archive'));
 				}
 				$parameters = $holon->getParametersArray();
 				$parameters['holon_archive'] = array('root_id' => $state['root_id'], 'batch' => $state['batch']);
 				$holon->setParametersArray($parameters);
 				$holon->set('active', false);
 				$holon->set('archived_at', $archivedAt ?: $state['date']);
-				self::omo1ImportSave($holon, 'Un espace importe n a pas pu etre archive');
+				self::omo1ImportSave($holon, self::uiMessage('copy.un_espace_importe_n_a_pas_pu_etre_archive_7caebe'));
 				$count++;
 				return $states[$sourceId] = $state;
 			};
@@ -6012,7 +6171,7 @@
 			}
 			$parameters['isAdmin'] = (bool)$isAdmin;
 			$membership->set('parameters', $parameters);
-			self::omo1ImportSave($membership, 'Le lien membre n a pas pu etre cree');
+			self::omo1ImportSave($membership, self::uiMessage('copy.le_lien_membre_n_a_pas_pu_etre_cree'));
 		}
 
 		protected static function omo1ImportMembers(\dbObject\Organization $organization, array $records, $actorUserId, array &$userIdMap, array &$pendingUserIds, array &$pendingInvitations, array &$stats, array &$warnings, $createMemberInvitations = true, bool $roleplay = false)
@@ -6028,7 +6187,7 @@
 				$isCharacter = $roleplay || !empty($record['roleplayCharacter']);
 				if ($isCharacter) { $email = $record['email'] = OrganizationRoleplay::invalidEmail($email, $sourceId); }
 				if ($sourceId <= 0 || $email === '') {
-					$warnings[] = 'Un membre sans adresse e-mail n a pas pu etre importe.';
+					$warnings[] = self::uiMessage('copy.un_membre_sans_adresse_e_mail_n_a_pas_pu_etre_importe');
 					continue;
 				}
 
@@ -6036,7 +6195,7 @@
 				if (!($user instanceof \dbObject\User)) {
 					$emailMatchSummary = $isCharacter ? [] : \dbObject\User::debugLoginIdentifierMatchSummary($email);
 					if ((int)($emailMatchSummary['globalEmailMatches'] ?? 0) > 0) {
-						$warnings[] = 'Le membre ' . $email . ' n a pas ete importe car plusieurs comptes existants utilisent deja cette adresse e-mail.';
+						$warnings[] = self::uiMessage('copy.le_membre_email_n_a_pas_ete_importe_car_plusieurs_comptes_existants_ut', ['email' => $email]);
 						continue;
 					}
 
@@ -6061,7 +6220,7 @@
 					if ($lastConnectionAt) {
 						$user->set('dateconnexion', $lastConnectionAt);
 					}
-					self::omo1ImportSave($user, 'Le compte membre n a pas pu etre cree');
+					self::omo1ImportSave($user, self::uiMessage('copy.le_compte_membre_n_a_pas_pu_etre_cree'));
 				}
 
 				$targetUserId = (int)$user->getId();
@@ -6217,7 +6376,7 @@
 								$targetDomainProperty->set('IDpropertyformat', \dbObject\PropertyFormat::FORMAT_LIST);
 								$targetDomainProperty->set('listitemtype', \dbObject\Property::LIST_ITEM_AUTHORITY);
 								$targetDomainProperty->set('listholontypeids', null);
-								self::omo1ImportSave($targetDomainProperty, 'La propriete des domaines n a pas pu etre convertie en liste d autorites');
+								self::omo1ImportSave($targetDomainProperty, self::uiMessage('copy.la_propriete_des_domaines_n_a_pas_pu_etre_convertie_en_liste_d_autorit'));
 							}
 							$targetDomainPropertiesById[$targetDomainPropertyId] = $targetDomainProperty;
 						}
@@ -6318,7 +6477,7 @@
 							$holonProperty->set('value', json_encode($convertedTextItems, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 						}
 						$holonProperty->set('active', true);
-						self::omo1ImportSave($holonProperty, self::formatLexiconText('Les domaines d un holon n ont pas pu etre convertis en textes', $this->getLexicon()));
+						self::omo1ImportSave($holonProperty, self::formatLexiconText('Les domaines d’un holon n’ont pas pu être convertis en textes', $this->getLexicon()));
 						continue;
 					}
 
@@ -6375,7 +6534,7 @@
 						$holonProperty->set('value', json_encode($convertedItems, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 					}
 					$holonProperty->set('active', true);
-					self::omo1ImportSave($holonProperty, self::formatLexiconText('Les domaines d un holon n ont pas pu etre rattaches aux autorites', $this->getLexicon()));
+					self::omo1ImportSave($holonProperty, self::formatLexiconText('Les domaines d’un holon n’ont pas pu être rattachés aux autorités', $this->getLexicon()));
 				}
 
 				if ($targetDomainHolonProperty === null && count($sourceAuthorityIds) > 0) {
@@ -6399,12 +6558,12 @@
 					$targetDomainHolonProperty->set('mandatory', false);
 					$targetDomainHolonProperty->set('locked', false);
 					$targetDomainHolonProperty->set('active', true);
-					self::omo1ImportSave($targetDomainHolonProperty, self::formatLexiconText('La liste des domaines d un holon n a pas pu etre creee', $this->getLexicon()));
+					self::omo1ImportSave($targetDomainHolonProperty, self::formatLexiconText('La liste des domaines d’un holon n’a pas pu être créée', $this->getLexicon()));
 				}
 			}
 
 			if ($unmatchedCount > 0) {
-				$warnings[] = $unmatchedCount . ' domaine(s) OMO 1 n ont pas pu etre reconnus dans les proprietes d autorite.';
+				$warnings[] = self::uiMessage('copy.unmatchedcount_domaine_s_omo_1_n_ont_pas_pu_etre_reconnus_dans_les_pro', ['unmatchedCount' => $unmatchedCount]);
 			}
 		}
 
@@ -6500,7 +6659,7 @@
 			$authority->set('description', $description !== '' ? $description : null);
 			$authority->set('is_local', $isLocal);
 			$authority->set('is_shell', false);
-			self::omo1ImportSave($authority, 'Le domaine OMO 1 n a pas pu etre converti en autorite');
+			self::omo1ImportSave($authority, self::uiMessage('copy.le_domaine_omo_1_n_a_pas_pu_etre_converti_en_autorite'));
 			$stats['authorities'] += 1;
 
 			return $authority;
@@ -6542,13 +6701,13 @@
 				}
 				if ($parentAuthorityId > 0) {
 					$authority->set('IDauthority_parent', $parentAuthorityId);
-					self::omo1ImportSave($authority, 'Le rattachement parent de l autorite OMO 1 n a pas pu etre cree');
+					self::omo1ImportSave($authority, self::uiMessage('copy.le_rattachement_parent_de_l_autorite_omo_1_n_a_pas_pu_etre_cree'));
 					continue;
 				}
 
 				$description = trim((string)$authority->get('description'));
 				$authority->set('description', \dbObject\Authority::IMPORT_NEEDS_PARENT_MARKER . ($description !== '' ? "\n\n" . $description : ''));
-				self::omo1ImportSave($authority, 'Le marquage de l autorite OMO 1 a rattacher n a pas pu etre enregistre');
+				self::omo1ImportSave($authority, self::uiMessage('copy.le_marquage_de_l_autorite_omo_1_a_rattacher_n_a_pas_pu_etre_enregistre'));
 				$manualParentCount += 1;
 			}
 
@@ -6627,7 +6786,7 @@
 					: (isset($holonIdMap[$sourceRoleId]) ? (int)$holonIdMap[$sourceRoleId] : 0);
 				$targetHolon = new \dbObject\Holon();
 				if ($targetHolonId <= 0 || !$targetHolon->load($targetHolonId)) {
-					$warnings[] = 'Le domaine OMO 1 ' . $sourceId . self::formatLexiconText(' n a pas pu etre transforme car son holon est absent.', $organization->getLexicon());
+					$warnings[] = self::uiMessage('copy.le_domaine_omo_1_sourceid_value', ['sourceId' => $sourceId, 'value' => self::formatLexiconText(' n’a pas pu être transforme car son holon est absent.', $organization->getLexicon())]);
 					continue;
 				}
 				$entriesBySourceId[$sourceId] = array(
@@ -6679,13 +6838,13 @@
 					$rootHolonId
 				);
 				if ($textDomainCount > 0) {
-					$warnings[] = $textDomainCount . self::formatLexiconText(' domaine(s) OMO 1 correspondent a un format texte du modele : leurs regles restent rattachees aux holons.', $organization->getLexicon());
+					$warnings[] = $textDomainCount . self::formatLexiconText(' domaine(s) OMO 1 correspondent à un format texte du modèle : leurs règles restent rattachées aux holons.', $organization->getLexicon());
 				}
 				if ($unmatchedTemplateDomainCount > 0) {
-					$warnings[] = $unmatchedTemplateDomainCount . ' domaine(s) des templates OMO 1 n ont pas d equivalence dans les autorites du modele applique.';
+					$warnings[] = self::uiMessage('copy.unmatchedtemplatedomaincount_domaine_s_des_templates_omo_1_n_ont_pas_d', ['unmatchedTemplateDomainCount' => $unmatchedTemplateDomainCount]);
 				}
 				if ($manualParentCount > 0) {
-					$warnings[] = $manualParentCount . ' autorite(s) OMO 1 restent sans parent et sont signalees en rouge pour rattachement manuel.';
+					$warnings[] = self::uiMessage('copy.manualparentcount_autorite_s_omo_1_restent_sans_parent_et_sont_signale', ['manualParentCount' => $manualParentCount]);
 				}
 				return array(
 					'authorityIdMap' => $authorityIdMap,
@@ -6715,13 +6874,13 @@
 					? (int)$holonIdMap[$sourceHolonId]
 					: (isset($holonIdMap[$sourceRoleId]) ? (int)$holonIdMap[$sourceRoleId] : 0);
 				if ($targetHolonId <= 0) {
-					$warnings[] = 'La regle ' . (int)$record['sourceId'] . self::formatLexiconText(' n a pas pu etre rattachee a un holon importe.', $organization->getLexicon());
+					$warnings[] = self::uiMessage('copy.la_regle_sourceid_value', ['sourceId' => (int)$record['sourceId'], 'value' => self::formatLexiconText(' n’a pas pu être rattachée à un holon importé.', $organization->getLexicon())]);
 					continue;
 				}
 
 				$title = self::omo1ImportLimitText($record['title'] ?? '', 255);
 				if ($title === '') {
-					$title = 'Regle OMO 1 #' . (int)$record['sourceId'];
+					$title = self::uiMessage('copy.regle_omo_1_sourceid', ['sourceId' => (int)$record['sourceId']]);
 				}
 				$description = \dbObject\Rule::sanitizeContentHtml((string)($record['description'] ?? ''));
 				if (trim(strip_tags($description)) === '') {
@@ -6734,7 +6893,7 @@
 					? (int)$authorityIdsByHolonId[$targetHolonId][$sourceScopeId]
 					: ($sourceScopeId > 0 && isset($authorityIdMap[$sourceScopeId]) ? (int)$authorityIdMap[$sourceScopeId] : 0);
 				if ($authorityConversionExpected && $sourceScopeId > 0 && $targetAuthorityId <= 0) {
-					$warnings[] = 'La regle ' . (int)$record['sourceId'] . ' conserve un rattachement local car son domaine OMO 1 n a pas pu etre converti en autorite.';
+					$warnings[] = self::uiMessage('copy.la_regle_sourceid_conserve_un_rattachement_local_car_son_domaine_omo_1', ['sourceId' => (int)$record['sourceId']]);
 				}
 
 				$rule = new \dbObject\Rule();
@@ -6767,7 +6926,7 @@
 					$rule->set('IDuser_modification', (int)$userIdMap[$sourceModifierId]);
 				}
 				$rule->preserveImportedAuditMetadata();
-				self::omo1ImportSave($rule, 'Une regle n a pas pu etre importee');
+				self::omo1ImportSave($rule, self::uiMessage('copy.une_regle_n_a_pas_pu_etre_importee'));
 				$stats['rules'] += 1;
 				$importedRuleIndex += 1;
 			}
@@ -6811,7 +6970,7 @@
 						);
 					}
 					$link->set('active', !isset($pendingUserIds[$targetUserId]));
-					self::omo1ImportSave($link, 'Une attribution de role n a pas pu etre creee');
+					self::omo1ImportSave($link, self::uiMessage('copy.une_attribution_de_role_n_a_pas_pu_etre_creee'));
 
 					$isContextAdmin = !$isCharacter && (!empty($assignment['isContextAdmin'])
 						|| (isset($assignment['kind']) && $assignment['kind'] === 'role_owner'));
@@ -6819,8 +6978,7 @@
 						$adminSaveResult = $link->setHolonAdmin(true);
 						if (!is_array($adminSaveResult) || empty($adminSaveResult['status'])) {
 							$message = is_array($adminSaveResult) ? trim((string)($adminSaveResult['text'] ?? '')) : '';
-							throw new \RuntimeException('Le statut admin de contexte n a pas pu etre importe'
-								. ($message !== '' ? ': ' . $message : '.'));
+							throw new \RuntimeException(self::uiMessage('copy.le_statut_admin_de_contexte_n_a_pas_pu_etre_importe_value', ['value' => $message !== '' ? ': ' . $message : '.']));
 						}
 					}
 					$stats['roleAssignments'] += 1;
@@ -6862,9 +7020,7 @@
 					$legacyFilename = self::omo1ImportLimitText(basename($legacyFilePath), 255);
 				}
 				if ($isLegacyUploadedFile) {
-					$description .= ($description !== '' ? "\n\n" : '')
-						. 'Fichier OMO 1 a transferer manuellement'
-						. ($legacyFilePath !== '' ? ' : ' . $legacyFilePath : '.');
+					$description .= (self::uiMessage('copy.value_fichier_omo_1_a_transferer_manuellement_value_2', ['value' => $description !== '' ? "\n\n" : '', 'value_2' => $legacyFilePath !== '' ? ' : ' . $legacyFilePath : '.']));
 					$warnings[] = 'Les fichiers joints OMO 1 ne sont pas copies automatiquement.';
 				}
 
@@ -6921,7 +7077,7 @@
 					$document->set('datemodification', $updatedAt);
 				}
 				$document->set('active', !array_key_exists('active', $record) || (bool)$record['active']);
-				self::omo1ImportSave($document, 'Un document n a pas pu etre cree');
+				self::omo1ImportSave($document, self::uiMessage('copy.un_document_n_a_pas_pu_etre_cree'));
 				self::omo1ImportSaveDocumentVisibilityRules($document, $record, $holonIdMap, $warnings);
 				$documentIdMap[$sourceId] = (int)$document->getId();
 				$documentProjectSourceMap[$sourceId] = $sourceProjectIds !== array() ? $sourceProjectIds : array($sourceProjectId);
@@ -6986,7 +7142,7 @@
 						'blocked_reason',
 						$blockedReason !== ''
 							? $blockedReason
-							: 'Projet importe d OMO 1 avec le statut bloque.'
+							: 'Projet importé d’OMO 1 avec le statut bloque.'
 					);
 					$project->set(
 						'blocked_until',
@@ -7013,7 +7169,7 @@
 				if ($archivedAt) {
 					$project->set('archived_at', $archivedAt);
 				}
-				self::omo1ImportSave($project, 'Un projet n a pas pu etre cree');
+				self::omo1ImportSave($project, self::uiMessage('copy.un_projet_n_a_pas_pu_etre_cree'));
 				$projectIdMap[$sourceId] = (int)$project->getId();
 				$stats['projects'] += 1;
 			}
@@ -7032,7 +7188,7 @@
 				$project->set('IDproject_parent', isset($projectIdMap[$sourceParentId]) ? (int)$projectIdMap[$sourceParentId] : null);
 				$sourceJournalDocumentId = (int)($record['sourceJournalDocumentId'] ?? 0);
 				$project->set('IDdocument_journal', isset($documentIdMap[$sourceJournalDocumentId]) ? (int)$documentIdMap[$sourceJournalDocumentId] : null);
-				self::omo1ImportSave($project, 'La hierarchie des projets n a pas pu etre recreee');
+				self::omo1ImportSave($project, self::uiMessage('copy.la_hierarchie_des_projets_n_a_pas_pu_etre_recreee'));
 			}
 
 		}
@@ -7063,7 +7219,7 @@
 						$member->set('datecreation', $createdAt);
 					}
 					$member->set('active', !array_key_exists('active', $memberRecord) || (bool)$memberRecord['active']);
-					self::omo1ImportSave($member, 'Un membre de projet n a pas pu etre importe');
+					self::omo1ImportSave($member, self::uiMessage('copy.un_membre_de_projet_n_a_pas_pu_etre_importe'));
 				}
 			}
 		}
@@ -7103,12 +7259,12 @@
 						$follower->set('IDuser', $targetUserId);
 					}
 					$follower->set('active', true);
-					self::omo1ImportSave($follower, 'Un suivi de projet n a pas pu etre importe');
+					self::omo1ImportSave($follower, self::uiMessage('copy.un_suivi_de_projet_n_a_pas_pu_etre_importe'));
 					$stats['projectFollowers'] += 1;
 				}
 			}
 			if (count($skippedSourceUserIds) > 0) {
-				$warnings[] = 'Le suivi de ' . count($skippedSourceUserIds) . ' membre(s) n a pas pu etre importe car ces membres ne figurent pas dans l import.';
+				$warnings[] = self::uiMessage('copy.le_suivi_de_skippedsourceuserids_membre_s_n_a_pas_pu_etre_importe_car_', ['skippedSourceUserIds' => count($skippedSourceUserIds)]);
 			}
 		}
 
@@ -7123,7 +7279,7 @@
 			$parent = new \dbObject\Project();
 			if (!$parent->load($parentProjectId)) {
 				$task->set('IDproject_parent', null);
-				$warnings[] = 'La tache OMO 1 #' . (int)$sourceTaskId . ' a ete importee sans parent car son projet parent est introuvable.';
+				$warnings[] = self::uiMessage('copy.la_tache_omo_1_sourcetaskid_a_ete_importee_sans_parent_car_son_projet_', ['sourceTaskId' => (int)$sourceTaskId]);
 				return;
 			}
 			$parentStatus = \dbObject\Project::normalizeStatus($parent->get('status'));
@@ -7139,14 +7295,14 @@
 			if ($parentEndDate instanceof \DateTimeInterface) {
 				if ($status === \dbObject\Project::STATUS_SOMEDAY) {
 					$task->set('IDproject_parent', null);
-					$warnings[] = 'La tache OMO 1 #' . (int)$sourceTaskId . ' au statut someday a ete importee sans parent date.';
+					$warnings[] = self::uiMessage('copy.la_tache_omo_1_sourcetaskid_au_statut_someday_a_ete_importee_sans_pare', ['sourceTaskId' => (int)$sourceTaskId]);
 					return;
 				}
 
 				$taskEndDate = $task->get('planned_end_date');
 				if ($taskEndDate instanceof \DateTimeInterface && $taskEndDate > $parentEndDate) {
 					$task->set('planned_end_date', $parentEndDate->format('Y-m-d'));
-					$warnings[] = 'La date de fin de la tache OMO 1 #' . (int)$sourceTaskId . ' a ete ramenee a celle de son projet parent.';
+					$warnings[] = self::uiMessage('copy.la_date_de_fin_de_la_tache_omo_1_sourcetaskid_a_ete_ramenee_a_celle_de', ['sourceTaskId' => (int)$sourceTaskId]);
 				}
 			}
 
@@ -7191,7 +7347,7 @@
 					continue;
 				}
 				if (isset($discardedTaskIds[(int)$record['sourceId']])) {
-					$warnings[] = 'La tache OMO 1 #' . (int)$record['sourceId'] . ' etait rattachee a un projet inaccessible et n a pas ete importee.';
+					$warnings[] = self::uiMessage('copy.la_tache_omo_1_sourceid_etait_rattachee_a_un_projet_inaccessible_et_n_', ['sourceId' => (int)$record['sourceId']]);
 					continue;
 				}
 				$sourceUserId = (int)($record['sourceUserId'] ?? 0);
@@ -7218,7 +7374,7 @@
 				$sourceCreatorUserId = (int)($record['sourceCreatorUserId'] ?? 0);
 				$task->set('IDusercreation', $userIdMap[$sourceCreatorUserId] ?? (int)$actorUserId);
 				$task->set('visibility_type', \dbObject\ObjectVisibility::normalizeVisibilityType($record['visibilityType'] ?? null));
-				$task->set('title', $title !== '' ? $title : 'Tache OMO 1 #' . (int)$record['sourceId']);
+				$task->set('title', $title !== '' ? $title : 'Tâche OMO 1 #' . (int)$record['sourceId']);
 				$task->set('description', $record['description'] ?? null);
 				$task->set('status', array_key_exists('status', $record)
 					? \dbObject\Project::normalizeStatus($record['status'])
@@ -7241,7 +7397,7 @@
 				$task->set('active', array_key_exists('active', $record) ? (bool)$record['active'] : true);
 				if (\dbObject\Project::normalizeStatus($task->get('status')) === \dbObject\Project::STATUS_BLOCKED) {
 					$blockedReason = self::omo1ImportLimitText($record['blockedReason'] ?? '', 4000);
-					$task->set('blocked_reason', $blockedReason !== '' ? $blockedReason : 'Tache importee avec le statut bloque.');
+					$task->set('blocked_reason', $blockedReason !== '' ? $blockedReason : 'Tâche importée avec le statut bloque.');
 					$task->set('blocked_until', self::omo1ImportDate($record['blockedUntil'] ?? null)
 						?: $createdAt
 						?: new \DateTimeImmutable('today', new \DateTimeZone('Europe/Zurich')));
@@ -7262,7 +7418,7 @@
 					(int)$record['sourceId'],
 					$warnings
 				);
-				self::omo1ImportSave($task, 'La tache source #' . (int)$record['sourceId'] . ' n a pas pu etre importee');
+				self::omo1ImportSave($task, self::uiMessage('copy.la_tache_source_sourceid_n_a_pas_pu_etre_importee', ['sourceId' => (int)$record['sourceId']]));
 				$taskIdMap[(int)$record['sourceId']] = (int)$task->getId();
 				$stats['tasks'] += 1;
 			}
@@ -7282,7 +7438,7 @@
 					continue;
 				}
 				self::omo1ImportPrepareTaskParent($task, (int)$taskIdMap[$sourceParentId], $sourceId, $warnings);
-				self::omo1ImportSave($task, 'La hierarchie des sous-projets n a pas pu etre recreee');
+				self::omo1ImportSave($task, self::uiMessage('copy.la_hierarchie_des_sous_projets_n_a_pas_pu_etre_recreee'));
 			}
 		}
 
@@ -7304,7 +7460,7 @@
 					}
 					$link->set('IDproject', $targetProjectId);
 					$link->set('IDdocument', (int)$targetDocumentId);
-					self::omo1ImportSave($link, 'Un lien projet-document n a pas pu etre cree');
+					self::omo1ImportSave($link, self::uiMessage('copy.un_lien_projet_document_n_a_pas_pu_etre_cree'));
 				}
 			}
 		}
@@ -7322,7 +7478,7 @@
 					continue;
 				}
 				$document->set('IDdocument_parent', $targetParentDocumentId);
-				self::omo1ImportSave($document, 'La hierarchie des documents n a pas pu etre recreee');
+				self::omo1ImportSave($document, self::uiMessage('copy.la_hierarchie_des_documents_n_a_pas_pu_etre_recreee'));
 			}
 		}
 
@@ -7353,7 +7509,7 @@
 					}
 					$itemTitle = self::omo1ImportLimitText($itemRecord['title'] ?? '', 255);
 					if ($itemTitle === '') {
-						$itemTitle = 'Activite OMO 1 #' . (int)($itemRecord['sourceId'] ?? ($itemIndex + 1));
+						$itemTitle = self::uiMessage('copy.activite_omo_1_value', ['value' => (int)($itemRecord['sourceId'] ?? ($itemIndex + 1))]);
 					}
 					$itemActive = $recordActive && (!array_key_exists('active', $itemRecord) || (bool)$itemRecord['active']);
 					$recurrenceData = isset($itemRecord['recurrence']) && is_array($itemRecord['recurrence']) ? $itemRecord['recurrence'] : array();
@@ -7388,7 +7544,7 @@
 					if ($updatedAt) {
 						$activity->set('updated_at', $updatedAt);
 					}
-					self::omo1ImportSave($activity, 'Une activite recurrente n a pas pu etre creee');
+					self::omo1ImportSave($activity, self::uiMessage('copy.une_activite_recurrente_n_a_pas_pu_etre_creee'));
 					foreach ((array)($itemRecord['checks'] ?? array()) as $checkRecord) {
 						if (!is_array($checkRecord)) {
 							continue;
@@ -7409,7 +7565,7 @@
 						if ($checkCreatedAt) {
 							$check->set('created_at', $checkCreatedAt);
 						}
-						self::omo1ImportSave($check, 'Une validation de tache recurrente n a pas pu etre importee');
+						self::omo1ImportSave($check, self::uiMessage('copy.une_validation_de_tache_recurrente_n_a_pas_pu_etre_importee'));
 					}
 					$stats['activities'] += 1;
 				}
@@ -7441,7 +7597,7 @@
 				$rootProject->set('project_kind', \dbObject\Project::KIND_CHECKLIST_TEMPLATE);
 				$rootProject->set('IDproject_template', null);
 				$rootProject->set('active', !array_key_exists('active', $record) || (bool)$record['active']);
-				self::omo1ImportSave($rootProject, 'Le projet modele d un processus n a pas pu etre cree');
+				self::omo1ImportSave($rootProject, self::uiMessage('copy.le_projet_modele_d_un_processus_n_a_pas_pu_etre_cree'));
 
 				$checklist = new \dbObject\Checklist();
 				$checklist->set('IDorganization', (int)$organization->getId());
@@ -7453,7 +7609,7 @@
 				$checklist->set('status', \dbObject\Checklist::normalizeStatus($record['status'] ?? \dbObject\Checklist::STATUS_DRAFT));
 				$checklist->set('revision_note', self::omo1ImportLimitText($record['revisionNote'] ?? '', 4000) ?: null);
 				$checklist->set('active', !array_key_exists('active', $record) || (bool)$record['active']);
-				self::omo1ImportSave($checklist, 'Un processus n a pas pu etre cree');
+				self::omo1ImportSave($checklist, self::uiMessage('copy.un_processus_n_a_pas_pu_etre_cree'));
 
 				$triggerData = is_array($record['trigger'] ?? null) ? $record['trigger'] : array();
 				$triggerType = \dbObject\ChecklistTrigger::normalizeTriggerType($triggerData['type'] ?? \dbObject\ChecklistTrigger::TYPE_CONTAINER);
@@ -7479,7 +7635,7 @@
 				$trigger->set('next_trigger_at', $triggerType === \dbObject\ChecklistTrigger::TYPE_SCHEDULED
 					? \dbObject\RecurrenceSchedule::getNextOccurrence($frequency, $schedule, new \DateTimeImmutable())
 					: null);
-				self::omo1ImportSave($trigger, 'Le declenchement d un processus n a pas pu etre cree');
+				self::omo1ImportSave($trigger, self::uiMessage('copy.le_declenchement_d_un_processus_n_a_pas_pu_etre_cree'));
 
 				$itemIdMap = array();
 				$projectIdMap = array((int)($record['sourceRootProjectId'] ?? 0) => (int)$rootProject->getId());
@@ -7498,7 +7654,7 @@
 					$template->set('IDholon', $itemHolonId);
 					$template->set('IDuser', null);
 					$template->set('IDproject_parent', (int)$rootProject->getId());
-					$template->set('title', self::omo1ImportLimitText($itemRecord['title'] ?? '', 255) ?: ('Etape #' . $sourceItemId));
+					$template->set('title', self::omo1ImportLimitText($itemRecord['title'] ?? '', 255) ?: ('Étape #' . $sourceItemId));
 					$template->set('description', $itemRecord['description'] ?? null);
 					$template->set('status', \dbObject\Project::STATUS_SOMEDAY);
 					$template->set('capture_mode', \dbObject\Project::CAPTURE_MULTIPLE_DOCUMENTS);
@@ -7506,7 +7662,7 @@
 					$template->set('project_kind', \dbObject\Project::KIND_CHECKLIST_TEMPLATE);
 					$template->set('IDproject_template', null);
 					$template->set('active', !array_key_exists('active', $itemRecord) || (bool)$itemRecord['active']);
-					self::omo1ImportSave($template, 'Le modele d une etape de processus n a pas pu etre cree');
+					self::omo1ImportSave($template, self::uiMessage('copy.le_modele_d_une_etape_de_processus_n_a_pas_pu_etre_cree'));
 
 					$activation = is_array($itemRecord['activation'] ?? null) ? $itemRecord['activation'] : array();
 					$item = new \dbObject\ChecklistItem();
@@ -7522,7 +7678,7 @@
 					$item->set('execution_duration_unit', \dbObject\ChecklistItem::normalizeDelayUnit($activation['executionDurationUnit'] ?? null));
 					$item->set('position', max(0, (int)($itemRecord['position'] ?? $itemIndex)));
 					$item->set('active', !array_key_exists('active', $itemRecord) || (bool)$itemRecord['active']);
-					self::omo1ImportSave($item, 'Une etape de processus n a pas pu etre creee');
+					self::omo1ImportSave($item, self::uiMessage('copy.une_etape_de_processus_n_a_pas_pu_etre_creee'));
 					$itemIdMap[$sourceItemId] = (int)$item->getId();
 					$projectIdMap[(int)($itemRecord['sourceProjectId'] ?? 0)] = (int)$template->getId();
 
@@ -7542,7 +7698,7 @@
 							$recurrence->set('enabled', 1);
 							$nextOccurrence = \dbObject\RecurrenceSchedule::getNextOccurrence($recurrenceFrequency, $recurrenceSchedule, new \DateTimeImmutable());
 							$recurrence->set('next_trigger_at', $nextOccurrence instanceof \DateTimeImmutable ? $recurrence->getDisplayTriggerAt($nextOccurrence) : null);
-							self::omo1ImportSave($recurrence, 'La recurrence d une activite de processus n a pas pu etre creee');
+							self::omo1ImportSave($recurrence, self::uiMessage('copy.la_recurrence_d_une_activite_de_processus_n_a_pas_pu_etre_creee'));
 						}
 					}
 				}
@@ -7561,7 +7717,7 @@
 					if ($template->load((int)($projectIdMap[$sourceProjectId] ?? 0))) {
 						$sourceParentProjectId = (int)($itemRecord['sourceParentProjectId'] ?? 0);
 						$template->set('IDproject_parent', (int)($projectIdMap[$sourceParentProjectId] ?? $rootProject->getId()));
-						self::omo1ImportSave($template, 'La hierarchie des etapes de processus n a pas pu etre recreee');
+						self::omo1ImportSave($template, self::uiMessage('copy.la_hierarchie_des_etapes_de_processus_n_a_pas_pu_etre_recreee'));
 					}
 					foreach ((array)($itemRecord['dependencies'] ?? array()) as $dependencyRecord) {
 						if (!is_array($dependencyRecord)) {
@@ -7576,7 +7732,7 @@
 						$dependency->set('IDchecklistitem_required', $requiredItemId);
 						$dependency->set('delay_value', max(0, (int)($dependencyRecord['delayValue'] ?? 0)));
 						$dependency->set('delay_unit', \dbObject\ChecklistItem::normalizeDelayUnit($dependencyRecord['delayUnit'] ?? null));
-						self::omo1ImportSave($dependency, 'Une dependance de processus n a pas pu etre creee');
+						self::omo1ImportSave($dependency, self::uiMessage('copy.une_dependance_de_processus_n_a_pas_pu_etre_creee'));
 					}
 				}
 
@@ -7625,7 +7781,7 @@
 					if ($completedAt) {
 						$run->set('completed_at', $completedAt);
 					}
-					self::omo1ImportSave($run, 'Une execution de processus n a pas pu etre importee');
+					self::omo1ImportSave($run, self::uiMessage('copy.une_execution_de_processus_n_a_pas_pu_etre_importee'));
 
 					foreach ((array)($runRecord['items'] ?? array()) as $runItemRecord) {
 						if (!is_array($runItemRecord)) {
@@ -7649,7 +7805,7 @@
 								$runItem->set($targetField, $date);
 							}
 						}
-						self::omo1ImportSave($runItem, 'Une etape d execution de processus n a pas pu etre importee');
+						self::omo1ImportSave($runItem, self::uiMessage('copy.une_etape_d_execution_de_processus_n_a_pas_pu_etre_importee'));
 					}
 				}
 			}
@@ -7730,7 +7886,7 @@
 				}
 				$indicator->set('active', !array_key_exists('active', $record) || (bool)$record['active']);
 				$indicator->set('archived_at', self::omo1ImportDate($record['archivedAt'] ?? null));
-				self::omo1ImportSave($indicator, 'Un indicateur n a pas pu etre cree');
+				self::omo1ImportSave($indicator, self::uiMessage('copy.un_indicateur_n_a_pas_pu_etre_cree'));
 				$indicatorIdMap[(int)$record['sourceId']] = (int)$indicator->getId();
 				OrganizationTransferContent::restorePoints($record['referencePoints'] ?? [], (int)$indicator->getId());
 				$stats['indicators'] += 1;
@@ -7749,7 +7905,7 @@
 					$value->set('IDuser', (int)($userIdMap[(int)($valueRecord['sourceUserId'] ?? 0)] ?? $targetUserId));
 					$value->set('value', (float)$valueRecord['value']);
 					$value->set('measured_at', $measuredAt);
-					self::omo1ImportSave($value, 'Une valeur d indicateur n a pas pu etre creee');
+					self::omo1ImportSave($value, self::uiMessage('copy.une_valeur_d_indicateur_n_a_pas_pu_etre_creee'));
 					$stats['indicatorValues'] += 1;
 				}
 			}
@@ -7783,7 +7939,7 @@
 		{
 			$meetingTitle = self::omo1ImportPlainText($meetingTitle, 120);
 			if ($meetingTitle === '') {
-				$meetingTitle = 'Reunion OMO 1';
+				$meetingTitle = self::uiMessage('copy.reunion_omo_1');
 			}
 
 			$scheduledAt = self::omo1ImportDate($scheduledAt);
@@ -7836,7 +7992,7 @@
 
 			if ($visibilityType === null) {
 				$visibilityType = \dbObject\ObjectVisibility::TYPE_SELF;
-				$warnings[] = 'La visibilite OMO 1 du document' . $documentLabel . ' est inconnue : le document est restreint a son proprietaire.';
+				$warnings[] = self::uiMessage('copy.la_visibilite_omo_1_du_document_documentlabel_est_inconnue_le_document', ['documentLabel' => $documentLabel]);
 			}
 
 			$visibilitySaveResult = $document->saveVisibilityRule($visibilityType);
@@ -7847,7 +8003,7 @@
 			if ($visibilityType !== \dbObject\ObjectVisibility::TYPE_SELF) {
 				$fallbackSaveResult = $document->saveVisibilityRule(\dbObject\ObjectVisibility::TYPE_SELF);
 				if (is_array($fallbackSaveResult) && !empty($fallbackSaveResult['status'])) {
-					$warnings[] = 'La visibilite OMO 1 du document' . $documentLabel . self::formatLexiconText(' n a pas pu etre rattachee a son holon : le document est restreint a son proprietaire.', self::getLexiconForOrganizationId((int)$document->get('IDorganization')));
+					$warnings[] = self::uiMessage('copy.la_visibilite_omo_1_du_document_documentlabel_value', ['documentLabel' => $documentLabel, 'value' => self::formatLexiconText(' n’a pas pu être rattachée à son holon : le document est restreint à son propriétaire.', self::getLexiconForOrganizationId((int)$document->get('IDorganization')))]);
 					return;
 				}
 			}
@@ -7855,8 +8011,7 @@
 			$message = is_array($visibilitySaveResult)
 				? trim((string)($visibilitySaveResult['text'] ?? ''))
 				: '';
-			throw new \RuntimeException('La visibilite du document n a pas pu etre creee'
-				. ($message !== '' ? ': ' . $message : '.'));
+			throw new \RuntimeException(self::uiMessage('copy.la_visibilite_du_document_n_a_pas_pu_etre_creee_value', ['value' => $message !== '' ? ': ' . $message : '.']));
 		}
 
 		protected static function omo1ImportSaveDocumentVisibilityRules(\dbObject\Document $document, array $record, array $holonIdMap, array &$warnings): void
@@ -7905,11 +8060,10 @@
 					$result = $document->$saveMethod(\dbObject\ObjectVisibility::TYPE_SELF);
 				}
 				if (empty($result['status'])) {
-					throw new \RuntimeException('La portee du document importe n a pas pu etre creee : ' . (string)($result['text'] ?? $field));
+					throw new \RuntimeException(self::uiMessage('copy.la_portee_du_document_importe_n_a_pas_pu_etre_creee_value', ['value' => (string)($result['text'] ?? $field)]));
 				}
 				if ($fallback) {
-					$warnings[] = 'La portee ' . ($field === 'visibility' ? 'de lecture' : 'd edition')
-						. ' du document "' . (string)$document->get('title') . '" est invalide ou sans cible importee : acces restreint au proprietaire.';
+					$warnings[] = self::uiMessage('copy.la_portee_value_du_document_title_est_invalide_ou_sans_cible_importee_', ['value' => $field === 'visibility' ? 'de lecture' : 'd’édition', 'title' => (string)$document->get('title')]);
 				}
 			}
 		}
@@ -7951,7 +8105,7 @@
 					$document->set('datemodification', $updatedAt);
 				}
 				$document->set('active', true);
-				self::omo1ImportSave($document, 'Un proces-verbal n a pas pu etre cree');
+				self::omo1ImportSave($document, self::uiMessage('copy.un_proces_verbal_n_a_pas_pu_etre_cree'));
 				self::omo1ImportSaveDocumentVisibilityRules($document, $record, $holonIdMap, $warnings);
 				$stats['pv'] += 1;
 
@@ -8071,7 +8225,7 @@
 					if ($pointUpdatedAt) {
 						$point->set('datemodification', $pointUpdatedAt);
 					}
-					self::omo1ImportSave($point, 'Un point de proces-verbal n a pas pu etre cree');
+					self::omo1ImportSave($point, self::uiMessage('copy.un_point_de_proces_verbal_n_a_pas_pu_etre_cree'));
 					if (isset($historyRecord['itemType'])) {
 						$nativePointIdMap[$sourceHistoryId] = (int)$point->getId();
 						$nativePointParentSourceMap[$sourceHistoryId] = (int)($historyRecord['sourceParentId'] ?? 0);
@@ -8090,7 +8244,7 @@
 						continue;
 					}
 					$point->set('IDparent', $targetParentId);
-					self::omo1ImportSave($point, 'La hierarchie des points de proces-verbal n a pas pu etre recreee');
+					self::omo1ImportSave($point, self::uiMessage('copy.la_hierarchie_des_points_de_proces_verbal_n_a_pas_pu_etre_recreee'));
 				}
 			}
 		}
@@ -8114,18 +8268,18 @@
 				$title = self::omo1ImportLimitText($record['title'] ?? '', 190);
 				if ($title === '') {
 					$meetingTypeTitles = array(
-						1 => 'Reunion de gouvernance',
-						2 => 'Reunion operationnelle',
-						3 => 'Reunion mixte',
-						4 => 'Reunion de strategie',
-						5 => 'Reunion de travail',
-						6 => 'Reunion de regulation',
-						7 => 'Reunion informelle',
+						1 => self::uiMessage('copy.reunion_de_gouvernance'),
+						2 => self::uiMessage('copy.reunion_operationnelle'),
+						3 => self::uiMessage('copy.reunion_mixte'),
+						4 => self::uiMessage('copy.reunion_de_strategie'),
+						5 => self::uiMessage('copy.reunion_de_travail'),
+						6 => self::uiMessage('copy.reunion_de_regulation'),
+						7 => self::uiMessage('copy.reunion_informelle'),
 					);
 					$legacyMeetingTypeId = (int)($record['legacyMeetingTypeId'] ?? 0);
 					$legacyMeetingTypeLabel = self::omo1ImportLimitText($record['legacyMeetingTypeLabel'] ?? '', 160);
 					$title = $meetingTypeTitles[$legacyMeetingTypeId]
-						?? ($legacyMeetingTypeLabel !== '' ? 'Reunion ' . $legacyMeetingTypeLabel : 'Reunion OMO 1');
+						?? ($legacyMeetingTypeLabel !== '' ? self::uiMessage('copy.reunion_legacymeetingtypelabel', ['legacyMeetingTypeLabel' => $legacyMeetingTypeLabel]) : self::uiMessage('copy.reunion_omo_1'));
 				}
 				$event = new \dbObject\Event();
 				$event->set('IDorganization', (int)$organization->getId());
@@ -8149,7 +8303,7 @@
 				if ($updatedAt) {
 					$event->set('updated_at', $updatedAt);
 				}
-				self::omo1ImportSave($event, 'Une reunion du calendrier n a pas pu etre creee');
+				self::omo1ImportSave($event, self::uiMessage('copy.une_reunion_du_calendrier_n_a_pas_pu_etre_creee'));
 				$eventIdMap[(int)$record['sourceId']] = (int)$event->getId();
 				$stats['calendar'] += 1;
 			}
@@ -8404,7 +8558,7 @@
 				}
 				$structureResult = $organization->importStructure($structurePayload, $actorUserId, $templateCalibration);
 				if (empty($structureResult['status']) || !($structureResult['rootHolon'] ?? null) instanceof \dbObject\Holon) {
-					throw new \RuntimeException((string)($structureResult['message'] ?? 'La structure n a pas pu etre importee.'));
+					throw new \RuntimeException((string)($structureResult['message'] ?? self::uiMessage('copy.la_structure_n_a_pas_pu_etre_importee')));
 				}
 				self::omo1ImportJournalWrite('structure_import_completed', array(
 					'holonCount' => isset($structureResult['holonIdMap']) && is_array($structureResult['holonIdMap']) ? count($structureResult['holonIdMap']) : 0,
@@ -8415,7 +8569,7 @@
 				$organization->ensureDefaultApplicationLinks();
 				$pdo = \dbObject\DbObject::getPdo();
 				if (!$pdo) {
-					throw new \RuntimeException('La connexion a la base de donnees est indisponible.');
+					throw new \RuntimeException(self::uiMessage('la_connexion_a_la_base_de_donnees_est_indisponible'));
 				}
 				$pdo->beginTransaction();
 				self::omo1ImportJournalWrite('content_transaction_started');
@@ -8423,7 +8577,7 @@
 					? array('status' => true)
 					: $organization->synchronizeOmo1ImportedApplicationLinks($selectedModules, $sourceModules);
 				if (empty($applicationSync['status'])) {
-					throw new \RuntimeException((string)($applicationSync['message'] ?? 'Les applications de l organisation n ont pas pu etre configurees.'));
+					throw new \RuntimeException((string)($applicationSync['message'] ?? self::uiMessage('copy.les_applications_de_l_organisation_n_ont_pas_pu_etre_configurees')));
 				}
 				self::omo1ImportJournalWrite('application_configuration_completed', array(
 					'activeApplications' => isset($applicationSync['activeApplications']) && is_array($applicationSync['activeApplications']) ? $applicationSync['activeApplications'] : array(),
@@ -8599,7 +8753,7 @@
 				self::omo1ImportJournalWrite('basic_parcours_started');
 				$basicParcoursResult = $organization->instantiateBasicParcours();
 				if (is_array($basicParcoursResult) && empty($basicParcoursResult['status'])) {
-					$warnings[] = 'Les tutoriels de base n ont pas pu etre rattaches a l organisation importee.';
+					$warnings[] = self::uiMessage('copy.les_tutoriels_de_base_n_ont_pas_pu_etre_rattaches_a_l_organisation_imp');
 					error_log('organization basic parcours init failed for OMO 1 import org ' . (int)$organization->getId());
 				}
 				self::omo1ImportJournalWrite('basic_parcours_completed', array(
@@ -8612,7 +8766,7 @@
 							$pendingInvitation->sendEmail();
 							$stats['invitations'] += 1;
 						} catch (\Throwable $exception) {
-							$warnings[] = 'L invitation pour ' . trim((string)$pendingInvitation->get('email')) . ' n a pas pu etre envoyee.';
+							$warnings[] = self::uiMessage('copy.l_invitation_pour_email_n_a_pas_pu_etre_envoyee', ['email' => trim((string)$pendingInvitation->get('email'))]);
 						}
 					}
 					self::omo1ImportJournalWrite('member_invitations_completed', array('sent' => (int)$stats['invitations']));
@@ -8784,7 +8938,7 @@
 				OrganizationTransferConfiguration::apply($target, OrganizationTransferConfiguration::capture($source));
 				$target->set('isModel', false);
 				if (empty($target->save()['status'])) {
-					throw new \RuntimeException('Impossible de copier les reglages du modele.');
+					throw new \RuntimeException(self::uiMessage('copy.impossible_de_copier_les_reglages_du_modele'));
 				}
 
 				$sourceParcours = new \dbObject\ArrayOrganizationParcours();
@@ -8796,7 +8950,7 @@
 						'anonymous' => (bool)$sourceParcoursLink->get('anonymous'),
 					));
 					if (empty($attached['status'])) {
-						throw new \RuntimeException('Un parcours du modele n a pas pu etre rattache.');
+						throw new \RuntimeException(self::uiMessage('copy.un_parcours_du_modele_n_a_pas_pu_etre_rattache'));
 					}
 				}
 
@@ -9053,7 +9207,7 @@
 				if ($templateRootHolonId <= 0) {
 					$rootHolon = $this->createStructuralRootHolon($userId);
 					if (!$rootHolon) {
-						throw new \RuntimeException(self::formatLexiconText("Le holon racine n'a pas pu etre cree.", $this->getLexicon()));
+						throw new \RuntimeException(self::formatLexiconText("Le holon racine n'a pas pu être créé.", $this->getLexicon()));
 					}
 
 					$result = array(
@@ -9069,12 +9223,12 @@
 						|| !(bool)$templateRootHolon->get('active')
 						|| !self::isPublicModelRootHolon($templateRootHolon)
 					) {
-						throw new \RuntimeException("Le modele d'organisation demande est introuvable.");
+						throw new \RuntimeException(self::uiMessage('copy.le_modele_d_organisation_demande_est_introuvable'));
 					}
 
 					$result = $this->initializeStructureFromTemplate($templateRootHolon, $userId);
 					if (!($result['status'] ?? false)) {
-						throw new \RuntimeException((string)($result['message'] ?? "Le modele n'a pas pu etre duplique."));
+						throw new \RuntimeException((string)($result['message'] ?? self::uiMessage('copy.le_modele_n_a_pas_pu_etre_duplique')));
 					}
 				}
 
@@ -11916,7 +12070,7 @@
 				$properties[$propertyId] = array(
 					'id' => $propertyId,
 					'type' => Property::normalizeType($definition['type'] ?? null),
-					'name' => trim((string)($definition['name'] ?? ('Propriete ' . $propertyId))),
+					'name' => trim((string)($definition['name'] ?? ('Propriété ' . $propertyId))),
 					'shortname' => trim((string)($definition['shortname'] ?? '')),
 					'formatId' => $formatId,
 					'formatName' => (string)($definition['formatName'] ?? ''),
@@ -12611,7 +12765,7 @@
 		protected function buildHolonHistoryPropertyToken(array $propertySnapshot)
 		{
 			$propertyId = (int)($propertySnapshot['id'] ?? 0);
-			$propertyLabel = trim((string)($propertySnapshot['name'] ?? ('Propriete ' . $propertyId)));
+			$propertyLabel = trim((string)($propertySnapshot['name'] ?? ('Propriété ' . $propertyId)));
 
 			return \dbObject\History::buildReferenceToken('property', $propertyId, $propertyLabel);
 		}
@@ -12649,7 +12803,7 @@
 			$afterHolon = is_array($afterSnapshot['holon'] ?? null) ? $afterSnapshot['holon'] : array();
 
 			if ((string)($beforeHolon['name'] ?? '') !== (string)($afterHolon['name'] ?? '')) {
-				$messages[] = 'le nom a ete modifie en "' . $this->limitHolonHistoryText((string)($afterHolon['name'] ?? '')) . '"';
+				$messages[] = 'le nom a été modifié en "' . $this->limitHolonHistoryText((string)($afterHolon['name'] ?? '')) . '"';
 				$changes[] = array(
 					'type' => 'field_changed',
 					'field' => 'name',
@@ -12660,8 +12814,8 @@
 
 			if ((string)($beforeHolon['fullName'] ?? '') !== (string)($afterHolon['fullName'] ?? '')) {
 				$messages[] = (string)($afterHolon['fullName'] ?? '') !== ''
-					? 'le nom complet a ete modifie en "' . $this->limitHolonHistoryText((string)($afterHolon['fullName'] ?? '')) . '"'
-					: 'le nom complet a ete vide';
+					? 'le nom complet a été modifié en "' . $this->limitHolonHistoryText((string)($afterHolon['fullName'] ?? '')) . '"'
+					: 'le nom complet a été vide';
 				$changes[] = array(
 					'type' => 'field_changed',
 					'field' => 'fullName',
@@ -12671,8 +12825,8 @@
 			}
 
 			$mediaFields = array(
-				'color' => 'la couleur a ete modifiee',
-				'icon' => "l'icone a ete modifiee",
+				'color' => 'la couleur a été modifiée',
+				'icon' => "l'icône a été modifiée",
 			);
 			foreach ($mediaFields as $field => $message) {
 				if ((string)($beforeHolon[$field] ?? '') === (string)($afterHolon[$field] ?? '')) {
@@ -12692,11 +12846,11 @@
 				'visible' => 'visible',
 				'mandatory' => 'obligatoire',
 				'lockedName' => 'nom verrouille',
-				'lockedIcon' => 'icone verrouillee',
-				'lockedAdminMin' => 'minimum d admins verrouille',
-				'lockedAdminMax' => 'maximum d admins verrouille',
-				'adminMinOverride' => 'minimum d admins redefini',
-				'adminMaxOverride' => 'maximum d admins redefini',
+				'lockedIcon' => 'icône verrouillée',
+				'lockedAdminMin' => 'minimum d’admins verrouille',
+				'lockedAdminMax' => 'maximum d’admins verrouille',
+				'adminMinOverride' => 'minimum d’admins redéfini',
+				'adminMaxOverride' => 'maximum d’admins redéfini',
 				'unique' => 'unique',
 				'link' => 'lien',
 				'adminParent' => 'admin parent',
@@ -12706,7 +12860,7 @@
 					continue;
 				}
 
-				$messages[] = 'le parametre "' . $label . '" a ete '
+				$messages[] = 'le paramètre "' . $label . '" a été '
 					. ((bool)($afterHolon[$field] ?? false) ? 'active' : 'desactive');
 				$changes[] = array(
 					'type' => 'field_changed',
@@ -12717,15 +12871,15 @@
 			}
 
 			$templateIntegerFields = array(
-				'adminMin' => 'nombre minimum d admins',
-				'adminMax' => 'nombre maximum d admins',
+				'adminMin' => 'nombre minimum d’admins',
+				'adminMax' => 'nombre maximum d’admins',
 			);
 			foreach ($templateIntegerFields as $field => $label) {
 				if (($beforeHolon[$field] ?? null) === ($afterHolon[$field] ?? null)) {
 					continue;
 				}
 
-				$messages[] = 'le parametre "' . $label . '" a ete modifie';
+				$messages[] = 'le paramètre "' . $label . '" a été modifié';
 				$changes[] = array(
 					'type' => 'field_changed',
 					'field' => $field,
@@ -12737,11 +12891,11 @@
 			if ((string)($beforeHolon['inheritsFromName'] ?? '') !== (string)($afterHolon['inheritsFromName'] ?? '')) {
 				$afterTemplateName = trim((string)($afterHolon['inheritsFromName'] ?? ''));
 				if ((string)($beforeHolon['inheritsFromName'] ?? '') === '' && $afterTemplateName !== '') {
-					$messages[] = 'le modele parent a ete defini sur "' . $this->limitHolonHistoryText($afterTemplateName) . '"';
+					$messages[] = 'le modèle parent a été défini sur "' . $this->limitHolonHistoryText($afterTemplateName) . '"';
 				} elseif ((string)($beforeHolon['inheritsFromName'] ?? '') !== '' && $afterTemplateName === '') {
-					$messages[] = 'le modele parent a ete retire';
+					$messages[] = 'le modèle parent a été retiré';
 				} else {
-					$messages[] = 'le modele parent a ete modifie en "' . $this->limitHolonHistoryText($afterTemplateName) . '"';
+					$messages[] = 'le modèle parent a été modifié en "' . $this->limitHolonHistoryText($afterTemplateName) . '"';
 				}
 
 				$changes[] = array(
@@ -12770,7 +12924,7 @@
 				$formatId = (int)($propertySnapshot['formatId'] ?? 0);
 
 				if (!is_array($beforeProperty)) {
-					$messages[] = 'la propriete ' . $propertyToken . ' a ete ajoutee';
+					$messages[] = 'la propriété ' . $propertyToken . ' a été ajoutée';
 					$changes[] = array(
 						'type' => 'property_added',
 						'propertyId' => (int)$propertyId,
@@ -12780,7 +12934,7 @@
 				}
 
 				if (!is_array($afterProperty)) {
-					$messages[] = 'la propriete ' . $propertyToken . ' a ete retiree';
+					$messages[] = 'la propriété ' . $propertyToken . ' a été retirée';
 					$changes[] = array(
 						'type' => 'property_removed',
 						'propertyId' => (int)$propertyId,
@@ -12790,7 +12944,7 @@
 				}
 
 				if (($beforeProperty['type'] ?? 'type1') !== ($afterProperty['type'] ?? 'type1')) {
-					$messages[] = 'le type de la propriete ' . $propertyToken . ' a ete modifie';
+					$messages[] = 'le type de la propriété ' . $propertyToken . ' a été modifié';
 					$changes[] = [
 						'type' => 'property_type_changed',
 						'propertyId' => (int)$propertyId,
@@ -12808,7 +12962,7 @@
 						$afterHtml = $this->buildHolonHistoryHtmlTextPreview($afterParts['before'])
 							. ' ' . $this->buildHolonHistoryHtmlTextPreview($afterParts['after']);
 						if (trim($beforeHtml) !== trim($afterHtml)) {
-							$messages[] = 'le contenu HTML de ' . $propertyToken . ' a ete modifie'
+							$messages[] = 'le contenu HTML de ' . $propertyToken . ' a été modifié'
 								. (($preview = $this->buildHolonHistoryChangedTextSnippet($beforeHtml, $afterHtml)) !== '' ? ' : ' . $preview : '');
 							$changes[] = array(
 								'type' => 'property_html_changed',
@@ -12866,7 +13020,7 @@
 						}
 
 						$modifiedCount = count($modifiedItems);
-						$messages[] = $modifiedCount . ' ' . ($modifiedCount > 1 ? 'elements ont ete modifies dans ' : 'element a ete modifie dans ') . $propertyToken
+						$messages[] = $modifiedCount . ' ' . ($modifiedCount > 1 ? 'éléments ont été modifiés dans ' : 'élément a été modifié dans ') . $propertyToken
 							. (count($itemPreviews) > 0 ? ' : ' . implode('; ', $itemPreviews) : '');
 						$changes[] = array(
 							'type' => 'property_list_changed',
@@ -12885,7 +13039,7 @@
 						}
 
 						$addedCount = count($addedItems);
-						$messages[] = $addedCount . ' ' . ($addedCount > 1 ? 'elements ont ete ajoutes a ' : 'element a ete ajoute a ') . $propertyToken
+						$messages[] = $addedCount . ' ' . ($addedCount > 1 ? 'éléments ont été ajoutes a ' : 'élément a été ajoute a ') . $propertyToken
 							. (count($itemPreviews) > 0 ? ' : ' . implode('; ', $itemPreviews) : '');
 						$changes[] = array(
 							'type' => 'property_list_added',
@@ -12904,7 +13058,7 @@
 						}
 
 						$removedCount = count($removedItems);
-						$messages[] = $removedCount . ' ' . ($removedCount > 1 ? 'elements ont ete retires de ' : 'element a ete retire de ') . $propertyToken
+						$messages[] = $removedCount . ' ' . ($removedCount > 1 ? 'éléments ont été retirés de ' : 'élément a été retiré de ') . $propertyToken
 							. (count($itemPreviews) > 0 ? ' : ' . implode('; ', $itemPreviews) : '');
 						$changes[] = array(
 							'type' => 'property_list_removed',
@@ -12929,7 +13083,7 @@
 						&& count($removedItems) === 0
 						&& $beforeOrderSignature !== $afterOrderSignature
 					) {
-						$messages[] = 'les elements de ' . $propertyToken . ' ont ete reordonnes';
+						$messages[] = 'les éléments de ' . $propertyToken . ' ont été reordonnes';
 						$changes[] = array(
 							'type' => 'property_list_reordered',
 							'propertyId' => (int)$propertyId,
@@ -12949,12 +13103,12 @@
 
 				$afterPreview = $this->buildHolonHistoryValuePreview($afterProperty, $beforeProperty);
 				if ($beforeValue === '' && $afterValue !== '') {
-					$messages[] = 'la propriete ' . $propertyToken . ' a ete renseignee'
+					$messages[] = 'la propriété ' . $propertyToken . ' a été renseignée'
 						. ($afterPreview !== '' ? ' : ' . $afterPreview : '');
 				} elseif ($beforeValue !== '' && $afterValue === '') {
-					$messages[] = 'la propriete ' . $propertyToken . ' a ete videe';
+					$messages[] = 'la propriété ' . $propertyToken . ' a été vidée';
 				} else {
-					$messages[] = 'la propriete ' . $propertyToken . ' a ete modifiee'
+					$messages[] = 'la propriété ' . $propertyToken . ' a été modifiée'
 						. ($afterPreview !== '' ? ' : ' . $afterPreview : '');
 				}
 
@@ -12978,7 +13132,7 @@
 				$permissionLabel = $this->buildHolonHistoryPermissionLabel(is_array($permissionSnapshot) ? $permissionSnapshot : array(), $permissionKey);
 
 				if (!is_array($beforePermission) && is_array($afterPermission)) {
-					$messages[] = 'le droit "' . $permissionLabel . '" a ete ajoute'
+					$messages[] = 'le droit "' . $permissionLabel . '" a été ajoute'
 						. (($preview = $this->buildHolonHistoryPermissionPreview($afterPermission)) !== '' ? ' : ' . $preview : '');
 					$changes[] = array(
 						'type' => 'permission_added',
@@ -12989,7 +13143,7 @@
 				}
 
 				if (is_array($beforePermission) && !is_array($afterPermission)) {
-					$messages[] = 'le droit "' . $permissionLabel . '" a ete retire';
+					$messages[] = 'le droit "' . $permissionLabel . '" a été retiré';
 					$changes[] = array(
 						'type' => 'permission_removed',
 						'permissionKey' => $permissionKey,
@@ -13015,7 +13169,7 @@
 					return strcmp((string)($left['id'] ?? ''), (string)($right['id'] ?? ''));
 				}));
 
-				$message = 'les portees du droit "' . $permissionLabel . '" ont ete modifiees';
+				$message = 'les portées du droit "' . $permissionLabel . '" ont été modifiées';
 				$messageParts = array();
 				if (count($addedItems) > 0) {
 					$messageParts[] = '+ ' . implode(', ', array_map(function ($item) {
@@ -13088,7 +13242,7 @@
 
 		protected function recordHolonCreatedHistory(\dbObject\Holon $holon, $authorUserId, array $afterSnapshot)
 		{
-			$content = 'Creation de ' . $this->buildHolonHistoryHolonToken($afterSnapshot['holon'] ?? array()) . '.';
+			$content = 'Création de ' . $this->buildHolonHistoryHolonToken($afterSnapshot['holon'] ?? array()) . '.';
 
 			\dbObject\History::createEntry(
 				(int)$this->getId(),
@@ -13114,7 +13268,7 @@
 			);
 			$content = trim((string)$content);
 			if ($holonId > 0 && strpos($content, \dbObject\History::buildHolonSearchNeedle($holonId)) === false) {
-				$content .= ' Autorite confiee a ' . $holonToken . '.';
+				$content .= ' Autorité confiée a ' . $holonToken . '.';
 			}
 			$parameters['IDholon'] = $holonId;
 
@@ -13133,16 +13287,16 @@
 		{
 			$authorityId = (int)$authorityId;
 			if ($authorityId <= 0) {
-				return 'aucune autorite parente';
+				return 'aucune autorité parente';
 			}
 
 			$authority = new \dbObject\Authority();
 			if (!$authority->load($authorityId)) {
-				return 'autorite #' . $authorityId;
+				return 'autorité #' . $authorityId;
 			}
 
 			$label = trim((string)$authority->get('label'));
-			return $label !== '' ? $label : 'autorite #' . $authorityId;
+			return $label !== '' ? $label : 'autorité #' . $authorityId;
 		}
 
 		protected function syncTemplateAuthorityInstances(\dbObject\Holon $template)
@@ -13416,7 +13570,7 @@
 							if (empty($deletionResult['status'])) {
 								return array(
 									'status' => false,
-									'message' => (string)($deletionResult['text'] ?? 'Cette autorite ne peut pas etre traitee.'),
+									'message' => (string)($deletionResult['text'] ?? self::uiMessage('copy.cette_autorite_ne_peut_pas_etre_traitee')),
 								);
 							}
 							foreach (array_merge($deletionResult['deletedAuthorityIds'] ?? array(), $deletionResult['movedAuthorityIds'] ?? array()) as $removedId) {
@@ -13429,13 +13583,13 @@
 								? 'authority_complete_delegation_reversed'
 								: ($authorityRetained ? 'authority_reassigned' : 'authority_deleted');
 							$historyContent = $reactivatedShellId > 0
-								? 'Annulation de la delegation complete de l autorite "' . $before['label'] . '" : l autorite source a ete reactivee.'
+								? self::uiMessage('copy.annulation_de_la_delegation_complete_de_l_autorite_label_l_autorite_so', ['label' => $before['label']])
 								: ($authorityRetained
-									? 'Remontee de l autorite "' . $before['label'] . self::formatLexiconText('" au holon parent.', $this->getLexicon())
-									: 'Suppression de l autorite "' . $before['label'] . '".');
+									? self::uiMessage('copy.remontee_de_l_autorite_label_value', ['label' => $before['label'], 'value' => self::formatLexiconText('" au holon parent.', $this->getLexicon())])
+									: self::uiMessage('copy.suppression_de_l_autorite_label', ['label' => $before['label']]));
 							$propertyReferenceCount = (int)($deletionResult['movedPropertyReferenceCount'] ?? 0);
 							if ($propertyReferenceCount > 0) {
-								$historyContent .= ' ' . $propertyReferenceCount . ' rattachement' . ($propertyReferenceCount > 1 ? 's' : '') . ' de propriete remonte' . ($propertyReferenceCount > 1 ? 's' : '') . self::formatLexiconText(' au holon parent.', $this->getLexicon());
+								$historyContent .= self::uiMessage('copy.propertyreferencecount_rattachement_value_de_propriete_remonte_value_2', ['propertyReferenceCount' => $propertyReferenceCount, 'value' => $propertyReferenceCount > 1 ? 's' : '', 'value_2' => $propertyReferenceCount > 1 ? 's' : '', 'value_3' => self::formatLexiconText(' au holon parent.', $this->getLexicon())]);
 							}
 							$removedReferenceCount = (int)($deletionResult['removedPropertyReferenceCount'] ?? 0);
 							if ($removedReferenceCount > 0) {
@@ -13486,8 +13640,8 @@
 								return array(
 									'status' => false,
 									'message' => $canCreateRootAuthority
-										? 'Chaque autorite doit avoir un nom.'
-										: 'Chaque autorite doit avoir un nom et une autorite parente.',
+										? self::uiMessage('copy.chaque_autorite_doit_avoir_un_nom')
+										: self::uiMessage('copy.chaque_autorite_doit_avoir_un_nom_et_une_autorite_parente'),
 								);
 							}
 							if ($parentId > 0 && !isset($parentAuthorityIds[$parentId])) {
@@ -13514,17 +13668,17 @@
 								$changes[] = 'le nom est passe de "' . $before['label'] . '" a "' . $label . '"';
 							}
 							if ($before['parentId'] !== $parentId) {
-								$changes[] = 'l autorite parente est maintenant "' . $this->getAuthorityHistoryLabel($parentId) . '"';
+								$changes[] = self::uiMessage('copy.l_autorite_parente_est_maintenant_value', ['value' => $this->getAuthorityHistoryLabel($parentId)]);
 							}
 							if ($before['description'] !== $description) {
-								$changes[] = 'la description a ete modifiee';
+								$changes[] = self::uiMessage('copy.la_description_a_ete_modifiee');
 							}
 							if (count($changes) > 0) {
 								$this->recordAuthorityHistory(
 									$holon,
 									$authorUserId,
 									'authority_updated',
-									'Modification de l autorite "' . $label . '" : ' . implode('; ', $changes) . '.',
+									self::uiMessage('copy.modification_de_l_autorite_label_value', ['label' => $label, 'value' => implode('; ', $changes)]),
 									array('IDauthority' => $existingId, 'before' => $before, 'after' => array(
 										'label' => $label,
 										'description' => $description,
@@ -13560,8 +13714,8 @@
 						return array(
 							'status' => false,
 							'message' => $canCreateRootAuthority
-								? 'Chaque nouvelle autorite doit avoir un nom.'
-								: 'Chaque nouvelle autorite doit avoir un nom et une autorite parente.',
+								? self::uiMessage('copy.chaque_nouvelle_autorite_doit_avoir_un_nom')
+								: self::uiMessage('copy.chaque_nouvelle_autorite_doit_avoir_un_nom_et_une_autorite_parente'),
 						);
 					}
 					if ($parentId > 0 && !isset($parentAuthorityIds[$parentId])) {
@@ -13581,7 +13735,7 @@
 					if ($delegationMode === 'complete') {
 						$delegationResult = $parentAuthority->delegateCompletelyToHolon($holon);
 						if (empty($delegationResult['status'])) {
-							return array('status' => false, 'message' => (string)($delegationResult['text'] ?? 'La delegation complete a echoue.'));
+							return array('status' => false, 'message' => (string)($delegationResult['text'] ?? self::uiMessage('copy.la_delegation_complete_a_echoue')));
 						}
 						$authorityId = (int)($delegationResult['authorityId'] ?? 0);
 						$delegatedAuthorityIds = is_array($delegationResult['authorityIds'] ?? null)
@@ -13598,7 +13752,7 @@
 							$holon,
 							$authorUserId,
 							'authority_complete_delegated',
-							'Delegation complete de l autorite "' . trim((string)$parentAuthority->get('label')) . '".' . (!empty($delegationResult['createdShell']) ? self::formatLexiconText(' Une coquille a ete conservee dans le holon parent.', $this->getLexicon()) : ''),
+							self::uiMessage('copy.delegation_complete_de_l_autorite_label_value', ['label' => trim((string)$parentAuthority->get('label')), 'value' => !empty($delegationResult['createdShell']) ? self::formatLexiconText(' Une coquille a été conservée dans le holon parent.', $this->getLexicon()) : '']),
 							array(
 								'IDauthority' => $authorityId,
 								'sourceAuthorityId' => $parentId,
@@ -13759,7 +13913,7 @@
 				return array(
 					'status' => false,
 					'message' => $isEditing
-						? self::formatLexiconText("Le contexte d'edition de ce holon est invalide.", $this->getLexicon())
+						? self::formatLexiconText("Le contexte d'édition de ce holon est invalide.", $this->getLexicon())
 						: self::formatLexiconText("Le holon courant n'autorise pas l'ajout d'enfant.", $this->getLexicon()),
 				);
 			}
@@ -13776,7 +13930,7 @@
 					'status' => false,
 					'message' => $isEditing
 						? self::formatLexiconText("Vous n'avez pas les droits pour modifier ce holon.", $this->getLexicon())
-						: self::formatLexiconText("Vous n'avez pas les droits pour creer un holon ici.", $this->getLexicon()),
+						: self::formatLexiconText("Vous n'avez pas les droits pour créer un holon ici.", $this->getLexicon()),
 				);
 			}
 
@@ -13970,7 +14124,7 @@
 					if (!empty($definition['effectiveMandatory']) && \dbObject\PropertyFormat::isEmptyValue($formatId, $effectiveValue)) {
 						return array(
 							'status' => false,
-							'message' => 'La propriete "' . (string)($definition['name'] ?? ('#' . $propertyId)) . '" est obligatoire.',
+							'message' => self::uiMessage('copy.la_propriete_value_est_obligatoire', ['value' => (string)($definition['name'] ?? ('#' . $propertyId))]),
 						);
 					}
 				}
@@ -14132,7 +14286,7 @@
 				if (empty($authoritySyncResult['status'])) {
 					return array(
 						'status' => false,
-						'message' => (string)($authoritySyncResult['message'] ?? 'Les autorites n ont pas pu etre enregistrees.'),
+						'message' => (string)($authoritySyncResult['message'] ?? self::uiMessage('copy.les_autorites_n_ont_pas_pu_etre_enregistrees')),
 					);
 				}
 
@@ -14391,7 +14545,7 @@
 			if ($this->isDiscoveryMode()) {
 				return array(
 					'status' => false,
-					'message' => self::formatLexiconText('Les modeles de holons ne sont pas disponibles en mode decouverte.', $this->getLexicon()),
+					'message' => self::formatLexiconText('Les modèles de holons ne sont pas disponibles en mode découverte.', $this->getLexicon()),
 				);
 			}
 
@@ -14402,7 +14556,7 @@
 			if (!$rootHolon) {
 				return array(
 					'status' => false,
-					'message' => self::formatLexiconText("Aucun holon racine n'a ete trouve pour cette organisation.", $this->getLexicon()),
+					'message' => self::formatLexiconText("Aucun holon racine n'a été trouve pour cette organisation.", $this->getLexicon()),
 				);
 			}
 
@@ -14506,7 +14660,7 @@
 				if (!$definitionHolon->load($definitionHolonId) || !$this->containsHolon($definitionHolon) || !$definitionHolon->canEdit()) {
 					return array(
 						'status' => false,
-						'message' => self::formatLexiconText("Vous n'avez pas les droits pour modifier les modeles de ce holon.", $this->getLexicon()),
+						'message' => self::formatLexiconText("Vous n'avez pas les droits pour modifier les modèles de ce holon.", $this->getLexicon()),
 					);
 				}
 				$contextHolon = $definitionHolon;
@@ -14515,7 +14669,7 @@
 			if (!$contextHolon->canEdit()) {
 				return array(
 					'status' => false,
-					'message' => self::formatLexiconText("Vous n'avez pas les droits pour modifier les modeles de ce holon.", $this->getLexicon()),
+					'message' => self::formatLexiconText("Vous n'avez pas les droits pour modifier les modèles de ce holon.", $this->getLexicon()),
 				);
 			}
 
@@ -14714,7 +14868,7 @@
 				if (empty($templateAuthoritySyncResult['status'])) {
 					return array(
 						'status' => false,
-						'message' => (string)($templateAuthoritySyncResult['message'] ?? 'Les autorites du modele n ont pas pu etre enregistrees.'),
+						'message' => (string)($templateAuthoritySyncResult['message'] ?? self::uiMessage('copy.les_autorites_du_modele_n_ont_pas_pu_etre_enregistrees')),
 					);
 				}
 			}
@@ -14766,7 +14920,7 @@
 			if ($this->isDiscoveryMode()) {
 				return array(
 					'status' => false,
-					'message' => self::formatLexiconText('Les modeles de holons ne sont pas disponibles en mode decouverte.', $this->getLexicon()),
+					'message' => self::formatLexiconText('Les modèles de holons ne sont pas disponibles en mode découverte.', $this->getLexicon()),
 				);
 			}
 
@@ -14805,7 +14959,7 @@
 			if (!$contextHolon->canEdit()) {
 				return array(
 					'status' => false,
-					'message' => self::formatLexiconText("Vous n'avez pas les droits pour modifier les modeles de ce holon.", $this->getLexicon()),
+					'message' => self::formatLexiconText("Vous n'avez pas les droits pour modifier les modèles de ce holon.", $this->getLexicon()),
 				);
 			}
 
@@ -14969,7 +15123,7 @@
 			if (empty($authoritySyncResult['status'])) {
 				return array(
 					'status' => false,
-					'message' => (string)($authoritySyncResult['message'] ?? 'Les autorites n ont pas pu etre enregistrees.'),
+					'message' => (string)($authoritySyncResult['message'] ?? self::uiMessage('copy.les_autorites_n_ont_pas_pu_etre_enregistrees')),
 				);
 			}
 			foreach ($definitions as &$definition) {
@@ -15012,7 +15166,7 @@
 				if (empty($authorityPostSyncResult['status'])) {
 					return array(
 						'status' => false,
-						'message' => (string)($authorityPostSyncResult['message'] ?? 'Les autorites n ont pas pu etre enregistrees.'),
+						'message' => (string)($authorityPostSyncResult['message'] ?? self::uiMessage('copy.les_autorites_n_ont_pas_pu_etre_enregistrees')),
 					);
 				}
 
@@ -16014,7 +16168,7 @@
 		{
 			switch ((int)$typeId) {
 				case 1:
-					return 'Role';
+					return self::uiMessage('copy.role');
 				case 2:
 					return 'Cercle';
 				case 3:
@@ -16096,7 +16250,7 @@
 						$contextCandidates[] = $organizationLabel;
 					}
 				} else {
-					$subtitleParts[] = 'Generique';
+					$subtitleParts[] = self::uiMessage('copy.generique');
 				}
 
 				$contextScore = 0;
@@ -16271,8 +16425,8 @@
 				});
 				$results[] = array(
 					'module' => 'rules',
-					'moduleLabel' => 'Regles',
-					'title' => $title !== '' ? $title : ('Regle #' . (int)$rule->getId()),
+					'moduleLabel' => self::uiMessage('copy.regles'),
+					'title' => $title !== '' ? $title : (self::uiMessage('copy.regle_value', ['value' => (int)$rule->getId()])),
 					'subtitle' => implode(' | ', array_values($subtitleParts)),
 					'excerpt' => self::buildTopbarSearchSnippet($snippetSource, $query, 100, 220),
 					'_searchFields' => ['title' => $title, 'summary' => [$description, $intention], 'context' => [$holonLabel, $authorityLabel]],
@@ -17207,7 +17361,7 @@
 
 				$results[] = array(
 					'module' => 'decision',
-					'moduleLabel' => 'Decisions',
+					'moduleLabel' => self::uiMessage('copy.decisions'),
 					'title' => $resultTitle,
 					'subtitle' => $subtitle,
 					'excerpt' => self::buildTopbarSearchSnippet($snippetSource, $query, 100, 220),
@@ -17428,8 +17582,8 @@
 				$description = self::cleanTopbarSearchTextValue((string)($row['description'] ?? ''));
 				$results[] = array(
 					'module' => 'activities',
-					'moduleLabel' => 'Taches recurrentes',
-					'title' => $title !== '' ? $title : ('Tache recurrente #' . (int)$row['id']),
+					'moduleLabel' => self::uiMessage('copy.taches_recurrentes'),
+					'title' => $title !== '' ? $title : (self::uiMessage('copy.tache_recurrente_id', ['id' => (int)$row['id']])),
 					'subtitle' => $subtitle,
 					'excerpt' => self::buildTopbarSearchSnippet(self::chooseTopbarSearchSnippetSource(array($description, $title), $terms), $query, 100, 220),
 					'_searchFields' => ['title' => $title, 'summary' => $description],
@@ -17638,7 +17792,7 @@
 				$results[] = array(
 					'module' => 'calendar',
 					'moduleLabel' => 'Calendrier',
-					'title' => $eventTitle !== '' ? $eventTitle : ('Evenement #' . (int)$event->getId()),
+					'title' => $eventTitle !== '' ? $eventTitle : (self::uiMessage('copy.evenement_value', ['value' => (int)$event->getId()])),
 					'subtitle' => implode(' | ', array_values(array_filter($subtitleParts, function ($part) {
 						return trim((string)$part) !== '';
 					}))),
@@ -17852,7 +18006,7 @@
 				'results' => $results,
 			);
 		}
-		
+
 	}
-	
+
 ?>

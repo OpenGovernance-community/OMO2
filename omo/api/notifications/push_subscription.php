@@ -45,7 +45,7 @@ if ($requestMethod === 'DELETE') {
     $saved = \dbObject\NotificationPushSubscription::deactivateForUser($userId, $subscription);
     omoPushSubscriptionRespond($saved ? 200 : 500, [
         'status' => (bool)$saved,
-        'message' => $saved ? 'Notifications desactivees pour cet appareil.' : 'Impossible de desactiver les notifications.',
+        'message' => $saved ? omoNotificationsUiT('copy.notifications_desactivees_pour_cet_appareil') : omoNotificationsUiT('copy.impossible_de_desactiver_les_notifications'),
     ]);
 }
 
@@ -57,7 +57,7 @@ $savedSubscription = \dbObject\NotificationPushSubscription::upsertForUser(
 omoPushSubscriptionRespond($savedSubscription instanceof \dbObject\NotificationPushSubscription ? 200 : 500, [
     'status' => $savedSubscription instanceof \dbObject\NotificationPushSubscription,
     'message' => $savedSubscription instanceof \dbObject\NotificationPushSubscription
-        ? 'Notifications activees pour cet appareil.'
-        : 'Impossible d enregistrer les notifications pour cet appareil.',
+        ? omoNotificationsUiT('copy.notifications_activees_pour_cet_appareil')
+        : omoNotificationsUiT('copy.impossible_d_enregistrer_les_notifications_pour_cet_appareil'),
 ]);
 ?>

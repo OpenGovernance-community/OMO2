@@ -5,17 +5,17 @@ function omoServerEnvAdditionalSections(): array
 {
     return [
         'security' => [
-            'title' => 'Securite',
-            'intro' => 'Visibilite de cette installation dans les moteurs de recherche, independamment des autres installations.',
+            'title' => 'Sécurité',
+            'intro' => 'Visibilité de cette installation dans les moteurs de recherche, indépendamment des autres installations.',
             'fields' => [
                 'SEARCH_ENGINE_INDEXING' => [
                     'label' => 'Indexation dans les moteurs de recherche',
                     'type' => 'select',
                     'options' => [
-                        'allow' => 'Autoriser l indexation',
-                        'block' => 'Bloquer l indexation',
+                        'allow' => 'Autoriser l’indexation',
+                        'block' => 'Bloquer l’indexation',
                     ],
-                    'help' => 'Indexation autorisee par defaut. Ce choix depend uniquement du fichier .env de cette installation, sans detection du domaine. Le blocage demande aux moteurs de retirer les pages lors de leur prochain passage. Il ne rend pas le site prive et ne remplace pas les droits d acces. Les exclusions propres aux pages restent applicables meme si l indexation est autorisee.',
+                    'help' => 'Indexation autorisée par défaut. Ce choix dépend uniquement du fichier .env de cette installation, sans détection du domaine. Le blocage demande aux moteurs de retirer les pages lors de leur prochain passage. Il ne rend pas le site privé et ne remplace pas les droits d’accès. Les exclusions propres aux pages restent applicables même si l’indexation est autorisée.',
                 ],
             ],
         ],
@@ -32,7 +32,7 @@ function omoServerEnvAdditionalSections(): array
         ],
         'hosting' => [
             'title' => 'Adresse et hébergement',
-            'intro' => 'Identité publique du site et particularites du réseau. Les exceptions de proxy et d’images ne sont utiles que si votre hébergement ou vos documents les demandent.',
+            'intro' => 'Identité publique du site et particularités du réseau. Les exceptions de proxy et d’images ne sont utiles que si votre hébergement ou vos documents les demandent.',
             'technical' => true,
             'fields' => [
                 'AUTH_PUBLIC_URL' => ['label' => 'Adresse publique du site', 'type' => 'url', 'preserve_empty' => true, 'help' => 'Origine HTTPS de ce site, par exemple https://exemple.org, sans chemin ni paramètre. Nécessaire aux e-mails de connexion et de récupération. HTTP est accepté uniquement pour localhost et 127.0.0.1. Laissez vide pour conserver l’adresse actuelle.'],
@@ -59,12 +59,12 @@ function omoServerEnvAdditionalSections(): array
                 'AUTH_RATE_LIMITS_ENABLED' => ['label' => 'Limiter les tentatives de connexion', 'type' => 'boolean', 'help' => 'Freine les tentatives répétées de connexion et de récupération de compte. Gardez cette protection active, sauf diagnostic temporaire.'],
                 'AUTH_SECURITY_ALERT_ENABLED' => ['label' => 'Alertes de sécurité par e-mail', 'type' => 'boolean', 'help' => 'Autorise les e-mails signalant des incidents de sécurité. Nécessite un SMTP fonctionnel et un destinataire valide.'],
                 'AUTH_SECURITY_ALERT_EMAIL' => ['label' => 'Destinataire des alertes', 'type' => 'email', 'help' => 'Adresse qui reçoit les alertes de sécurité. Vide : OMO utilise l’adresse du compte SMTP si elle est valide.'],
-                'AUTH_SECURITY_ALERT_COOLDOWN_SECONDS' => ['label' => 'Intervalle entre alertes (secondes)', 'type' => 'number', 'min' => 300, 'max' => 86400, 'help' => 'Temps minimum entre deux alertes du même type : de 300 a 86400 secondes. La valeur habituelle est 3600 secondes, soit une heure.'],
+                'AUTH_SECURITY_ALERT_COOLDOWN_SECONDS' => ['label' => 'Intervalle entre alertes (secondes)', 'type' => 'number', 'min' => 300, 'max' => 86400, 'help' => 'Temps minimum entre deux alertes du même type : de 300 à 86400 secondes. La valeur habituelle est 3600 secondes, soit une heure.'],
             ],
         ],
         'keys' => [
             'title' => 'Clés de protection',
-            'intro' => 'Secrets générés automatiquement à l’installation. Ils ne sont pas a compléter au quotidien. Conservez leur sauvegarde ; remplacer une clé de chiffrement rend les anciennes données illisibles.',
+            'intro' => 'Secrets générés automatiquement à l’installation. Ils ne sont pas à compléter au quotidien. Conservez leur sauvegarde ; remplacer une clé de chiffrement rend les anciennes données illisibles.',
             'technical' => true,
             'fields' => [
                 'AUTH_RATE_LIMIT_SECRET' => ['label' => 'Secret des limites de connexion', 'secret' => true, 'help' => 'Secret aléatoire propre au serveur, généré à l’installation. Laissez vide pour le conserver.'],
@@ -77,10 +77,10 @@ function omoServerEnvAdditionalSections(): array
             'intro' => 'Exceptions utiles pour certains hébergements et pour les appels HTTP du cron. Laissez les chemins des exécutables vides si la détection automatique fonctionne.',
             'technical' => true,
             'fields' => [
-                'SITE_UPDATE_COMPOSER_BINARY' => ['label' => 'Exécutable Composer des mises à jour', 'help' => 'Chemin de Composer 2 ou de composer.phar fourni par l’hébergeur, sans arguments. Vide : recherche automatique. A renseigner seulement si la mise à jour ne trouve pas Composer.'],
-                'SITE_UPDATE_PHP_BINARY' => ['label' => 'Exécutable PHP des mises à jour', 'help' => 'PHP en ligne de commande de même version que le site, pour ses mises à jour. Vide : détection automatique. Ne pas utiliser php-fpm ni php-cgi. Ce chemin peut differer de celui des notifications.'],
+                'SITE_UPDATE_COMPOSER_BINARY' => ['label' => 'Exécutable Composer des mises à jour', 'help' => 'Chemin de Composer 2 ou de composer.phar fourni par l’hébergeur, sans arguments. Vide : recherche automatique. À renseigner seulement si la mise à jour ne trouve pas Composer.'],
+                'SITE_UPDATE_PHP_BINARY' => ['label' => 'Exécutable PHP des mises à jour', 'help' => 'PHP en ligne de commande de même version que le site, pour ses mises à jour. Vide : détection automatique. Ne pas utiliser php-fpm ni php-cgi. Ce chemin peut différer de celui des notifications.'],
                 'DB_MIGRATION_DATABASES' => ['label' => 'Bases à mettre à jour', 'help' => 'Optionnel. Noms des bases séparés par des virgules pour les migrations. Vide : seule la base principale est mise à jour.'],
-                'OMO_CRON_TOKEN' => ['label' => 'Secret des tâches planifiées', 'secret' => true, 'help' => 'Secret prive à transmettre aux appels HTTP du cron OMO. Laissez vide pour conserver la valeur actuelle.'],
+                'OMO_CRON_TOKEN' => ['label' => 'Secret des tâches planifiées', 'secret' => true, 'help' => 'Secret privé à transmettre aux appels HTTP du cron OMO. Laissez vide pour conserver la valeur actuelle.'],
             ],
         ],
         'logs' => [
@@ -88,11 +88,11 @@ function omoServerEnvAdditionalSections(): array
             'intro' => 'Le dossier commun suffit normalement. Les chemins propres à un journal sont des exceptions facultatives. Le diagnostic SQL sert surtout à examiner des lenteurs.',
             'technical' => true,
             'fields' => [
-                'RUNTIME_LOG_DIR' => ['label' => 'Dossier des journaux', 'help' => 'Dossier commun des journaux et sauvegardes techniques, hors de la racine web. Vide : dossier log situé a cote du dossier du site. Les chemins particuliers ci-dessous remplacent ce choix uniquement pour leur journal.'],
+                'RUNTIME_LOG_DIR' => ['label' => 'Dossier des journaux', 'help' => 'Dossier commun des journaux et sauvegardes techniques, hors de la racine web. Vide : dossier log situé a côté du dossier du site. Les chemins particuliers ci-dessous remplacent ce choix uniquement pour leur journal.'],
                 'AUTH_SECURITY_LOG_ENABLED' => ['label' => 'Journal de sécurité', 'type' => 'boolean', 'help' => 'Conserve les événements de connexion et de sécurité dans le dossier commun. Ce journal est distinct des e-mails d’alerte.'],
                 'OMO_CRON_LOG_ENABLED' => ['label' => 'Journal des tâches planifiées', 'type' => 'boolean', 'help' => 'Conserve le résultat des tâches automatiques du cron. Gardez actif pour pouvoir diagnostiquer un traitement manquant.'],
-                'DB_QUERY_LOG_ENABLED' => ['label' => 'Journal des requêtes SQL', 'type' => 'boolean', 'help' => 'Diagnostic des requêtes MySQL lentes. Desactive par défaut ; a activer ponctuellement pour chercher un problème de performance.'],
-                'DB_QUERY_LOG_MIN_MS' => ['label' => 'Durée minimale des requêtes (ms)', 'type' => 'number', 'min' => 0, 'help' => 'Ne journalise que les requêtes depassant ce nombre de millisecondes, si le diagnostic SQL est actif. Valeur habituelle : 50 ms.'],
+                'DB_QUERY_LOG_ENABLED' => ['label' => 'Journal des requêtes SQL', 'type' => 'boolean', 'help' => 'Diagnostic des requêtes MySQL lentes. Désactive par défaut ; a activer ponctuellement pour chercher un problème de performance.'],
+                'DB_QUERY_LOG_MIN_MS' => ['label' => 'Durée minimale des requêtes (ms)', 'type' => 'number', 'min' => 0, 'help' => 'Ne journalise que les requêtes dépassant ce nombre de millisecondes, si le diagnostic SQL est actif. Valeur habituelle : 50 ms.'],
                 'DB_QUERY_LOG_PATH' => ['label' => 'Fichier du journal SQL', 'help' => 'Chemin complet d’un fichier, pas d’un dossier. Vide ou dossier : fichiers quotidiens dans le sous-dossier sql-performance du dossier commun.'],
                 'OMO_CRON_LOG_PATH' => ['label' => 'Fichier du journal des tâches planifiées', 'help' => 'Exception au dossier commun pour le cron. Vide : fichier omo-cron/omo-cron.jsonl dans le dossier commun.'],
                 'NOTIFICATION_PUSH_WORKER_LOG' => ['label' => 'Journal des notifications push', 'help' => 'Exception au dossier commun pour les erreurs d’envoi push. Vide : fichier notification-push-worker.log dans le dossier commun.'],
@@ -102,22 +102,22 @@ function omoServerEnvAdditionalSections(): array
             'title' => 'Texte et traduction',
             'intro' => 'Réponses, reformulation et résumés. La traduction peut utiliser un modèle plus simple du même fournisseur.',
             'fields' => [
-                'AI_PROVIDER' => ['label' => 'Fournisseur de texte', 'type' => 'select', 'options' => ['openai' => 'OpenAI', 'anthropic' => 'Claude (Anthropic)', 'mistral' => 'Mistral', 'infomaniak' => 'Infomaniak', 'openai_compatible' => 'API compatible (OpenRouter, autre)', 'disabled' => 'Desactive'], 'help' => 'Service utilisé pour les fonctions texte et la traduction. Choisissez API compatible pour OpenRouter ou un autre service au format Chat Completions. La clé API et les deux modèles doivent appartenir au fournisseur choisi. Changer de fournisseur demande de saisir sa clé et de choisir ses modèles. Désactivé : coupe les réponses, reformulations, résumés et nouvelles traductions automatiques, tout en conservant les réglages. La transcription audio reste indépendante.'],
+                'AI_PROVIDER' => ['label' => 'Fournisseur de texte', 'type' => 'select', 'options' => ['openai' => 'OpenAI', 'anthropic' => 'Claude (Anthropic)', 'mistral' => 'Mistral', 'infomaniak' => 'Infomaniak', 'openai_compatible' => 'API compatible (OpenRouter, autre)', 'disabled' => 'Désactivé'], 'help' => 'Service utilisé pour les fonctions texte et la traduction. Choisissez API compatible pour OpenRouter ou un autre service au format Chat Complétions. La clé API et les deux modèles doivent appartenir au fournisseur choisi. Changer de fournisseur demande de saisir sa clé et de choisir ses modèles. Désactivé : coupé les réponses, reformulations, résumés et nouvelles traductions automatiques, tout en conservant les réglages. La transcription audio reste indépendante.'],
                 'AI_BASE_URL' => ['label' => 'Adresse de base de l’API', 'type' => 'url', 'help' => 'Uniquement pour API compatible. OpenRouter : https://openrouter.ai/api/v1. Vous pouvez saisir une autre adresse HTTPS, par exemple https://api.mistral.ai/v1 ou https://api.groq.com/openai/v1. Ne pas ajouter /chat/completions : l’application le fait. Vide : OpenRouter. Utilisez la clé et les identifiants de modèles de ce service ; les fonctions qui demandent du JSON nécessitent un modèle compatible.'],
-                'AI_INFOMANIAK_PRODUCT_ID' => ['label' => 'Product ID Infomaniak', 'placeholder' => '123456', 'help' => 'Identifiant numerique du produit AI Services dans le Manager Infomaniak, commun aux modeles de cette connexion. Saisissez-le avec le token puis cliquez sur Actualiser les modeles. Il est conserve apres enregistrement. Vide : tentative de detection automatique.'],
+                'AI_INFOMANIAK_PRODUCT_ID' => ['label' => 'Product ID Infomaniak', 'placeholder' => '123456', 'help' => 'Identifiant numérique du produit AI Services dans le Manager Infomaniak, commun aux modèles de cette connexion. Saisissez-le avec le token puis cliquez sur Actualiser les modèles. Il est conservé après enregistrement. Vide : tentative de détection automatique.'],
                 'AI_API_KEY' => ['label' => 'Clé API du fournisseur', 'secret' => true, 'help' => 'Clé créée dans la console API du fournisseur choisi. Elle autorise les appels texte et traduction, facturés selon votre contrat API. Un abonnement à un assistant ne fournit pas cette clé. Laissez vide pour conserver la clé configurée.'],
-                'AI_MODEL' => ['label' => 'Modèle principal', 'help' => 'Identifiant exact du modèle disponible dans la console du fournisseur. Utilise pour les réponses, résumés et reformulations. Avec Claude, Mistral ou API compatible, un identifiant est obligatoire. Pour Mistral, par exemple mistral-small-latest. Sur OpenRouter, recopiez l’identifiant complet du catalogue, avec son prefixe de fournisseur. Pour une installation historique, le modèle actuel est conservé.'],
-                'AI_TRANSLATION_MODEL' => ['label' => 'Modèle de traduction', 'help' => 'Modèle du même fournisseur reserve aux traductions de l’interface. Vous pouvez choisir un modèle plus simple et moins couteux que le modèle principal. Vide : modèle principal, ou ancien modèle de traduction si la configuration historique est encore utilisée.'],
+                'AI_MODEL' => ['label' => 'Modèle principal', 'help' => 'Identifiant exact du modèle disponible dans la console du fournisseur. Utilise pour les réponses, résumés et reformulations. Avec Claude, Mistral ou API compatible, un identifiant est obligatoire. Pour Mistral, par exemple mistral-small-latest. Sur OpenRouter, recopiez l’identifiant complet du catalogue, avec son préfixe de fournisseur. Pour une installation historique, le modèle actuel est conservé.'],
+                'AI_TRANSLATION_MODEL' => ['label' => 'Modèle de traduction', 'help' => 'Modèle du même fournisseur réservé aux traductions de l’interface. Vous pouvez choisir un modèle plus simple et moins coûteux que le modèle principal. Vide : modèle principal, ou ancien modèle de traduction si la configuration historique est encore utilisée.'],
             ],
         ],
         'transcription' => [
             'title' => 'Transcription audio',
-            'intro' => 'Conversion des dictees et memos vocaux en texte. Service independant du texte : OpenAI, Groq, Mistral ou Infomaniak (Whisper V3).',
+            'intro' => 'Conversion des dictées et mémos vocaux en texte. Service indépendant du texte : OpenAI, Groq, Mistral ou Infomaniak (Whisper V3).',
             'fields' => [
-                'TRANSCRIPTION_PROVIDER' => ['label' => 'Service de transcription', 'type' => 'select', 'options' => ['openai' => 'OpenAI', 'groq' => 'Groq', 'mistral' => 'Mistral', 'infomaniak' => 'Infomaniak (Whisper V3)', 'disabled' => 'Desactive'], 'help' => 'Service audio pour les documents et memos Telegram, independant du texte. Changer de service demande sa cle API, sauf si Infomaniak reprend le token texte deja configure.'],
-                'TRANSCRIPTION_API_KEY' => ['label' => 'Cle API de transcription', 'secret' => true, 'help' => 'Cle API du service audio. Vide : conserve la cle configuree ; a defaut, reprend la cle texte si le meme fournisseur OpenAI, Mistral ou Infomaniak est choisi pour les deux services. Infomaniak accepte aussi le prefixe Bearer. Groq demande une cle dediee.'],
-                'TRANSCRIPTION_INFOMANIAK_PRODUCT_ID' => ['label' => 'Product ID de transcription Infomaniak', 'placeholder' => '123456', 'help' => 'Identifiant numerique du produit AI Services. Vide : reprend le Product ID du texte lorsque son fournisseur est Infomaniak. Renseignez-le pour une connexion audio independante.'],
-                'TRANSCRIPTION_MODEL' => ['label' => 'Modele de transcription', 'help' => 'Modele audio du service choisi. Vide : gpt-4o-mini-transcribe pour OpenAI, whisper-large-v3-turbo pour Groq, voxtral-mini-latest pour Mistral, whisper (Whisper V3) pour Infomaniak. Les modeles personnalises restent a adapter lors d un changement de service. Infomaniak envoie une tache asynchrone dont OMO attend le resultat.'],
+                'TRANSCRIPTION_PROVIDER' => ['label' => 'Service de transcription', 'type' => 'select', 'options' => ['openai' => 'OpenAI', 'groq' => 'Groq', 'mistral' => 'Mistral', 'infomaniak' => 'Infomaniak (Whisper V3)', 'disabled' => 'Désactivé'], 'help' => 'Service audio pour les documents et mémos Telegram, indépendant du texte. Changer de service demande sa clé API, sauf si Infomaniak reprend le token texte déjà configuré.'],
+                'TRANSCRIPTION_API_KEY' => ['label' => 'Clé API de transcription', 'secret' => true, 'help' => 'Clé API du service audio. Vide : conserve la clé configurée ; a défaut, reprend la clé texte si le même fournisseur OpenAI, Mistral ou Infomaniak est choisi pour les deux services. Infomaniak accepte aussi le préfixe Bearer. Groq demande une clé dédiée.'],
+                'TRANSCRIPTION_INFOMANIAK_PRODUCT_ID' => ['label' => 'Product ID de transcription Infomaniak', 'placeholder' => '123456', 'help' => 'Identifiant numérique du produit AI Services. Vide : reprend le Product ID du texte lorsque son fournisseur est Infomaniak. Renseignez-le pour une connexion audio indépendante.'],
+                'TRANSCRIPTION_MODEL' => ['label' => 'Modèle de transcription', 'help' => 'Modèle audio du service choisi. Vide : gpt-4o-mini-transcribe pour OpenAI, whisper-large-v3-turbo pour Groq, voxtral-mini-latest pour Mistral, whisper (Whisper V3) pour Infomaniak. Les modèles personnalisés restent à adapter lors d’un changement de service. Infomaniak envoie une tâche asynchrone dont OMO attend le résultat.'],
             ],
         ],
         'push' => [
@@ -133,7 +133,7 @@ function omoServerEnvAdditionalSections(): array
             'title' => 'MCP',
             'intro' => 'Connexion des assistants au serveur MCP de cette installation.',
             'fields' => [
-                'MCP_PUBLIC_URL' => ['label' => 'Adresse publique MCP', 'type' => 'url', 'help' => 'Adresse HTTPS de ce site suivie de /mcp/, par exemple https://exemple.org/mcp/. Laisser vide desactive le serveur MCP et l’API REST associée.'],
+                'MCP_PUBLIC_URL' => ['label' => 'Adresse publique MCP', 'type' => 'url', 'help' => 'Adresse HTTPS de ce site suivie de /mcp/, par exemple https://exemple.org/mcp/. Laisser vide désactive le serveur MCP et l’API REST associée.'],
             ],
         ],
     ];
@@ -143,7 +143,7 @@ function omoServerEnvAdditionalServiceFields(): array
 {
     return [
         'mail' => [
-            'MAIL_FROM' => ['label' => 'Adresse technique d’expédition', 'type' => 'email', 'help' => 'Adresse autorisée par le fournisseur SMTP, par exemple noreply@exemple.org. Vide : deduction depuis le compte SMTP ou le domaine du site. Les réponses sont envoyées au membre expediteur.'],
+            'MAIL_FROM' => ['label' => 'Adresse technique d’expédition', 'type' => 'email', 'help' => 'Adresse autorisée par le fournisseur SMTP, par exemple noreply@exemple.org. Vide : déduction depuis le compte SMTP ou le domaine du site. Les réponses sont envoyées au membre expéditeur.'],
             'MAIL_TIMEOUT' => ['label' => 'Délai SMTP (secondes)', 'type' => 'number', 'min' => 3],
         ],
         'maps' => [

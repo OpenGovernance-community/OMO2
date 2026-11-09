@@ -1518,7 +1518,7 @@ if ($action === 'update_stage') {
         if (empty($stageResult['status'])) { throw new \RuntimeException((string)($stageResult['text'] ?? 'stage')); }
         if (in_array($nextStage, [\dbObject\Document::PV_STAGE_REVIEW, \dbObject\Document::PV_STAGE_VALIDATED], true) && $nextDate !== '') {
             if (!$meetingSeries || !$meetingSeries->canManage($organizationId, $isPublicParticipation ? $publicParticipationUserId : $currentUserId)) {
-                throw new \InvalidArgumentException('Recurrence inaccessible.');
+                throw new \InvalidArgumentException(omoDocumentsUiT('copy.recurrence_inaccessible'));
             }
             $start = \DateTimeImmutable::createFromFormat('!Y-m-d\TH:i', $nextDate, new \DateTimeZone($meetingSeries->get('timezone')));
             if (!$start || $start->format('Y-m-d\TH:i') !== $nextDate) { throw new \InvalidArgumentException('Date invalide.'); }
