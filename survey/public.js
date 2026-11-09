@@ -261,9 +261,11 @@
             }
             if (Number.isFinite(Number(question.affinity)) && labels.affinity) {
                 var affinity = element('div', 'survey-result-card__affinity');
-                affinity.appendChild(element('span', 'survey-result-card__affinity-label', interpolate(labels.affinity, {
+                var affinityValue = element(options.distributions && question.distributions ? 'button' : 'span', 'survey-result-card__affinity-label', interpolate(labels.affinity, {
                     value: formatScore(question.affinity)
-                })));
+                }));
+                prepareDistributionTrigger(affinityValue, question, labels.distributionAffinity);
+                affinity.appendChild(affinityValue);
                 var affinityStatus = String(question.affinityAgreement || '');
                 var affinityStatusLabels = labels.agreementStatuses && labels.agreementStatuses[affinityStatus];
                 if (affinityStatusLabels) {
@@ -284,13 +286,27 @@
                 }
                 copy.appendChild(affinity);
             }
-            visual.appendChild(element('span', 'survey-result-card__score', formatScore(question.today)));
+            var todayValue = element(options.distributions && question.distributions ? 'button' : 'span', 'survey-result-card__score', formatScore(question.today));
+            prepareDistributionTrigger(todayValue, question, labels.current);
+            visual.appendChild(todayValue);
             visual.appendChild(element('div', 'survey-result-card__line'));
-            visual.appendChild(element('span', 'survey-result-card__score survey-result-card__score--tomorrow', formatScore(question.tomorrow)));
+            var tomorrowValue = element(options.distributions && question.distributions ? 'button' : 'span', 'survey-result-card__score survey-result-card__score--tomorrow', formatScore(question.tomorrow));
+            prepareDistributionTrigger(tomorrowValue, question, labels.desired);
+            visual.appendChild(tomorrowValue);
             card.append(copy, visual);
             fragment.appendChild(card);
         });
         list.replaceChildren(fragment);
+    }
+
+    function prepareDistributionTrigger(node, question, dimensionLabel) {
+        if (node.tagName !== 'BUTTON') return;
+        node.type = 'button';
+        node.setAttribute('data-survey-distribution', String(question.number));
+        node.setAttribute('aria-haspopup', 'dialog');
+        node.setAttribute('aria-controls', 'surveyDistributionDialog');
+        node.setAttribute('aria-label', dimensionLabel + ' : ' + node.textContent + '. ' + labels.distributionOpen);
+        node.title = labels.distributionOpen;
     }
 
     if (questions.length === 10 && radar) {

@@ -2090,6 +2090,93 @@ input:focus-visible + label {
     color: #fff;
 }
 
+[data-survey-distribution] {
+    border: 0;
+    cursor: pointer;
+}
+
+.survey-result-card__affinity-label[data-survey-distribution] {
+    padding: 0;
+    background: transparent;
+    text-align: left;
+    text-decoration: underline dotted;
+    text-underline-offset: 3px;
+}
+
+.survey-distributions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.survey-distribution__status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.survey-distribution__description {
+    margin: 0;
+    font-size: 0.84rem;
+    line-height: 1.5;
+}
+
+.survey-distribution__levels {
+    display: grid;
+    align-content: start;
+    gap: 14px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.survey-distribution__level {
+    display: grid;
+    grid-template-columns: 16px minmax(0, 1fr) var(--param-distribution-count-width, 9ch);
+    align-items: center;
+    gap: 5px 8px;
+    font-size: 0.75rem;
+}
+
+.survey-distribution__level > strong {
+    font-size: 1rem;
+}
+
+.survey-distribution__track {
+    height: 10px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--survey-ice);
+}
+
+.survey-distribution__bar {
+    display: block;
+    width: var(--param-distribution-share, 0%);
+    height: 100%;
+    background: var(--survey-blue);
+}
+
+.survey-distribution__count {
+    text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.survey-distribution__meaning {
+    grid-column: 1 / -1;
+    color: var(--color-text-light, #64748b);
+    font-size: 0.72rem;
+    line-height: 1.4;
+}
+
+@media (max-width: 760px) {
+    .survey-distributions { grid-template-columns: 1fr; }
+}
+
+@media print {
+    #surveyDistributionDialog { display: none !important; }
+}
+
 .survey-result-card__line {
     position: relative;
     height: 4px;
