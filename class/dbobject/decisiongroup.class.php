@@ -14,7 +14,7 @@ class DecisionGroup extends DbObject
             [['IDdecision_process', 'decision_type', 'evaluation_method', 'title'], 'required'],
             [['id', 'position'], 'integer'],
             [['IDdecision_process'], 'fk'],
-            [['decision_type', 'evaluation_method', 'title'], 'string'],
+            [['decision_type', 'evaluation_method', 'title', 'short_title'], 'string'],
             [['description'], 'text'],
             [['parameters'], 'parameters'],
             [['active'], 'boolean'],
@@ -31,6 +31,7 @@ class DecisionGroup extends DbObject
             'decision_type' => 'Type',
             'evaluation_method' => 'Méthode',
             'title' => 'Titre',
+            'short_title' => 'Nom court du bloc',
             'description' => 'Description',
             'parameters' => 'Paramètres',
             'position' => 'Ordre',
@@ -45,6 +46,7 @@ class DecisionGroup extends DbObject
         return [
             'decision_type' => 'Nature du groupe: décision engageante ou consultation.',
             'evaluation_method' => 'Méthode de participation utilisée par ce groupe.',
+            'short_title' => 'Nom court affiché dans les onglets et la table des matières, indépendant de la question.',
             'parameters' => 'Configuration propre à ce groupe et à sa méthode.',
         ];
     }
@@ -55,6 +57,7 @@ class DecisionGroup extends DbObject
             'decision_type' => 20,
             'evaluation_method' => 40,
             'title' => 190,
+            'short_title' => 190,
         ];
     }
 

@@ -337,6 +337,9 @@ try {
     }
     if (!$coreLocked) {
         $decisionGroup->set('title', $title);
+        if (array_key_exists('short_title', $_POST)) {
+            $decisionGroup->set('short_title', mb_substr(trim((string)$_POST['short_title']), 0, 190));
+        }
         $decisionGroup->set('description', $description !== '' ? $description : null);
         $decisionGroup->set('decision_type', $decisionType);
     }

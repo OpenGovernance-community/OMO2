@@ -446,6 +446,7 @@ CREATE TABLE `decision_group` (
   `decision_type` varchar(20) NOT NULL DEFAULT 'decision',
   `evaluation_method` varchar(40) NOT NULL DEFAULT 'simple_vote',
   `title` varchar(190) NOT NULL,
+  `short_title` varchar(190) DEFAULT NULL,
   `description` mediumtext DEFAULT NULL,
   `parameters` mediumtext DEFAULT NULL,
   `position` int(11) NOT NULL DEFAULT 1,

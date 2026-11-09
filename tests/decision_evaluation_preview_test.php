@@ -69,7 +69,7 @@ try {
     $items['editor_role'] = mcpFixture(UserHolon::class, ['IDholon' => $hid, 'IDuser' => $items['editor']->getId(), 'active' => 1, 'is_membership' => 1]);
     $parameters = omoDecisionVoteMergeConfigIntoParameters([], ['one_proposal_at_a_time' => true, 'choice_mode' => 'multiple', 'max_choices' => 2]);
     $decision = mcpFixture(DecisionProcess::class, ['IDorganization' => $oid, 'IDholon' => $hid, 'IDuser' => $uid, 'title' => 'Evaluation preview fixture',
-        'status' => 'draft', 'evaluation_method' => 'simple_vote', 'parameters' => $parameters]);
+        'status' => 'draft', 'evaluation_method' => 'simple_vote', 'parameters' => $parameters, 'description' => 'Description du questionnaire de test.']);
     $decision->saveVisibilityRulesFromInput(['edit_visibility_type' => 'role']);
     $groups = [$decision->getPrimaryGroup(false)];
     foreach (['majority_judgment', 'consent'] as $method) {
@@ -77,6 +77,8 @@ try {
         $merge = $method === 'consent' ? 'omoDecisionConsentMergeConfigIntoParameters' : 'omoDecisionMajorityJudgmentMergeConfigIntoParameters';
         $group->set('parameters', $merge([], ['one_proposal_at_a_time' => true])); $group->save(); $groups[] = $group;
     }
+    $groups[0]->set('short_title', 'Restaurant'); $groups[0]->save();
+    $groups[1]->set('short_title', 'Évaluation'); $groups[1]->save();
     foreach ($groups as $group) foreach (['First proposal', 'Second proposal'] as $position => $title) {
         mcpFixture(DecisionProposal::class, ['IDdecision_process' => $decision->getId(), 'IDdecision_group' => $group->getId(),
             'title' => $title, 'position' => $position + 1, 'IDuser_author' => $uid, 'active' => 1]);
@@ -94,6 +96,10 @@ try {
         mcpCheck(str_contains($response['headers']['content-security-policy'] ?? '', "connect-src 'none'")
             && str_contains($response['headers']['content-security-policy'] ?? '', "form-action 'none'"), 'Preview disallows AJAX and form writes');
         $xpath = evaluationPreviewDom($response['html']);
+        mcpCheck($xpath->query('//*[@data-decision-public-contents-link]')->length === 3
+            && $xpath->query('//*[@data-decision-public-contents]/preceding-sibling::*[1][contains(@class,"decision-public-title-block")]')->length === 1,
+            'Contents list appears directly below the description for a multi-block questionnaire');
+        mcpCheck($xpath->query('//*[@data-decision-public-contents-answered and not(@hidden)]')->length === 0, 'Preview starts without answered markers');
         mcpCheck($xpath->query('//input[@name="evaluation_preview" and @value="1"]')->length === 3, "$status: all methods render interactive preview forms");
         mcpCheck($xpath->query('//form[contains(@action,"respond.php")] | //*[@data-omo-decision-one-at-a-time-draft-url]')->length === 0, 'No save endpoint or draft autosave URL');
         mcpCheck($xpath->query('//input[@checked and (@name="proposal_id" or @name="proposal_ids[]" or starts-with(@name,"scores[") or starts-with(@name,"choices["))]')->length === 0, 'Real participant responses are never loaded into the preview');
@@ -105,10 +111,40 @@ try {
     $translated = evaluationPreviewHttp($url . '&lang=de');
     mcpCheck($translated['code'] === 200 && evaluationPreviewSnapshot($decision) === $snapshot,
         'Preview in another language reads existing translations without changing decision data');
-    $editor = evaluationPreviewHttp('/omo/api/decision/edit.php?' . http_build_query(['oid' => $oid, 'id' => $decision->getId(), 'intent' => 'manage']));
-    $links = evaluationPreviewDom($editor['html'])->query('//a[@data-omo-decision-evaluation-preview-link and @target="_blank"]');
+    $decision->set('status', 'draft'); $decision->save();
+    $editorInput = ['oid' => $oid, 'id' => $decision->getId(), 'intent' => 'manage'];
+    $editor = evaluationPreviewHttp('/omo/api/decision/edit.php?' . http_build_query($editorInput));
+    $editorDom = evaluationPreviewDom($editor['html']);
+    $links = $editorDom->query('//a[@data-omo-decision-evaluation-preview-link and @target="_blank"]');
     mcpCheck($editor['code'] === 200 && $links->length === 1 && $links[0]->getAttribute('href') === $url
         && str_contains($links[0]->getAttribute('rel'), 'noopener'), 'Management opens the saved questionnaire in a separate browsing context');
+    mcpCheck(trim($links[0]->textContent) === 'Prévisualiser'
+        && $editorDom->query('//*[@data-omo-subdrawer-header]/a[@data-omo-decision-evaluation-preview-link]/following-sibling::button[normalize-space(.)="Enregistrer"]')->length === 1,
+        'Preview precedes the save button in the multi-question header');
+    file_put_contents(dirname(__DIR__) . '/tmp/decision-preview-editor.html', $editor['html']);
+    mcpCheck(trim($editorDom->query('//*[@data-omo-decision-question-link]')->item(0)->textContent) === 'Restaurant'
+        && $editorDom->query('//input[@name="short_title" and @value="Restaurant"]')->length === 1,
+        'Saved short names render in tabs independently of the question');
+    $duplicateEditor = evaluationPreviewHttp('/omo/api/decision/edit.php?' . http_build_query(['oid' => $oid, 'duplicate_id' => $decision->getId(), 'intent' => 'manage']));
+    $duplicateDom = evaluationPreviewDom($duplicateEditor['html']);
+    mcpCheck($duplicateEditor['code'] === 200 && $duplicateDom->query('//input[@name="short_title" and @value="Restaurant"]')->length === 1
+        && trim($duplicateDom->query('//*[@data-omo-decision-question-link]')->item(0)->textContent) === 'Restaurant',
+        'Duplication retains the independent block names');
+    $singleEditor = evaluationPreviewHttp('/omo/api/decision/edit.php?' . http_build_query($editorInput + ['group_action' => 'create', 'method' => 'simple_vote']));
+    mcpCheck($singleEditor['code'] === 200, 'Single-question editor renders');
+    file_put_contents(dirname(__DIR__) . '/tmp/decision-preview-single-editor.html', $singleEditor['html']);
+    foreach (array_slice($groups, 1) as $group) { $group->set('active', 0); $group->save(); }
+    $singleBlock = evaluationPreviewHttp($url);
+    mcpCheck(!str_contains($singleBlock['html'], 'data-decision-public-contents') && !str_contains($singleBlock['html'], 'Table des matières'),
+        'Single-block questionnaire has no contents list or placeholder');
+    foreach (array_slice($groups, 1) as $group) { $group->set('active', 1); $group->save(); }
+    $public = evaluationPreviewHttp('/common/decision_participation.php?' . http_build_query(['token' => $participant->ensureAccessToken(), 'intent' => 'view']));
+    $publicDom = evaluationPreviewDom($public['html']);
+    mcpCheck(trim($publicDom->query('//*[@data-decision-public-contents-link]')->item(0)->textContent) === 'Restaurant'
+        && trim($publicDom->query('//h2[contains(@class,"decision-public-group__title")]')->item(0)->textContent) !== 'Restaurant',
+        'Public contents show the short name while the questionnaire retains the full question');
+    mcpCheck($public['code'] === 200 && evaluationPreviewDom($public['html'])->query('//*[@data-decision-public-contents-answered and not(@hidden)]')->length === 1,
+        'Saved responses restore the marker in the real public questionnaire');
     foreach (['vote', 'majority_judgment', 'consent'] as $module) {
         $result = evaluationPreviewHttp('/omo/api/decision/modules/' . $module . '/respond.php', ['oid' => $oid, 'id' => $decision->getId(), 'evaluation_preview' => '1', 'intent' => 'participate']);
         mcpCheck($result['code'] === 405, 'Preview cannot be submitted to real response endpoint: ' . $module);

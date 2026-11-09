@@ -774,6 +774,10 @@ var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; 
                     Array.prototype.forEach.call(proposalList.querySelectorAll('[data-omo-decision-consent-proposal-card]'), bindProposalCard);
                     refreshProposalLabels();
                     syncSettingsSummary();
+                    form.commonDecisionQuestionSettings = {
+                        button: settingsOpenButton, editable: payload.proposalEditable === true,
+                        payload: payload, proposals: proposalList, prefix: 'consent', refreshSummary: syncSettingsSummary
+                    };
 
                     form.addEventListener('submit', function (event) {
                         event.preventDefault();

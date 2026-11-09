@@ -270,6 +270,7 @@ if (!function_exists('omoDecisionExportBuildBlockBlueprintData')) {
         return [
             'source_block_id' => $decisionGroup instanceof DecisionGroup ? (int)$decisionGroup->getId() : 0,
             'title' => $decisionGroup instanceof DecisionGroup ? trim((string)$decisionGroup->get('title')) : '',
+            'short_title' => $decisionGroup instanceof DecisionGroup ? trim((string)$decisionGroup->get('short_title')) : '',
             'description' => $decisionGroup instanceof DecisionGroup ? trim((string)$decisionGroup->get('description')) : '',
             'decision_type' => $decisionGroup instanceof DecisionGroup
                 ? trim((string)$decisionGroup->get('decision_type'))
@@ -468,6 +469,7 @@ if (!function_exists('omoDecisionExportBuildCsvMetadataRow')) {
             'type_decision' => $decisionType,
             'type_decision_label' => (string)(($decisionTypeCatalog[$decisionType] ?? [])['label'] ?? $decisionType),
             'bloc' => $decisionGroup instanceof DecisionGroup ? trim((string)$decisionGroup->get('title')) : '',
+            'nom_court_bloc' => $decisionGroup instanceof DecisionGroup ? trim((string)$decisionGroup->get('short_title')) : '',
             'detail_bloc' => $decisionGroup instanceof DecisionGroup ? trim((string)$decisionGroup->get('description')) : '',
             'position_bloc' => $decisionGroup instanceof DecisionGroup ? (int)$decisionGroup->get('position') : 0,
             'question' => trim((string)$proposal->get('title')),
@@ -490,6 +492,7 @@ if (!function_exists('omoDecisionExportFlattenCsvRow')) {
             (string)($metadata['type_decision'] ?? ''),
             (string)($metadata['type_decision_label'] ?? ''),
             (string)($metadata['bloc'] ?? ''),
+            (string)($metadata['nom_court_bloc'] ?? ''),
             (string)($metadata['detail_bloc'] ?? ''),
             (string)($metadata['position_bloc'] ?? ''),
             (string)($metadata['question'] ?? ''),
@@ -514,6 +517,7 @@ if (!function_exists('omoDecisionExportGetCsvHeader')) {
             'type_decision',
             'type_decision_label',
             'bloc',
+            'nom_court_bloc',
             'detail_bloc',
             'position_bloc',
             'question',

@@ -822,6 +822,15 @@ a.generic-correspondence-list__row:focus-visible {
     border: 0;
 }
 
+/* Shared tick shape for selected ratings and completed questionnaire blocks. */
+.generic-checkmark {
+    display: inline-block;
+    font-weight: 900;
+    line-height: 1;
+    transform: scaleX(-1) rotate(-45deg);
+    transform-origin: center;
+}
+
 /* Hierarchical selectors used by calendar and decision invitations. */
 .generic-tree-toggle,
 .generic-tree-spacer {
@@ -3214,8 +3223,8 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
     text-align: left;
 }
 
-.generic-menu-item:hover,
-.generic-menu-item:focus-visible {
+.generic-menu-item:not(:disabled):hover,
+.generic-menu-item:not(:disabled):focus-visible {
     background: var(--generic-menu-hover, color-mix(in srgb, var(--generic-menu-accent, var(--color-primary, #2563eb)) 10%, var(--generic-menu-surface, var(--color-surface, #ffffff))));
     outline: none;
 }
@@ -3224,9 +3233,15 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
     color: var(--generic-menu-danger, var(--color-danger, #dc2626));
 }
 
-.generic-menu-item--danger:hover,
-.generic-menu-item--danger:focus-visible {
+.generic-menu-item--danger:not(:disabled):hover,
+.generic-menu-item--danger:not(:disabled):focus-visible {
     background: color-mix(in srgb, var(--generic-menu-danger, var(--color-danger, #dc2626)) 10%, var(--generic-menu-surface, var(--color-surface, #ffffff)));
+}
+
+.generic-menu-item:disabled,
+.generic-menu-toggle:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 .generic-menu-separator {

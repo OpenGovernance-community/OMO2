@@ -731,6 +731,10 @@ window.commonPageScripts["/omo/api/decision/modules/vote/module.js"] = function 
                         Array.prototype.forEach.call(proposalList.querySelectorAll('[data-omo-decision-vote-proposal-card]'), bindProposalCard);
                         refreshProposalLabels();
                         syncSettingsSummary();
+                        form.commonDecisionQuestionSettings = {
+                            button: settingsOpenButton, editable: payload.proposalEditable === true,
+                            payload: payload, proposals: proposalList, prefix: 'vote', refreshSummary: syncSettingsSummary
+                        };
 
                         document.addEventListener('click', function (event) {
                             if (!proposalList.contains(event.target)) {

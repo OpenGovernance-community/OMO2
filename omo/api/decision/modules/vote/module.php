@@ -354,7 +354,7 @@ if (!function_exists('omoDecisionVoteModuleGetSourceLang')) {
                 'context' => 'Submit label for a new simple vote.',
             ],
             'decisions.vote.action.save' => [
-                'text' => 'Enregistrer le scrutin',
+                'text' => 'Enregistrer',
                 'context' => 'Submit label for an existing simple vote.',
             ],
             'decisions.vote.action.saving' => [
@@ -767,6 +767,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                     <input type="hidden" name="cid" value="<?= $escape((int)$context['targetHolonId']) ?>">
                     <input type="hidden" name="id" value="<?= $escape($isDuplicate ? 0 : ($decision instanceof DecisionProcess ? (int)$decision->getId() : 0)) ?>">
                     <input type="hidden" name="gid" value="<?= $escape($isDuplicate ? 0 : ($decisionGroup instanceof DecisionGroup ? (int)$decisionGroup->getId() : 0)) ?>">
+                    <input type="hidden" name="short_title" value="<?= $escape($decisionGroup instanceof DecisionGroup ? (string)$decisionGroup->get('short_title') : '') ?>">
                     <input type="hidden" name="intent" value="manage">
                     <?php if ($forceNewGroup): ?><input type="hidden" name="group_action" value="create"><?php endif; ?>
                     <?= omoDecisionRenderPublicTokenInput($context, $escape) ?>

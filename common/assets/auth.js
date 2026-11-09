@@ -70,6 +70,10 @@
         'auth.error.password_login_disabled': 'La connexion avec mot de passe n’est pas autorisée pour ce compte. Utilisez le code reçu par e-mail.',
         'auth.error.request_failed': "Impossible d'envoyer la demande.",
         'auth.error.rate_limited': 'Trop de tentatives. Veuillez patienter avant de réessayer.',
+        'auth.error.rate_limited_seconds': 'Trop de tentatives. Veuillez patienter {seconds} secondes avant d’essayer à nouveau.',
+        'auth.error.rate_limited_minutes': 'Trop de tentatives. Veuillez patienter {minutes} minutes avant d’essayer à nouveau.',
+        'auth.error.rate_limited_one_second': 'Trop de tentatives. Veuillez patienter 1 seconde avant d’essayer à nouveau.',
+        'auth.error.rate_limited_one_minute': 'Trop de tentatives. Veuillez patienter 1 minute avant d’essayer à nouveau.',
         'auth.error.reset_send_failed': "Impossible d'envoyer l'e-mail de réinitialisation.",
         'auth.error.restart_login': 'Merci de relancer la connexion.',
         'auth.error.secondary_email_in_use': 'Cette adresse est déjà enregistrée comme adresse secondaire sur un profil. Aucun nouveau compte ne sera créé. Utilisez l’adresse principale de ce profil pour vous connecter.',
@@ -148,8 +152,17 @@
         }
     }
 
-    function startResendCountdown() {
-        resendAvailableAt = Date.now() + 60000;
+    function rateLimitMessage(seconds) {
+        seconds = Math.max(1, Math.ceil(seconds));
+        const minutes = Math.ceil(seconds / 60);
+        const key = seconds < 60
+            ? (seconds === 1 ? 'auth.error.rate_limited_one_second' : 'auth.error.rate_limited_seconds')
+            : (minutes === 1 ? 'auth.error.rate_limited_one_minute' : 'auth.error.rate_limited_minutes');
+        return t(key, {seconds: seconds, minutes: minutes});
+    }
+
+    function startResendCountdown(seconds = 60) {
+        resendAvailableAt = Date.now() + seconds * 1000;
         try {
             window.sessionStorage.setItem(resendStorageKey, String(resendAvailableAt));
         } catch (error) {
@@ -775,7 +788,11 @@
     }
 
     function submitLogin(answer) {
-        if (loginRequestInFlight || Date.now() < resendAvailableAt) {
+        if (loginRequestInFlight) {
+            return;
+        }
+        if (Date.now() < resendAvailableAt) {
+            setStatus(rateLimitMessage((resendAvailableAt - Date.now()) / 1000), 'error');
             return;
         }
 
@@ -849,6 +866,7 @@
                 } else if (data.error === 'wrong_answer') {
                     setStatus(t('auth.error.wrong_answer'), 'error');
                 } else if (data.error === 'rate_limited') {
+                    if (Number(data.retry_after) > 0) startResendCountdown(Number(data.retry_after));
                     setStatus(data.message || t('auth.error.rate_limited'), 'error');
                 } else if (data.error === 'expired') {
                     setStatus(t('auth.error.challenge_expired'), 'error');

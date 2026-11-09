@@ -23,7 +23,7 @@ $baseSourceLang = [
     'decisions.edit.interrupt.confirm' => ['text' => 'Interrompre le scrutin et revenir en préparation ? Les modifications non enregistrées seront perdues.', 'context' => 'Confirmation before interrupting the evaluation.'],
     'decisions.edit.interrupt.pending' => ['text' => 'Interruption en cours…', 'context' => 'Progress label while interrupting evaluation.'],
     'decisions.edit.interrupt.error' => ['text' => 'Impossible d’interrompre le scrutin pour le moment.', 'context' => 'Fallback error for the interruption request.'],
-    'decisions.edit.evaluation_preview.label' => ['text' => 'Prévisualiser l’évaluation', 'context' => 'Open the saved questionnaire as a simulated evaluation in a separate window.'],
+    'decisions.edit.evaluation_preview.label' => ['text' => 'Prévisualiser', 'context' => 'Header action opening the saved questionnaire as a simulated evaluation in a separate window.'],
     'decisions.edit.evaluation_preview.help' => ['text' => 'Version enregistrée du questionnaire, dans une fenêtre séparée. Les réponses de prévisualisation ne sont pas enregistrées.', 'context' => 'Explain the saved snapshot and local-only preview responses.'],
     'decisions.edit.view_title' => [
         'text' => 'Voir la prise de décision',
@@ -312,7 +312,7 @@ $baseSourceLang = [
         'context' => 'Label for the shared evaluation end date.',
     ],
     'decisions.edit.multi.save' => [
-        'text' => 'Enregistrer le scrutin',
+        'text' => 'Enregistrer',
         'context' => 'Button used to save all questions and shared settings explicitly.',
     ],
     'decisions.edit.multi.saving' => [
@@ -332,8 +332,40 @@ $baseSourceLang = [
         'context' => 'Warning shown before leaving a dirty multi-question editor.',
     ],
     'decisions.edit.groups.item' => [
-        'text' => 'Question {index}',
+        'text' => 'Bloc {index}',
         'context' => 'Numbered tab label for one decision group.',
+    ],
+    'decisions.edit.groups.rename' => [
+        'text' => 'Renommer le bloc',
+        'context' => 'Accessible label of the selected questionnaire tab rename action and input.',
+    ],
+    'decisions.edit.groups.rename_help' => [
+        'text' => 'Entrée pour valider, Échap pour annuler.',
+        'context' => 'Keyboard help for inline questionnaire block renaming.',
+    ],
+    'decisions.edit.groups.actions' => ['text' => 'Actions de la question', 'context' => 'Accessible label of the vertical dots menu on the active question tab.'],
+    'decisions.edit.groups.edit' => ['text' => 'Éditer', 'context' => 'Action editing the short name of a question tab.'],
+    'decisions.edit.groups.delete' => ['text' => 'Supprimer', 'context' => 'Action removing a questionnaire block and its proposals.'],
+    'decisions.edit.groups.delete_confirm' => [
+        'text' => 'Supprimer la question « {name} » et toutes ses propositions ? La suppression sera appliquée lors de l’enregistrement du scrutin.',
+        'context' => 'Confirmation before staging the deletion of a question and every proposal belonging to it.',
+    ],
+    'decisions.edit.groups.delete_last' => ['text' => 'La dernière question ne peut pas être supprimée.', 'context' => 'Explain why deletion is disabled for the last block.'],
+    'decisions.edit.settings.copy.label' => [
+        'text' => 'Copier les paramètres d’un autre bloc',
+        'context' => 'Accessible label of the dropdown next to Configure in the question settings.',
+    ],
+    'decisions.edit.settings.copy.from' => [
+        'text' => 'Copier depuis « {name} »',
+        'context' => 'Menu item copying the current settings of another block using the same voting method.',
+    ],
+    'decisions.edit.settings.copy.empty' => [
+        'text' => 'Aucun autre bloc du même type de scrutin.',
+        'context' => 'Tooltip when no other block has compatible question settings.',
+    ],
+    'decisions.edit.settings.copy.copied' => [
+        'text' => 'Paramètres copiés depuis « {name} ». Enregistrez le scrutin pour les conserver.',
+        'context' => 'Success notification after locally copying question settings, before saving the decision.',
     ],
     'decisions.edit.import.title' => [
         'text' => 'Importer un scrutin',
@@ -604,7 +636,7 @@ if (!function_exists('omoDecisionRenderEditorGroupSwitch')) {
                     <?php
                     $groupIndex++;
                     $groupId = (int)$groupItem->getId();
-                    $groupTitle = trim((string)$groupItem->get('title'));
+                    $groupTitle = trim((string)$groupItem->get('short_title'));
                     $groupLabel = t('decisions.edit.groups.item', ['index' => (string)$groupIndex], $lang, $baseSourceLang);
                     $isSelectedGroup = $selectedGroup && (int)$selectedGroup->getId() === $groupId;
                     ?>
@@ -618,7 +650,7 @@ if (!function_exists('omoDecisionRenderEditorGroupSwitch')) {
                         <?= $isSelectedGroup ? 'aria-current="page"' : '' ?>
                         <?= $groupTitle !== '' ? 'title="' . $escape($groupTitle) . '"' : '' ?>
                     >
-                        <?= $escape($groupLabel) ?>
+                        <?= $escape($groupTitle !== '' ? $groupTitle : $groupLabel) ?>
                     </a>
                 <?php endforeach; ?>
             </div>
@@ -666,20 +698,22 @@ if (!function_exists('omoDecisionRenderEditorGroupSwitch')) {
     }
 }
 
+$evaluationPreviewActionHtml = '';
+if ($isEditing && $intent === 'manage' && !empty($context['canManage'])) {
+    $evaluationPreviewActionHtml = '<a class="generic-action-button generic-action-button--secondary" target="_blank" rel="noopener noreferrer"'
+        . ' data-omo-subdrawer-action data-omo-decision-evaluation-preview-link'
+        . ' href="' . $escape(omoDecisionBuildEvaluationPreviewUrl((int)$context['organizationId'], (int)$decision->getId())) . '"'
+        . ' title="' . $escape(t('decisions.edit.evaluation_preview.help', [], $lang, $baseSourceLang)) . '">'
+        . $escape(t('decisions.edit.evaluation_preview.label', [], $lang, $baseSourceLang)) . '</a>';
+}
 ?>
 <link rel="stylesheet" href="/common/choice/decision_cards.css?v=20260923-compact-editor">
 <div class="omo-decision-edit omo-panel-view">
     <div class="omo-panel-view__body">
         <div class="omo-panel-view__body_content omo-decision-edit__stack generic-drawer-content generic-form-stack generic-form-stack--compact">
             <?php if ($isEditing && !$isDuplicate && ($context['accessMode'] ?? '') !== 'public'): require_once dirname(__DIR__, 3) . '/common/object_mail/ui.php'; omoObjectMailButton((int)$context['organizationId'], 'decision', (int)$decision->getId()); endif; ?>
-            <?php if ($isEditing && $intent === 'manage' && !empty($context['canManage'])): ?>
-            <div class="generic-form-actions">
-                <a class="generic-action-button generic-action-button--secondary" target="_blank" rel="noopener noreferrer"
-                    data-omo-decision-evaluation-preview-link
-                    href="<?= $escape(omoDecisionBuildEvaluationPreviewUrl((int)$context['organizationId'], (int)$decision->getId())) ?>"
-                    title="<?= $escape(t('decisions.edit.evaluation_preview.help', [], $lang, $baseSourceLang)) ?>"
-                ><?= $escape(t('decisions.edit.evaluation_preview.label', [], $lang, $baseSourceLang)) ?></a>
-            </div>
+            <?php if (!$useMultiQuestionEditor && !$isGovernanceWorkflow && $evaluationPreviewActionHtml !== ''): ?>
+            <div hidden data-omo-decision-editor-actions><?= $evaluationPreviewActionHtml ?></div>
             <?php endif; ?>
             <?php if ($isEditing && $intent === 'manage' && !empty($context['canManage']) && $decision->canInterruptEvaluation()): ?>
             <div class="generic-form-actions">
@@ -806,6 +840,7 @@ if (!function_exists('omoDecisionRenderEditorGroupSwitch')) {
                     data-omo-subdrawer-header
                     data-omo-subdrawer-title="<?= $escape(t('decisions.edit.edit_title', [], $lang, $baseSourceLang)) ?>"
                 >
+                    <?= $evaluationPreviewActionHtml ?>
                     <button
                         type="button"
                         class="generic-action-button generic-action-button--main"
@@ -817,6 +852,7 @@ if (!function_exists('omoDecisionRenderEditorGroupSwitch')) {
                     id="<?= $escape($multiEditorDomId) ?>"
                     class="omo-decision-edit__multi"
                     data-omo-decision-multi-editor
+                    data-can-rename-questions="<?= $multiCanEditStructure ? '1' : '0' ?>"
                     data-original-status="<?= $escape($multiStatus) ?>"
                     data-save-label="<?= $escape(t('decisions.edit.multi.save', [], $lang, $baseSourceLang)) ?>"
                     data-saving-label="<?= $escape(t('decisions.edit.multi.saving', [], $lang, $baseSourceLang)) ?>"
@@ -909,7 +945,7 @@ if (!function_exists('omoDecisionRenderEditorGroupSwitch')) {
                             <div class="omo-decision-edit__question-tabs">
                                 <?php foreach ($decisionGroups as $duplicateQuestionIndex => $duplicateQuestionGroup): ?>
                                 <?php $duplicateQuestionId = (int)$duplicateQuestionGroup->getId(); ?>
-                                <a class="omo-decision-edit__question-tab<?= $duplicateQuestionId === $multiSelectedGroupId ? ' is-active' : '' ?>" href="#" data-omo-decision-question-link data-question-key="group-<?= $duplicateQuestionId ?>"<?= $duplicateQuestionId === $multiSelectedGroupId ? ' aria-current="page"' : '' ?>><?= $escape(t('decisions.edit.groups.item', ['index' => (string)($duplicateQuestionIndex + 1)], $lang, $baseSourceLang)) ?></a>
+                                <a class="omo-decision-edit__question-tab<?= $duplicateQuestionId === $multiSelectedGroupId ? ' is-active' : '' ?>" href="#" data-omo-decision-question-link data-question-key="group-<?= $duplicateQuestionId ?>"<?= $duplicateQuestionId === $multiSelectedGroupId ? ' aria-current="page"' : '' ?>><?= $escape(trim((string)$duplicateQuestionGroup->get('short_title')) ?: t('decisions.edit.groups.item', ['index' => (string)($duplicateQuestionIndex + 1)], $lang, $baseSourceLang)) ?></a>
                                 <?php endforeach; ?>
                             </div>
                         </nav>
@@ -1101,9 +1137,23 @@ if (!function_exists('omoDecisionRenderEditorGroupSwitch')) {
     </div>
 </div>
 
+<script src="<?= commonAssetUrl('/common/choice/question-settings-copy.js') ?>"></script>
 <?= commonPageScriptTags('/omo/api/decision/edit_shared.js', [
+    'settingsCopy' => [
+        'label' => t('decisions.edit.settings.copy.label', [], $lang, $baseSourceLang),
+        'from' => t('decisions.edit.settings.copy.from', ['name' => '__NAME__'], $lang, $baseSourceLang),
+        'empty' => t('decisions.edit.settings.copy.empty', [], $lang, $baseSourceLang),
+        'copied' => t('decisions.edit.settings.copy.copied', ['name' => '__NAME__'], $lang, $baseSourceLang),
+    ],
     'unsavedQuestionLabel' => t('decisions.edit.groups.unsaved', [], $lang, $baseSourceLang),
     'questionItemTemplate' => t('decisions.edit.groups.item', ['index' => '__INDEX__'], $lang, $baseSourceLang),
+    'questionRenameLabel' => t('decisions.edit.groups.rename', [], $lang, $baseSourceLang),
+    'questionRenameHelp' => t('decisions.edit.groups.rename_help', [], $lang, $baseSourceLang),
+    'questionActionsLabel' => t('decisions.edit.groups.actions', [], $lang, $baseSourceLang),
+    'questionEditLabel' => t('decisions.edit.groups.edit', [], $lang, $baseSourceLang),
+    'questionDeleteLabel' => t('decisions.edit.groups.delete', [], $lang, $baseSourceLang),
+    'questionDeleteConfirm' => t('decisions.edit.groups.delete_confirm', ['name' => '__NAME__'], $lang, $baseSourceLang),
+    'questionDeleteLast' => t('decisions.edit.groups.delete_last', [], $lang, $baseSourceLang),
     'decisionsEditImportNoFile' => t('decisions.edit.import.no_file', [], $lang, $baseSourceLang),
     'decisionsEditImportLoading' => t('decisions.edit.import.loading', [], $lang, $baseSourceLang),
     'decisionsEditImportError' => t('decisions.edit.import.error', [], $lang, $baseSourceLang),

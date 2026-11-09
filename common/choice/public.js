@@ -90,6 +90,49 @@ window.commonPageScripts["/common/choice/public.js"] = function (pageConfig, pag
                 });
             }
 
+            var contentsLinks = Array.prototype.slice.call(document.querySelectorAll('[data-decision-public-contents-link]'));
+            function blockIsAnswered(block) {
+                var form = block.querySelector('[data-omo-decision-vote-response-form], [data-omo-decision-mj-response-form], [data-omo-decision-consent-response-form]');
+                if (!form) return null;
+                var answers = Array.prototype.slice.call(form.querySelectorAll('input[name="proposal_id"], input[name="proposal_ids[]"], input[name^="scores["], input[name^="choices["]'));
+                if (!answers.length) return false;
+                if (form.hasAttribute('data-omo-decision-vote-response-form')) {
+                    var checked = answers.filter(function (input) { return input.checked; }).length;
+                    var payloadNode = form.querySelector('[data-omo-decision-vote-response-data]');
+                    var payload = {};
+                    try { payload = JSON.parse(payloadNode ? payloadNode.textContent : '{}'); } catch (error) { return false; }
+                    if (!checked || (Number(payload.maxChoices || 0) > 0 && checked > Number(payload.maxChoices))) return false;
+                } else {
+                    var names = Array.from(new Set(answers.map(function (input) { return input.name; })));
+                    if (!names.every(function (name) { return answers.some(function (input) { return input.name === name && input.checked; }); })) return false;
+                }
+                return Array.prototype.every.call(form.elements, function (input) { return input.disabled || !input.validity || input.validity.valid; });
+            }
+            function syncContents() {
+                contentsLinks.forEach(function (link) {
+                    var block = document.getElementById(link.hash.slice(1));
+                    var marker = link.parentElement.querySelector('[data-decision-public-contents-answered]');
+                    if (!block || !marker) return;
+                    var answered = blockIsAnswered(block);
+                    if (answered !== null) marker.hidden = !answered;
+                });
+            }
+            contentsLinks.forEach(function (link) {
+                link.addEventListener('click', function (event) {
+                    var block = document.getElementById(link.hash.slice(1));
+                    if (!block) return;
+                    event.preventDefault();
+                    if (mobileNav) setView('right');
+                    block.scrollIntoView({block: 'start'});
+                });
+            });
+            if (contentsLinks.length) {
+                document.addEventListener('input', syncContents);
+                document.addEventListener('change', syncContents);
+                document.addEventListener('reset', function () { window.setTimeout(syncContents, 0); });
+                syncContents();
+            }
+
             if (leftPanel && content && resizer) {
                 if (window.localStorage) {
                     var savedWidth = parseInt(window.localStorage.getItem(storageKey) || '', 10);

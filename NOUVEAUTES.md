@@ -6,7 +6,17 @@ Les dates déjà indiquées sont conservées. Les dates manquantes sont reconsti
 
 ## 2026-11-09
 
-- Scrutins / prévisualisation : bouton de gestion ouvrant le questionnaire enregistré dans une fenêtre séparée, avec le rendu public et une évaluation simulée quel que soit le statut réel. Choix et navigation restent locaux, sans sauvegarde ni brouillon automatique ; accès réservé aux gestionnaires, connexion SQL en lecture seule, soumissions et requêtes d’enregistrement bloquées dans cette fenêtre.
+- Connexion / envoi des codes : affichage du délai restant en secondes ou en minutes en cas de limite atteinte. Les demandes refusées pendant l’attente n’envoient aucun e-mail, ne consomment aucun autre quota et ne prolongent plus le délai ; le renvoi reste espacé d’au moins une minute. Même correction pour les demandes de réinitialisation du mot de passe.
+
+- Scrutins / suppression des questions : menu « ⋮ » dans l’onglet sélectionné pour éditer son nom ou supprimer la question et toutes ses propositions après confirmation. Suppression appliquée avec l’enregistrement du scrutin ; dernière question protégée dans l’interface et sur le serveur, suppression bloquée après le début de l’évaluation et nettoyage des événements associés aux propositions supprimées.
+
+- Scrutins / paramètres des questions : flèche à côté de « Configurer » pour copier les réglages d’un autre bloc du même type de scrutin, y compris les mentions personnalisées et la pondération. Les noms, textes et propositions restent propres à chaque bloc ; la copie est prise en compte lors de l’enregistrement du scrutin et reste verrouillée après le début de l’évaluation.
+
+- Scrutins / blocs : nom court distinct du texte de la question, modifiable dans les onglets par double-clic ou avec le crayon de l’onglet sélectionné. Champ ajusté à son contenu et onglets sans défilement vertical. Entrée valide, Échap annule ; le nom est sauvegardé avec le scrutin et affiché dans la table des matières publique. Sans nom court, l’onglet affiche « Bloc 1 », « Bloc 2 », etc. Renommage verrouillé après le début de l’évaluation ; noms conservés dans les duplications et les exports/imports.
+
+- Scrutins / navigation publique : table des matières sous la description dans la colonne de gauche, uniquement pour les questionnaires à plusieurs blocs, avec un espace sous son titre. Liens directs vers chaque bloc et coche identique à celle du jugement majoritaire lorsque toutes ses réponses nécessaires sont renseignées, y compris pendant la prévisualisation locale.
+
+- Scrutins / prévisualisation : bouton gris « Prévisualiser » dans l’en-tête de gestion, à côté du bouton de couleur « Enregistrer ». Il ouvre le questionnaire enregistré dans une fenêtre séparée, avec le rendu public et une évaluation simulée quel que soit le statut réel. Choix et navigation restent locaux, sans sauvegarde ni brouillon automatique ; accès réservé aux gestionnaires, connexion SQL en lecture seule, soumissions et requêtes d’enregistrement bloquées dans cette fenêtre.
 
 - Scrutins / dates et interruption : le démarrage de l’évaluation ne remplit plus une fin d’élaboration sans début d’élaboration. Depuis la gestion, un scrutin en évaluation sans aucune réponse, même partielle, peut revenir en préparation ; seule sa date de début d’évaluation est effacée, la fin reste conservée sans redémarrage automatique. Contrôle serveur des droits et protection contre une réponse simultanée.
 

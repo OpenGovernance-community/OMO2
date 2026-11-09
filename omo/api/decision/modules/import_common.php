@@ -300,6 +300,7 @@ if (!function_exists('omoDecisionImportNormalizeBlockBlueprint')) {
             'method' => $method,
             'decision_type' => $decisionType,
             'title' => trim((string)($block['title'] ?? $block['bloc'] ?? '')),
+            'short_title' => mb_substr(trim((string)($block['short_title'] ?? $block['nom_court_bloc'] ?? '')), 0, 190),
             'description' => trim((string)($block['description'] ?? $block['detail_bloc'] ?? '')),
             'position' => max(1, (int)($block['position'] ?? $block['position_bloc'] ?? ($fallback['position'] ?? 1))),
             'method_config' => omoDecisionImportNormalizeTypedStructure(
@@ -395,6 +396,7 @@ if (!function_exists('omoDecisionImportNormalizeCsvData')) {
                     'method' => $method,
                     'decision_type' => DecisionProcess::normalizeDecisionType((string)($row['type_decision'] ?? DecisionProcess::TYPE_DECISION)),
                     'title' => $blockTitle !== '' ? $blockTitle : ('Bloc ' . (string)$blockPosition),
+                    'short_title' => trim((string)($row['nom_court_bloc'] ?? '')),
                     'description' => trim((string)($row['detail_bloc'] ?? '')),
                     'position' => $blockPosition,
                     'method_config' => [],

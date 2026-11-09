@@ -108,7 +108,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleGetSourceLang')) {
             'decisions.majority_judgment.placeholder.proposals' => ['text' => 'Nom de la proposition', 'context' => 'Placeholder for one proposal input.'],
             'decisions.majority_judgment.placeholder.proposal_info_url' => ['text' => 'https://...', 'context' => 'Placeholder for one proposal info URL input.'],
             'decisions.majority_judgment.action.create' => ['text' => 'Créer le scrutin', 'context' => 'Submit label for a new majority judgment.'],
-            'decisions.majority_judgment.action.save' => ['text' => 'Enregistrer le scrutin', 'context' => 'Submit label for an existing majority judgment.'],
+            'decisions.majority_judgment.action.save' => ['text' => 'Enregistrer', 'context' => 'Submit label for an existing majority judgment.'],
             'decisions.majority_judgment.action.saving' => ['text' => 'Enregistrement…', 'context' => 'Temporary label while saving.'],
             'decisions.majority_judgment.action.configure' => ['text' => 'Configurer', 'context' => 'Button label to open the settings modal.'],
             'decisions.majority_judgment.action.close' => ['text' => 'Fermer', 'context' => 'Button label to close the settings modal.'],
@@ -456,6 +456,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                     <input type="hidden" name="cid" value="<?= $escape((int)$context['targetHolonId']) ?>">
                     <input type="hidden" name="id" value="<?= $escape($isDuplicate ? 0 : ($decision instanceof DecisionProcess ? (int)$decision->getId() : 0)) ?>">
                     <input type="hidden" name="gid" value="<?= $escape($isDuplicate ? 0 : ($decisionGroup instanceof DecisionGroup ? (int)$decisionGroup->getId() : 0)) ?>">
+                    <input type="hidden" name="short_title" value="<?= $escape($decisionGroup instanceof DecisionGroup ? (string)$decisionGroup->get('short_title') : '') ?>">
                     <input type="hidden" name="intent" value="manage">
                     <?php if ($forceNewGroup): ?><input type="hidden" name="group_action" value="create"><?php endif; ?>
                     <?= omoDecisionRenderPublicTokenInput($context, $escape) ?>
@@ -920,7 +921,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                             role="radio"
                                             tabindex="0"
                                         >
-                                            <span class="omo-decision-majority-judgment__rating-chip-check" aria-hidden="true">L</span>
+                                            <span class="generic-checkmark omo-decision-majority-judgment__rating-chip-check" aria-hidden="true">L</span>
                                             <span class="omo-decision-majority-judgment__sr-only generic-visually-hidden"><?= $escape($mentionLabel) ?></span>
                                         </label>
                                     </div>

@@ -32,6 +32,10 @@ class DecisionProcess extends DbObject
                 'impossible_de_sauvegarder_la_decision_et_son_agenda' => ['text' => 'Impossible de sauvegarder la décision et son agenda.', 'context' => 'Validation or action feedback for decisionprocess.'],
                 'destination_invalide' => ['text' => 'Destination invalide.', 'context' => 'Validation or action feedback for decisionprocess.'],
                 'acces_refuse' => ['text' => 'Accès refusé.', 'context' => 'Validation or action feedback for decisionprocess.'],
+                'questions_suppression_verrouillee' => ['text' => 'Les questions ne peuvent plus être supprimées après le début de l’évaluation.', 'context' => 'Question deletion rejected once evaluation has started.'],
+                'question_suppression_invalide' => ['text' => 'La question à supprimer n’appartient pas à ce scrutin.', 'context' => 'Question deletion ownership validation.'],
+                'derniere_question_protegee' => ['text' => 'Le scrutin doit conserver au moins une question.', 'context' => 'Reject deleting the last questionnaire block.'],
+                'questions_suppression_echec' => ['text' => 'Impossible de supprimer les questions et leurs propositions.', 'context' => 'Question deletion transaction failure.'],
                 'visibilite_invalide' => ['text' => 'Visibilité invalide pour ce scrutin.', 'context' => 'Invalid decision read or edit scope.'],
                 'scrutin_interrompu' => ['text' => 'Scrutin interrompu. Il est de nouveau en préparation.', 'context' => 'Successful interruption before any evaluation response.'],
                 'interruption_impossible' => ['text' => 'Le scrutin peut être interrompu uniquement pendant l’évaluation, tant qu’aucune réponse, même partielle, n’a été enregistrée.', 'context' => 'Refused interruption after a response or outside evaluation.'],
@@ -1367,6 +1371,62 @@ class DecisionProcess extends DbObject
         $this->applyLegacyProcessFieldsToGroup($group);
         $saveResult = $group->save();
         return !empty($saveResult['status']) ? $group : null;
+    }
+
+    public function deleteDecisionGroupsForManager(array $groupIds, int $userId): array
+    {
+        $pdo = self::getPdo();
+        $ownsTransaction = !$pdo->inTransaction();
+        try {
+            if ($ownsTransaction) $pdo->beginTransaction();
+            $row = self::fetchRow('SELECT * FROM decision_process WHERE id = :id FOR UPDATE', ['id' => (int)$this->getId()]);
+            if (!$row) throw new \RuntimeException('decision_not_found');
+            $this->hydrateFromDatabaseRow($row, true);
+            $error = null;
+            if (!$this->canUseManagementPermission('CAN_EDIT_DECISION', $userId)) {
+                $error = ['status' => false, 'code' => 403, 'message' => self::uiMessage('acces_refuse')];
+            } elseif ($this->hasEvaluationStarted() || $this->hasEvaluationResponses()) {
+                $error = ['status' => false, 'code' => 409, 'message' => self::uiMessage('questions_suppression_verrouillee')];
+            }
+            $groups = $this->getDecisionGroups(false)->getArrayCopy();
+            $groupIds = array_values(array_unique(array_map('intval', $groupIds)));
+            $ownedIds = array_map(static fn($group) => (int)$group->getId(), $groups);
+            $remaining = array_filter($groups, static fn($group) => !in_array((int)$group->getId(), $groupIds, true));
+            if (!$error && array_diff($groupIds, $ownedIds)) {
+                $error = ['status' => false, 'code' => 400, 'message' => self::uiMessage('question_suppression_invalide')];
+            }
+            if (!$error && !array_filter($remaining, static fn($group) => (int)$group->get('active') === 1)) {
+                $error = ['status' => false, 'code' => 409, 'message' => self::uiMessage('derniere_question_protegee')];
+            }
+            if ($error) {
+                if ($ownsTransaction) $pdo->rollBack();
+                return $error;
+            }
+            foreach ($groups as $group) {
+                if (!in_array((int)$group->getId(), $groupIds, true)) continue;
+                foreach ($group->getProposals(false) as $proposal) {
+                    $event = Event::findByDecisionProposal((int)$proposal->getId());
+                    if ($event && !$event->delete()) throw new \RuntimeException('decision_question_calendar_delete_failed');
+                }
+                // Foreign keys remove every proposal, response and result belonging to this group.
+                if (!$group->delete()) throw new \RuntimeException('decision_question_delete_failed');
+            }
+            $primary = $this->getPrimaryGroup(false);
+            $parameters = $this->getRootParametersArray();
+            $primaryParameters = DecisionGovernanceAction::normalizeState($primary->get('parameters'));
+            $method = self::normalizeEvaluationMethod($primary->get('evaluation_method'));
+            $parameters[$method] = $primaryParameters[$method] ?? [];
+            $this->set('parameters', $parameters);
+            $this->set('evaluation_method', $method);
+            $this->set('decision_type', $primary->get('decision_type'));
+            if (empty($this->save()['status'])) throw new \RuntimeException('decision_question_mirror_save_failed');
+            if ($ownsTransaction) $pdo->commit();
+            return ['status' => true];
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+            error_log('decision_questions_delete_failed: ' . $exception->getMessage());
+            return ['status' => false, 'code' => 500, 'message' => self::uiMessage('questions_suppression_echec')];
+        }
     }
 
     public function buildNextDecisionGroupTitle()

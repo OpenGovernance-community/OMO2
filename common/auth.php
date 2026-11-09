@@ -507,6 +507,22 @@ function commonGetAuthSharedSourceLang(): array
             'text' => 'Trop de tentatives. Veuillez patienter avant de réessayer.',
             'context' => 'Generic error shown when an authentication request is temporarily rate limited.'
         ],
+        'auth.error.rate_limited_seconds' => [
+            'text' => 'Trop de tentatives. Veuillez patienter {seconds} secondes avant d’essayer à nouveau.',
+            'context' => 'Authentication cooldown below one minute, with the remaining seconds.'
+        ],
+        'auth.error.rate_limited_minutes' => [
+            'text' => 'Trop de tentatives. Veuillez patienter {minutes} minutes avant d’essayer à nouveau.',
+            'context' => 'Authentication cooldown of at least one minute, rounded up to whole minutes.'
+        ],
+        'auth.error.rate_limited_one_second' => [
+            'text' => 'Trop de tentatives. Veuillez patienter 1 seconde avant d’essayer à nouveau.',
+            'context' => 'Authentication cooldown with one second remaining.'
+        ],
+        'auth.error.rate_limited_one_minute' => [
+            'text' => 'Trop de tentatives. Veuillez patienter 1 minute avant d’essayer à nouveau.',
+            'context' => 'Authentication cooldown with one minute remaining.'
+        ],
         'auth.error.mail_configuration' => [
             'text' => 'L’envoi des e-mails de connexion est indisponible : la configuration du serveur est incomplète. Contactez l’administrateur.',
             'context' => 'Authentication email service is unavailable because its canonical public URL is missing or invalid.'
@@ -2109,18 +2125,42 @@ function commonAuthEmailDeliveryLimits($flow, $email, $operation = 'consume')
     $email = strtolower(trim((string)$email));
     $ipAddress = commonGetRequestIp();
     if ($flow === 'reset') {
-        return commonAuthRunLimits([
+        $limits = [
             ['policy' => 'reset_ip_hour', 'kind' => 'ip', 'value' => $ipAddress],
             ['policy' => 'reset_email_short', 'kind' => 'email', 'value' => $email],
             ['policy' => 'reset_email_hour', 'kind' => 'email', 'value' => $email],
-        ], $operation);
+        ];
+    } else {
+        $limits = [
+            ['policy' => 'magic_request_ip', 'kind' => 'ip', 'value' => $ipAddress],
+            ['policy' => 'magic_ip_hour', 'kind' => 'ip', 'value' => $ipAddress],
+            ['policy' => 'magic_email_minute', 'kind' => 'email', 'value' => $email],
+            ['policy' => 'magic_email_hour', 'kind' => 'email', 'value' => $email],
+        ];
     }
+    if (!commonAuthRateLimitsEnabled()) {
+        return ['available' => true, 'allowed' => true, 'retry_after' => 0];
+    }
+    $buckets = [];
+    foreach ($limits as $limit) {
+        $policy = commonGetAuthRateLimitPolicy($limit['policy']);
+        $buckets[] = $policy + ['key_hash' => commonAuthHashIdentifier($limit['kind'], $limit['value'])];
+    }
+    return \dbObject\AuthRateLimit::consumeBuckets($buckets, $operation === 'inspect');
+}
 
-    return commonAuthRunLimits([
-        ['policy' => 'magic_ip_hour', 'kind' => 'ip', 'value' => $ipAddress],
-        ['policy' => 'magic_email_minute', 'kind' => 'email', 'value' => $email],
-        ['policy' => 'magic_email_hour', 'kind' => 'email', 'value' => $email],
-    ], $operation);
+function commonAuthRateLimitFeedback(array $result, array $lang, array $sourceLang): array
+{
+    $seconds = max(1, (int)($result['retry_after'] ?? 60));
+    $minutes = (int)ceil($seconds / 60);
+    $key = $seconds < 60
+        ? ($seconds === 1 ? 'auth.error.rate_limited_one_second' : 'auth.error.rate_limited_seconds')
+        : ($minutes === 1 ? 'auth.error.rate_limited_one_minute' : 'auth.error.rate_limited_minutes');
+    return [
+        'error' => 'rate_limited',
+        'retry_after' => $seconds,
+        'message' => commonAuthT($key, ['seconds' => $seconds, 'minutes' => $minutes], $lang, $sourceLang),
+    ];
 }
 
 function commonAuthSetLimitHttpResponse(array $result)
@@ -2910,17 +2950,14 @@ function commonHandleMagicLoginSend($defaultReturnTo = '/')
     }
 
     commonAuthRequireMailConfiguration($lang, $sourceLang);
-    $requestLimit = commonAuthRunLimit('magic_request_ip', 'ip', commonGetRequestIp());
+    $requestLimit = commonAuthEmailDeliveryLimits('magic', $email, 'inspect');
     if (empty($requestLimit['available']) || empty($requestLimit['allowed'])) {
         commonAuthSetLimitHttpResponse($requestLimit);
         commonAuthSecurityLog('magic_login_request', 'rate_limited', [
             'email' => $email,
             'retry_after' => (int)($requestLimit['retry_after'] ?? 60),
         ]);
-        echo json_encode([
-            'error' => 'rate_limited',
-            'message' => commonAuthT('auth.error.rate_limited', [], $lang, $sourceLang),
-        ]);
+        echo json_encode(commonAuthRateLimitFeedback($requestLimit, $lang, $sourceLang));
         exit;
     }
 
@@ -2934,10 +2971,7 @@ function commonHandleMagicLoginSend($defaultReturnTo = '/')
                 'user_id' => (int)$user->getId(),
                 'retry_after' => (int)($deliveryLimit['retry_after'] ?? 60),
             ]);
-            echo json_encode([
-                'error' => 'rate_limited',
-                'message' => commonAuthT('auth.error.rate_limited', [], $lang, $sourceLang),
-            ]);
+            echo json_encode(commonAuthRateLimitFeedback($deliveryLimit, $lang, $sourceLang));
             exit;
         }
 
@@ -2985,6 +3019,18 @@ function commonHandleMagicLoginSend($defaultReturnTo = '/')
         exit;
     }
 
+    // Challenge requests still count against the request quota, but cooldown clicks do not.
+    $challenge = $_SESSION['challenge'] ?? [];
+    if ($answer === null || ($challenge['expires'] ?? 0) < time()
+        || (int)$answer !== (int)($challenge['answer'] ?? 0)) {
+        $requestLimit = commonAuthRunLimit('magic_request_ip', 'ip', commonGetRequestIp());
+        if (empty($requestLimit['available']) || empty($requestLimit['allowed'])) {
+            commonAuthSetLimitHttpResponse($requestLimit);
+            echo json_encode(commonAuthRateLimitFeedback($requestLimit, $lang, $sourceLang));
+            exit;
+        }
+    }
+
     if ($answer === null) {
         $a = rand(2, 9);
         $b = rand(2, 9);
@@ -3024,10 +3070,7 @@ function commonHandleMagicLoginSend($defaultReturnTo = '/')
             'email' => $email,
             'retry_after' => (int)($deliveryLimit['retry_after'] ?? 60),
         ]);
-        echo json_encode([
-            'error' => 'rate_limited',
-            'message' => commonAuthT('auth.error.rate_limited', [], $lang, $sourceLang),
-        ]);
+        echo json_encode(commonAuthRateLimitFeedback($deliveryLimit, $lang, $sourceLang));
         exit;
     }
 
@@ -3095,10 +3138,7 @@ function commonHandlePasswordResetRequest($defaultReturnTo = '/')
             'email' => $email,
             'retry_after' => (int)($deliveryLimit['retry_after'] ?? 60),
         ]);
-        echo json_encode([
-            'error' => 'rate_limited',
-            'message' => commonAuthT('auth.error.rate_limited', [], $lang, $sourceLang),
-        ]);
+        echo json_encode(commonAuthRateLimitFeedback($deliveryLimit, $lang, $sourceLang));
         exit;
     }
 

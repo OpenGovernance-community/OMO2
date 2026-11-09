@@ -238,6 +238,25 @@
     gap: var(--generic-space-1, 4px);
     min-width: 0;
     scrollbar-width: thin;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.omo-decision-edit__question-tab-item {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.omo-decision-edit__question-tab-item .omo-decision-edit__question-tab > span:first-child {
+    max-width: min(32ch, 60vw);
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.omo-decision-edit__question-name {
+    min-width: 3ch;
+    max-width: 60vw;
 }
 
 .omo-decision-edit__question-tab {

@@ -237,6 +237,7 @@ $payload = [
         data-omo-subdrawer-title="<?= omoApiEscape(omoDecisionGovernanceT($isEditing ? 'governance.title.edit' : 'governance.title.create')) ?>"
         data-omo-subdrawer-help="<?= omoApiEscape(omoDecisionGovernanceT('governance.intro')) ?>"
     >
+        <?= $evaluationPreviewActionHtml ?? '' ?>
         <?php if ($canEdit): ?>
         <button type="submit" form="omo-governance-editor-form" class="generic-action-button generic-action-button--main" data-governance-submit data-omo-subdrawer-action><?= omoApiEscape(omoDecisionGovernanceT($isEditing ? 'governance.update_short' : 'governance.save_short')) ?></button>
         <?php endif; ?>

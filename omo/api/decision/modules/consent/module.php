@@ -91,7 +91,7 @@ if (!function_exists('omoDecisionConsentModuleGetSourceLang')) {
             'decisions.consent.placeholder.proposals' => ['text' => 'Nom de la proposition', 'context' => 'Placeholder for one proposal input.'],
             'decisions.consent.placeholder.proposal_info_url' => ['text' => 'https://...', 'context' => 'Placeholder for one proposal info URL input.'],
             'decisions.consent.action.create' => ['text' => 'Créer le scrutin', 'context' => 'Submit label for a new consent process.'],
-            'decisions.consent.action.save' => ['text' => 'Enregistrer le scrutin', 'context' => 'Submit label for an existing consent process.'],
+            'decisions.consent.action.save' => ['text' => 'Enregistrer', 'context' => 'Submit label for an existing consent process.'],
             'decisions.consent.action.saving' => ['text' => 'Enregistrement…', 'context' => 'Temporary label while saving.'],
             'decisions.consent.action.configure' => ['text' => 'Configurer', 'context' => 'Button label to open the settings modal.'],
             'decisions.consent.action.close' => ['text' => 'Fermer', 'context' => 'Button label to close the settings modal.'],
@@ -388,6 +388,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                 <input type="hidden" name="cid" value="<?= $escape((int)$context['targetHolonId']) ?>">
                 <input type="hidden" name="id" value="<?= $escape($decision instanceof DecisionProcess ? (int)$decision->getId() : 0) ?>">
                 <input type="hidden" name="gid" value="<?= $escape($decisionGroup instanceof DecisionGroup ? (int)$decisionGroup->getId() : 0) ?>">
+                <input type="hidden" name="short_title" value="<?= $escape($decisionGroup instanceof DecisionGroup ? (string)$decisionGroup->get('short_title') : '') ?>">
                 <input type="hidden" name="method" value="<?= $escape(DecisionProcess::METHOD_CONSENT) ?>">
                 <input type="hidden" name="intent" value="manage">
                 <?php if ($forceNewGroup): ?><input type="hidden" name="group_action" value="create"><?php endif; ?>

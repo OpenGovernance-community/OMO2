@@ -52,6 +52,12 @@ $saveFiles = [
     DecisionProcess::METHOD_CONSULTATION_ONLY => __DIR__ . '/modules/consultation_only/save.php',
 ];
 $groupPayloads = [];
+$deletedGroupIds = $_POST['deleted_groups'] ?? [];
+if (!is_array($deletedGroupIds) || count($deletedGroupIds) > 100
+    || array_filter($deletedGroupIds, static fn($id) => !is_scalar($id) || !ctype_digit((string)$id) || (int)$id <= 0)) {
+    omoDecisionMultiSaveRespond(400, ['status' => false, 'message' => omoDecisionUiT('la_liste_des_questions_est_invalide')]);
+}
+$deletedGroupIds = array_values(array_unique(array_map('intval', $deletedGroupIds)));
 foreach ($serializedGroups as $groupIndex => $serializedGroup) {
     if (!is_string($serializedGroup) || strlen($serializedGroup) > 2000000) {
         omoDecisionMultiSaveRespond(400, [
@@ -78,6 +84,9 @@ foreach ($serializedGroups as $groupIndex => $serializedGroup) {
 
 $decisionId = (int)($groupPayloads[0]['postData']['id'] ?? 0);
 $isCreatingDecision = $decisionId <= 0;
+if ($isCreatingDecision && $deletedGroupIds) {
+    omoDecisionMultiSaveRespond(400, ['status' => false, 'message' => omoDecisionUiT('la_liste_des_questions_est_invalide')]);
+}
 $batchDecision = new DecisionProcess();
 if (!$isCreatingDecision && !$batchDecision->load($decisionId)) {
     omoDecisionMultiSaveRespond(404, [
@@ -86,6 +95,9 @@ if (!$isCreatingDecision && !$batchDecision->load($decisionId)) {
     ]);
 }
 foreach ($groupPayloads as $groupPayload) {
+    if (in_array((int)($groupPayload['postData']['gid'] ?? 0), $deletedGroupIds, true)) {
+        omoDecisionMultiSaveRespond(400, ['status' => false, 'message' => omoDecisionUiT('la_liste_des_questions_est_invalide')]);
+    }
     if ((!$isCreatingDecision && (int)($groupPayload['postData']['id'] ?? 0) !== $decisionId)
         || ($isCreatingDecision && (int)($groupPayload['postData']['id'] ?? 0) !== 0)) {
         omoDecisionMultiSaveRespond(400, [
@@ -154,6 +166,13 @@ try {
         $results[$groupPayload['originalIndex']] = $response->payload;
     }
     if (!$batchDecision->load($decisionId, true)) throw new RuntimeException('decision_visibility_load_failed');
+    if ($deletedGroupIds) {
+        $deleteResult = $batchDecision->deleteDecisionGroupsForManager($deletedGroupIds, (int)($_SESSION['currentUser'] ?? 0));
+        if (empty($deleteResult['status'])) {
+            $failureCode = (int)($deleteResult['code'] ?? 400);
+            throw new RuntimeException((string)$deleteResult['message']);
+        }
+    }
     $accessResult = $batchDecision->saveVisibilityRulesFromInput($accessInput, $accessLocked);
     if (empty($accessResult['status'])) {
         $failureCode = 400;
