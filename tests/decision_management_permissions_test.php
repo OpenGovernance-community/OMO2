@@ -124,6 +124,8 @@ try {
     $entries = decisionPermissionList($input);
     $byId = array_column($entries, null, 'id');
     decisionPermissionExpect(isset($byId[$decision->getId()]) && $byId[$decision->getId()]['canManage'] === $canManage, 'List management permission matches');
+    decisionPermissionExpect(substr_count($byId[$decision->getId()]['visibilityCapsuleHtml'], '<img ') === 2
+        && $byId[$decision->getId()]['editVisibilityType'] === ($actorType === 'editor' ? 'circle' : 'self'), 'List exposes both visibility scopes in the shared capsule');
     $modes = array_column($byId[$decision->getId()]['actions'], 'mode');
     decisionPermissionExpect(in_array('manage', $modes, true) === $canManage, 'Manage button follows edit permission');
     $archiveActions = array_filter($byId[$archivable->getId()]['menuActions'], static fn($action) => ($action['requestPayload']['decision_action'] ?? '') === 'archive');

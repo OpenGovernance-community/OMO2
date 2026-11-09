@@ -13,6 +13,9 @@ class DecisionProcess extends DbObject
                 'destination_invalide' => ['text' => 'Destination invalide.', 'context' => 'Validation or action feedback for decisionprocess.'],
                 'acces_refuse' => ['text' => 'Accès refusé.', 'context' => 'Validation or action feedback for decisionprocess.'],
                 'visibilite_invalide' => ['text' => 'Visibilité invalide pour ce scrutin.', 'context' => 'Invalid decision read or edit scope.'],
+                'scrutin_interrompu' => ['text' => 'Scrutin interrompu. Il est de nouveau en préparation.', 'context' => 'Successful interruption before any evaluation response.'],
+                'interruption_impossible' => ['text' => 'Le scrutin peut être interrompu uniquement pendant l’évaluation, tant qu’aucune réponse, même partielle, n’a été enregistrée.', 'context' => 'Refused interruption after a response or outside evaluation.'],
+                'interruption_echec' => ['text' => 'Impossible d’interrompre le scrutin pour le moment.', 'context' => 'Failed interruption transaction.'],
                 'acces_refuse_pour_cette_destination' => ['text' => 'Accès refusé pour cette destination.', 'context' => 'Validation or action feedback for decisionprocess.'],
                 'cette_prise_de_decision_est_deja_a_cette_destination' => ['text' => 'Cette prise de décision est déjà à cette destination.', 'context' => 'Validation or action feedback for decisionprocess.'],
                 'prise_de_decision_deplacee' => ['text' => 'Prise de décision déplacée.', 'context' => 'Validation or action feedback for decisionprocess.'],
@@ -684,6 +687,11 @@ class DecisionProcess extends DbObject
         $this->set('status', self::normalizeStatus($this->get('status')));
         $this->set('evaluation_method', self::normalizeEvaluationMethod($this->get('evaluation_method')));
         $this->set('visibility_type', self::normalizeVisibilityType($this->get('visibility_type')));
+        $parameters = $this->getRootParametersArray();
+        if (isset($parameters['evaluation_interruption']) && !$this->isInterruptedEvaluationDraft()) {
+            unset($parameters['evaluation_interruption']);
+            $this->set('parameters', $parameters);
+        }
 
         $saveResult = parent::save();
         if (empty($saveResult['status']) || (int)$this->getId() <= 0) {
@@ -842,6 +850,7 @@ class DecisionProcess extends DbObject
 
     public function resolveAutomaticStatus($referenceDateTime = null)
     {
+        if ($this->isInterruptedEvaluationDraft()) return self::STATUS_DRAFT;
         $currentStatus = self::normalizeStatus($this->get('status'));
         $derivedStatus = $currentStatus;
         $referenceDateTime = self::normalizeDateTimeValue($referenceDateTime);
@@ -858,7 +867,6 @@ class DecisionProcess extends DbObject
 
         $hasFutureOrCurrentSchedule = $consultationStart instanceof \DateTimeInterface
             || $evaluationStart instanceof \DateTimeInterface
-            || $evaluationEnd instanceof \DateTimeInterface
             || $resultsPublishedAt instanceof \DateTimeInterface
             || $archivedAt instanceof \DateTimeInterface;
 
@@ -875,7 +883,7 @@ class DecisionProcess extends DbObject
         }
 
         if (
-            ($evaluationEnd instanceof \DateTimeInterface && $evaluationEnd <= $referenceDateTime)
+            ($evaluationStart instanceof \DateTimeInterface && $evaluationEnd instanceof \DateTimeInterface && $evaluationEnd <= $referenceDateTime)
             || ($resultsPublishedAt instanceof \DateTimeInterface && $resultsPublishedAt <= $referenceDateTime)
         ) {
             $derivedStatus = self::STATUS_RESULTS;
@@ -892,8 +900,7 @@ class DecisionProcess extends DbObject
             $consultationEndedWithoutCurrentEvaluation
             && in_array($currentStatus, [self::STATUS_DRAFT, self::STATUS_SCHEDULED, self::STATUS_CONSULTATION], true)
         ) {
-            $hasUpcomingEvaluation = ($evaluationStart instanceof \DateTimeInterface && $evaluationStart > $referenceDateTime)
-                || ($evaluationEnd instanceof \DateTimeInterface && $evaluationEnd > $referenceDateTime);
+            $hasUpcomingEvaluation = $evaluationStart instanceof \DateTimeInterface && $evaluationStart > $referenceDateTime;
             return $hasUpcomingEvaluation ? self::STATUS_SCHEDULED : self::STATUS_DRAFT;
         }
 
@@ -1258,10 +1265,15 @@ class DecisionProcess extends DbObject
         $organizationId = (int)$organizationId > 0
             ? (int)$organizationId
             : (int)$this->get('IDorganization');
+        $ruleRow = is_array($ruleRow) ? $ruleRow : $this->getPrimaryVisibilityRuleRow();
+        $owner = new User();
+        $ownerLabel = ($ruleRow['visibility_type'] ?? '') === ObjectVisibility::TYPE_SELF && $owner->load((int)$this->get('IDuser'))
+            ? $owner->getScopedDisplayName($organizationId) : '';
 
         return \dbObject\ObjectVisibility::buildDisplayData(
-            is_array($ruleRow) ? $ruleRow : $this->getPrimaryVisibilityRuleRow(),
-            $organizationId
+            $ruleRow,
+            $organizationId,
+            ['ownerLabel' => $ownerLabel]
         );
     }
 
@@ -1669,6 +1681,63 @@ class DecisionProcess extends DbObject
                 'submitted_status' => \dbObject\DecisionResponse::STATUS_SUBMITTED,
             ]
         );
+    }
+
+    public function hasEvaluationResponses(): bool
+    {
+        return (int)self::fetchValue('SELECT COUNT(*) FROM `decision_response` WHERE `IDdecision_process` = :decision_id',
+            ['decision_id' => (int)$this->getId()]) > 0;
+    }
+
+    public function canInterruptEvaluation(): bool
+    {
+        return (int)$this->getId() > 0 && $this->resolveAutomaticStatus() === self::STATUS_EVALUATION
+            && !$this->hasEvaluationResponses();
+    }
+
+    protected function isInterruptedEvaluationDraft(): bool
+    {
+        // Keep the old elaboration dates without reopening that phase after interruption.
+        // A new start date or an explicit status change resumes normal scheduling.
+        $interruption = $this->getRootParametersArray()['evaluation_interruption'] ?? null;
+        $consultationStart = self::normalizeDateTimeValue($this->get('consultation_start_at'));
+        return is_array($interruption) && self::normalizeStatus($this->get('status')) === self::STATUS_DRAFT
+            && self::normalizeDateTimeValue($this->get('evaluation_start_at')) === null
+            && ($interruption['consultation_start_at'] ?? '') === ($consultationStart ? $consultationStart->format('Y-m-d H:i:s') : '');
+    }
+
+    public function interruptEvaluationForManager(int $userId): array
+    {
+        $pdo = self::getPdo();
+        $ownsTransaction = !$pdo->inTransaction();
+        try {
+            if ($ownsTransaction) $pdo->beginTransaction();
+            // Ballot writes acquire this same lock before saving any partial or complete response.
+            $row = self::fetchRow('SELECT * FROM `decision_process` WHERE `id` = :id FOR UPDATE', ['id' => (int)$this->getId()]);
+            if (!$row) throw new \RuntimeException('decision_not_found');
+            $this->hydrateFromDatabaseRow($row, true);
+            if (!$this->canUseManagementPermission('CAN_EDIT_DECISION', $userId)) {
+                if ($ownsTransaction) $pdo->rollBack();
+                return ['status' => false, 'code' => 403, 'message' => self::uiMessage('acces_refuse')];
+            }
+            if (!$this->canInterruptEvaluation()) {
+                if ($ownsTransaction) $pdo->rollBack();
+                return ['status' => false, 'code' => 409, 'message' => self::uiMessage('interruption_impossible')];
+            }
+            $parameters = $this->getRootParametersArray();
+            $consultationStart = self::normalizeDateTimeValue($this->get('consultation_start_at'));
+            $parameters['evaluation_interruption'] = ['consultation_start_at' => $consultationStart ? $consultationStart->format('Y-m-d H:i:s') : ''];
+            $this->set('parameters', $parameters);
+            $this->set('evaluation_start_at', null);
+            $this->set('status', self::STATUS_DRAFT);
+            if (empty($this->save()['status'])) throw new \RuntimeException('decision_interruption_save_failed');
+            if ($ownsTransaction) $pdo->commit();
+            return ['status' => true, 'action' => 'interrupt', 'message' => self::uiMessage('scrutin_interrompu')];
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+            error_log('decision_interruption_failed: ' . $exception->getMessage());
+            return ['status' => false, 'code' => 500, 'message' => self::uiMessage('interruption_echec')];
+        }
     }
 
     protected static function truncateCompactEmbedSummary(string $value, int $maximumLength = 420): string
@@ -3243,6 +3312,7 @@ class DecisionProcess extends DbObject
 
     public function hasConsultationStarted($referenceDateTime = null)
     {
+        if ($this->isInterruptedEvaluationDraft()) return false;
         $status = self::normalizeStatus($this->get('status'));
         if (in_array($status, [
             self::STATUS_EVALUATION,
@@ -3263,6 +3333,7 @@ class DecisionProcess extends DbObject
 
     public function hasConsultationEnded($referenceDateTime = null)
     {
+        if ($this->isInterruptedEvaluationDraft()) return false;
         $status = self::normalizeStatus($this->get('status'));
         if (in_array($status, [
             self::STATUS_EVALUATION,

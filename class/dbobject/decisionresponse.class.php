@@ -7,6 +7,7 @@ class DecisionResponse extends DbObject
         {
             return [
                 'impossible_de_sauvegarder_le_bulletin_et_son_agenda' => ['text' => 'Impossible de sauvegarder le bulletin et son agenda.', 'context' => 'Validation or action feedback for decisionresponse.'],
+                'evaluation_fermee' => ['text' => 'L’évaluation n’est plus ouverte. Votre réponse n’a pas été enregistrée.', 'context' => 'A response raced with an interruption or the end of evaluation.'],
 
                 'copy.invalidee' => ['text' => 'Invalidée', 'context' => 'Interface text in class/dbobject/decisionresponse.class.php'],
 
@@ -144,6 +145,34 @@ class DecisionResponse extends DbObject
         $item->loadFromArray($row);
         $item->setId((int)$row['id']);
         return $item;
+    }
+
+    public function saveForParticipation(): array
+    {
+        $pdo = self::getPdo();
+        $ownsTransaction = !$pdo->inTransaction();
+        try {
+            if ($ownsTransaction) $pdo->beginTransaction();
+            $row = self::fetchRow('SELECT * FROM `decision_process` WHERE `id` = :id FOR UPDATE',
+                ['id' => (int)$this->get('IDdecision_process')]);
+            $decision = new DecisionProcess();
+            if ($row) $decision->hydrateFromDatabaseRow($row, true);
+            if (!$row || !$decision->isParticipationOpen()) {
+                if ($ownsTransaction) $pdo->rollBack();
+                return ['status' => false, 'code' => 409, 'text' => self::uiMessage('evaluation_fermee')];
+            }
+            $result = $this->save();
+            if (empty($result['status'])) {
+                if ($ownsTransaction) $pdo->rollBack();
+                return $result;
+            }
+            if ($ownsTransaction) $pdo->commit();
+            return $result;
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+            error_log('decision_participation_save_failed: ' . $exception->getMessage());
+            return ['status' => false, 'text' => self::uiMessage('impossible_de_sauvegarder_le_bulletin_et_son_agenda')];
+        }
     }
 
     public function save()

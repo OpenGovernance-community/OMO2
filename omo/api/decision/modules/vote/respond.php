@@ -171,11 +171,11 @@ $response->set('parameters', omoDecisionVoteBuildResponseParameters(
     $responseIsAnonymous
 ));
 
-$saveResult = $response->save();
+$saveResult = $response->saveForParticipation();
 if (empty($saveResult['status'])) {
-    omoDecisionModuleJsonResponse(500, [
+    omoDecisionModuleJsonResponse((int)($saveResult['code'] ?? 500), [
         'status' => false,
-        'message' => omoDecisionUiT('impossible_d_enregistrer_votre_vote_pour_le_moment'),
+        'message' => ($saveResult['code'] ?? 0) === 409 ? $saveResult['text'] : omoDecisionUiT('impossible_d_enregistrer_votre_vote_pour_le_moment'),
     ]);
 }
 

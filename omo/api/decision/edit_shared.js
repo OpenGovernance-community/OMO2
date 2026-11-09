@@ -42,6 +42,42 @@ window.commonPageScripts["/omo/api/decision/edit_shared.js"] = function (pageCon
     const unsavedQuestionLabel = pageConfig.unsavedQuestionLabel;
     const questionItemTemplate = pageConfig.questionItemTemplate;
 
+    document.querySelectorAll('[data-omo-decision-interrupt]').forEach(function (button) {
+        if (button.dataset.interruptReady === '1') return;
+        button.dataset.interruptReady = '1';
+        button.addEventListener('click', async function () {
+            if (button.disabled || !window.confirm(pageConfig.interruptConfirm)) return;
+            const label = button.textContent;
+            button.disabled = true;
+            button.textContent = pageConfig.interruptPending;
+            try {
+                const data = new FormData();
+                const payload = JSON.parse(button.getAttribute('data-request-payload'));
+                Object.keys(payload).forEach(function (key) { data.append(key, String(payload[key])); });
+                let url = button.getAttribute('data-request-url');
+                if (typeof window.omoResolveAppUrl === 'function') url = window.omoResolveAppUrl(url);
+                const response = await fetch(url, {method: 'POST', body: data, credentials: 'same-origin',
+                    headers: {'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'}});
+                const result = await response.json();
+                if (!response.ok || !result.status) throw new Error(result.message || pageConfig.interruptError);
+                const editor = button.closest('.omo-decision-edit');
+                if (editor) {
+                    if (typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(editor);
+                    editor.querySelectorAll('[data-omo-decision-multi-editor]').forEach(function (root) {
+                        root.dataset.multiInitialSignature = getMultiEditorSignature(root);
+                    });
+                }
+                notifyQuestionSwitch(result.message, 'success');
+                openEditorUrl(result.redirectUrl);
+            } catch (error) {
+                notifyQuestionSwitch(error && error.message ? error.message : pageConfig.interruptError, 'error');
+            } finally {
+                button.disabled = false;
+                button.textContent = label;
+            }
+        });
+    });
+
     function getCompleteFormData(form) {
         const data = new FormData(form);
         form.querySelectorAll('[name]:disabled').forEach(function (field) {

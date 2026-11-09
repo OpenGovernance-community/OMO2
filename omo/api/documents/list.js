@@ -689,54 +689,10 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                             };
 
                             const createVisibilityCapsule = function (documentItem) {
-                                const visibilityLabel = String(documentItem && documentItem.visibilityBadge ? documentItem.visibilityBadge : '').trim();
-                                const visibilityIconUrl = String(documentItem && documentItem.visibilityIconUrl ? documentItem.visibilityIconUrl : '').trim();
-                                const editVisibilityLabel = String(documentItem && documentItem.editVisibilityBadge ? documentItem.editVisibilityBadge : '').trim();
-                                const editVisibilityIconUrl = String(documentItem && documentItem.editVisibilityIconUrl ? documentItem.editVisibilityIconUrl : '').trim();
-
-                                if (
-                                    visibilityLabel === ''
-                                    || visibilityIconUrl === ''
-                                    || editVisibilityLabel === ''
-                                    || editVisibilityIconUrl === ''
-                                ) {
-                                    return null;
-                                }
-
-                                const tooltipLabel = pageConfig.tooltipLabel
-                                    + ': ' + visibilityLabel
-                                    + ' | '
-                                    + pageConfig.documentsScopeEdit
-                                    + ': ' + editVisibilityLabel;
-
-                                const capsule = document.createElement('span');
-                                capsule.className = 'omo-documents__scope-capsule';
-                                capsule.setAttribute('aria-label', tooltipLabel);
-                                capsule.setAttribute('title', tooltipLabel);
-
-                                const buildScopeIcon = function (iconUrl) {
-                                    const icon = document.createElement('span');
-                                    icon.className = 'omo-documents__scope-icon';
-                                    icon.setAttribute('aria-hidden', 'true');
-
-                                    const image = document.createElement('img');
-                                    image.className = 'black-icon';
-                                    image.src = iconUrl;
-                                    image.alt = '';
-                                    image.loading = 'lazy';
-
-                                    icon.appendChild(image);
-                                    return icon;
-                                };
-
-                                const separator = document.createElement('span');
-                                separator.className = 'omo-documents__scope-separator';
-                                separator.setAttribute('aria-hidden', 'true');
-
-                                capsule.appendChild(buildScopeIcon(visibilityIconUrl));
-                                capsule.appendChild(separator);
-                                capsule.appendChild(buildScopeIcon(editVisibilityIconUrl));
-
+                                const template = document.createElement('template');
+                                template.innerHTML = String(documentItem.visibilityCapsuleHtml || '');
+                                const capsule = template.content.firstElementChild;
+                                if (capsule) capsule.classList.toggle('generic-visibility-capsule--compact', state.density === 'compact');
                                 return capsule;
                             };
 

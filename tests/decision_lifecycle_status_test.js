@@ -10,7 +10,7 @@ function fixture(phase, value, confirmation = false) {
     const dom = new JSDOM('<form data-omo-decision-lifecycle-confirm-template="Evaluation at {date}" data-omo-decision-lifecycle-consultation-confirm-template="Elaboration at {date}">'
         + '<select name="status"><option value="draft">Draft</option><option value="scheduled">Scheduled</option><option value="consultation">Elaboration</option><option value="evaluation">Evaluation</option></select>'
         + '<input type="datetime-local" name="consultation_start_at"><input type="datetime-local" name="consultation_end_at">'
-        + '<input type="datetime-local" name="evaluation_start_at"></form>', {runScripts: 'outside-only'});
+        + '<input type="datetime-local" name="evaluation_start_at"><input type="datetime-local" name="evaluation_end_at"></form>', {runScripts: 'outside-only'});
     const {window} = dom;
     const RealDate = window.Date;
     const now = new RealDate('2026-10-05T12:00:00').getTime();
@@ -67,4 +67,23 @@ for (const phase of ['consultation', 'evaluation']) {
     assert.equal(accepted.start.value, '2026-10-05T12:00', phase + ': confirmed early starts are adjusted');
     accepted.dom.window.close();
 }
+
+for (const consultationEnd of ['', '2026-10-20T17:00']) {
+    const directEvaluation = fixture('evaluation', '');
+    directEvaluation.form.querySelector('[name="consultation_end_at"]').value = consultationEnd;
+    directEvaluation.form.querySelector('[name="evaluation_end_at"]').value = '2026-10-30T17:00';
+    assert.equal(directEvaluation.window.omoDecisionEnsureLifecycleStatusConsistency(directEvaluation.form), true);
+    assert.equal(directEvaluation.form.querySelector('[name="consultation_start_at"]').value, '');
+    assert.equal(directEvaluation.form.querySelector('[name="consultation_end_at"]').value, consultationEnd, 'Without elaboration start, preserve its optional end');
+    assert.equal(directEvaluation.form.querySelector('[name="evaluation_end_at"]').value, '2026-10-30T17:00', 'Evaluation end is never filled or corrected automatically');
+    directEvaluation.dom.window.close();
+}
+const withElaboration = fixture('evaluation', '');
+withElaboration.form.querySelector('[name="consultation_start_at"]').value = '2026-10-10T09:00';
+withElaboration.form.querySelector('[name="consultation_end_at"]').value = '2026-10-20T17:00';
+assert.equal(withElaboration.window.omoDecisionEnsureLifecycleStatusConsistency(withElaboration.form), true);
+assert.equal(withElaboration.form.querySelector('[name="consultation_start_at"]').value, '2026-10-05T12:00');
+assert.equal(withElaboration.form.querySelector('[name="consultation_end_at"]').value, '2026-10-05T12:00', 'An elaboration with a start closes when evaluation starts');
+assert.equal(withElaboration.form.querySelector('[name="evaluation_end_at"]').value, '', 'Evaluation end remains optional');
+withElaboration.dom.window.close();
 console.log('Decision lifecycle status: passed.');

@@ -6,7 +6,9 @@ Les dates déjà indiquées sont conservées. Les dates manquantes sont reconsti
 
 ## 2026-11-09
 
-- Scrutins : sélecteurs de visibilité et d’édition identiques à ceux des documents. Lecture par l’organisation et édition par l’auteur par défaut ; les invitations conservent l’accès, les autres lecteurs consultent sans participer et plusieurs personnes peuvent gérer le scrutin selon la portée choisie. Le contexte reste verrouillé après le début du vote. Lecture publique des scrutins ouverts à tout le monde et conservation des droits dans les exports et imports.
+- Scrutins / dates et interruption : le démarrage de l’évaluation ne remplit plus une fin d’élaboration sans début d’élaboration. Depuis la gestion, un scrutin en évaluation sans aucune réponse, même partielle, peut revenir en préparation ; seule sa date de début d’évaluation est effacée, la fin reste conservée sans redémarrage automatique. Contrôle serveur des droits et protection contre une réponse simultanée.
+
+- Scrutins : sélecteurs de visibilité et d’édition identiques à ceux des documents, avec une capsule commune à deux icônes dans les listes et les cartes. Lecture par l’organisation et édition par l’auteur par défaut ; les invitations conservent l’accès, les autres lecteurs consultent sans participer et plusieurs personnes peuvent gérer le scrutin selon la portée choisie. Le contexte reste verrouillé après le début du vote. Lecture publique des scrutins ouverts à tout le monde et conservation des droits dans les exports et imports.
 
 - OMO / traductions : raccordement des textes corrigés aux bundles des modules et des composants communs, avec paramètres nommés et pluriels. Libellés des choix traduits sans changer les valeurs SQL ; sources françaises d'adminEdit préservées quelle que soit la langue affichée.
 

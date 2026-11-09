@@ -307,28 +307,6 @@
     max-width: 100%;
 }
 
-.omo-decisions__visibility-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 18px;
-    height: 18px;
-    flex: 0 0 auto;
-    opacity: 0.82;
-}
-
-.omo-decisions__visibility-icon img {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-}
-
-.omo-decisions__visibility-icon--compact {
-    width: 16px;
-    height: 16px;
-}
-
 .omo-decisions__compact-meta {
     display: flex;
     flex-wrap: wrap;

@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/ui_translations.php';
+require_once dirname(__DIR__, 3) . '/common/object_visibility_selector.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/modules/context.php';
 require_once __DIR__ . '/params/shared.php';
@@ -941,6 +942,7 @@ foreach ($decisionRows as $row) {
     $decisionType = DecisionProcess::normalizeDecisionType($decision->get('decision_type'));
     $method = DecisionProcess::normalizeEvaluationMethod($decision->get('evaluation_method'));
     $visibility = $decision->getVisibilityDisplayData($currentOrganizationId);
+    $editVisibility = $decision->getVisibilityDisplayData($currentOrganizationId, $decision->getPrimaryEditVisibilityRuleRow());
     $visibilityAccess = $decision->currentViewerCanAccessVisibility($currentOrganizationId);
 
     $isOwner = $currentUserId > 0 && (int)$decision->get('IDuser') === $currentUserId;
@@ -1251,6 +1253,10 @@ foreach ($decisionRows as $row) {
         'visibilityType' => (string)($visibility['type'] ?? DecisionProcess::getDefaultVisibilityType()),
         'visibilityLabel' => (string)($visibility['badgeText'] ?? ''),
         'visibilityIconUrl' => $resolveDecisionVisibilityIconUrl((string)($visibility['type'] ?? DecisionProcess::getDefaultVisibilityType())),
+        'editVisibilityType' => (string)$editVisibility['type'],
+        'editVisibilityLabel' => (string)$editVisibility['badgeText'],
+        'editVisibilityIconUrl' => $resolveDecisionVisibilityIconUrl((string)$editVisibility['type']),
+        'visibilityCapsuleHtml' => commonRenderObjectVisibilityCapsule($visibility, $editVisibility),
         'holonId' => $holonId,
         'holonLabel' => trim((string)($scopeMeta['value'] ?? '')) !== ''
             ? (string)$scopeMeta['value']

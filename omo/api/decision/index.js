@@ -1534,17 +1534,12 @@ function buildCompactAvatar(owner) {
 }
 
 function buildDecisionVisibilityIconHtml(item, className) {
-    const resolvedClassName = String(className || '').trim();
-    const iconUrl = String(item && item.visibilityIconUrl ? item.visibilityIconUrl : '').trim();
-    const iconLabel = String(item && item.visibilityLabel ? item.visibilityLabel : '').trim();
-
-    if (iconUrl === '') {
-        return '';
-    }
-
-    return '<span class="' + escapeHtml(resolvedClassName !== '' ? resolvedClassName : 'omo-decisions__visibility-icon') + '" role="img"'
-        + (iconLabel !== '' ? ' aria-label="' + escapeHtml(iconLabel) + '" title="' + escapeHtml(iconLabel) + '"' : '')
-        + '><img src="' + escapeHtml(iconUrl) + '" alt=""></span>';
+    const template = document.createElement('template');
+    template.innerHTML = String(item && item.visibilityCapsuleHtml ? item.visibilityCapsuleHtml : '');
+    const capsule = template.content.firstElementChild;
+    if (!capsule) return '';
+    capsule.classList.toggle('generic-visibility-capsule--compact', String(className || '').includes('--compact'));
+    return capsule.outerHTML;
 }
 
 function buildCompactMetaLine(item) {
@@ -1932,10 +1927,6 @@ function renderCard(item) {
             title: String(item.title || ''),
             description: String(item.description || '').trim(),
             statusLabel: String(item.statusLabel || ''),
-            titleIcon: {
-                url: String(item.visibilityIconUrl || ''),
-                label: String(item.visibilityLabel || '')
-            },
             owner: owner,
             badges: Array.isArray(item.badges) ? item.badges : [],
             actions: Array.isArray(item.actions) ? item.actions : [],
@@ -1948,6 +1939,8 @@ function renderCard(item) {
             openTitleAttribute: 'data-open-title'
         });
 
+        const titleLine = card.querySelector('.omo-decisions-card__title-line');
+        if (titleLine) titleLine.insertAdjacentHTML('beforeend', buildDecisionVisibilityIconHtml(item));
         const status = card.querySelector('.omo-decisions-card__status');
         if (status) {
             status.insertAdjacentHTML('beforeend', buildParticipationIndicatorHtml(item));

@@ -893,6 +893,7 @@ foreach ($documents as $document) {
         'visibilityType' => (string)($visibility['type'] ?? ''),
         'visibilityIconUrl' => $resolveDocumentVisibilityIconUrl((string)($visibility['type'] ?? '')),
         'editVisibilityBadge' => (string)($editVisibility['badgeText'] ?? ''),
+        'visibilityCapsuleHtml' => commonRenderObjectVisibilityCapsule($visibility, $editVisibility, 'omo-documents__scope-capsule'),
         'editVisibilityType' => (string)($editVisibility['type'] ?? ''),
         'editVisibilityIconUrl' => $resolveDocumentVisibilityIconUrl((string)($editVisibility['type'] ?? '')),
         'dateLabel' => $formatDate($resolvedUpdatedAt, in_array($updatedGroupKey, ['earlier', 'too_far'], true)),
@@ -1229,42 +1230,7 @@ if (!is_string($documentsPayload)) {
                                             <?php if (!empty($entry['isMissingUploadedFile'])): ?>
                                                 <span class="omo-documents__missing-upload-badge"><?= $escape(omoDocumentsScopeT('documents.upload_missing.badge')) ?></span>
                                             <?php endif; ?>
-                                            <?php if (
-                                                $entry['visibilityBadge'] !== '' && $entry['visibilityIconUrl'] !== ''
-                                                && $entry['editVisibilityBadge'] !== '' && $entry['editVisibilityIconUrl'] !== ''
-                                            ): ?>
-                                                <span
-                                                    class="omo-documents__scope-capsule"
-                                                    aria-label="<?= $escape(
-                                                        omoDocumentsScopeT('documents.scope.view') . ': ' . $entry['visibilityBadge']
-                                                        . ' | '
-                                                        . omoDocumentsScopeT('documents.scope.edit') . ': ' . $entry['editVisibilityBadge']
-                                                    ) ?>"
-                                                    title="<?= $escape(
-                                                        omoDocumentsScopeT('documents.scope.view') . ': ' . $entry['visibilityBadge']
-                                                        . ' | '
-                                                        . omoDocumentsScopeT('documents.scope.edit') . ': ' . $entry['editVisibilityBadge']
-                                                    ) ?>"
-                                                >
-                                                    <span class="omo-documents__scope-icon" aria-hidden="true">
-                                                        <img
-                                                            src="<?= $escape($entry['visibilityIconUrl']) ?>"
-                                                            alt=""
-                                                            class="black-icon"
-                                                            loading="lazy"
-                                                        >
-                                                    </span>
-                                                    <span class="omo-documents__scope-separator" aria-hidden="true"></span>
-                                                    <span class="omo-documents__scope-icon" aria-hidden="true">
-                                                        <img
-                                                            src="<?= $escape($entry['editVisibilityIconUrl']) ?>"
-                                                            alt=""
-                                                            class="black-icon"
-                                                            loading="lazy"
-                                                        >
-                                                    </span>
-                                                </span>
-                                            <?php endif; ?>
+                                            <?= $entry['visibilityCapsuleHtml'] ?>
                                         </span>
                                     </div>
 

@@ -18,6 +18,11 @@ $baseSourceLang = [
         'text' => 'Modifier la prise de décision',
         'context' => 'Drawer title when editing a decision process.',
     ],
+    'decisions.edit.interrupt.label' => ['text' => 'Interrompre le scrutin', 'context' => 'Management action before any evaluation response.'],
+    'decisions.edit.interrupt.help' => ['text' => 'Revenir en préparation sans effacer la date de fin d’évaluation.', 'context' => 'Help for interrupting an evaluation without responses.'],
+    'decisions.edit.interrupt.confirm' => ['text' => 'Interrompre le scrutin et revenir en préparation ? Les modifications non enregistrées seront perdues.', 'context' => 'Confirmation before interrupting the evaluation.'],
+    'decisions.edit.interrupt.pending' => ['text' => 'Interruption en cours…', 'context' => 'Progress label while interrupting evaluation.'],
+    'decisions.edit.interrupt.error' => ['text' => 'Impossible d’interrompre le scrutin pour le moment.', 'context' => 'Fallback error for the interruption request.'],
     'decisions.edit.view_title' => [
         'text' => 'Voir la prise de décision',
         'context' => 'Drawer title when opening a decision in read-only mode.',
@@ -665,6 +670,16 @@ if (!function_exists('omoDecisionRenderEditorGroupSwitch')) {
     <div class="omo-panel-view__body">
         <div class="omo-panel-view__body_content omo-decision-edit__stack generic-drawer-content generic-form-stack generic-form-stack--compact">
             <?php if ($isEditing && !$isDuplicate && ($context['accessMode'] ?? '') !== 'public'): require_once dirname(__DIR__, 3) . '/common/object_mail/ui.php'; omoObjectMailButton((int)$context['organizationId'], 'decision', (int)$decision->getId()); endif; ?>
+            <?php if ($isEditing && $intent === 'manage' && !empty($context['canManage']) && $decision->canInterruptEvaluation()): ?>
+            <div class="generic-form-actions">
+                <button type="button" class="generic-action-button generic-action-button--secondary"
+                    data-omo-decision-interrupt
+                    data-request-url="<?= $escape(omoDecisionBuildActionUrl()) ?>"
+                    data-request-payload="<?= $escape(json_encode(['oid' => (int)$context['organizationId'], 'id' => (int)$decision->getId(), 'decision_action' => 'interrupt'], JSON_THROW_ON_ERROR)) ?>"
+                ><?= $escape(t('decisions.edit.interrupt.label', [], $lang, $baseSourceLang)) ?></button>
+                <span class="generic-meta"><?= $escape(t('decisions.edit.interrupt.help', [], $lang, $baseSourceLang)) ?></span>
+            </div>
+            <?php endif; ?>
 
 
             <?php if (false && $isEditing && $intent === 'manage'): ?>
@@ -1081,6 +1096,9 @@ if (!function_exists('omoDecisionRenderEditorGroupSwitch')) {
     'decisionsEditImportNoFile' => t('decisions.edit.import.no_file', [], $lang, $baseSourceLang),
     'decisionsEditImportLoading' => t('decisions.edit.import.loading', [], $lang, $baseSourceLang),
     'decisionsEditImportError' => t('decisions.edit.import.error', [], $lang, $baseSourceLang),
+    'interruptConfirm' => t('decisions.edit.interrupt.confirm', [], $lang, $baseSourceLang),
+    'interruptPending' => t('decisions.edit.interrupt.pending', [], $lang, $baseSourceLang),
+    'interruptError' => t('decisions.edit.interrupt.error', [], $lang, $baseSourceLang),
 ]) ?>
 
 <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/decision/edit_shared.css') ?>">

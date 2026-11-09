@@ -3954,3 +3954,49 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
 
 /* Inactive records remain manageable while their status is visually distinct. */
 .generic-section--inactive { filter: grayscale(1); opacity: .65; }
+
+.generic-visibility-capsule {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 24px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 84%, var(--color-surface, #ffffff));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-border, #d1d5db) 86%, transparent);
+}
+
+.generic-visibility-capsule__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    opacity: 0.86;
+}
+
+.generic-visibility-capsule__icon img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.generic-visibility-capsule__separator {
+    width: 1px;
+    height: 12px;
+    background: color-mix(in srgb, var(--color-text-light, #64748b) 32%, transparent);
+    border-radius: 999px;
+}
+
+.generic-visibility-capsule--compact {
+    min-height: 22px;
+    padding: 0 7px;
+    gap: 5px;
+}
+
+.generic-visibility-capsule--compact .generic-visibility-capsule__icon {
+    width: 13px;
+    height: 13px;
+}

@@ -43,7 +43,7 @@
         if (consultationStart && consultationStart.value && new Date(consultationStart.value) > now) {
             consultationStart.value = nowValue;
         }
-        if (consultationEnd && (!consultationEnd.value || new Date(consultationEnd.value) > now)) {
+        if (consultationStart && consultationStart.value && consultationEnd && (!consultationEnd.value || new Date(consultationEnd.value) > now)) {
             consultationEnd.value = nowValue;
         }
         if (evaluationStart) {
