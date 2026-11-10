@@ -13,6 +13,8 @@ $canUseGovernance = $organizationLoaded && omoDecisionParamsCanUseGovernance($or
 $descriptionKey = $canUseGovernance ? 'decisions.params.description' : 'decisions.params.description.discovery';
 $methods = $config['methods'];
 $governance = $config['governance'];
+$minimumParticipationPercent = str_ends_with((string)$governance['minimum_participation'], '%');
+$minimumParticipationValue = $minimumParticipationPercent ? substr((string)$governance['minimum_participation'], 0, -1) : (string)$governance['minimum_participation'];
 ?>
 <section class="generic-drawer-content" data-omo-decision-params>
     <div class="generic-form-section__heading">
@@ -61,11 +63,23 @@ $governance = $config['governance'];
                         <option value="consent"<?= ($governance['evaluation_method'] ?? '') === 'consent' ? ' selected' : '' ?>><?= htmlspecialchars(omoDecisionParamsT('decisions.params.option.governance_method.consent'), ENT_QUOTES, 'UTF-8') ?></option>
                     </select>
                 </label>
-                <label class="generic-form-field">
-                    <span class="generic-form-label"><?= htmlspecialchars(omoDecisionParamsT('decisions.params.field.minimum_participation'), ENT_QUOTES, 'UTF-8') ?></span>
-                    <input class="generic-form-control generic-form-control--compact" type="text" name="governance[minimum_participation]" maxlength="20" value="<?= htmlspecialchars((string)$governance['minimum_participation'], ENT_QUOTES, 'UTF-8') ?>" aria-describedby="omo-decision-params-quota-help">
-                    <span class="generic-help-text" id="omo-decision-params-quota-help"><?= htmlspecialchars(omoDecisionParamsT('decisions.params.field.minimum_participation_hint'), ENT_QUOTES, 'UTF-8') ?></span>
-                </label>
+                <div class="generic-form-field">
+                    <div class="generic-heading-with-help">
+                        <label class="generic-form-label" for="omo-decision-params-quota"><?= htmlspecialchars(omoDecisionParamsT('decisions.params.field.minimum_participation'), ENT_QUOTES, 'UTF-8') ?></label>
+                        <details class="generic-context-help">
+                            <summary aria-label="<?= htmlspecialchars(omoDecisionParamsT('decisions.params.field.minimum_participation_hint'), ENT_QUOTES, 'UTF-8') ?>">?</summary>
+                            <div class="generic-context-help__content" id="omo-decision-params-quota-help"><?= htmlspecialchars(omoDecisionParamsT('decisions.params.field.minimum_participation_hint'), ENT_QUOTES, 'UTF-8') ?></div>
+                        </details>
+                    </div>
+                    <!-- Keep the numeric value narrower than its unit selector, including on mobile. -->
+                    <div class="generic-form-grid generic-form-grid--compact" style="--param-form-grid-columns: minmax(0, 1fr) minmax(0, 2fr)">
+                        <input class="generic-form-control generic-form-control--compact" id="omo-decision-params-quota" type="number" name="governance[minimum_participation]" min="<?= $minimumParticipationPercent ? '0.01' : '1' ?>" max="<?= $minimumParticipationPercent ? '100' : '2147483647' ?>" step="<?= $minimumParticipationPercent ? '0.01' : '1' ?>" inputmode="<?= $minimumParticipationPercent ? 'decimal' : 'numeric' ?>" value="<?= htmlspecialchars($minimumParticipationValue, ENT_QUOTES, 'UTF-8') ?>" aria-describedby="omo-decision-params-quota-help" data-omo-decision-params-quota>
+                        <select class="generic-form-control generic-form-control--compact" name="governance[minimum_participation_unit]" aria-label="<?= htmlspecialchars(omoDecisionParamsT('decisions.params.field.minimum_participation_unit'), ENT_QUOTES, 'UTF-8') ?>" data-omo-decision-params-quota-unit>
+                            <option value="count"<?= !$minimumParticipationPercent ? ' selected' : '' ?>><?= htmlspecialchars(omoDecisionParamsT('decisions.params.option.minimum_participation.count'), ENT_QUOTES, 'UTF-8') ?></option>
+                            <option value="percent"<?= $minimumParticipationPercent ? ' selected' : '' ?>><?= htmlspecialchars(omoDecisionParamsT('decisions.params.option.minimum_participation.percent'), ENT_QUOTES, 'UTF-8') ?></option>
+                        </select>
+                    </div>
+                </div>
                 <div class="generic-form-field">
                     <div class="generic-heading-with-help">
                         <label class="generic-form-label" for="omo-decision-params-question"><?= htmlspecialchars(omoDecisionParamsT('decisions.params.field.governance_question'), ENT_QUOTES, 'UTF-8') ?></label>

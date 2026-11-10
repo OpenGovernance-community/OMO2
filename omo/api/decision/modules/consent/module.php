@@ -328,6 +328,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
         ];
 
         $responsePayload = [
+            'responsesEditable' => $participantResponsesEditable,
             'saveUrl' => $evaluationPreview ? '' : '/omo/api/decision/modules/consent/respond.php',
             'evaluationPreview' => $evaluationPreview,
             'redirectUrl' => $evaluationPreview ? '' : omoDecisionBuildContextualEditorUrl($context, 'participate'),
@@ -337,6 +338,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                     ? t('decisions.consent.action.update_response', [], $lang, $sourceLang)
                     : t('decisions.consent.action.submit_response', [], $lang, $sourceLang),
                 'saving' => t('decisions.consent.action.submitting_response', [], $lang, $sourceLang),
+                'update' => t('decisions.consent.action.update_response', [], $lang, $sourceLang),
                 'success' => t('decisions.consent.feedback.response_success', [], $lang, $sourceLang),
                 'error' => t('decisions.consent.feedback.response_error', [], $lang, $sourceLang),
             ],

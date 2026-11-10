@@ -11,6 +11,8 @@ window.commonPageScripts["/omo/api/decision/params/index.js"] = function (pageCo
     var governanceFields = root.querySelector('[data-omo-decision-params-governance-fields]');
     var liveVotesToggle = root.querySelector('[data-omo-decision-params-live-votes]');
     var anonymousFields = root.querySelector('[data-omo-decision-params-anonymous-fields]');
+    var quota = root.querySelector('[data-omo-decision-params-quota]');
+    var quotaUnit = root.querySelector('[data-omo-decision-params-quota-unit]');
     var feedback = root.querySelector('[data-omo-decision-params-feedback]');
     var submit = root.querySelector('[data-omo-decision-params-submit]');
     var saveLabel = pageConfig.saveLabel;
@@ -21,6 +23,13 @@ window.commonPageScripts["/omo/api/decision/params/index.js"] = function (pageCo
         var liveVotesEnabled = governanceEnabled && !!(liveVotesToggle && liveVotesToggle.checked);
         if (governanceFields) governanceFields.hidden = !governanceEnabled;
         if (anonymousFields) anonymousFields.hidden = !liveVotesEnabled;
+        if (quota && quotaUnit) {
+            var percent = quotaUnit.value === 'percent';
+            quota.min = percent ? '0.01' : '1';
+            quota.max = percent ? '100' : '2147483647';
+            quota.step = percent ? '0.01' : '1';
+            quota.inputMode = percent ? 'decimal' : 'numeric';
+        }
     }
     function showFeedback(message, error) {
         if (message && typeof window.commonNotify === 'function') {
@@ -37,6 +46,7 @@ window.commonPageScripts["/omo/api/decision/params/index.js"] = function (pageCo
     }
     if (governanceToggle) governanceToggle.addEventListener('change', sync);
     if (liveVotesToggle) liveVotesToggle.addEventListener('change', sync);
+    if (quotaUnit) quotaUnit.addEventListener('change', sync);
     if (form) form.addEventListener('submit', function (event) {
         event.preventDefault();
         if (!form.reportValidity()) return;

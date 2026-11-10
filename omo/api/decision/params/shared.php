@@ -20,7 +20,10 @@ if (!function_exists('omoDecisionParamsSourceLang')) {
             'decisions.params.field.governance_enabled' => ['text' => 'Activer les décisions hors réorg', 'context' => 'Governance workflow availability label.'],
             'decisions.params.field.governance_method' => ['text' => 'Méthode de validation', 'context' => 'Default evaluation method for governance workflows.'],
             'decisions.params.field.minimum_participation' => ['text' => 'Participation minimale pour valider', 'context' => 'Optional participation quota for all governance decisions.'],
-            'decisions.params.field.minimum_participation_hint' => ['text' => 'Saisissez un nombre entier (3, 10) ou un pourcentage des invités (50%). Laissez vide pour ne pas imposer de minimum. Les réponses « Pas d’objection » comptent ; les absences de réponse ne comptent pas. Le pourcentage est arrondi au nombre de personnes supérieur. Ce seuil s’applique aux décisions hors réorg lors de leur clôture.', 'context' => 'Governance participation quota format, counting and scope.'],
+            'decisions.params.field.minimum_participation_hint' => ['text' => 'Choisissez un nombre de personnes ou un pourcentage des invités, puis indiquez le minimum. Laissez le champ vide pour ne pas imposer de minimum. Les réponses « Pas d’objection » comptent ; les absences de réponse ne comptent pas. Le pourcentage est arrondi au nombre de personnes supérieur. Ce seuil s’applique aux décisions hors réorg lors de leur clôture.', 'context' => 'Governance participation quota format, counting and scope.'],
+            'decisions.params.field.minimum_participation_unit' => ['text' => 'Type de minimum', 'context' => 'Accessible label of the governance participation quota unit selector.'],
+            'decisions.params.option.minimum_participation.count' => ['text' => 'Nombre minimum', 'context' => 'Governance quota expressed as an absolute number of people.'],
+            'decisions.params.option.minimum_participation.percent' => ['text' => 'Pourcentage minimum', 'context' => 'Governance quota expressed as a percentage of invitees.'],
             'decisions.params.error.minimum_participation' => ['text' => 'La participation minimale doit être vide, un nombre entier positif ou un pourcentage supérieur à 0 et inférieur ou égal à 100% (deux décimales au maximum).', 'context' => 'Invalid governance participation quota.'],
             'decisions.params.option.governance_method.simple_vote' => ['text' => 'Vote simple', 'context' => 'Simple vote option for governance workflow settings.'],
             'decisions.params.option.governance_method.consent' => ['text' => 'Consentement', 'context' => 'Consent option for governance workflow settings.'],
@@ -108,13 +111,23 @@ if (!function_exists('omoDecisionParamsNormalizeConfig')) {
         if (!in_array($governanceMethod, [DecisionProcess::METHOD_SIMPLE_VOTE, DecisionProcess::METHOD_CONSENT], true)) {
             $governanceMethod = DecisionProcess::METHOD_CONSENT;
         }
+        $minimumParticipation = $governance['minimum_participation'] ?? '';
+        if (array_key_exists('minimum_participation_unit', $governance)) {
+            $unit = $governance['minimum_participation_unit'];
+            if (!in_array($unit, ['count', 'percent'], true)
+                || (!is_scalar($minimumParticipation) && $minimumParticipation !== null)
+                || str_contains((string)$minimumParticipation, '%')) {
+                throw new \InvalidArgumentException('Invalid participation quota unit or value');
+            }
+            if ($unit === 'percent' && trim((string)$minimumParticipation) !== '') $minimumParticipation .= '%';
+        }
         return [
             'methods' => $normalizedMethods,
             'governance' => [
                 'enabled' => !empty($governance['enabled']),
                 'evaluation_method' => $governanceMethod,
                 'question' => $question,
-                'minimum_participation' => DecisionProcess::normalizeGovernanceMinimumParticipation($governance['minimum_participation'] ?? ''),
+                'minimum_participation' => DecisionProcess::normalizeGovernanceMinimumParticipation($minimumParticipation),
                 'minimum_participation_updated_at' => (string)($governance['minimum_participation_updated_at'] ?? ''),
                 'consultation_days' => $consultationDays,
                 'vote_days' => $voteDays,

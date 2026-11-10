@@ -686,6 +686,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
         ];
 
         $responsePayload = [
+            'responsesEditable' => $participantResponsesEditable,
             'saveUrl' => $evaluationPreview ? '' : '/omo/api/decision/modules/vote/respond.php',
             'evaluationPreview' => $evaluationPreview,
             'redirectUrl' => $evaluationPreview ? '' : omoDecisionBuildContextualEditorUrl($context, 'participate'),
@@ -697,6 +698,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                     ? t('decisions.vote.action.update_response', [], $lang, $sourceLang)
                     : t('decisions.vote.action.submit_response', [], $lang, $sourceLang),
                 'saving' => t('decisions.vote.action.submitting_response', [], $lang, $sourceLang),
+                'update' => t('decisions.vote.action.update_response', [], $lang, $sourceLang),
                 'success' => t('decisions.vote.feedback.response_success', [], $lang, $sourceLang),
                 'error' => t('decisions.vote.feedback.response_error', [], $lang, $sourceLang),
                 'multipleHint' => $maxChoices === 0

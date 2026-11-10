@@ -17,6 +17,11 @@
         var form = root.closest ? root.closest('form') : null;
         var draftUrl = String(root.getAttribute('data-omo-decision-one-at-a-time-draft-url') || '');
         var draftTimer = null;
+        if (form) {
+            form.addEventListener('submit', function () {
+                window.clearTimeout(draftTimer);
+            });
+        }
         if (!previous || !next || !dots) {
             return;
         }
@@ -50,13 +55,14 @@
         };
 
         var saveDraft = function () {
-            if (draftUrl === '' || !form || typeof window.fetch !== 'function') {
+            if (draftUrl === '' || !form || form.dataset.omoDecisionResponseSubmitted === '1' || typeof window.fetch !== 'function') {
                 return;
             }
             if (draftTimer) {
                 window.clearTimeout(draftTimer);
             }
             draftTimer = window.setTimeout(function () {
+                if (form.dataset.omoDecisionResponseSubmitted === '1') return;
                 var formData = new FormData(form);
                 formData.set('draft', '1');
                 window.fetch(draftUrl, {

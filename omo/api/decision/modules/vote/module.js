@@ -916,7 +916,12 @@ window.commonPageScripts["/omo/api/decision/modules/vote/module.js"] = function 
                             payload = {};
                         }
 
-                        const setFeedback = function (message, isError) {
+                        const setFeedback = function (message, isError, isFieldValidation) {
+                            if (isError && !isFieldValidation && typeof window.omoDecisionNotifyError === 'function' && window.omoDecisionNotifyError(message)) {
+                                feedbackNode.textContent = '';
+                                feedbackNode.classList.remove('is-error', 'is-success');
+                                return;
+                            }
                             feedbackNode.textContent = String(message || '');
                             feedbackNode.classList.toggle('is-error', !!isError);
                             feedbackNode.classList.toggle('is-success', !isError && message !== '');
@@ -932,11 +937,11 @@ window.commonPageScripts["/omo/api/decision/modules/vote/module.js"] = function 
                                     ? Math.max(Math.floor(rawMaxChoices), 0)
                                     : 0;
                                 if (checkedChoices.length === 0) {
-                                    setFeedback(payload.texts && payload.texts.multipleHint ? payload.texts.multipleHint : 'Choisissez au moins une proposition.', true);
+                                    setFeedback(payload.texts && payload.texts.multipleHint ? payload.texts.multipleHint : 'Choisissez au moins une proposition.', true, true);
                                     return;
                                 }
                                 if (maxChoices > 0 && checkedChoices.length > maxChoices) {
-                                    setFeedback(payload.texts && payload.texts.multipleHint ? payload.texts.multipleHint : (window.omoUiText || function (key, fallback) { return fallback; })("copy_trop_de_propositions_selectionnees", "Trop de propositions sélectionnées."), true);
+                                    setFeedback(payload.texts && payload.texts.multipleHint ? payload.texts.multipleHint : (window.omoUiText || function (key, fallback) { return fallback; })("copy_trop_de_propositions_selectionnees", "Trop de propositions sélectionnées."), true, true);
                                     return;
                                 }
                             }
@@ -978,8 +983,12 @@ window.commonPageScripts["/omo/api/decision/modules/vote/module.js"] = function 
                                     }
 
                                     if (typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(form);
-                                    setFeedback(response.message || (payload.texts && payload.texts.success ? payload.texts.success : ''), false);
                                     window.dispatchEvent(new CustomEvent('omo-decision-response-saved'));
+                                    if (typeof window.omoDecisionKeepResponseInPlace === 'function'
+                                        && window.omoDecisionKeepResponseInPlace(form, response, payload, submitButton, setFeedback)) {
+                                        return;
+                                    }
+                                    setFeedback(response.message || (payload.texts && payload.texts.success ? payload.texts.success : ''), false);
 
                                     if (response.redirectUrl) {
                                         window.setTimeout(function () {

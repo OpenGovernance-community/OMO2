@@ -6,9 +6,11 @@ Les dates déjà indiquées sont conservées. Les dates manquantes sont reconsti
 
 ## 2026-11-10
 
+- Scrutins / enregistrement des réponses : sur la page de participation, confirmation par notification sans recharger le questionnaire ni ouvrir un tiroir « Prises de décision ». Les réponses en cours dans les autres blocs sont conservées ; le bloc enregistré reste modifiable ou se verrouille selon les paramètres du scrutin.
+
 - Scrutins / participation par lien personnel : les réponses sont validées et enregistrées dans le bloc choisi. Correction du message « Veuillez attribuer une mention à chaque proposition » qui pouvait apparaître en jugement majoritaire sur un bloc entièrement rempli, car le serveur vérifiait les propositions du premier bloc.
 
-- Décisions hors réorg : seuil facultatif de participation dans les paramètres de Décisions, en nombre entier ou en pourcentage des invités (arrondi au supérieur). Les réponses « Pas d’objection » comptent ; les absences de réponse et les brouillons ne comptent pas. À la clôture, un quota insuffisant empêche la validation et l’application des modifications, en vote simple comme en consentement ; le résultat conserve le seuil et les effectifs de clôture.
+- Décisions hors réorg : seuil facultatif de participation dans les paramètres de Décisions, avec un champ numérique suivi du choix « Nombre minimum » ou « Pourcentage minimum » des invités (arrondi au supérieur), et une aide accessible par la capsule « ? ». Les réponses « Pas d’objection » comptent ; les absences de réponse et les brouillons ne comptent pas. À la clôture, un quota insuffisant empêche la validation et l’application des modifications, en vote simple comme en consentement ; le résultat conserve le seuil et les effectifs de clôture.
 
 - Règles / MCP, API et assistant : consignes communes pour lire le texte complet et l’intention avant d’interpréter une règle, avec suivi de la pagination et recherche dans le contenu. Les listes de règles fournissent un appel direct vers leur détail ; les titres seuls ne suffisent pas à répondre sur les obligations ou les exceptions.
 
