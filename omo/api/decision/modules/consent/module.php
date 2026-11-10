@@ -727,6 +727,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                 </div>
                 <?php endif; ?>
 
+                <?= omoDecisionRenderGovernanceParticipationQuota($decision, $decisionGroup, $resultsMode, $escape) ?>
                 <?php if ($isParticipateMode): ?>
                 <?php if ($isConsultationPhase): ?>
                 <div class="omo-decision-consent__form generic-form-stack generic-form-stack--compact">

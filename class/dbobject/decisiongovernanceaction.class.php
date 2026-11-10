@@ -696,8 +696,13 @@ class DecisionGovernanceAction extends DbObject
             $winningProposalIds = $method === DecisionProcess::METHOD_SIMPLE_VOTE
                 ? array_fill_keys(self::getSimpleVoteWinningProposalIds($responses), true)
                 : [];
+            $quota = $decision->getGovernanceParticipationQuota($group, $responses);
             foreach ($group->getProposals(true) as $proposal) {
                 if (!$proposal instanceof DecisionProposal || !$proposal->hasGovernanceActions()) {
+                    continue;
+                }
+                if (!$quota['met']) {
+                    self::setProposalActionStatus($proposal, self::STATUS_REJECTED, DecisionProcess::governanceParticipationQuotaFailureMessage($quota), self::STATUS_PENDING);
                     continue;
                 }
                 if ($method === DecisionProcess::METHOD_CONSENT && self::proposalHasObjection($proposal, $responses)) {

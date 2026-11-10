@@ -377,6 +377,22 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
 
             $effectiveHolon = $decisionHolon ?: $currentHolon;
             $decisionGroup = $decision->getPrimaryGroup(true);
+            // Personal participation links submit each questionnaire block separately.
+            $decisionGroupId = (int)($input['gid'] ?? 0);
+            if ($decisionGroupId > 0) {
+                $candidateGroup = new DecisionGroup();
+                if (
+                    !$candidateGroup->load($decisionGroupId)
+                    || (int)$candidateGroup->get('IDdecision_process') !== (int)$decision->getId()
+                ) {
+                    return [
+                        'status' => false,
+                        'code' => 404,
+                        'error_key' => 'decisions.edit.context.decision_not_found',
+                    ];
+                }
+                $decisionGroup = $candidateGroup;
+            }
             $requestedIntent = isset($input['intent']) ? trim((string)$input['intent']) : '';
             $participantStatus = DecisionParticipant::normalizeStatus($participant->get('status'));
             $hasParticipation = (int)$participant->get('active') === 1

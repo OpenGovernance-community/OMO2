@@ -19,6 +19,9 @@ if (!function_exists('omoDecisionParamsSourceLang')) {
             'decisions.params.field.consultation_only' => ['text' => 'Consultation seule', 'context' => 'Consultation only availability label.'],
             'decisions.params.field.governance_enabled' => ['text' => 'Activer les décisions hors réorg', 'context' => 'Governance workflow availability label.'],
             'decisions.params.field.governance_method' => ['text' => 'Méthode de validation', 'context' => 'Default evaluation method for governance workflows.'],
+            'decisions.params.field.minimum_participation' => ['text' => 'Participation minimale pour valider', 'context' => 'Optional participation quota for all governance decisions.'],
+            'decisions.params.field.minimum_participation_hint' => ['text' => 'Saisissez un nombre entier (3, 10) ou un pourcentage des invités (50%). Laissez vide pour ne pas imposer de minimum. Les réponses « Pas d’objection » comptent ; les absences de réponse ne comptent pas. Le pourcentage est arrondi au nombre de personnes supérieur. Ce seuil s’applique aux décisions hors réorg lors de leur clôture.', 'context' => 'Governance participation quota format, counting and scope.'],
+            'decisions.params.error.minimum_participation' => ['text' => 'La participation minimale doit être vide, un nombre entier positif ou un pourcentage supérieur à 0 et inférieur ou égal à 100% (deux décimales au maximum).', 'context' => 'Invalid governance participation quota.'],
             'decisions.params.option.governance_method.simple_vote' => ['text' => 'Vote simple', 'context' => 'Simple vote option for governance workflow settings.'],
             'decisions.params.option.governance_method.consent' => ['text' => 'Consentement', 'context' => 'Consent option for governance workflow settings.'],
             'decisions.params.field.governance_question' => ['text' => 'Question de consentement par défaut', 'context' => 'Default governance consent question label.'],
@@ -70,6 +73,8 @@ if (!function_exists('omoDecisionParamsGetDefaultConfig')) {
                 'enabled' => false,
                 'evaluation_method' => DecisionProcess::METHOD_CONSENT,
                 'question' => '',
+                'minimum_participation' => '',
+                'minimum_participation_updated_at' => '',
                 'consultation_days' => 5,
                 'vote_days' => 5,
                 'show_live_votes' => false,
@@ -109,6 +114,8 @@ if (!function_exists('omoDecisionParamsNormalizeConfig')) {
                 'enabled' => !empty($governance['enabled']),
                 'evaluation_method' => $governanceMethod,
                 'question' => $question,
+                'minimum_participation' => DecisionProcess::normalizeGovernanceMinimumParticipation($governance['minimum_participation'] ?? ''),
+                'minimum_participation_updated_at' => (string)($governance['minimum_participation_updated_at'] ?? ''),
                 'consultation_days' => $consultationDays,
                 'vote_days' => $voteDays,
                 'show_live_votes' => $showLiveVotes,
@@ -196,7 +203,15 @@ if (!function_exists('omoDecisionParamsStoreConfig')) {
             return ['status' => false, 'text' => omoDecisionParamsT('decisions.params.error.unavailable')];
         }
         $parameters = $application->getParametersArray();
-        $normalizedConfig = omoDecisionParamsNormalizeConfig($config);
+        try {
+            $normalizedConfig = omoDecisionParamsNormalizeConfig($config);
+        } catch (\InvalidArgumentException $exception) {
+            return ['status' => false, 'text' => omoDecisionParamsT('decisions.params.error.minimum_participation')];
+        }
+        $previousGovernance = omoDecisionParamsGetStoredConfig($organization)['governance'];
+        $normalizedConfig['governance']['minimum_participation_updated_at'] = $normalizedConfig['governance']['minimum_participation'] !== $previousGovernance['minimum_participation']
+            ? (new \DateTimeImmutable('now'))->format('Y-m-d H:i:s')
+            : $previousGovernance['minimum_participation_updated_at'];
         if (!omoDecisionParamsCanUseGovernance($organization)) {
             $normalizedConfig['governance'] = omoDecisionParamsGetStoredConfig($organization)['governance'];
         }

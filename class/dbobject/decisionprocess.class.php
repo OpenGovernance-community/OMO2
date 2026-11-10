@@ -37,6 +37,7 @@ class DecisionProcess extends DbObject
                 'evaluation_cloture_echec' => ['text' => 'Impossible de clôturer le scrutin pour le moment.', 'context' => 'Failure while ending an evaluation early.'],
                 'questions_suppression_verrouillee' => ['text' => 'Les questions ne peuvent plus être supprimées après le début de l’évaluation.', 'context' => 'Question deletion rejected once evaluation has started.'],
                 'question_suppression_invalide' => ['text' => 'La question à supprimer n’appartient pas à ce scrutin.', 'context' => 'Question deletion ownership validation.'],
+                'governance_quota_not_met' => ['text' => 'Participation minimale non atteinte : {count} sur {required} (nombre d’invités : {invited}). Aucune modification n’est validée.', 'context' => 'Governance modifications rejected because the participation quota was not met.'],
                 'derniere_question_protegee' => ['text' => 'Le scrutin doit conserver au moins une question.', 'context' => 'Reject deleting the last questionnaire block.'],
                 'questions_suppression_echec' => ['text' => 'Impossible de supprimer les questions et leurs propositions.', 'context' => 'Question deletion transaction failure.'],
                 'visibilite_invalide' => ['text' => 'Visibilité invalide pour ce scrutin.', 'context' => 'Invalid decision read or edit scope.'],
@@ -688,6 +689,83 @@ class DecisionProcess extends DbObject
         return $this->getWorkflowType() === self::WORKFLOW_GOVERNANCE;
     }
 
+    public static function normalizeGovernanceMinimumParticipation($value): string
+    {
+        if (!is_scalar($value) && $value !== null) throw new \InvalidArgumentException('Invalid participation quota');
+        $value = trim((string)$value);
+        if ($value === '') return '';
+        if (preg_match('/^[0-9]{1,10}$/D', $value) && (float)$value > 0 && (float)$value <= 2147483647) {
+            return (string)(int)$value;
+        }
+        if (preg_match('/^([0-9]{1,3}(?:[.,][0-9]{1,2})?)\s*%$/D', $value, $matches)) {
+            $percent = str_replace(',', '.', $matches[1]);
+            if ((float)$percent > 0 && (float)$percent <= 100) return (string)(float)$percent . '%';
+        }
+        throw new \InvalidArgumentException('Invalid participation quota');
+    }
+
+    public function getGovernanceParticipationQuota(DecisionGroup $group, ?array $responses = null): array
+    {
+        $unrestricted = ['minimum' => '', 'required' => 0, 'participating' => 0, 'invited' => 0, 'met' => true];
+        if (!$this->isGovernanceWorkflow() || (int)$group->get('IDdecision_process') !== (int)$this->getId()) return $unrestricted;
+        $parameters = $this->getRootParametersArray();
+        $saved = $parameters['governance_participation_results'][(int)$group->getId()] ?? null;
+        if (is_array($saved)) return $saved;
+        $application = OrganizationApplication::loadByOrganizationAndDirectory((int)$this->get('IDorganization'), 'decision');
+        $settings = $application instanceof OrganizationApplication ? $application->getParametersArray() : [];
+        $minimum = self::normalizeGovernanceMinimumParticipation($settings['decisionSettings']['governance']['minimum_participation'] ?? '');
+        if ($minimum === '') return $unrestricted;
+        $updatedAt = self::normalizeDateTimeValue($settings['decisionSettings']['governance']['minimum_participation_updated_at'] ?? null);
+        $closedAt = self::normalizeDateTimeValue($this->get('results_published_at'))
+            ?? self::normalizeDateTimeValue($this->get('evaluation_end_at'));
+        // Existing completed decisions must not be reassessed against a newly configured quota.
+        if ($updatedAt && $closedAt && $closedAt < $updatedAt
+            && self::getStatusRank($this->get('status')) >= self::getStatusRank(self::STATUS_RESULTS)) return $unrestricted;
+        $participants = [];
+        foreach ($this->getParticipants(true) as $participant) {
+            // Declining does not remove an invited person from the percentage denominator.
+            if ($participant instanceof DecisionParticipant && $participant->get('status') !== DecisionParticipant::STATUS_REVOKED) {
+                $participants[(int)$participant->getId()] = $participant->get('status') !== DecisionParticipant::STATUS_DECLINED;
+            }
+        }
+        $proposalIds = [];
+        foreach ($group->getProposals(true) as $proposal) $proposalIds[(int)$proposal->getId()] = true;
+        $method = self::normalizeEvaluationMethod($group->get('evaluation_method'));
+        $voters = [];
+        foreach ($responses ?? $group->getResponses(DecisionResponse::STATUS_SUBMITTED)->getArrayCopy() as $response) {
+            if (!$response instanceof DecisionResponse || $response->get('status') !== DecisionResponse::STATUS_SUBMITTED
+                || (int)$response->get('IDdecision_process') !== (int)$this->getId()
+                || (int)$response->get('IDdecision_group') !== (int)$group->getId()
+                || empty($participants[(int)$response->get('IDdecision_participant')])) continue;
+            $values = DecisionGovernanceAction::normalizeState($response->get('parameters'));
+            $values = $values[$method] ?? $values;
+            if (!is_array($values) || !$proposalIds) continue;
+            if ($method === self::METHOD_CONSENT) {
+                $choices = is_array($values['choices'] ?? null) ? $values['choices'] : [];
+                foreach ($proposalIds as $id => $_) {
+                    if (!in_array($choices[$id] ?? '', ['favor', 'no_objection', 'objection'], true)) continue 2;
+                }
+            } elseif ($method === self::METHOD_SIMPLE_VOTE) {
+                $selected = is_array($values['selected_proposal_ids'] ?? null) ? $values['selected_proposal_ids'] : [$values['selected_proposal_id'] ?? 0];
+                if (!array_intersect(array_keys($proposalIds), array_map('intval', $selected))) continue;
+            } else {
+                continue;
+            }
+            $voters[(int)$response->get('IDdecision_participant')] = true;
+        }
+        $invited = count($participants);
+        // Integer hundredths avoid floating point rounding at exact percentage boundaries.
+        $required = str_ends_with($minimum, '%')
+            ? max(1, (int)ceil($invited * (int)round((float)$minimum * 100) / 10000))
+            : (int)$minimum;
+        return ['minimum' => $minimum, 'required' => $required, 'participating' => count($voters), 'invited' => $invited, 'met' => count($voters) >= $required];
+    }
+
+    public static function governanceParticipationQuotaFailureMessage(array $quota): string
+    {
+        return self::uiMessage('governance_quota_not_met', ['count' => $quota['participating'], 'required' => $quota['required'], 'invited' => $quota['invited']]);
+    }
+
     public function save()
     {
         $pdo = self::getPdo();
@@ -998,6 +1076,15 @@ class DecisionProcess extends DbObject
             return;
         }
         try {
+            $parameters = $this->getRootParametersArray();
+            $changed = false;
+            foreach ($this->getDecisionGroups(true) as $group) {
+                if (isset($parameters['governance_participation_results'][(int)$group->getId()])) continue;
+                $parameters['governance_participation_results'][(int)$group->getId()] = $this->getGovernanceParticipationQuota($group);
+                $changed = true;
+            }
+            // Keep the closing quota and counts stable when organization settings change later.
+            if ($changed && !$this->persistRootParametersArray($parameters)) throw new \RuntimeException('Unable to save participation quota results');
             \dbObject\DecisionGovernanceAction::applyAcceptedForDecision($this);
             \dbObject\DeferredProposal::applyAcceptedForDecision($this);
             History::recordDecisionCompletion($this);

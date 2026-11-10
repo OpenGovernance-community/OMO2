@@ -61,6 +61,11 @@ $governance = $config['governance'];
                         <option value="consent"<?= ($governance['evaluation_method'] ?? '') === 'consent' ? ' selected' : '' ?>><?= htmlspecialchars(omoDecisionParamsT('decisions.params.option.governance_method.consent'), ENT_QUOTES, 'UTF-8') ?></option>
                     </select>
                 </label>
+                <label class="generic-form-field">
+                    <span class="generic-form-label"><?= htmlspecialchars(omoDecisionParamsT('decisions.params.field.minimum_participation'), ENT_QUOTES, 'UTF-8') ?></span>
+                    <input class="generic-form-control generic-form-control--compact" type="text" name="governance[minimum_participation]" maxlength="20" value="<?= htmlspecialchars((string)$governance['minimum_participation'], ENT_QUOTES, 'UTF-8') ?>" aria-describedby="omo-decision-params-quota-help">
+                    <span class="generic-help-text" id="omo-decision-params-quota-help"><?= htmlspecialchars(omoDecisionParamsT('decisions.params.field.minimum_participation_hint'), ENT_QUOTES, 'UTF-8') ?></span>
+                </label>
                 <div class="generic-form-field">
                     <div class="generic-heading-with-help">
                         <label class="generic-form-label" for="omo-decision-params-question"><?= htmlspecialchars(omoDecisionParamsT('decisions.params.field.governance_question'), ENT_QUOTES, 'UTF-8') ?></label>

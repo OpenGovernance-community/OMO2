@@ -19,6 +19,17 @@ function assertDecisionParams($condition, $message): void
 
 $defaults = omoDecisionParamsGetDefaultConfig();
 assertDecisionParams(empty($defaults['governance']['enabled']), 'Governance workflow must require explicit activation.');
+assertDecisionParams($defaults['governance']['minimum_participation'] === '', 'The participation quota must be optional.');
+foreach (['' => '', ' 003 ' => '3', '50 %' => '50%', '12,5%' => '12.5%', '100%' => '100%'] as $input => $expected) {
+    $quotaConfig = omoDecisionParamsNormalizeConfig(['governance' => ['minimum_participation' => $input]]);
+    assertDecisionParams($quotaConfig['governance']['minimum_participation'] === $expected, 'Normalize participation quota: ' . $input);
+}
+foreach (['0', '-1', '1.5', '101%', '0%', '20.555%', 'three', '2147483648', ['50%']] as $invalid) {
+    try {
+        omoDecisionParamsNormalizeConfig(['governance' => ['minimum_participation' => $invalid]]);
+        throw new RuntimeException('Invalid participation quotas must be rejected.');
+    } catch (InvalidArgumentException $expected) {}
+}
 assertDecisionParams(!empty($defaults['methods'][DecisionProcess::METHOD_CONSENT]), 'Consent must remain enabled by default.');
 assertDecisionParams(!empty($defaults['methods'][DecisionProcess::METHOD_CONSULTATION_ONLY]), 'Consultation only must be enabled by default.');
 

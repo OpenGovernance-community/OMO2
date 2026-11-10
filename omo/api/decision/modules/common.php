@@ -967,6 +967,27 @@ if (!function_exists('omoDecisionRenderProposalSupplementHtml')) {
     }
 }
 
+if (!function_exists('omoDecisionRenderGovernanceParticipationQuota')) {
+    function omoDecisionRenderGovernanceParticipationQuota(?DecisionProcess $decision, ?DecisionGroup $group, bool $resultsMode, callable $escape): string
+    {
+        if (!$decision || !$group || !$decision->isGovernanceWorkflow()) return '';
+        $quota = $decision->getGovernanceParticipationQuota($group);
+        if ($quota['minimum'] === '') return '';
+        static $sourceLang = [
+            'title' => ['text' => 'Participation minimale pour valider', 'context' => 'Governance participation quota heading.'],
+            'rule' => ['text' => 'Seuil : {minimum}. Minimum de réponses requis : {required}. Nombre d’invités : {invited}. Les réponses « Pas d’objection » comptent comme participation.', 'context' => 'Governance quota rule before voting ends.'],
+            'met' => ['text' => 'Participation minimale atteinte : {count} sur {required} (nombre d’invités : {invited}). Les règles habituelles du vote restent applicables.', 'context' => 'Governance quota met, without implying approval.'],
+            'not_met' => ['text' => 'Participation minimale non atteinte : {count} sur {required} (nombre d’invités : {invited}). Aucune modification n’est validée.', 'context' => 'Final governance result blocked by insufficient participation.'],
+        ];
+        static $lang = null;
+        $lang ??= omoLoadTranslationBundle('omo_decision_participation_quota', $sourceLang);
+        $key = $resultsMode ? ($quota['met'] ? 'met' : 'not_met') : 'rule';
+        $text = t($key, ['minimum' => $quota['minimum'], 'count' => $quota['participating'], 'required' => $quota['required'], 'invited' => $quota['invited']], $lang, $sourceLang);
+        return '<section class="generic-soft-panel generic-soft-panel--stack" data-omo-governance-participation-quota><strong>'
+            . $escape(t('title', [], $lang, $sourceLang)) . '</strong><p>' . $escape($text) . '</p></section>';
+    }
+}
+
 if (!function_exists('omoDecisionRenderGovernanceChanges')) {
     function omoDecisionRenderGovernanceChanges(DecisionProposal $proposal, $escape)
     {

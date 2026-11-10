@@ -1264,6 +1264,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                 </div>
                 <?php endif; ?>
 
+                <?= omoDecisionRenderGovernanceParticipationQuota($decision, $decisionGroup, $resultsMode, $escape) ?>
                 <?php if ($isParticipateMode): ?>
                 <?php if ($isConsultationPhase): ?>
                 <div class="omo-decision-vote__form generic-form-stack generic-form-stack--compact">
