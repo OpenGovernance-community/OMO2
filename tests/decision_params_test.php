@@ -30,6 +30,16 @@ foreach (['0', '-1', '1.5', '101%', '0%', '20.555%', 'three', '2147483648', ['50
         throw new RuntimeException('Invalid participation quotas must be rejected.');
     } catch (InvalidArgumentException $expected) {}
 }
+foreach ([['3', 'count', '3'], ['50', 'percent', '50%'], ['12.5', 'percent', '12.5%'], ['', 'count', ''], ['', 'percent', '']] as [$value, $unit, $expected]) {
+    $quotaConfig = omoDecisionParamsNormalizeConfig(['governance' => ['minimum_participation' => $value, 'minimum_participation_unit' => $unit]]);
+    assertDecisionParams($quotaConfig['governance']['minimum_participation'] === $expected, 'The numeric value and unit must retain the existing quota storage format.');
+}
+foreach ([['1.5', 'count'], ['101', 'percent'], ['50%', 'count'], ['3', 'invalid'], ['3', ['percent']]] as [$value, $unit]) {
+    try {
+        omoDecisionParamsNormalizeConfig(['governance' => ['minimum_participation' => $value, 'minimum_participation_unit' => $unit]]);
+        throw new RuntimeException('Invalid numeric quota or unit must be rejected.');
+    } catch (InvalidArgumentException $expected) {}
+}
 assertDecisionParams(!empty($defaults['methods'][DecisionProcess::METHOD_CONSENT]), 'Consent must remain enabled by default.');
 assertDecisionParams(!empty($defaults['methods'][DecisionProcess::METHOD_CONSULTATION_ONLY]), 'Consultation only must be enabled by default.');
 

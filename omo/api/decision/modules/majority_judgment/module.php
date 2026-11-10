@@ -386,6 +386,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
         ];
 
         $responsePayload = [
+            'responsesEditable' => $participantResponsesEditable,
             'saveUrl' => $evaluationPreview ? '' : '/omo/api/decision/modules/majority_judgment/respond.php',
             'evaluationPreview' => $evaluationPreview,
             'redirectUrl' => $evaluationPreview ? '' : omoDecisionBuildContextualEditorUrl($context, 'participate'),
@@ -395,6 +396,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                     ? t('decisions.majority_judgment.action.update_response', [], $lang, $sourceLang)
                     : t('decisions.majority_judgment.action.submit_response', [], $lang, $sourceLang),
                 'saving' => t('decisions.majority_judgment.action.submitting_response', [], $lang, $sourceLang),
+                'update' => t('decisions.majority_judgment.action.update_response', [], $lang, $sourceLang),
                 'success' => t('decisions.majority_judgment.feedback.response_success', [], $lang, $sourceLang),
                 'error' => t('decisions.majority_judgment.feedback.response_error', [], $lang, $sourceLang),
             ],

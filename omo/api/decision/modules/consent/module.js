@@ -849,6 +849,13 @@ var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; 
                     }
 
                     const setFeedback = function (message, isError) {
+                        if (isError && typeof window.omoDecisionNotifyError === 'function' && window.omoDecisionNotifyError(message)) {
+                            if (feedbackNode) {
+                                feedbackNode.textContent = '';
+                                feedbackNode.classList.remove('is-error', 'is-success');
+                            }
+                            return;
+                        }
                         if (!feedbackNode) {
                             return;
                         }
@@ -932,8 +939,12 @@ var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; 
                                     throw new Error(result && result.message ? result.message : (payload.texts && payload.texts.error ? payload.texts.error : 'Erreur'));
                                 }
                                 if (typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(form);
-                                setFeedback(result.message || (payload.texts && payload.texts.success ? payload.texts.success : ''), false);
                                 window.dispatchEvent(new CustomEvent('omo-decision-response-saved'));
+                                if (typeof window.omoDecisionKeepResponseInPlace === 'function'
+                                    && window.omoDecisionKeepResponseInPlace(form, result, payload, submitButton, setFeedback)) {
+                                    return;
+                                }
+                                setFeedback(result.message || (payload.texts && payload.texts.success ? payload.texts.success : ''), false);
                                 if (result.redirectUrl) {
                                     if (typeof window.omoDecisionOpenNestedDrawer === 'function') {
                                         window.omoDecisionOpenNestedDrawer(result.drawerTitle || payload.drawerTitle || omoUiText("prises_de_decision", "Prises de décision"), result.redirectUrl, '');
@@ -949,7 +960,7 @@ var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; 
                             })
                             .finally(function () {
                                 if (submitButton) {
-                                    submitButton.disabled = false;
+                                    submitButton.disabled = form.dataset.omoDecisionResponseLocked === '1';
                                     submitButton.textContent = submitButton.dataset.originalText || submitButton.textContent;
                                 }
                             });

@@ -1497,7 +1497,7 @@ if (!function_exists('omoDecisionRenderProposalDiscussionAssets')) {
             . '<script src="' . commonAssetUrl('/common/choice/highlight-palette.js') . '" defer></script>'
             . '<script src="' . commonAssetUrl('/omo/assets/js/simple-html-field.js') . '" defer></script>'
             . '<script src="/common/choice/decision-anonymity.js?v=20260825-named-vote" defer></script>'
-            . '<script src="/common/choice/decision-notifications.js?v=20260825-topbar-errors" defer></script>'
+            . '<script src="' . commonAssetUrl('/common/choice/decision-notifications.js') . '" defer></script>'
             . '<script src="' . commonAssetUrl('/common/choice/proposal-html.js') . '" defer></script>'
             . '<script src="' . commonAssetUrl('/common/chat/reactions.js') . '" defer></script>'
             . '<script src="' . commonAssetUrl('/common/choice/proposal-discussion.js') . '" defer></script>';
