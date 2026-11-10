@@ -48,6 +48,12 @@ function omoApiScopeChallenge(array $grant, string $requiredScope): string
         . omoMcpNormalizeScope(($grant['scope'] ?? OMO_MCP_SCOPE) . ' ' . $requiredScope) . '"';
 }
 
+/** Shared by MCP, REST tool descriptions and the internal assistant. */
+function omoApiAgentRuleInstructions(): string
+{
+    return 'For questions about rule contents, chapters, obligations or exceptions, list/search results are only titles, metadata or excerpts. Read each relevant rule with omo_read_record module rules, record_id and the returned context_holon_id (or follow record_details). The text contains the full rule description and intention; follow next_offset until null before interpreting or quoting it. Use omo_search with modules ["rules"] for words inside rule contents; omo_list_records query only matches titles. Never infer rule contents from a chapter title, associated value or intention alone. If detail is inaccessible or pagination cannot be completed, explain that limitation instead of inventing an answer.';
+}
+
 function omoMcpTools(): array
 {
     $tools = [
@@ -220,6 +226,9 @@ function omoMcpTools(): array
     array_push($tools, ...omoApiDecisionTools());
     array_push($tools, ...omoApiProjectTools());
     foreach ($tools as &$tool) {
+        if (in_array($tool['name'], ['omo_catalog', 'omo_list_records', 'omo_search', 'omo_read_record', 'omo_list_value_rules'], true)) {
+            $tool['description'] .= ' ' . omoApiAgentRuleInstructions();
+        }
         if (in_array($tool['name'], ['omo_get_holon_permissions', 'omo_permission_catalog', 'omo_list_permissions', 'omo_get_holon', 'omo_read_record', 'omo_search'], true)) {
             $tool['description'] = omoApiAgentPermissionInstructions() . ' ' . $tool['description'];
         }

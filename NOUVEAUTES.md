@@ -4,6 +4,10 @@ Ce fichier garde une vue d'ensemble courte des évolutions récentes, avec un an
 
 Les dates déjà indiquées sont conservées. Les dates manquantes sont reconstituées à partir de la première apparition des entrées dans l'historique GitHub, en heure Europe/Zurich ; elles correspondent à leur ajout au journal, pas nécessairement à leur mise en production.
 
+## 2026-11-10
+
+- Règles / MCP, API et assistant : consignes communes pour lire le texte complet et l’intention avant d’interpréter une règle, avec suivi de la pagination et recherche dans le contenu. Les listes de règles fournissent un appel direct vers leur détail ; les titres seuls ne suffisent pas à répondre sur les obligations ou les exceptions.
+
 ## 2026-11-09
 
 - Évaluation organisationnelle : les capsules colorées de convergence pour « Aujourd’hui », « Demain » et l’adhésion au principe ouvrent la même fenêtre par dimension, au clic ou au clavier. Trois répartitions des notes de 1 à 5, avec effectifs, pourcentages, moyenne et explication de l’alignement, de la dispersion ou de la polarisation ; seules les évaluations terminées de l’organisation sont agrégées.

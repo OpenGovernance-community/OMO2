@@ -66,6 +66,7 @@ function omoApiResponseSchemas(): array
         'date_field' => $s + ['description' => 'Name of the stored date field used by this module.'],
         'date' => ['type' => ['string', 'integer', 'null'], 'description' => 'Stored module date, normally YYYY-MM-DD HH:mm:ss; not an RFC 3339 timestamp.'],
         'user_id' => $i + ['description' => 'team only: member identifier.'], 'member_details' => $ref('Navigation') + ['description' => 'team only: member navigation.'],
+        'record_details' => $ref('Navigation') + ['description' => 'rules only: executable navigation to the full rule text and intention. Follow text pagination before interpreting the rule.'],
         'meeting_booking_url' => array_replace($meetingUrl, ['description' => 'team only: ' . $meetingUrl['description']]),
         'holon_id' => $idNull + ['description' => 'Present for modules attached to a holon.'],
         'parent_id' => $idNull + ['description' => 'structure, documents, pv and projects only.'],

@@ -131,6 +131,7 @@ function commonAssistantRun(array $grant, array $history, string $question, stri
         . 'Qualify missing or incomplete results as limited to visible data. Never claim nothing exists from a failed or bounded query. '
         . 'You have at most 18 tool calls and 8 rounds per question; narrow searches and ask to refine if that is insufficient. '
         . omoApiAgentPermissionInstructions()
+        . ' ' . omoApiAgentRuleInstructions()
         . ' Current local time: ' . $now->format(DATE_ATOM) . '. Organization ID: ' . (int)$grant['IDorganization']
         . '. Viewer ID: ' . (int)$grant['IDuser'] . '. page_context_holon_id: ' . ($holonId ?? 'none') . '.';
     $messages = $history;
