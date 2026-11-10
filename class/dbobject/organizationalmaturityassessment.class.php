@@ -102,6 +102,12 @@ class OrganizationalMaturityAssessment extends DbObject
             $placeholders[] = ':' . $key;
             $params[$key] = $id;
         }
+        $distributionColumns = [];
+        foreach (['today', 'tomorrow', 'affinity'] as $dimension) {
+            for ($level = 1; $level <= 5; $level++) {
+                $distributionColumns[] = 'SUM(CASE WHEN r.' . $dimension . '_score = ' . $level . ' THEN 1 ELSE 0 END) AS ' . $dimension . '_' . $level . '_count';
+            }
+        }
         $rows = self::fetchAll(
             'SELECT a.IDorganization, r.principle_number,
                     COUNT(*) AS response_count,
@@ -119,7 +125,8 @@ class OrganizationalMaturityAssessment extends DbObject
                     SUM(CASE WHEN r.tomorrow_score >= 4 THEN 1 ELSE 0 END) AS tomorrow_high_count,
                     SUM(CASE WHEN r.affinity_score <= 2 THEN 1 ELSE 0 END) AS affinity_low_count,
                     SUM(CASE WHEN r.affinity_score = 3 THEN 1 ELSE 0 END) AS affinity_middle_count,
-                    SUM(CASE WHEN r.affinity_score >= 4 THEN 1 ELSE 0 END) AS affinity_high_count
+                    SUM(CASE WHEN r.affinity_score >= 4 THEN 1 ELSE 0 END) AS affinity_high_count,
+                    ' . implode(', ', $distributionColumns) . '
              FROM organizational_maturity_assessment_response r
              INNER JOIN organizational_maturity_assessment a ON a.id = r.IDassessment
              WHERE a.IDorganization IN (' . implode(', ', $placeholders) . ')
@@ -210,6 +217,11 @@ class OrganizationalMaturityAssessment extends DbObject
                     (int)($row['tomorrow_high_count'] ?? 0)
                 ),
             ];
+            foreach (['today', 'tomorrow', 'affinity'] as $dimension) {
+                $principles[$principleNumber][$dimension . 'Distribution'] = array_map(
+                    static fn(int $level): int => (int)($row[$dimension . '_' . $level . '_count'] ?? 0), range(1, 5)
+                );
+            }
         }
 
         return [

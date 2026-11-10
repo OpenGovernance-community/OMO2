@@ -76,6 +76,14 @@ $pageSourceLang = [
     'survey.organization.current' => ['text' => 'Aujourd’hui', 'context' => 'Current situation label in organization report cards.'],
     'survey.organization.desired' => ['text' => 'Demain', 'context' => 'Desired situation label in organization report cards.'],
     'survey.organization.affinity' => ['text' => 'Adhésion au principe : {value}/5', 'context' => 'Average affinity in organization report cards.'],
+    'survey.organization.distribution.title' => ['text' => 'Répartition des évaluations', 'context' => 'Title of the shared popup showing all three rating distributions for a principle.'],
+    'survey.organization.distribution.open' => ['text' => 'Voir la répartition des évaluations', 'context' => 'Tooltip for the colored convergence capsules for current, desired and affinity ratings.'],
+    'survey.organization.distribution.close' => ['text' => 'Fermer', 'context' => 'Accessible label of the distribution popup close button.'],
+    'survey.organization.distribution.help' => ['text' => 'Chaque barre montre la part des évaluations ayant choisi ce niveau. Les trois graphiques utilisent la même échelle, de 0 à 100 %.', 'context' => 'Explain the common histogram scale in the distribution popup.'],
+    'survey.organization.distribution.sample' => ['one' => '{count} évaluation complète', 'other' => '{count} évaluations complètes', 'context' => 'Number of completed assessments represented by the distributions.'],
+    'survey.organization.distribution.average' => ['text' => 'Moyenne : {value}/5', 'context' => 'Average score in each distribution panel.'],
+    'survey.organization.distribution.affinity' => ['text' => 'Adhésion au principe', 'context' => 'Heading of the affinity distribution panel.'],
+    'survey.organization.distribution.count' => ['one' => '{count} évaluation ({percent} %)', 'other' => '{count} évaluations ({percent} %)', 'context' => 'Accessible count and percentage for one rating level.'],
     'survey.organization.empty' => ['text' => 'Aucune évaluation complète n’est encore disponible pour cette organisation.', 'context' => 'Empty state for an organization with no survey evaluations.'],
     'survey.organization.not_found' => ['text' => 'Organisation introuvable.', 'context' => 'Error when the requested public organization does not exist.'],
     'survey.organization.theme.1' => ['text' => 'l’autorité assumée', 'context' => 'Short principle name used in the aggregate summary.'],
@@ -135,6 +143,12 @@ foreach ($surveyQuestionDefinitions as $questionDefinition) {
         'affinityStddev' => round((float)$scores['affinityStddev'], 2),
         'affinityAgreement' => (string)($scores['affinityAgreement'] ?? 'insufficient'),
         'responseCount' => (int)$scores['responseCount'],
+        'distributions' => [
+            'today' => $scores['todayDistribution'],
+            'tomorrow' => $scores['tomorrowDistribution'],
+            'affinity' => $scores['affinityDistribution'],
+        ],
+        'levels' => array_map(static fn(int $level): string => t('survey.question.' . $number . '.option.' . $level . '.title', [], $surveyLang, $surveySourceLang), range(1, 5)),
     ];
 }
 $activeMembers = (int)$aggregate['activeMembers'];
@@ -263,7 +277,7 @@ $groupFeatureText = static function (array $feature) use ($pageLang, $pageSource
     <meta name="theme-color" content="<?= $escape($organizationColor) ?>">
     <title><?= $escape(t('survey.organization.page_title', ['organization' => $organizationName], $pageLang, $pageSourceLang)) ?></title>
     <link rel="stylesheet" href="/common/assets/components.css?v=20260830-layout16">
-    <link rel="stylesheet" href="/survey/survey.css?v=20260830-layout16">
+    <link rel="stylesheet" href="<?= commonAssetUrl('/survey/survey.css') ?>">
 </head>
 <body>
     <main class="survey-page organization-report" style="--param-organization-color: <?= $escape($organizationColor) ?>;<?= $bannerUrl !== '' ? ' --param-organization-banner: url(' . $escape($bannerUrl) . ');' : '' ?>">
@@ -455,6 +469,22 @@ $groupFeatureText = static function (array $feature) use ($pageLang, $pageSource
             </footer>
         </section>
     </main>
+    <dialog class="survey-omo-dialog" id="surveyDistributionDialog" aria-labelledby="surveyDistributionTitle" aria-describedby="surveyDistributionHelp">
+        <div class="survey-omo-dialog__surface">
+            <header class="survey-omo-dialog__header">
+                <div>
+                    <p class="survey-eyebrow"><?= $escape(t('survey.organization.distribution.title', [], $pageLang, $pageSourceLang)) ?></p>
+                    <h2 id="surveyDistributionTitle"></h2>
+                </div>
+                <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only generic-action-button--close" data-survey-distribution-close aria-label="<?= $escape(t('survey.organization.distribution.close', [], $pageLang, $pageSourceLang)) ?>"></button>
+            </header>
+            <div class="survey-omo-dialog__body">
+                <p id="surveyDistributionHelp"><?= $escape(t('survey.organization.distribution.help', [], $pageLang, $pageSourceLang)) ?></p>
+                <p class="generic-meta" data-survey-distribution-sample></p>
+                <div class="survey-distributions" data-survey-distribution-panels></div>
+            </div>
+        </div>
+    </dialog>
     <script>
         window.SURVEY_PUBLIC_RESULT = <?= json_encode($questions, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
         window.SURVEY_PUBLIC_LABELS = <?= json_encode([
@@ -463,6 +493,18 @@ $groupFeatureText = static function (array $feature) use ($pageLang, $pageSource
             'affinity' => t('survey.organization.affinity', [], $pageLang, $pageSourceLang),
             'agreementTitle' => t('survey.organization.agreement_title', [], $pageLang, $pageSourceLang),
             'agreementStats' => t('survey.organization.agreement.stats', [], $pageLang, $pageSourceLang),
+            'distributionOpen' => t('survey.organization.distribution.open', [], $pageLang, $pageSourceLang),
+            'distributionAverage' => t('survey.organization.distribution.average', ['value' => '{value}'], $pageLang, $pageSourceLang),
+            'distributionAffinity' => t('survey.organization.distribution.affinity', [], $pageLang, $pageSourceLang),
+            'distributionSamples' => [
+                'one' => t('survey.organization.distribution.sample', ['count' => 1], $pageLang, $pageSourceLang),
+                'other' => t('survey.organization.distribution.sample', ['count' => '{count}'], $pageLang, $pageSourceLang),
+            ],
+            'distributionCounts' => [
+                'one' => t('survey.organization.distribution.count', ['count' => 1, 'percent' => '{percent}'], $pageLang, $pageSourceLang),
+                'other' => t('survey.organization.distribution.count', ['count' => '{count}', 'percent' => '{percent}'], $pageLang, $pageSourceLang),
+            ],
+            'affinityLevels' => array_map(static fn(int $level): string => t('survey.scale.' . $level, [], $surveyLang, $surveySourceLang), range(1, 5)),
             'agreementStatuses' => array_reduce($agreementStatuses, static function (array $labels, string $status) use ($agreementLabel, $agreementDescription): array {
                 $labels[$status] = [
                     'label' => $agreementLabel($status),
@@ -476,9 +518,10 @@ $groupFeatureText = static function (array $feature) use ($pageLang, $pageSource
             'all' => t('survey.organization.radar_all', [], $pageLang, $pageSourceLang),
             'group' => t('survey.organization.radar_group', ['group' => '{group}'], $pageLang, $pageSourceLang),
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
-        window.SURVEY_PUBLIC_OPTIONS = { separateDimensionList: true };
+        window.SURVEY_PUBLIC_OPTIONS = { separateDimensionList: true, distributions: true };
     </script>
-    <script src="/survey/public.js?v=20260830-group-radar1"></script>
+    <script src="<?= commonAssetUrl('/survey/public.js') ?>"></script>
+    <script src="<?= commonAssetUrl('/survey/organization-distributions.js') ?>"></script>
     <script src="<?= commonAssetUrl('/survey/organization-radars.js') ?>"></script>
 </body>
 </html>

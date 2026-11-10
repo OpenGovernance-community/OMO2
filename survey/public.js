@@ -199,7 +199,7 @@
                 return;
             }
 
-            var signal = element('span', 'survey-result-card__agreement-signal survey-result-card__agreement-signal--' + status);
+            var signal = element(options.distributions && question.distributions ? 'button' : 'span', 'survey-result-card__agreement-signal survey-result-card__agreement-signal--' + status);
             var dot = element('i', 'organization-report__agreement-dot organization-report__agreement-dot--' + status);
             var copy = element('span', 'survey-result-card__agreement-copy');
             dot.setAttribute('aria-hidden', 'true');
@@ -215,6 +215,7 @@
             signal.title = tooltip;
             signal.setAttribute('aria-label', period.label + ' : ' + statusLabels.label + '. ' + tooltip);
             signal.append(dot, copy);
+            prepareDistributionTrigger(signal, question, period.label);
             signals.appendChild(signal);
             hasSignal = true;
         });
@@ -261,13 +262,14 @@
             }
             if (Number.isFinite(Number(question.affinity)) && labels.affinity) {
                 var affinity = element('div', 'survey-result-card__affinity');
-                affinity.appendChild(element('span', 'survey-result-card__affinity-label', interpolate(labels.affinity, {
+                var affinityValue = element('span', 'survey-result-card__affinity-label', interpolate(labels.affinity, {
                     value: formatScore(question.affinity)
-                })));
+                }));
+                affinity.appendChild(affinityValue);
                 var affinityStatus = String(question.affinityAgreement || '');
                 var affinityStatusLabels = labels.agreementStatuses && labels.agreementStatuses[affinityStatus];
                 if (affinityStatusLabels) {
-                    var affinitySignal = element('span', 'survey-result-card__affinity-signal survey-result-card__affinity-signal--' + affinityStatus);
+                    var affinitySignal = element(options.distributions && question.distributions ? 'button' : 'span', 'survey-result-card__affinity-signal survey-result-card__affinity-signal--' + affinityStatus);
                     var affinityDot = element('i', 'organization-report__agreement-dot organization-report__agreement-dot--' + affinityStatus);
                     affinityDot.setAttribute('aria-hidden', 'true');
                     var affinityTooltip = affinityStatusLabels.description || '';
@@ -278,19 +280,32 @@
                         });
                     }
                     affinitySignal.title = affinityTooltip;
-                    affinitySignal.setAttribute('aria-label', affinityStatusLabels.label + '. ' + affinityTooltip);
+                    affinitySignal.setAttribute('aria-label', (labels.distributionAffinity || labels.affinity) + ' : ' + affinityStatusLabels.label + '. ' + affinityTooltip);
                     affinitySignal.append(affinityDot, element('span', '', affinityStatusLabels.label));
+                    prepareDistributionTrigger(affinitySignal, question, labels.distributionAffinity);
                     affinity.appendChild(affinitySignal);
                 }
                 copy.appendChild(affinity);
             }
-            visual.appendChild(element('span', 'survey-result-card__score', formatScore(question.today)));
+            var todayValue = element('span', 'survey-result-card__score', formatScore(question.today));
+            visual.appendChild(todayValue);
             visual.appendChild(element('div', 'survey-result-card__line'));
-            visual.appendChild(element('span', 'survey-result-card__score survey-result-card__score--tomorrow', formatScore(question.tomorrow)));
+            var tomorrowValue = element('span', 'survey-result-card__score survey-result-card__score--tomorrow', formatScore(question.tomorrow));
+            visual.appendChild(tomorrowValue);
             card.append(copy, visual);
             fragment.appendChild(card);
         });
         list.replaceChildren(fragment);
+    }
+
+    function prepareDistributionTrigger(node, question, dimensionLabel) {
+        if (node.tagName !== 'BUTTON') return;
+        node.type = 'button';
+        node.setAttribute('data-survey-distribution', String(question.number));
+        node.setAttribute('aria-haspopup', 'dialog');
+        node.setAttribute('aria-controls', 'surveyDistributionDialog');
+        node.setAttribute('aria-label', (node.getAttribute('aria-label') || dimensionLabel + ' : ' + node.textContent) + '. ' + labels.distributionOpen);
+        node.title = (node.title ? node.title + ' ' : '') + labels.distributionOpen;
     }
 
     if (questions.length === 10 && radar) {

@@ -342,7 +342,13 @@ final class McpBrowse
         if ($module === 'calendar' && empty($context['archived'])) {
             $result['effective_invitees'] = self::eventInvitees((int)$organization->getId(), (int)$object->getId());
         }
-        if ($object instanceof Rule) $result += McpValues::forRule($object, $organization);
+        if ($object instanceof Rule) {
+            $result += McpValues::forRule($object, $organization);
+            $result['record_details'] = ['tool' => 'omo_read_record', 'arguments' => array_filter([
+                'module' => 'rules', 'record_id' => (int)$object->getId(),
+                'context_holon_id' => $result['context_holon_id'], 'archived' => !empty($context['archived'])],
+                static fn ($value) => $value !== null)];
+        }
         return $result;
     }
 

@@ -4,7 +4,19 @@ Ce fichier garde une vue d'ensemble courte des évolutions récentes, avec un an
 
 Les dates déjà indiquées sont conservées. Les dates manquantes sont reconstituées à partir de la première apparition des entrées dans l'historique GitHub, en heure Europe/Zurich ; elles correspondent à leur ajout au journal, pas nécessairement à leur mise en production.
 
+## 2026-11-10
+
+- Scrutins / participation par lien personnel : les réponses sont validées et enregistrées dans le bloc choisi. Correction du message « Veuillez attribuer une mention à chaque proposition » qui pouvait apparaître en jugement majoritaire sur un bloc entièrement rempli, car le serveur vérifiait les propositions du premier bloc.
+
+- Décisions hors réorg : seuil facultatif de participation dans les paramètres de Décisions, en nombre entier ou en pourcentage des invités (arrondi au supérieur). Les réponses « Pas d’objection » comptent ; les absences de réponse et les brouillons ne comptent pas. À la clôture, un quota insuffisant empêche la validation et l’application des modifications, en vote simple comme en consentement ; le résultat conserve le seuil et les effectifs de clôture.
+
+- Règles / MCP, API et assistant : consignes communes pour lire le texte complet et l’intention avant d’interpréter une règle, avec suivi de la pagination et recherche dans le contenu. Les listes de règles fournissent un appel direct vers leur détail ; les titres seuls ne suffisent pas à répondre sur les obligations ou les exceptions.
+
 ## 2026-11-09
+
+- Évaluation organisationnelle : les capsules colorées de convergence pour « Aujourd’hui », « Demain » et l’adhésion au principe ouvrent la même fenêtre par dimension, au clic ou au clavier. Trois répartitions des notes de 1 à 5, avec effectifs, pourcentages, moyenne et explication de l’alignement, de la dispersion ou de la polarisation ; seules les évaluations terminées de l’organisation sont agrégées.
+
+- Scrutins / clôture anticipée : bouton « Clôturer maintenant » à côté du choix de l’étape lorsque chaque participant actif a terminé tous les blocs à voter. La date de fin d’évaluation est fixée à maintenant et les résultats deviennent disponibles ; contrôle serveur des réponses et des droits de gestion. Le bouton d’interruption sans réponse est rapproché du même sélecteur.
 
 - Scrutins / anonymat : passage en vote nominatif possible avant l’évaluation, même après une élaboration à plusieurs. Les anciennes propositions gardent leur auteur anonyme et les anciens messages conservent leur anonymat, y compris dans les résumés des discussions. Les nouvelles propositions et les nouveaux messages suivent le réglage courant ; l’anonymat des évaluations reste verrouillé dès leur démarrage.
 

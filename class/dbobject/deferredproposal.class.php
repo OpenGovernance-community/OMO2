@@ -1074,6 +1074,7 @@ class DeferredProposal extends DbObject
             $winnerIds = $method === DecisionProcess::METHOD_SIMPLE_VOTE
                 ? array_fill_keys(DecisionGovernanceAction::getSimpleVoteWinningProposalIds($responses), true)
                 : [];
+            $quota = $decision->getGovernanceParticipationQuota($group, $responses);
             foreach ($group->getProposals(true) as $decisionProposal) {
                 if (!$decisionProposal instanceof DecisionProposal) continue;
                 $proposals = [];
@@ -1081,13 +1082,13 @@ class DeferredProposal extends DbObject
                     if ($proposal instanceof self) $proposals[] = $proposal;
                 }
                 if (!$proposals) continue;
-                $accepted = $method === DecisionProcess::METHOD_CONSENT
+                $accepted = $quota['met'] && ($method === DecisionProcess::METHOD_CONSENT
                     ? !DecisionGovernanceAction::proposalHasObjection($decisionProposal, $responses)
-                    : isset($winnerIds[(int)$decisionProposal->getId()]);
+                    : isset($winnerIds[(int)$decisionProposal->getId()]));
                 if (!$accepted) {
                     foreach ($proposals as $proposal) {
                         $proposal->set('status', self::STATUS_REJECTED);
-                        $proposal->set('status_message', 'Proposition non retenue par la décision collective.');
+                        $proposal->set('status_message', !$quota['met'] ? DecisionProcess::governanceParticipationQuotaFailureMessage($quota) : 'Proposition non retenue par la décision collective.');
                         $proposal->save();
                     }
                     continue;
