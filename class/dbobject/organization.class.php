@@ -15862,40 +15862,7 @@
 			return !empty($visibleRows[$parcoursId]);
 		}
 
-		protected static function topbarSearchResolveCurrentHolon(\dbObject\Organization $organization, array &$viewerContext)
-		{
-			if (array_key_exists('topbarCurrentHolon', $viewerContext)) {
-				return $viewerContext['topbarCurrentHolon'] instanceof \dbObject\Holon
-					? $viewerContext['topbarCurrentHolon']
-					: null;
-			}
-
-			$currentHolon = null;
-			$rootHolon = $organization->getStructuralRootHolon();
-			if ($rootHolon instanceof \dbObject\Holon && (int)$rootHolon->getId() > 0) {
-				$currentHolon = $rootHolon;
-				$currentHolonId = (int)($viewerContext['currentHolonId'] ?? 0);
-
-				if ($currentHolonId > 0 && $currentHolonId !== (int)$rootHolon->getId()) {
-					$candidateHolon = new \dbObject\Holon();
-					if (
-						$candidateHolon->load($currentHolonId)
-						&& $candidateHolon->isDescendantOf((int)$rootHolon->getId(), true)
-					) {
-						$currentHolon = $candidateHolon;
-					}
-				}
-
-				if (!self::topbarSearchViewerCanViewHolon($currentHolon, $viewerContext)) {
-					$currentHolon = null;
-				}
-			}
-
-			$viewerContext['topbarCurrentHolon'] = $currentHolon;
-			return $currentHolon;
-		}
-
-		protected static function topbarSearchViewerCanViewFaq(\dbObject\FAQ $faq, \dbObject\Organization $organization, array &$viewerContext, $scope = 'contextual')
+		protected static function topbarSearchViewerCanViewFaq(\dbObject\FAQ $faq, \dbObject\Organization $organization, array &$viewerContext)
 		{
 			$organizationId = (int)$organization->getId();
 			if (
@@ -15928,24 +15895,10 @@
 				return self::topbarSearchViewerCanViewParcours($parcoursId, $viewerContext, $organizationId);
 			}
 
-			$currentHolon = self::topbarSearchResolveCurrentHolon($organization, $viewerContext);
-			$currentHolonId = $currentHolon instanceof \dbObject\Holon
-				? (int)$currentHolon->getId()
-				: 0;
 			$faqHolon = $faq->getContextHolon();
 			if ($faqHolon instanceof \dbObject\Holon) {
-				if (
-					$currentHolonId <= 0
-					|| !self::topbarSearchViewerCanViewHolon($faqHolon, $viewerContext)
-				) {
-					return false;
-				}
-
-				if ($scope === 'descendants') {
-					return $faqHolon->isDescendantOf($currentHolonId, true);
-				}
-
-				return (int)$faqHolon->getId() === $currentHolonId;
+				return $faq->getResolvedOrganizationId() === $organizationId
+					&& self::topbarSearchViewerCanViewHolon($faqHolon, $viewerContext);
 			}
 
 			return $faq->getResolvedOrganizationId() === $organizationId;
@@ -16002,14 +15955,10 @@
 					&& self::topbarSearchViewerCanViewUser($object, $viewerContext, true) ? $object : null;
 			}
 			if ($module === 'rules') {
-				$currentHolon = self::topbarSearchResolveCurrentHolon($this, $viewerContext);
-				if (!$currentHolon) {
-					return null;
-				}
 				$rules = new ArrayRule();
-				$rules->loadForPolicyContexts($organizationId, [(int)$currentHolon->getId()], false, $archived ? 'global' : 'contextual', null, $archived);
+				$rules->loadForPolicyContexts($organizationId, [], false, 'global', null, $archived);
 				foreach ($rules as $rule) {
-					$holon = $rule->getHolon();
+					$holon = $rule->getHolon() ?? $this->getStructuralRootHolon();
 					if ((int)$rule->getId() === $id && $holon && self::topbarSearchViewerCanViewHolon($holon, $viewerContext)) {
 						return $rule;
 					}
@@ -16190,7 +16139,7 @@
 			foreach ($faqCollection as $faq) {
 				if (
 					!($faq instanceof \dbObject\FAQ)
-					|| !self::topbarSearchViewerCanViewFaq($faq, $this, $viewerContext, 'contextual')
+					|| !self::topbarSearchViewerCanViewFaq($faq, $this, $viewerContext)
 				) {
 					continue;
 				}
@@ -16325,13 +16274,9 @@
 				return array();
 			}
 
-			$currentHolon = self::topbarSearchResolveCurrentHolon($this, $viewerContext);
-			if (!($currentHolon instanceof \dbObject\Holon)) {
-				return array();
-			}
-
 			$rules = new \dbObject\ArrayRule();
-			$rules->loadForPolicyContexts($organizationId, [(int)$currentHolon->getId()], false, !empty($viewerContext['archived']) ? 'global' : 'contextual', null, !empty($viewerContext['archived']));
+			// Global search covers every rule; applicability only filters the policy views.
+			$rules->loadForPolicyContexts($organizationId, [], false, 'global', null, !empty($viewerContext['archived']));
 			$results = array();
 
 			foreach ($rules as $rule) {
@@ -16339,7 +16284,7 @@
 					continue;
 				}
 
-				$ruleHolon = $rule->getHolon();
+				$ruleHolon = $rule->getHolon() ?? $this->getStructuralRootHolon();
 				if (
 					!($ruleHolon instanceof \dbObject\Holon)
 					|| !self::topbarSearchViewerCanViewHolon($ruleHolon, $viewerContext)
