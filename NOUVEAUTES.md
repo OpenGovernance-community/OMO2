@@ -6,6 +6,8 @@ Les dates déjà indiquées sont conservées. Les dates manquantes sont reconsti
 
 ## 2026-11-10
 
+- Processus / étapes : affichage des branches immédiatement visibles en premier ; chaque étape dépendante suit son étape de référence, avec une indentation progressive pour les dépendances en chaîne. L’ordre chronologique des étapes liées à la date de référence est conservé.
+
 - Recherche globale / règles et FAQ : recherche dans tous les espaces de l’organisation accessibles, indépendamment de l’espace sélectionné et de la portée d’application des règles. Les aperçus suivent le même périmètre ; les droits d’accès et le filtre des archives sont conservés.
 
 - Scrutins / enregistrement des réponses : sur la page de participation, confirmation par notification sans recharger le questionnaire ni ouvrir un tiroir « Prises de décision ». Les réponses en cours dans les autres blocs sont conservées ; le bloc enregistré reste modifiable ou se verrouille selon les paramètres du scrutin.

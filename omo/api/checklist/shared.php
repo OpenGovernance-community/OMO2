@@ -2,6 +2,7 @@
 
 use dbObject\Checklist;
 use dbObject\ChecklistItem;
+use dbObject\ChecklistItemDependency;
 use dbObject\ChecklistTrigger;
 use dbObject\Holon;
 use dbObject\Organization;
@@ -488,6 +489,65 @@ if (!function_exists('omoChecklistGetPrimaryTrigger')) {
             }
         }
         return null;
+    }
+}
+
+if (!function_exists('omoChecklistBuildItemFlow')) {
+    function omoChecklistBuildItemFlow(array $items): array
+    {
+        // Keep the existing chronological order within each branch.
+        usort($items, static function (ChecklistItem $left, ChecklistItem $right): int {
+            return (int)(ChecklistItem::normalizeActivationType($right->get('activation_type')) === ChecklistItem::ACTIVATION_IMMEDIATE)
+                <=> (int)(ChecklistItem::normalizeActivationType($left->get('activation_type')) === ChecklistItem::ACTIVATION_IMMEDIATE);
+        });
+        $itemsById = [];
+        foreach ($items as $item) {
+            $itemsById[(int)$item->getId()] = $item;
+        }
+        $dependencies = [];
+        $children = [];
+        $parents = [];
+        foreach ($items as $item) {
+            $itemId = (int)$item->getId();
+            if (ChecklistItem::normalizeActivationType($item->get('activation_type')) !== ChecklistItem::ACTIVATION_AFTER_COMPLETION) {
+                continue;
+            }
+            foreach ($item->getDependencies() as $dependency) {
+                if (!($dependency instanceof ChecklistItemDependency)) {
+                    continue;
+                }
+                $dependencies[$itemId] = $dependency;
+                $requiredId = (int)$dependency->get('IDchecklistitem_required');
+                if ($requiredId !== $itemId && isset($itemsById[$requiredId])) {
+                    $parents[$itemId] = $requiredId;
+                    $children[$requiredId][] = $itemId;
+                }
+                break;
+            }
+        }
+        $rows = [];
+        $visited = [];
+        $append = static function (int $itemId, int $depth) use (&$append, &$rows, &$visited, $itemsById, $dependencies, $children): void {
+            if (isset($visited[$itemId])) {
+                return;
+            }
+            $visited[$itemId] = true;
+            $rows[] = ['item' => $itemsById[$itemId], 'depth' => $depth, 'dependency' => $dependencies[$itemId] ?? null];
+            foreach ($children[$itemId] ?? [] as $childId) {
+                $append($childId, $depth + 1);
+            }
+        };
+        foreach ($items as $item) {
+            $itemId = (int)$item->getId();
+            if (!isset($parents[$itemId])) {
+                $append($itemId, 0);
+            }
+        }
+        // Keep every step visible even if legacy data contains a dependency cycle.
+        foreach ($items as $item) {
+            $append((int)$item->getId(), 0);
+        }
+        return $rows;
     }
 }
 
