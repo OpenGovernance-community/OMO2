@@ -6,7 +6,7 @@ Les dates déjà indiquées sont conservées. Les dates manquantes sont reconsti
 
 ## 2026-11-09
 
-- Évaluation organisationnelle : les scores « Aujourd’hui », « Demain » et « Adhésion au principe » ouvrent la même fenêtre par dimension. Trois répartitions des notes de 1 à 5, avec effectifs, pourcentages, moyenne et explication de l’alignement, de la dispersion ou de la polarisation ; seules les évaluations terminées de l’organisation sont agrégées.
+- Évaluation organisationnelle : les capsules colorées de convergence pour « Aujourd’hui », « Demain » et l’adhésion au principe ouvrent la même fenêtre par dimension, au clic ou au clavier. Trois répartitions des notes de 1 à 5, avec effectifs, pourcentages, moyenne et explication de l’alignement, de la dispersion ou de la polarisation ; seules les évaluations terminées de l’organisation sont agrégées.
 
 - Scrutins / clôture anticipée : bouton « Clôturer maintenant » à côté du choix de l’étape lorsque chaque participant actif a terminé tous les blocs à voter. La date de fin d’évaluation est fixée à maintenant et les résultats deviennent disponibles ; contrôle serveur des réponses et des droits de gestion. Le bouton d’interruption sans réponse est rapproché du même sélecteur.
 

@@ -25,7 +25,11 @@ const html = fs.readFileSync(path.join(root, 'tmp/survey-distribution-report.htm
             const cards = page.locator('#surveyPublicList .survey-result-card');
             assert.equal(await cards.count(), 10);
             const triggers = cards.first().locator('[data-survey-distribution]');
-            assert.equal(await triggers.count(), 3, 'Today, tomorrow and affinity scores are buttons');
+            assert.equal(await triggers.count(), 3, 'The three colored convergence capsules are buttons');
+            assert.equal(await cards.first().locator('button.survey-result-card__agreement-signal').count(), 2);
+            assert.equal(await cards.first().locator('button.survey-result-card__affinity-signal').count(), 1);
+            assert.equal(await cards.first().locator('.survey-result-card__affinity-label[data-survey-distribution], .survey-result-card__score[data-survey-distribution]').count(), 0, 'Labels and numeric scores are plain text');
+            assert((await triggers.first().getAttribute('title')).includes('Échantillon'), 'Capsules preserve their existing statistical tooltips');
             const dialog = page.getByRole('dialog');
             let firstContent;
             for (let index = 0; index < 3; index++) {

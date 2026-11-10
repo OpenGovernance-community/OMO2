@@ -77,7 +77,7 @@ $pageSourceLang = [
     'survey.organization.desired' => ['text' => 'Demain', 'context' => 'Desired situation label in organization report cards.'],
     'survey.organization.affinity' => ['text' => 'Adhésion au principe : {value}/5', 'context' => 'Average affinity in organization report cards.'],
     'survey.organization.distribution.title' => ['text' => 'Répartition des évaluations', 'context' => 'Title of the shared popup showing all three rating distributions for a principle.'],
-    'survey.organization.distribution.open' => ['text' => 'Voir la répartition des évaluations', 'context' => 'Tooltip for the current, desired and affinity score buttons.'],
+    'survey.organization.distribution.open' => ['text' => 'Voir la répartition des évaluations', 'context' => 'Tooltip for the colored convergence capsules for current, desired and affinity ratings.'],
     'survey.organization.distribution.close' => ['text' => 'Fermer', 'context' => 'Accessible label of the distribution popup close button.'],
     'survey.organization.distribution.help' => ['text' => 'Chaque barre montre la part des évaluations ayant choisi ce niveau. Les trois graphiques utilisent la même échelle, de 0 à 100 %.', 'context' => 'Explain the common histogram scale in the distribution popup.'],
     'survey.organization.distribution.sample' => ['one' => '{count} évaluation complète', 'other' => '{count} évaluations complètes', 'context' => 'Number of completed assessments represented by the distributions.'],

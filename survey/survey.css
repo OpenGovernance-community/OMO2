@@ -2093,14 +2093,7 @@ input:focus-visible + label {
 [data-survey-distribution] {
     border: 0;
     cursor: pointer;
-}
-
-.survey-result-card__affinity-label[data-survey-distribution] {
-    padding: 0;
-    background: transparent;
     text-align: left;
-    text-decoration: underline dotted;
-    text-underline-offset: 3px;
 }
 
 .survey-distributions {
