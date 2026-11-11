@@ -761,6 +761,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
 <?php endif; ?>
 
 <script src="<?= commonAssetUrl('/common/document/embed-picker.js') ?>"></script>
+<script src="<?= commonAssetUrl('/common/document/html-ai-tools.js') ?>"></script>
 <?= commonPageScriptTags('/omo/api/documents/create.js', [
     'documentFormId' => $documentFormId,
     'uploadHasExistingFile' => ($documentType === Document::TYPE_UPLOADED_FILE && $documentHasStoredFile),

@@ -25,7 +25,7 @@ const structure = node(7, 'Organization', [node(10, 'Team', [node(11, 'Child', [
         await page.setContent('<form id="memo"><div data-omo-document-editor-html></div></form><button id="outside">Outside</button>');
         await page.addStyleTag({path: path.join(root, 'common/assets/components.css')});
         await page.addScriptTag({url: 'https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js'});
-        for (const file of ['omo/assets/js/simple-html-field.js', 'common/holon_scope_picker.js', 'common/document/embed-picker.js', 'omo/api/documents/create.js']) {
+        for (const file of ['omo/assets/js/simple-html-field.js', 'common/holon_scope_picker.js', 'common/document/embed-picker.js', 'common/document/html-ai-tools.js', 'omo/api/documents/create.js']) {
             await page.addScriptTag({path: path.join(root, file)});
         }
         await page.evaluate(({items, structure}) => {

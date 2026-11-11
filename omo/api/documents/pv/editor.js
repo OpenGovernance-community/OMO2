@@ -141,6 +141,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
     };
     const activeLockPointIds = new Set();
     const pendingLockPointIds = new Set();
+    const pendingPointLockRequests = new Map();
     const pendingUnlockPointIds = new Set();
     const locallyEngagedPointIds = new Set();
     const pendingTakeoverPointIds = new Set();
@@ -2422,6 +2423,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         const card = root.querySelector('[data-omo-pv-point-card="' + pointId + '"]');
         const isDirty = !!card && card.getAttribute('data-omo-pv-point-dirty') === '1';
         const isSaving = !!card && card.getAttribute('data-omo-pv-point-saving') === '1';
+        const isAiBusy = !!card && card.getAttribute('data-omo-pv-point-ai-busy') === '1';
 
         if (!card) {
             return;
@@ -2430,8 +2432,8 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         const saveButton = root.querySelector('[data-omo-pv-point-save="' + pointId + '"]');
         if (saveButton) {
             saveButton.hidden = !isDirty && !isSaving;
-            saveButton.disabled = !isDirty || isSaving;
-            saveButton.setAttribute('aria-disabled', (!isDirty || isSaving) ? 'true' : 'false');
+            saveButton.disabled = !isDirty || isSaving || isAiBusy;
+            saveButton.setAttribute('aria-disabled', (!isDirty || isSaving || isAiBusy) ? 'true' : 'false');
             saveButton.classList.toggle('generic-action-button--main', isDirty);
             saveButton.classList.toggle('is-saving', isSaving);
             saveButton.textContent = isSaving ? savingLabel : (isDirty ? saveLabel : savedLabel);
@@ -2465,6 +2467,8 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         }
         preMountEditorDrafts.delete(pointId);
         saveOnPointLeaveIds.delete(pointId);
+        const editorHost = card.querySelector('[data-omo-pv-point-editor-host]');
+        if (editorHost && editorHost.__omoPvPointAiTools) editorHost.__omoPvPointAiTools.cancel();
         restoreDraftState({ [pointId]: Object.assign({}, snapshot, {isDirty: false, statusText: ''}) });
         card.__omoPvPointEditStart = captureDraftState(pointId)[pointId];
         renderTimingSummary();
@@ -2509,6 +2513,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         }
 
         return locallyEngagedPointIds.has(pointId)
+            || card.getAttribute('data-omo-pv-point-ai-busy') === '1'
             || card.getAttribute('data-omo-pv-point-dirty') === '1'
             || card.contains(document.activeElement);
     }
@@ -2552,6 +2557,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
 
         activeLockPointIds.clear();
         pendingLockPointIds.clear();
+        pendingPointLockRequests.clear();
         pendingUnlockPointIds.clear();
         locallyEngagedPointIds.clear();
         pendingTakeoverPointIds.clear();
@@ -2561,6 +2567,9 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         preMountEditorFocusPointIds.clear();
         pointEditSnapshots.clear();
         saveOnPointLeaveIds.clear();
+        root.querySelectorAll('[data-omo-pv-point-editor-host]').forEach(function (host) {
+            if (host.__omoPvPointAiTools) host.__omoPvPointAiTools.destroy();
+        });
     }
 
     function markDocumentMetadataDirty() {
@@ -3329,8 +3338,43 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             }
 
             let field = null;
+            let aiTools = null;
+            if (pageConfig.textToolsEnabled || pageConfig.transcriptionEnabled) {
+                const aiStatus = document.createElement('div');
+                aiStatus.className = 'generic-soft-panel';
+                aiStatus.setAttribute('role', 'status');
+                aiStatus.setAttribute('data-omo-pv-point-ai-status', String(pointId));
+                aiStatus.hidden = true;
+                editorHost.after(aiStatus);
+                aiTools = window.omoHtmlAiTools.create({
+                    host: editorHost,
+                    statusNode: aiStatus,
+                    textToolsEnabled: pageConfig.textToolsEnabled,
+                    transcriptionEnabled: pageConfig.transcriptionEnabled,
+                    isAvailable: function () {
+                        const drawer = root.closest('[data-omo-external-panel-drawer="1"]');
+                        return card.getAttribute('data-omo-pv-point-editable') === '1'
+                            && card.getAttribute('data-omo-pv-point-saving') !== '1'
+                            && (!drawer || (!drawer.hidden && drawer.classList.contains('is-open')));
+                    },
+                    getContext: function () {
+                        return {organizationId: organizationId, holonId: 0, title: titleField ? titleField.value : ''};
+                    },
+                    beforeAction: function () {
+                        return ensurePointLock(pointId).then(function () { return activeLockPointIds.has(pointId); });
+                    },
+                    onBusyChange: function (busy) {
+                        if (busy) card.setAttribute('data-omo-pv-point-ai-busy', '1');
+                        else card.removeAttribute('data-omo-pv-point-ai-busy');
+                        syncPointDirtyUi(pointId);
+                        if (!busy && card.isConnected && saveOnPointLeaveIds.has(pointId)) savePoint(pointId);
+                    }
+                });
+                editorHost.__omoPvPointAiTools = aiTools;
+            }
             suppressPointDirtyDuring(pointId, function () {
                 const customButtons = [];
+                if (aiTools) customButtons.push(...aiTools.buttons);
                 customButtons.push({
                     name: 'omoPvHighlight',
                     group: 'color',
@@ -3508,6 +3552,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
 
             editorHost.__omoPvPointMounted = true;
             editorHost.__omoPvPointField = field;
+            if (aiTools) aiTools.bind(field);
 
             if (titleField) {
                 titleField.addEventListener('focus', function () {
@@ -3647,6 +3692,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         }
 
         return documentMetadataSaving
+            || root.querySelector('[data-omo-pv-point-ai-busy="1"]') !== null
             || getDirtyPointIds().length > 0
             || root.querySelector('[data-omo-pv-point-save]:not(:disabled), [data-omo-pv-document-meta-save]:not(:disabled)') !== null;
     }
@@ -4345,6 +4391,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
 
         return card.getAttribute('data-omo-pv-point-dirty') === '1'
             || card.getAttribute('data-omo-pv-point-saving') === '1'
+            || card.getAttribute('data-omo-pv-point-ai-busy') === '1'
             || locallyEngagedPointIds.has(Number(card.getAttribute('data-omo-pv-point-card') || 0))
             || card.contains(document.activeElement);
     }
@@ -5017,13 +5064,14 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             return Promise.resolve(null);
         }
 
-        if (activeLockPointIds.has(pointId) || pendingLockPointIds.has(pointId) || pendingUnlockPointIds.has(pointId)) {
+        if (pendingPointLockRequests.has(pointId)) return pendingPointLockRequests.get(pointId);
+        if (activeLockPointIds.has(pointId) || pendingUnlockPointIds.has(pointId)) {
             return Promise.resolve(null);
         }
 
         const focusStateAtRequest = captureFocusedEditor();
         pendingLockPointIds.add(pointId);
-        return postPointAction('lock_point', pointId)
+        const request = postPointAction('lock_point', pointId)
             .then(function (payload) {
                 pendingLockPointIds.delete(pointId);
                 activeLockPointIds.add(pointId);
@@ -5048,7 +5096,9 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
                     replacePointHtml(payload.point);
                 }
                 return null;
-            });
+            }).finally(function () { pendingPointLockRequests.delete(pointId); });
+        pendingPointLockRequests.set(pointId, request);
+        return request;
     }
 
     function releasePointLock(pointId) {
@@ -5223,6 +5273,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             !card
             || card.getAttribute('data-omo-pv-point-dirty') !== '1'
             || card.getAttribute('data-omo-pv-point-saving') === '1'
+            || card.getAttribute('data-omo-pv-point-ai-busy') === '1'
         ) {
             return Promise.resolve(false);
         }

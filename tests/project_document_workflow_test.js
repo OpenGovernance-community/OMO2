@@ -73,7 +73,7 @@ const root = path.join(__dirname, '..');
             window.addEventListener('omo-project-document-saved', event => window.saved.push(event.detail));
         });
         for (const file of ['common/assets/components.js', 'common/assets/topbar.js', 'common/drawer/subdrawer.js',
-            'common/holon_scope_picker.js', 'common/document/embed-picker.js', 'omo/api/documents/create.js', 'omo/api/projects/projects.js']) {
+            'common/holon_scope_picker.js', 'common/document/embed-picker.js', 'common/document/html-ai-tools.js', 'omo/api/documents/create.js', 'omo/api/projects/projects.js']) {
             await page.addScriptTag({path: path.join(root, file)});
         }
         await page.locator('[data-omo-project-detail-add-document]').click();

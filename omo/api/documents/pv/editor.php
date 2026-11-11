@@ -89,6 +89,7 @@ $hasDecisionApplication = !$isPublicParticipation && $hasOrganization && $organi
 $hasCalendarApplication = !$isPublicParticipation && $hasOrganization && $organization->isApplicationEnabled('calendar', $currentUserId);
 $hasStatsApplication = !$isPublicParticipation && $hasOrganization && $organization->isApplicationEnabled('stats', $currentUserId);
 $canUseAiTools = commonAiUserCanUse($currentUserId, commonOpenAiGetRewriteModel(), null, $organizationId);
+$canUseTranscription = !$isPublicParticipation && commonAiUserCanTranscribe($currentUserId, null, $organizationId);
 $hasUpcomingAssociatedEvent = $hasAssociatedEvent && $event->isUpcoming();
 $publicParticipationUserId = $isPublicParticipation
     ? commonPvParticipationRecipientOrganizationUserId($publicParticipationLink, $organizationId)
@@ -668,7 +669,10 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
 
 <?php commonMeetingAvailabilityAssets(); ?>
 <script src="<?= commonAssetUrl('/common/calendar/recurrence.js') ?>"></script>
+<script src="<?= commonAssetUrl('/common/document/html-ai-tools.js') ?>"></script>
 <?= commonPageScriptTags('/omo/api/documents/pv/editor.js', [
+    'textToolsEnabled' => !$isPublicParticipation && $canUseAiTools,
+    'transcriptionEnabled' => $canUseTranscription,
     'meetingRecurrenceUi' => commonMeetingRecurrenceUi('omoDocumentsPvEditorT'),
     'meetingAvailability' => $event instanceof \dbObject\Event ? commonMeetingNextDateConfig($event) : null,
     'initialApplicationCatalog' => $pvApplicationCatalog,

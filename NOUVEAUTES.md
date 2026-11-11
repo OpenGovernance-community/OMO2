@@ -6,6 +6,8 @@ Les dates déjà indiquées sont conservées. Les dates manquantes sont reconsti
 
 ## 2026-11-11
 
+- PV / éditeur : bouton IA dans les champs Summernote des points, avec dictée au microphone, transcription, résumé et réécriture de la sélection, comme dans les mémos. Outils partagés avec les mémos, droits IA conservés et arrêt du micro à la fermeture ; le résultat reste attaché au point et à la sélection d’origine.
+
 - PV / décisions hors réorg : comparaison des autorités par identifiant pour éviter qu’une autorité importée, affichée par son numéro puis par son libellé, apparaisse comme supprimée et ajoutée. Les véritables renommages restent présentés comme une modification.
 
 - PV / décisions hors réorg : les propositions de modification d’un holon conservent ses listes héritées dans la comparaison. L’ajout ou la suppression d’une propriété locale ne signale plus de faux effacements dans les propriétés du modèle, y compris les listes d’autorités et les listes avec texte HTML.
