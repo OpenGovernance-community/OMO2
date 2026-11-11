@@ -42,6 +42,10 @@ $sourceLang = [
 	'documents.create.field.kdrive_folder_path' => ['text' => 'Chemin du dossier kDrive', 'context' => 'Label for the selected remote kDrive folder path.'],
 	'documents.create.field.kdrive_folder_hint' => ['text' => 'Le chemin est relatif au dossier kDrive configuré pour les documents. Le contenu sera relu à chaque ouverture.', 'context' => 'Hint for the remote kDrive folder path.'],
 	'documents.create.action.kdrive_browse' => ['text' => 'Parcourir kDrive', 'context' => 'Button opening the remote kDrive folder browser.'],
+	'documents.create.type.webdav_folder' => ['text' => 'Dossier WebDAV', 'context' => 'Option label for a generic WebDAV folder.'],
+	'documents.create.field.webdav_folder_path' => ['text' => 'Chemin du dossier WebDAV', 'context' => 'Label for the selected generic WebDAV folder path.'],
+	'documents.create.field.webdav_folder_hint' => ['text' => 'Le chemin est relatif au dossier WebDAV configuré pour les documents. Le contenu sera relu à chaque ouverture.', 'context' => 'Hint for the generic WebDAV folder path.'],
+	'documents.create.action.webdav_browse' => ['text' => 'Parcourir le serveur WebDAV', 'context' => 'Button opening the generic WebDAV folder browser.'],
     'documents.create.field.nextcloud_folder_path' => ['text' => 'Chemin du dossier NextCloud', 'context' => 'Label for the selected remote folder path.'],
     'documents.create.field.nextcloud_folder_hint' => ['text' => 'Le chemin est relatif au dossier NextCloud configuré pour les documents. Le contenu sera relu à chaque ouverture.', 'context' => 'Hint for the remote NextCloud folder path.'],
     'documents.create.action.nextcloud_browse' => ['text' => 'Parcourir NextCloud', 'context' => 'Button opening the remote NextCloud folder browser.'],
@@ -212,18 +216,12 @@ $organizationLoaded = $organizationId > 0 && $organization->load($organizationId
 $nextcloudDocumentsAvailable = $organizationLoaded && $organization->hasDocumentStorage();
 $pvDocumentsEnabled = $organizationLoaded && $organization->isPvDocumentEnabled();
 $nextcloudFoldersAvailable = $organizationLoaded && $organization->hasDocumentStorage();
-$remoteFolderTypeLabel = $organizationLoaded && $organization->isKdriveDocumentStorage()
-	? omoDocumentsCreateT('documents.create.type.kdrive_folder')
-	: omoDocumentsCreateT('documents.create.type.nextcloud_folder');
-$remoteFolderPathLabel = $organizationLoaded && $organization->isKdriveDocumentStorage()
-	? omoDocumentsCreateT('documents.create.field.kdrive_folder_path')
-	: omoDocumentsCreateT('documents.create.field.nextcloud_folder_path');
-$remoteFolderHint = $organizationLoaded && $organization->isKdriveDocumentStorage()
-	? omoDocumentsCreateT('documents.create.field.kdrive_folder_hint')
-	: omoDocumentsCreateT('documents.create.field.nextcloud_folder_hint');
-$remoteFolderBrowseLabel = $organizationLoaded && $organization->isKdriveDocumentStorage()
-	? omoDocumentsCreateT('documents.create.action.kdrive_browse')
-	: omoDocumentsCreateT('documents.create.action.nextcloud_browse');
+$remoteStorageType = $organizationLoaded ? ($organization->getDocumentStorageConfig()['type'] ?? 'nextcloud') : 'nextcloud';
+$remoteStorageType = in_array($remoteStorageType, array('kdrive', 'webdav'), true) ? $remoteStorageType : 'nextcloud';
+$remoteFolderTypeLabel = omoDocumentsCreateT('documents.create.type.' . $remoteStorageType . '_folder');
+$remoteFolderPathLabel = omoDocumentsCreateT('documents.create.field.' . $remoteStorageType . '_folder_path');
+$remoteFolderHint = omoDocumentsCreateT('documents.create.field.' . $remoteStorageType . '_folder_hint');
+$remoteFolderBrowseLabel = omoDocumentsCreateT('documents.create.action.' . $remoteStorageType . '_browse');
 $etherpadDocumentsAvailable = $organizationLoaded && omoEtherpadCanUseEditingSessions($organization);
 $collaboraDocumentsAvailable = $organizationLoaded && $nextcloudDocumentsAvailable && omoCollaboraHasConfig($organization);
 $whiteboardDocumentsAvailable = omoSpacedeckHasConfig();

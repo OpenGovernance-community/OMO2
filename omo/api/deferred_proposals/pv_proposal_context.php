@@ -134,4 +134,5 @@ $respond(200, [
     'status' => true,
     'context' => ['id' => (int)$contextHolon->getId(), 'label' => (string)$contextHolon->getFullDisplayName()],
     'objects' => $objects,
+    'projectResponsibleGroups' => $targetType === DeferredProposal::TARGET_PROJECT ? Project::getResponsibleOptionGroups($organizationId, $contextHolonId) : null,
 ]);

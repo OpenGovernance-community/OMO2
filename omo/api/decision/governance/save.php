@@ -295,6 +295,10 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
             $beforeState = $isCreation ? [] : ($existingDeferred instanceof DeferredProposal ? DeferredProposal::normalizeState($existingDeferred->get('before_state')) : DeferredProposal::captureProjectState($project));
             $afterState = $operation === DeferredProposal::OPERATION_DELETE ? [] : DeferredProposal::normalizeProjectState((array)($actionInput['after'] ?? []), $operation === DeferredProposal::OPERATION_UPDATE ? $project : null);
             if ($operation !== DeferredProposal::OPERATION_DELETE) $afterState['IDholon'] = $actionContextHolonId;
+            if ($operation !== DeferredProposal::OPERATION_DELETE
+                && !Project::isAllowedResponsible($organizationId, (int)$afterState['IDuser'], $isCreation ? null : $project)) {
+                $respond(422, ['status' => false, 'message' => omoDecisionUiT('project_responsible_membership')]);
+            }
             if ($operation !== DeferredProposal::OPERATION_DELETE && (int)$afterState['IDuser_proposed'] > 0
                 && !\dbObject\UserOrganization::hasActiveMembership((int)$afterState['IDuser_proposed'], $organizationId)
                 && ($isCreation || (int)$afterState['IDuser_proposed'] !== (int)$project->get('IDuser_proposed'))) {

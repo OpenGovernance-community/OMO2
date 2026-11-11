@@ -72,7 +72,7 @@ function omoUiJsSourceLang(): array
         'impossible_de_resumer_cette_selection' => ['text' => 'Impossible de résumer cette sélection.', 'context' => 'JavaScript interface text in omo/api/documents/create.js'],
         'le_resume_est_vide' => ['text' => 'Le résumé est vide.', 'context' => 'JavaScript interface text in omo/api/documents/create.js'],
         'selection_resumee' => ['text' => 'Sélection résumée.', 'context' => 'JavaScript interface text in omo/api/documents/create.js'],
-        'impossible_de_lire_nextcloud' => ['text' => 'Impossible de lire NextCloud.', 'context' => 'JavaScript interface text in omo/api/documents/create.js'],
+        'impossible_de_lire_nextcloud' => ['text' => 'Impossible de lire le serveur de stockage.', 'context' => 'JavaScript interface text in omo/api/documents/create.js'],
         'ce_document_n_est_plus_verrouille_pour_votre_edition_rechargez_le_formulaire' => ['text' => 'Ce document n’est plus verrouillé pour votre édition. Rechargez le formulaire.', 'context' => 'JavaScript interface text in omo/api/documents/create.js'],
         'impossible_d_enregistrer_ce_document_pour_le_moment' => ['text' => 'Impossible d’enregistrer ce document pour le moment.', 'context' => 'JavaScript interface text in omo/api/documents/create.js'],
         'deplacer' => ['text' => 'Déplacer', 'context' => 'JavaScript interface text in omo/api/documents/drawers.js, omo/assets/js/app.js'],

@@ -6,6 +6,14 @@ Les dates déjà indiquées sont conservées. Les dates manquantes sont reconsti
 
 ## 2026-11-11
 
+- Documents / stockage : ajout d’un serveur WebDAV générique, avec URL complète, identifiant, mot de passe, dossier racine facultatif et test de connexion. Envoi, téléchargement, suppression, navigation dans les dossiers et accès par Collabora réutilisent le connecteur partagé avec kDrive.
+
+- PV / éditeur : chronomètre partagé en haut à gauche, avec démarrage, pause, arrêt et remise à zéro. Une durée saisie ou reprise du point sélectionné prépare un compte à rebours, affiché en rouge sous une minute avec un signal sonore à zéro. Commandes réservées à la personne qui tient le PV et transférées lors de la passation ; les autres écrans voient le compteur en marche ou en pause.
+
+- PV / chronomètre : correction du premier démarrage lorsque le compteur ne possède encore aucun état enregistré, en tenant compte de la conversion des chaînes vides en `NULL` par dbObject.
+
+- PV / décisions hors réorg : choix de la personne en charge d’un projet créé, proposé ou modifié, juste avant le statut sur la même ligne. Liste regroupée sans doublons : personnes du rôle, autres membres du cercle, puis de l’organisation ; attribution conservée et visible dans le détail de la proposition.
+
 - Telegram / mémos vocaux : génération structurée du titre, des mots-clés et d’un résumé en une ou deux phrases, conservé dans le mémo et affiché au-dessus de son lien. Les échecs de résumé sont signalés et journalisés sans exposer le contenu vocal.
 
 - IA / Infomaniak : adaptation au format `json_schema` pour rétablir la réécriture et les résumés des mémos et PV. Même correction pour les résumés de décisions et l’aide FAQ ; schémas adaptés aux réponses attendues et formats des autres fournisseurs conservés.

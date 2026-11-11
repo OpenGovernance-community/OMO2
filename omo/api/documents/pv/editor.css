@@ -11,11 +11,51 @@
     overflow: hidden;
 }
 
-.omo-pv-editor--has-application-tabs {
-    grid-template-rows: auto minmax(0, 1fr);
+.omo-pv-editor--has-toolbar {
+    grid-template-rows: max-content minmax(0, 1fr);
+}
+
+.omo-pv-editor__topbar {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: 12px;
+    background: color-mix(in srgb, var(--color-surface, #fff) 92%, var(--color-bg, #eef2ff));
+}
+
+.omo-pv-editor__topbar[hidden],
+.omo-pv-editor__timer[hidden],
+.omo-pv-editor__timer [hidden] {
+    display: none !important;
+}
+
+.omo-pv-editor__timer,
+.omo-pv-editor__timer > span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.omo-pv-editor__timer {
+    flex: 0 0 auto;
+    padding: 4px;
+}
+
+.omo-pv-editor__timer-time {
+    width: 108px;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    font-weight: 700;
+}
+
+.omo-pv-editor__timer.is-urgent .omo-pv-editor__timer-time {
+    color: var(--color-danger, #dc2626);
 }
 
 .omo-pv-editor__application-tabs {
+    flex: 1 1 auto;
     --param-tabs-tab-gap: 18px;
     --param-tabs-tab-color: var(--color-text-light, #64748b);
     --param-tabs-tab-background: color-mix(in srgb, var(--color-surface, #fff) 94%, var(--color-primary, #2563eb) 6%);
@@ -104,10 +144,10 @@
     line-height: 1;
 }
 
-.omo-pv-editor--has-application-tabs > .omo-pv-editor__sidebar,
-.omo-pv-editor--has-application-tabs > .omo-pv-editor__resizer,
-.omo-pv-editor--has-application-tabs > .omo-pv-editor__main,
-.omo-pv-editor--has-application-tabs > .omo-pv-editor__application-workspace {
+.omo-pv-editor--has-toolbar > .omo-pv-editor__sidebar,
+.omo-pv-editor--has-toolbar > .omo-pv-editor__resizer,
+.omo-pv-editor--has-toolbar > .omo-pv-editor__main,
+.omo-pv-editor--has-toolbar > .omo-pv-editor__application-workspace {
     grid-row: 2;
 }
 
@@ -2285,19 +2325,19 @@ html[data-theme="dark"] .omo-pv-editor__nav-point-type-icon {
         display: none;
     }
 
-    .omo-pv-editor--has-application-tabs {
-        grid-template-rows: auto auto auto;
+    .omo-pv-editor--has-toolbar {
+        grid-template-rows: max-content auto auto;
     }
 
-    .omo-pv-editor--has-application-tabs > .omo-pv-editor__sidebar {
+    .omo-pv-editor--has-toolbar > .omo-pv-editor__sidebar {
         grid-row: 2;
     }
 
-    .omo-pv-editor--has-application-tabs > .omo-pv-editor__main {
+    .omo-pv-editor--has-toolbar > .omo-pv-editor__main {
         grid-row: 3;
     }
 
-    .omo-pv-editor--has-application-tabs > .omo-pv-editor__application-workspace {
+    .omo-pv-editor--has-toolbar > .omo-pv-editor__application-workspace {
         grid-column: 1;
         grid-row: 3;
     }

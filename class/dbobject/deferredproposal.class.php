@@ -8,6 +8,13 @@ namespace dbObject;
  */
 class DeferredProposal extends DbObject
 {
+    protected static function uiMessageSourceLang(): array
+    {
+        return [
+            'project_responsible_membership' => ['text' => 'La personne en charge du projet doit être membre de l’organisation.', 'context' => 'Project assignee validation when applying a collective proposal'],
+        ];
+    }
+
     public const OPERATION_CREATE = 'create';
     public const OPERATION_PROPOSE = 'propose';
     public const OPERATION_UPDATE = 'update';
@@ -952,6 +959,8 @@ class DeferredProposal extends DbObject
         $responsibleLabels = [];
         if ($targetType === self::TARGET_PROJECT) {
             foreach (array_unique(array_filter([
+                (int)($beforeState['IDuser'] ?? 0),
+                (int)($afterState['IDuser'] ?? 0),
                 (int)($beforeState['IDuser_proposed'] ?? 0),
                 (int)($afterState['IDuser_proposed'] ?? 0),
             ])) as $proposerId) {
@@ -1213,6 +1222,7 @@ class DeferredProposal extends DbObject
             $state = self::normalizeProjectState(self::normalizeState($proposal->get('after_state')));
             $state['IDholon'] = $contextHolonId;
             if ($state['title'] === '') return ['status' => false, 'message' => 'Le titre du projet est obligatoire.'];
+            if (!Project::isAllowedResponsible($organizationId, (int)$state['IDuser'])) return ['status' => false, 'message' => self::uiMessage('project_responsible_membership')];
             if ($targetId > 0) return ['status' => false, 'conflict' => true, 'message' => 'La création du projet est dans un état incohérent.'];
             $project = new Project();
             self::applyProjectState($project, $state, $organizationId);
@@ -1254,6 +1264,7 @@ class DeferredProposal extends DbObject
         if ($current === $after) return ['status' => true, 'target_id' => $targetId];
         if ($current !== $before) return ['status' => false, 'conflict' => true, 'message' => 'Le projet a été modifié depuis la préparation de cette modification.'];
         if ($after['title'] === '') return ['status' => false, 'message' => 'Le titre du projet est obligatoire.'];
+        if (!Project::isAllowedResponsible($organizationId, (int)$after['IDuser'], $project)) return ['status' => false, 'message' => self::uiMessage('project_responsible_membership')];
         self::applyProjectState($project, $after, $organizationId);
         $result = $project->save();
         return is_array($result) && !empty($result['status'])

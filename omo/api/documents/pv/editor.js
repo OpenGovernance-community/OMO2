@@ -152,6 +152,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
     const pointEditSnapshots = new Map();
     const saveOnPointLeaveIds = new Set();
     let activePointId = 0;
+    let pvTimer = null;
     let knownPointSignatures = {};
     let currentPointPayloads = {};
     let currentDocumentPayload = initialDocumentPayload && typeof initialDocumentPayload === 'object'
@@ -2445,8 +2446,16 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         }
     }
 
+    function preparePvTimerForPoint(pointId) {
+        if (!pvTimer) return;
+        const duration = root.querySelector('[data-omo-pv-point-duration="' + pointId + '"]');
+        const payload = currentPointPayloads[pointId] || {};
+        pvTimer.selectPoint(Number(duration ? duration.value : payload.desiredDurationMinutes || 0), pointId);
+    }
+
     // A popup or toolbar can steal focus; only entering another point saves drafts.
     function activatePoint(pointId) {
+        preparePvTimerForPoint(pointId);
         if (activePointId === pointId) {
             return;
         }
@@ -2538,6 +2547,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
     }
 
     function stopPvEditorBackgroundWork() {
+        if (pvTimer && !root.isConnected) pvTimer.destroy();
         window.removeEventListener('focus', updateEditorPollingActivity);
         window.removeEventListener('blur', updateEditorPollingActivity);
         document.removeEventListener('visibilitychange', updateEditorPollingActivity);
@@ -2772,6 +2782,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             root.classList.toggle('omo-pv-editor--has-application-tabs', !hideApplicationTabs);
             if (hideApplicationTabs) setActiveApplicationTab(0);
         }
+        if (pvTimer) pvTimer.sync(documentPayload);
         const applicationTabAddButton = applicationTabsNav instanceof Element
             ? applicationTabsNav.querySelector('[data-omo-pv-application-tab-add]')
             : null;
@@ -3584,6 +3595,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
                 durationField.addEventListener('input', function () {
                     ensurePointLock(pointId);
                     markPointDirty(pointId, true);
+                    if (pvTimer) pvTimer.selectPoint(Number(durationField.value || 0));
                     renderTimingSummary();
                 });
             }
@@ -4846,6 +4858,10 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             return response.json().then(function (payload) {
                 if (!response.ok || !payload || payload.status !== true) {
                     throw payload || new Error('request_failed');
+                }
+
+                if (payload.timer && pvTimer && action !== 'timer_state') {
+                    pvTimer.sync(payload.document || currentDocumentPayload, payload.timer, payload.serverNow);
                 }
 
                 return payload;
@@ -6289,6 +6305,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         const navButton = event.target.closest('[data-omo-pv-point-nav-target]');
         if (navButton && root.contains(navButton)) {
             const pointId = Number(navButton.getAttribute('data-omo-pv-point-nav-target') || 0);
+            preparePvTimerForPoint(pointId);
             const target = pointId > 0 ? root.querySelector('#omo-pv-editor-point-' + pointId) : null;
             if (target) {
                 target.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -7104,6 +7121,20 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
     });
     resizeDocumentDescriptionInput();
     syncEmptyNavState();
+    pvTimer = window.omoPvTimer.mount({
+        root: root,
+        state: initialDocumentPayload.timer,
+        serverNow: initialDocumentPayload.timerServerNow,
+        ui: editorClientUi,
+        send: function (fields) { return postPointAction('timer', 0, fields); },
+        poll: function () {
+            return postPointAction('timer_state', 0).then(function (payload) {
+                currentDocumentPayload.canControlTimer = payload.timerPermissions.canControlTimer;
+                return payload;
+            });
+        },
+        onDocument: mergeCurrentDocumentPayload
+    });
     mergeCurrentDocumentPayload(initialDocumentPayload);
     if (attendanceEnabled) {
         renderAttendancePayload(initialAttendancePayload);

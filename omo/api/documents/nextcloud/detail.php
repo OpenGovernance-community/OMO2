@@ -34,7 +34,7 @@ $mimeType = omoDocumentsNextcloudFileMimeType($filename, (string)($_GET['mime'] 
 $isPdf = strtolower((string)pathinfo($filename, PATHINFO_EXTENSION)) === 'pdf' || in_array(strtolower($mimeType), array('application/pdf', 'application/x-pdf'), true);
 $canUseCollabora = !$isPdf && omoCollaboraHasConfig($context['organization']) && omoCollaboraSupportsFilename($filename);
 $canEdit = $context['folder']->canEditInOrganizationContext($context['organizationId'], $context['userId'], false);
-$storageLabel = $context['organization']->isKdriveDocumentStorage() ? 'kDrive' : 'NextCloud';
+$storageLabel = $context['organization']->getDocumentStorageLabel();
 $baseQuery = 'id=' . rawurlencode((string)(int)$context['folder']->getId()) . '&oid=' . rawurlencode((string)$context['organizationId']) . '&path=' . rawurlencode($remotePath);
 $downloadUrl = '/omo/api/documents/nextcloud/file.php?' . $baseQuery;
 $inlineUrl = $downloadUrl . '&inline=1';

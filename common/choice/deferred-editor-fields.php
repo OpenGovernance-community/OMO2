@@ -13,7 +13,13 @@ function omoDeferredEditorT(string $key): string
         'intention' => ['text' => 'Intention', 'context' => 'Deferred rule intention'],
         'rule' => ['text' => 'Règle', 'context' => 'Deferred rule content'],
         'description' => ['text' => 'Description', 'context' => 'Deferred project description'],
-        'proposed_by' => ['text' => 'Propose par', 'context' => 'Member who requested the proposed project'],
+        'proposed_by' => ['text' => 'Proposé par', 'context' => 'Member who requested the proposed project'],
+        'responsible' => ['text' => 'Personne en charge', 'context' => 'Person assigned to the proposed project'],
+        'members_role' => ['text' => 'Personnes en charge du rôle', 'context' => 'First group of project assignees'],
+        'members_circle' => ['text' => 'Autres membres du cercle', 'context' => 'Second group of project assignees without duplicates'],
+        'members_organization' => ['text' => 'Autres membres de l’organisation', 'context' => 'Last group of project assignees without duplicates'],
+        'members_error' => ['text' => 'Impossible d’actualiser la liste des personnes.', 'context' => 'Project assignee list refresh error'],
+        'person_fallback' => ['text' => 'Personne #', 'context' => 'Fallback prefix for a historical project assignee'],
         'review_date' => ['text' => 'Date de requestionnement', 'context' => 'Deferred rule review date'],
         'expiration_date' => ['text' => 'Date d’échéance', 'context' => 'Deferred rule expiration date'],
         'status' => ['text' => 'Statut', 'context' => 'Deferred project status'],
@@ -56,7 +62,7 @@ function omoDeferredEditorRenderCreationHolonField(int $organizationId, int $hol
     <?php
 }
 
-function omoDeferredEditorRenderFields(string $targetType, array $state, array $memberLabels = [], ?callable $creationSpaceRenderer = null): void
+function omoDeferredEditorRenderFields(string $targetType, array $state, array $memberLabels = [], ?callable $creationSpaceRenderer = null, array $responsibleGroups = []): void
 {
     if ($targetType === 'holon_delete') {
         echo '<p>' . htmlspecialchars(omoHolonRemovalT('deferred'), ENT_QUOTES, 'UTF-8') . '</p>';
@@ -119,8 +125,31 @@ function omoDeferredEditorRenderFields(string $targetType, array $state, array $
         <?php elseif ($targetType === 'project'): ?>
             <?php $htmlField('description', 'description'); ?>
             <?php $isBlocked = ($state['status'] ?? \dbObject\Project::STATUS_IN_PROGRESS) === \dbObject\Project::STATUS_BLOCKED; ?>
-            <div class="generic-form-grid generic-form-grid--trio" style="--param-form-grid-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr);" data-deferred-project-status-row>
+            <div class="generic-form-grid" data-deferred-project-status-row>
+                <label class="generic-form-field"><span class="generic-form-label"><?= $label('responsible') ?></span>
+                    <select class="generic-form-control" name="IDuser" data-deferred-project-responsible
+                        data-group-role="<?= $label('members_role') ?>" data-group-circle="<?= $label('members_circle') ?>" data-group-organization="<?= $label('members_organization') ?>" data-members-error="<?= $label('members_error') ?>" data-person-fallback="<?= $label('person_fallback') ?>">
+                        <option value=""></option>
+                        <?php
+                        $responsibleGroups = $responsibleGroups ?: ['organization' => $memberLabels];
+                        $responsibleId = (int)($state['IDuser'] ?? 0);
+                        if ($responsibleId > 0 && !array_any($responsibleGroups, static fn (array $members): bool => isset($members[$responsibleId]))) {
+                            $responsibleGroups['organization'][$responsibleId] = \dbObject\DocumentPvPoint::getUserDisplayNameForOrganization($responsibleId, (int)($_SESSION['currentOrganization'] ?? 0));
+                        }
+                        ?>
+                        <?php foreach ($responsibleGroups as $group => $members): ?>
+                            <?php if (!$members) continue; ?>
+                            <optgroup label="<?= $label('members_' . $group) ?>">
+                                <?php foreach ($members as $memberId => $memberLabel): ?>
+                                    <option value="<?= (int)$memberId ?>"<?= $responsibleId === (int)$memberId ? ' selected' : '' ?>><?= $escape($memberLabel) ?></option>
+                                <?php endforeach; ?>
+                            </optgroup>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
                 <label class="generic-form-field"><span class="generic-form-label"><?= $label('status') ?></span><select class="generic-form-control" name="status"><?php foreach (\dbObject\Project::getStatusCatalog() as $key => $entry): ?><option value="<?= $escape($key) ?>"<?= ($state['status'] ?? \dbObject\Project::STATUS_IN_PROGRESS) === $key ? ' selected' : '' ?>><?= $escape($entry['label']) ?></option><?php endforeach; ?></select></label>
+            </div>
+            <div class="generic-form-grid" data-deferred-project-blocked-row<?= $isBlocked ? '' : ' hidden' ?>>
                 <label class="generic-form-field" data-deferred-project-blocked-field<?= $isBlocked ? '' : ' hidden' ?>><span class="generic-form-label"><?= $label('blocked_until') ?></span><input class="generic-form-control" type="date" name="blocked_until" value="<?= $value('blocked_until') ?>"></label>
                 <label class="generic-form-field" data-deferred-project-blocked-field<?= $isBlocked ? '' : ' hidden' ?>><span class="generic-form-label"><?= $label('blocked_reason') ?></span><input class="generic-form-control" name="blocked_reason" value="<?= $value('blocked_reason') ?>"></label>
             </div>

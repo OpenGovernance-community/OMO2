@@ -27,6 +27,7 @@ $nextcloudConfig = $storageType === 'nextcloud'
 $kdriveConfig = $storageType === 'kdrive'
     ? omoDocumentsParamsNormalizeKdriveConfig($documentStorageConfig)
     : omoDocumentsParamsNormalizeKdriveConfig(array());
+$webdavConfig = omoDocumentsParamsNormalizeWebdavConfig($storageType === 'webdav' ? $documentStorageConfig : array());
 $collaboraConfig = $organizationLoaded
     ? omoDocumentsParamsGetCollaboraConfig($organization, $organizationApplication)
     : omoCollaboraNormalizeConfig(array());
@@ -128,7 +129,36 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
                             <input type="radio" name="storage_type" value="kdrive" data-omo-documents-storage-type<?= $storageType === 'kdrive' ? ' checked' : '' ?>>
                             <span><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.storage_type_kdrive'), ENT_QUOTES, 'UTF-8') ?></span>
                         </label>
+                        <label class="omo-documents-params__radio">
+                            <input type="radio" name="storage_type" value="webdav" data-omo-documents-storage-type<?= $storageType === 'webdav' ? ' checked' : '' ?>>
+                            <span><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.storage_type_webdav'), ENT_QUOTES, 'UTF-8') ?></span>
+                        </label>
                     </fieldset>
+
+                    <div class="omo-documents-params__storage-fields generic-form-grid generic-form-field--full" data-omo-documents-webdav-fields<?= $storageType === 'webdav' ? '' : ' hidden' ?>>
+                        <label class="generic-form-field generic-form-field--full">
+                            <span class="generic-form-label"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.webdav_url'), ENT_QUOTES, 'UTF-8') ?></span>
+                            <input type="url" name="webdav_base_url" class="generic-form-control" maxlength="2048" autocomplete="off" placeholder="https://dav.example.com/dav/files/compte" value="<?= htmlspecialchars($webdavConfig['baseUrl'], ENT_QUOTES, 'UTF-8') ?>">
+                            <span class="generic-help-text"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.webdav_url_hint'), ENT_QUOTES, 'UTF-8') ?></span>
+                        </label>
+                        <label class="generic-form-field">
+                            <span class="generic-form-label"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.webdav_username'), ENT_QUOTES, 'UTF-8') ?></span>
+                            <input type="text" name="webdav_username" class="generic-form-control" maxlength="255" autocomplete="username" value="<?= htmlspecialchars($webdavConfig['username'], ENT_QUOTES, 'UTF-8') ?>">
+                        </label>
+                        <label class="generic-form-field">
+                            <span class="generic-form-label"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.webdav_password'), ENT_QUOTES, 'UTF-8') ?></span>
+                            <input type="password" name="webdav_app_password" class="generic-form-control" maxlength="1024" autocomplete="new-password" placeholder="<?= htmlspecialchars(omoDocumentsParamsT($storageType === 'webdav' ? 'documents.params.field.webdav_password_keep' : 'documents.params.field.webdav_password'), ENT_QUOTES, 'UTF-8') ?>">
+                        </label>
+                        <label class="generic-form-field generic-form-field--full">
+                            <span class="generic-form-label"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.folder'), ENT_QUOTES, 'UTF-8') ?></span>
+                            <input type="text" name="webdav_folder" class="generic-form-control" maxlength="1000" autocomplete="off" placeholder="Documents/OMO" value="<?= htmlspecialchars($webdavConfig['folder'], ENT_QUOTES, 'UTF-8') ?>">
+                            <span class="generic-help-text"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.webdav_folder_hint'), ENT_QUOTES, 'UTF-8') ?></span>
+                        </label>
+                        <div class="omo-documents-params__test generic-form-field--full">
+                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-documents-webdav-test><?= htmlspecialchars(omoDocumentsParamsT('documents.params.action.test_storage'), ENT_QUOTES, 'UTF-8') ?></button>
+                            <span class="generic-help-text" data-omo-documents-webdav-test-feedback aria-live="polite"></span>
+                        </div>
+                    </div>
 
                     <div class="omo-documents-params__storage-fields generic-form-grid generic-form-field--full" data-omo-documents-nextcloud-fields<?= $storageType === 'nextcloud' || !$storageConfigured ? '' : ' hidden' ?>>
 

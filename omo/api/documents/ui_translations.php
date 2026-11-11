@@ -5,6 +5,9 @@ require_once __DIR__ . '/../../translations.php';
 function omoDocumentsUiSourceLang(): array
 {
     static $sourceLang = [
+        'dossier_distant_introuvable' => ['text' => 'Dossier distant introuvable.', 'context' => 'Missing remote folder on any configured document storage provider.'],
+        'stockage_documents_indisponible' => ['text' => 'Le stockage de documents est indisponible.', 'context' => 'Unavailable remote document storage.'],
+        'mise_a_jour_chemin_distant_impossible' => ['text' => 'Impossible de mettre à jour le chemin du dossier distant.', 'context' => 'Failure saving a resolved remote folder path.'],
         'acces_refuse' => ['text' => 'Accès refusé.', 'context' => 'Validation or action feedback in api/documents/children.php, api/documents/collabora/open.php, api/documents/collabora/token.php, api/documents/edit_lock.php, api/documents/ethercalc/open.php, api/documents/etherpad/open.php, api/documents/merge_action.php, api/documents/nextcloud/browse.php, api/documents/nextcloud/detail.php, api/documents/nextcloud/file.php, api/documents/pv/summarize.php, api/documents/save.php, api/documents/share_create.php, api/documents/share_delete.php'],
         'dossier_introuvable' => ['text' => 'Dossier introuvable.', 'context' => 'Validation or action feedback in api/documents/children.php'],
         'demande_invalide' => ['text' => 'Demande invalide.', 'context' => 'Validation or action feedback in api/documents/collabora/open.php, api/documents/collabora/token.php, api/documents/ethercalc/open.php, api/documents/etherpad/open.php'],
@@ -12,7 +15,7 @@ function omoDocumentsUiSourceLang(): array
         'organisation_introuvable' => ['text' => 'Organisation introuvable.', 'context' => 'Validation or action feedback in api/documents/collabora/open.php, api/documents/etherpad/open.php'],
         'collabora_ou_le_stockage_de_documents_n_est_pas_disponible' => ['text' => 'Collabora ou le stockage de documents n’est pas disponible.', 'context' => 'Validation or action feedback in api/documents/collabora/open.php, api/documents/collabora/token.php'],
         'impossible_de_joindre_collabora' => ['text' => 'Impossible de joindre Collabora.', 'context' => 'Validation or action feedback in api/documents/collabora/open.php'],
-        'chemin_nextcloud_invalide' => ['text' => 'Chemin NextCloud invalide.', 'context' => 'Validation or action feedback in api/documents/collabora/open.php, api/documents/collabora/token.php, api/documents/nextcloud/browse.php, api/documents/nextcloud/file.php'],
+        'chemin_nextcloud_invalide' => ['text' => 'Chemin distant invalide.', 'context' => 'Validation or action feedback in api/documents/collabora/open.php, api/documents/collabora/token.php, api/documents/nextcloud/browse.php, api/documents/nextcloud/file.php'],
         'le_format_de_ce_fichier_n_est_pas_disponible_dans_collabora' => ['text' => 'Le format de ce fichier n’est pas disponible dans Collabora.', 'context' => 'Validation or action feedback in api/documents/collabora/open.php'],
         'activez_javascript_pour_ouvrir_le_document' => ['text' => 'Activez JavaScript pour ouvrir le document.', 'context' => 'Interface label in api/documents/collabora/open.php'],
         'impossible_de_renouveler_le_jeton_collabora' => ['text' => 'Impossible de renouveler le jeton Collabora.', 'context' => 'Validation or action feedback in api/documents/collabora/token.php'],
@@ -26,7 +29,7 @@ function omoDocumentsUiSourceLang(): array
         'contexte_du_document' => ['text' => 'Contexte du document', 'context' => 'Interface label in api/documents/index.php'],
         'impossible_de_fusionner_les_documents' => ['text' => 'Impossible de fusionner les documents.', 'context' => 'Validation or action feedback in api/documents/merge_action.php'],
         'document_fusionne' => ['text' => 'Document fusionné.', 'context' => 'Validation or action feedback in api/documents/merge_action.php'],
-        'impossible_de_lire_le_dossier_nextcloud' => ['text' => 'Impossible de lire le dossier NextCloud.', 'context' => 'Validation or action feedback in api/documents/nextcloud/browse.php'],
+        'impossible_de_lire_le_dossier_nextcloud' => ['text' => 'Impossible de lire le dossier distant.', 'context' => 'Validation or action feedback in api/documents/nextcloud/browse.php'],
         'impossible_de_recuperer_le_fichier_distant' => ['text' => 'Impossible de récupérer le fichier distant.', 'context' => 'Validation or action feedback in api/documents/nextcloud/file.php, api/documents/upload/download.php'],
         'dossier_nextcloud_introuvable' => ['text' => 'Dossier NextCloud introuvable.', 'context' => 'Validation or action feedback in api/documents/nextcloud/shared.php'],
         'les_modifications_de_ce_point_ne_peuvent_pas_etre_appliquees' => ['text' => 'Les modifications de ce point ne peuvent pas être appliquées.', 'context' => 'Validation or action feedback in api/documents/pv/action.php'],

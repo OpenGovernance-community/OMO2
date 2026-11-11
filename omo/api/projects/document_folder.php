@@ -127,7 +127,7 @@ if ($folder->isNextcloudFolder()) {
         omoProjectsFolderFail(502, (string)($result['text'] ?? omoProjectsT('projects.detail.documents.folder_error')));
     }
     foreach ((array)($result['entries'] ?? []) as $entry) {
-        $html .= omoProjectsFolderRenderRemoteEntry((array)$entry, $folderId, $projectId, $nextcloud['organization']->isKdriveDocumentStorage() ? 'kDrive' : 'NextCloud');
+        $html .= omoProjectsFolderRenderRemoteEntry((array)$entry, $folderId, $projectId, $nextcloud['organization']->getDocumentStorageLabel());
     }
 } else {
     foreach ($folder->getDirectChildren() as $childDocument) {

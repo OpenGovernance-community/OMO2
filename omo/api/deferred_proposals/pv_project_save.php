@@ -38,6 +38,9 @@ $afterState = [];
 if ($operation !== DeferredProposal::OPERATION_DELETE) {
     $afterState = DeferredProposal::normalizeProjectState($_POST, $operation === DeferredProposal::OPERATION_UPDATE ? $project : null);
     $afterState['IDholon'] = $holonId;
+    if (!Project::isAllowedResponsible($organizationId, (int)$afterState['IDuser'], $isCreation ? null : $project)) {
+        $respond(422, ['status' => false, 'message' => omoDeferredProposalsUiT('project_responsible_membership')]);
+    }
     if ((int)$afterState['IDuser_proposed'] > 0
         && !\dbObject\UserOrganization::hasActiveMembership((int)$afterState['IDuser_proposed'], $organizationId)
         && ($isCreation || (int)$afterState['IDuser_proposed'] !== (int)$project->get('IDuser_proposed'))) {

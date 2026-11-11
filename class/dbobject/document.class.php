@@ -30,6 +30,8 @@
                 'chemin_nextcloud_invalide' => ['text' => 'Chemin NextCloud invalide.', 'context' => 'Validation or action feedback for document.'],
                 'le_stockage_de_dossiers_distants_est_indisponible' => ['text' => 'Le stockage de dossiers distants est indisponible.', 'context' => 'Validation or action feedback for document.'],
                 'chemin_kdrive_invalide' => ['text' => 'Chemin kDrive invalide.', 'context' => 'Validation or action feedback for document.'],
+                'chemin_distant_invalide' => ['text' => 'Chemin distant invalide.', 'context' => 'Invalid path for a root-relative WebDAV folder.'],
+                'dossier_distant_introuvable' => ['text' => 'Le dossier distant est introuvable.', 'context' => 'Missing root-relative WebDAV folder.'],
                 'organisation_invalide' => ['text' => 'Organisation invalide.', 'context' => 'Validation or action feedback for document.'],
                 'impossible_de_mettre_a_jour_un_document_apres_suppression_de_son_fichier' => ['text' => 'Impossible de mettre à jour un document après suppression de son fichier.', 'context' => 'Validation or action feedback for document.'],
                 'modele_de_pv_invalide_pour_les_applications_de_reunion' => ['text' => 'Modèle de PV invalide pour les applications de réunion.', 'context' => 'Validation or action feedback for document.'],
@@ -51,7 +53,7 @@
                 'utilisateur_invalide' => ['text' => 'Utilisateur invalide.', 'context' => 'Validation or action feedback for document.'],
                 'l_url_externe_est_obligatoire' => ['text' => 'L’URL externe est obligatoire.', 'context' => 'Validation or action feedback for document.'],
                 'un_fichier_est_obligatoire_pour_ce_type_de_document' => ['text' => 'Un fichier est obligatoire pour ce type de document.', 'context' => 'Validation or action feedback for document.'],
-                'le_chemin_du_dossier_nextcloud_est_obligatoire_et_ne_peut_pas_contenir_de_remontee_de_doss' => ['text' => 'Le chemin du dossier NextCloud est obligatoire et ne peut pas contenir de remontée de dossier.', 'context' => 'Validation or action feedback for document.'],
+                'le_chemin_du_dossier_nextcloud_est_obligatoire_et_ne_peut_pas_contenir_de_remontee_de_doss' => ['text' => 'Le chemin du dossier distant est obligatoire et ne peut pas contenir de remontée de dossier.', 'context' => 'Validation or action feedback for document.'],
                 'le_format_pv_n_est_pas_active_pour_cette_organisation' => ['text' => 'Le format PV n’est pas active pour cette organisation.', 'context' => 'Validation or action feedback for document.'],
                 'evenement_associe_introuvable' => ['text' => 'Événement associé introuvable.', 'context' => 'Validation or action feedback for document.'],
                 'le_stockage_de_documents_n_est_pas_configure_pour_cette_organisation' => ['text' => 'Le stockage de documents n’est pas configuré pour cette organisation.', 'context' => 'Validation or action feedback for document.'],
@@ -135,7 +137,7 @@
                 'option.valide' => ['text' => 'Valide', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
                 'option.lien_externe' => ['text' => 'Lien externe', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
                 'option.dossier' => ['text' => 'Dossier', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
-                'option.dossier_nextcloud' => ['text' => 'Dossier NextCloud', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+                'option.dossier_nextcloud' => ['text' => 'Dossier distant', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
                 'option.pv' => ['text' => 'PV', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
                 'option.pad_cooperatif' => ['text' => 'Pad coopératif', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
                 'option.tableur_collaboratif' => ['text' => 'Tableur collaboratif', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
@@ -179,7 +181,7 @@
 				[['title'], 'required'],						// Champs obligatoires
 				[['id', 'version', 'estDossier', 'active', 'is_template', 'pv_editor_handover_open', 'openinnewwindow', 'project_visible_in_holon', 'storedfilesize'], 'integer'],				// Nombres entiers
 				[['title', 'codeview', 'codeedit', 'keywords', 'documenttype', 'pvstage', 'externalurl', 'storedfilepath', 'storedfilename', 'storedfilemime', 'nextcloudfolderpath', 'nextcloudfolderfileid', 'etherpadpadid', 'ethercalcroomid', 'spacedeckspaceid'], 'string'],	// Chaines de caractere
-				[['description', 'content', 'contentedition'], 'text'],			// Textes libres
+				[['description', 'content', 'contentedition', 'pv_timer'], 'text'],			// Textes libres
 				[['datecreation', 'datemodification', 'dateconsultation', 'dateedition', 'datecontentedition', 'pv_review_started_at'], 'datetime'],	// Date avec precision des heures
 				[['IDuser', 'IDusercreation', 'IDusermodification', 'IDuseredition', 'IDuser_pv_editor', 'IDuser_pv_official_editor', 'IDorganization', 'IDholon', 'IDdocument_parent', 'IDevent'], 'fk'],	// Cles etrangeres
 				[['id'], 'safe'],								// Champs proteges
@@ -207,6 +209,7 @@
 				'IDuser_pv_editor' => 'Secrétaire du PV',
 				'IDuser_pv_official_editor' => 'Dernier secrétaire officiel du PV',
 				'pv_editor_handover_open' => 'Passation du secrétaire ouverte',
+				'pv_timer' => 'Chronomètre du PV',
 				'estDossier' => 'Dossier',
 				'IDdocument_parent' => 'Dossier parent',
 				'datecreation' => 'Date de création',
@@ -262,6 +265,7 @@
 				'IDuser_pv_editor' => 'Personne qui tient le PV pendant la réunion et peut modifier tous les points.',
 				'IDuser_pv_official_editor' => 'Dernière personne officielle a tenir le PV, utilisée pour le retour en relecture.',
 				'pv_editor_handover_open' => 'Indique que le secrétaire actuel autorise un invité à reprendre son rôle.',
+				'pv_timer' => 'État partagé du chronomètre et référence de temps du serveur.',
 				'externalurl' => 'Adresse du site a ouvrir pour un document de type lien externe',
 				'openinnewwindow' => 'Ouvre le lien externe directement dans une autre fenêtre',
 				'project_visible_in_holon' => 'Autorise l’affichage dans la liste du holon pour un document lié à un projet ou événement',
@@ -1795,6 +1799,7 @@
 				'pv_stage' => $this->getPvStage(),
 				'pv_editor_user_id' => $this->getPvEditorUserId(),
 				'pv_editor_handover_open' => $this->isPvEditorHandoverOpen() ? 1 : 0,
+				'pv_timer' => (string)$this->get('pv_timer'),
 				'is_template' => $this->isPvTemplate() ? 1 : 0,
 				'active' => !empty($this->get('active')) ? 1 : 0,
 				'modified_at' => $modifiedAt instanceof \DateTimeInterface
@@ -1810,6 +1815,69 @@
 				'discussions' => is_array($discussionRows) ? $discussionRows : [],
 				'organization_history_id' => \dbObject\History::getLatestOrganizationEntryId($organizationId),
 			], JSON_UNESCAPED_SLASHES));
+		}
+
+		public function getPvTimerState(): array
+		{
+			$state = json_decode((string)$this->get('pv_timer'), true);
+			return is_array($state) ? $state : [
+				'status' => 'stopped', 'mode' => 'stopwatch', 'milliseconds' => 0,
+				'anchor' => 0, 'revision' => '', 'runId' => '',
+			];
+		}
+
+		public function updatePvTimer(int $userId, string $command, string $revision, ?int $seconds = null, string $mode = 'countdown'): bool
+		{
+			if (!$this->isPvDocument() || !$this->isPvEditor($userId) || $this->isPvValidated()
+				|| !in_array($command, ['play', 'pause', 'stop', 'edit'], true)
+				|| ($seconds !== null && ($seconds < 0 || $seconds > 359999))
+				|| !in_array($mode, ['stopwatch', 'countdown'], true)) {
+				return false;
+			}
+			$rawState = (string)$this->get('pv_timer');
+			$state = $this->getPvTimerState();
+			if ($revision !== (string)$state['revision']) return false;
+			$now = (int)floor(microtime(true) * 1000);
+			$milliseconds = (int)$state['milliseconds'];
+			if ($state['status'] === 'playing') {
+				$elapsed = max(0, $now - (int)$state['anchor']);
+				$milliseconds = $state['mode'] === 'countdown'
+					? max(0, $milliseconds - $elapsed) : $milliseconds + $elapsed;
+			}
+			if ($command === 'stop') {
+				$state['status'] = 'stopped';
+				$state['mode'] = 'stopwatch';
+				$milliseconds = 0;
+			} elseif ($command === 'edit') {
+				if ($seconds === null) return false;
+				$milliseconds = $seconds * 1000;
+				$state['mode'] = 'countdown';
+				$state['runId'] = bin2hex(random_bytes(12));
+			} elseif ($command === 'play') {
+				if ($state['status'] === 'playing') return false;
+				if ($state['status'] === 'stopped') {
+					$milliseconds = ($seconds ?? 0) * 1000;
+					$state['mode'] = $mode;
+					$state['runId'] = bin2hex(random_bytes(12));
+				}
+				$state['status'] = 'playing';
+			} else {
+				if ($state['status'] !== 'playing') return false;
+				$state['status'] = 'paused';
+			}
+			$state['milliseconds'] = $milliseconds;
+			$state['anchor'] = $now;
+			$state['revision'] = bin2hex(random_bytes(12));
+			$encoded = json_encode($state, JSON_UNESCAPED_SLASHES);
+			// Compare both the current editor and revision atomically: a former editor
+			// or an older tab must never overwrite a handover or a newer timer action.
+			if (!self::execute(
+				"UPDATE document SET pv_timer = :timer WHERE id = :id AND IDuser_pv_editor = :editor
+				 AND COALESCE(pv_timer, '') = COALESCE(:previous, '') AND active = 1",
+				['timer' => $encoded, 'id' => (int)$this->getId(), 'editor' => $userId, 'previous' => $rawState]
+			)) return false;
+			$this->load((int)$this->getId(), true);
+			return (string)$this->get('pv_timer') === $encoded;
 		}
 
 		public function getPvEditorUserId(): int
@@ -3062,7 +3130,7 @@
 			if (!$this->isNextcloudFolder()) {
 				return '';
 			}
-			if (!$organization->isKdriveDocumentStorage()) {
+			if (!$organization->isWebdavDocumentStorage()) {
 				return $this->buildNextcloudFolderRemotePath($organization, $childPath);
 			}
 			return implode('/', array_filter(array(
@@ -3087,16 +3155,16 @@
 			if (!$this->isNextcloudFolder() || !$organization->hasDocumentStorage()) {
 				return array('status' => false, 'text' => self::uiMessage('le_stockage_de_dossiers_distants_est_indisponible'));
 			}
-			if (!$organization->isKdriveDocumentStorage()) {
+			if (!$organization->isWebdavDocumentStorage()) {
 				return $this->resolveNextcloudFolderLocation($organization);
 			}
 			$relativePath = $this->getNextcloudFolderPath();
 			$remotePath = $this->buildRemoteFolderStoragePath($organization);
 			$location = $remotePath !== ''
 				? $organization->getDocumentStorageDirectoryInfo($remotePath)
-				: array('status' => false, 'text' => self::uiMessage('chemin_kdrive_invalide'));
+				: array('status' => false, 'text' => self::uiMessage('chemin_distant_invalide'));
 			if (empty($location['status']) || empty($location['isFolder'])) {
-				return array('status' => false, 'text' => trim((string)($location['text'] ?? 'Le dossier kDrive est introuvable.')));
+				return array('status' => false, 'text' => trim((string)($location['text'] ?? self::uiMessage('dossier_distant_introuvable'))));
 			}
 			return array('status' => true, 'relativePath' => $relativePath, 'remotePath' => $remotePath, 'fileId' => '');
 		}
@@ -6191,7 +6259,7 @@
 						if ($startedTransaction && $pdo->inTransaction()) {
 							$pdo->rollBack();
 						}
-						return array('status' => false, 'text' => trim((string)($nextcloudFolderLocation['text'] ?? 'Le dossier NextCloud est introuvable.')));
+						return array('status' => false, 'text' => trim((string)($nextcloudFolderLocation['text'] ?? self::uiMessage('dossier_distant_introuvable'))));
 					}
 					$this->set('nextcloudfolderfileid', trim((string)($nextcloudFolderLocation['fileId'] ?? '')) ?: null);
 				}
@@ -7061,7 +7129,7 @@
 						if ($startedTransaction && $pdo->inTransaction()) {
 							$pdo->rollBack();
 						}
-						return array('status' => false, 'text' => trim((string)($nextcloudFolderLocation['text'] ?? 'Le dossier NextCloud est introuvable.')));
+						return array('status' => false, 'text' => trim((string)($nextcloudFolderLocation['text'] ?? self::uiMessage('dossier_distant_introuvable'))));
 					}
 					$this->set('nextcloudfolderpath', (string)$nextcloudFolderLocation['relativePath']);
 					$this->set('nextcloudfolderfileid', trim((string)($nextcloudFolderLocation['fileId'] ?? '')) ?: null);

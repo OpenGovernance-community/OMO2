@@ -809,7 +809,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
                 .then(function (response) {
                     return response.json().then(function (payload) {
                         if (!response.ok || !payload || payload.status !== true) {
-                            throw new Error(String(payload && payload.message || omoUiText("impossible_de_lire_nextcloud", "Impossible de lire NextCloud.")));
+                            throw new Error(String(payload && payload.message || omoUiText("impossible_de_lire_nextcloud", "Impossible de lire le serveur de stockage.")));
                         }
                         return payload;
                     });
@@ -854,7 +854,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
                     });
                 })
                 .catch(function (error) {
-                    nextcloudBrowser.textContent = String(error && error.message || omoUiText("impossible_de_lire_nextcloud", "Impossible de lire NextCloud."));
+                    nextcloudBrowser.textContent = String(error && error.message || omoUiText("impossible_de_lire_nextcloud", "Impossible de lire le serveur de stockage."));
                 })
                 .finally(function () {
                     nextcloudBrowseButton.disabled = false;
