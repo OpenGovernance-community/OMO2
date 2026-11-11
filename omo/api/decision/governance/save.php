@@ -272,7 +272,7 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
                     $afterState = (array)$validation['state'];
                     if ($beforeState === $afterState) $respond(422, ['status' => false, 'message' => omoDecisionUiT('la_modification_du_role_ne_contient_aucun_changement')]);
                     $suggestedTitles[] = 'Modifier le rôle ' . $roleName;
-                    $actionDescriptions[] = ('<h4>' . htmlspecialchars(omoDecisionUiT('modifier_le_role'), ENT_QUOTES, 'UTF-8')) . htmlspecialchars($roleName, ENT_QUOTES, 'UTF-8') . '</h4>' . DecisionGovernanceAction::buildRoleUpdateDescription($beforeState, $afterState);
+                    $actionDescriptions[] = ('<h4>' . htmlspecialchars(omoDecisionUiT('modifier_le_role'), ENT_QUOTES, 'UTF-8')) . htmlspecialchars($roleName, ENT_QUOTES, 'UTF-8') . '</h4>' . DecisionGovernanceAction::buildRoleUpdateDescription($beforeState, $afterState, $contextOrganization);
                 }
             }
             $normalizedActions[] = ['id' => $actionId, 'existing' => $existingAction, 'existing_deferred' => $existingDeferred, 'action_type' => $actionType, 'operation' => $operation, 'holon_id' => $actionContextHolonId, 'target_id' => $targetId, 'target_type' => DeferredProposal::TARGET_HOLON, 'before' => $beforeState, 'after' => $afterState, 'position' => $actionIndex + 1];

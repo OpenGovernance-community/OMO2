@@ -6,6 +6,10 @@ Les dates déjà indiquées sont conservées. Les dates manquantes sont reconsti
 
 ## 2026-11-11
 
+- PV / décisions hors réorg : comparaison des autorités par identifiant pour éviter qu’une autorité importée, affichée par son numéro puis par son libellé, apparaisse comme supprimée et ajoutée. Les véritables renommages restent présentés comme une modification.
+
+- PV / décisions hors réorg : les propositions de modification d’un holon conservent ses listes héritées dans la comparaison. L’ajout ou la suppression d’une propriété locale ne signale plus de faux effacements dans les propriétés du modèle, y compris les listes d’autorités et les listes avec texte HTML.
+
 - PV / éditeur : correction de la liste vide du bouton d’insertion de projets dans Summernote. Le chargement des projets, la recherche et l’insertion fonctionnent à nouveau ; le cache du sélecteur partagé suit ses mises à jour.
 
 - Documents / aperçus : bouton Télécharger à côté de Plein écran pour les fichiers ouverts avec Collabora. Le plein écran des aperçus remplit la fenêtre sans masquer les onglets du navigateur ; le bouton de retour reste accessible et le document conserve sa session.

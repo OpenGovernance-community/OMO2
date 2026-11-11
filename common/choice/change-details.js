@@ -65,6 +65,39 @@ function holonPropertyItems(property){
         return String(item==null?'':item).trim();
     }).filter(Boolean);
 }
+function holonAuthorityItems(property){
+    if(!property)return[];
+    var decoded;
+    try{decoded=typeof property.value==='string'?JSON.parse(property.value):property.value;}catch(error){decoded=String(property.value||'').split(/\r\n|\r|\n|\|/);}
+    var items=Array.isArray(decoded)?decoded:(decoded&&Array.isArray(decoded.items)?decoded.items:[]);
+    var display=Array.isArray(property.displayItems)?property.displayItems:[];
+    return items.filter(function(item){return!(item&&typeof item==='object'&&item.delete===true);}).map(function(item,index){
+        var object=item&&typeof item==='object',id=Number(object?item.id:item)||0;
+        var explicit=object?String(item.label||'').trim():'';
+        var shown=display[index],label=explicit||String(shown&&typeof shown==='object'?shown.label||'':shown==null?'':shown).trim();
+        var known=explicit!==''||(label!==''&&label!==String(id)&&label!=='Autorité #'+id);
+        return{id:id,label:label||String(id||''),known:known};
+    });
+}
+function holonAuthorityChanges(label,beforeProperty,afterProperty){
+    var before=holonAuthorityItems(beforeProperty),after=holonAuthorityItems(afterProperty),changes=[],remainingAfter=after.slice(),remainingBefore=[];
+    before.forEach(function(oldItem){
+        var index=oldItem.id>0?remainingAfter.findIndex(function(item){return item.id===oldItem.id;}):-1;
+        if(index<0){remainingBefore.push(oldItem);return;}
+        var newItem=remainingAfter.splice(index,1)[0];
+        // Resolving an imported ID into a label does not change the authority.
+        if(oldItem.known&&newItem.known&&oldItem.label!==newItem.label){
+            changes.push({label:label,before:oldItem.label,after:newItem.label,status:'changed'});
+        }
+    });
+    var removed=remainingBefore.filter(function(item){return item.id>0;}).map(function(item){return item.label;});
+    var added=remainingAfter.filter(function(item){return item.id>0;}).map(function(item){return item.label;});
+    if(removed.length)changes.push({label:label,before:removed,after:[],status:'removed',list:true});
+    if(added.length)changes.push({label:label,before:[],after:added,status:'added',list:true});
+    return changes.concat(diffList(label,
+        remainingBefore.filter(function(item){return item.id<=0;}).map(function(item){return item.label;}),
+        remainingAfter.filter(function(item){return item.id<=0;}).map(function(item){return item.label;})));
+}
 function detailedHolonChanges(action){
     var before=action.before||{},after=action.after||{},changes=[];
     if (action.type === 'holon.move') {
@@ -88,7 +121,9 @@ function detailedHolonChanges(action){
             return;
         }
         if(formatId===2||formatId===7){
-            Array.prototype.push.apply(changes,diffList(label,holonPropertyItems(oldProperty),holonPropertyItems(newProperty)));
+            Array.prototype.push.apply(changes,String(property.listItemType||'')==='authority'
+                ?holonAuthorityChanges(label,oldProperty,newProperty)
+                :diffList(label,holonPropertyItems(oldProperty),holonPropertyItems(newProperty)));
             if(formatId===7){
                 var oldParts={},newParts={};
                 try{oldParts=JSON.parse(String(oldProperty&&oldProperty.value||''))||{};}catch(error){}

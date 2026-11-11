@@ -207,7 +207,7 @@ if (!function_exists('omoDecisionGovernanceBuildBlueprint')) {
                 if ((string)$action->get('target_type') === DecisionGovernanceAction::TARGET_HOLON) {
                     if ($hasOrganization) {
                         $beforeState = DeferredProposal::decorateHolonTemplateDisplayState($beforeState, $organization);
-                        $afterState = DeferredProposal::decorateHolonTemplateDisplayState($afterState, $organization);
+                        $afterState = DeferredProposal::decorateHolonTemplateDisplayState($afterState, $organization, $beforeState);
                     }
                     if (is_array($beforeState['editor_payload']['properties'] ?? null)) {
                         $beforeState['editor_payload']['properties'] = omoDecisionGovernanceDecorateRoleProperties($beforeState['editor_payload']['properties']);
@@ -241,7 +241,7 @@ if (!function_exists('omoDecisionGovernanceBuildBlueprint')) {
                 $afterState = DeferredProposal::normalizeState($deferredProposal->get('after_state'));
                 if ($hasOrganization && (string)$deferredProposal->get('target_type') === DeferredProposal::TARGET_HOLON) {
                     $beforeState = DeferredProposal::decorateHolonTemplateDisplayState($beforeState, $organization);
-                    $afterState = DeferredProposal::decorateHolonTemplateDisplayState($afterState, $organization);
+                    $afterState = DeferredProposal::decorateHolonTemplateDisplayState($afterState, $organization, $beforeState);
                     $beforeState = DeferredProposal::decorateHolonListDisplayState($beforeState, $organization);
                     $afterState = DeferredProposal::decorateHolonListDisplayState($afterState, $organization);
                 }
