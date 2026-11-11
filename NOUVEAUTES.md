@@ -4,6 +4,12 @@ Ce fichier garde une vue d'ensemble courte des évolutions récentes, avec un an
 
 Les dates déjà indiquées sont conservées. Les dates manquantes sont reconstituées à partir de la première apparition des entrées dans l'historique GitHub, en heure Europe/Zurich ; elles correspondent à leur ajout au journal, pas nécessairement à leur mise en production.
 
+## 2026-11-11
+
+- Documents / aperçus : bouton Télécharger à côté de Plein écran pour les fichiers ouverts avec Collabora. Le plein écran des aperçus remplit la fenêtre sans masquer les onglets du navigateur ; le bouton de retour reste accessible et le document conserve sa session.
+
+- Documents / Collabora : autorisation WOPI étendue à tous les sous-domaines de `omo2.org`, notamment `instantz.omo2.org`, en conservant le domaine principal. Autorisation d’affichage dans une iframe adaptée au même périmètre sur le VPS.
+
 ## 2026-11-10
 
 - Processus / étapes : affichage des branches immédiatement visibles en premier ; chaque étape dépendante suit son étape de référence, avec une indentation progressive pour les dépendances en chaîne. L’ordre chronologique des étapes liées à la date de référence est conservé.

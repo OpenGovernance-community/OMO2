@@ -13,7 +13,9 @@
 
     function updateLabels() {
         document.querySelectorAll('[data-common-panel-fullscreen]').forEach(function (button) {
-            var label = active && button.closest('[data-common-panel-view]') === active.root ? texts.exitFullscreen : texts.fullscreen;
+            var isActive = !!(active && button.closest('[data-common-panel-view]') === active.root);
+            var label = isActive ? texts.exitFullscreen : texts.fullscreen;
+            if (button.hasAttribute('aria-pressed')) button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
             if (button.hasAttribute('data-common-panel-fullscreen-icon')) {
                 button.setAttribute('aria-label', label);
                 button.title = label;
@@ -61,6 +63,7 @@
         if (observer) { observer.disconnect(); observer = null; }
         previous.host.classList.remove('generic-panel-fullscreen-host');
         previous.root.classList.remove('generic-panel-fullscreen-content');
+        previous.bridges.forEach(function (element) { element.classList.remove('generic-panel-fullscreen-bridge'); });
         previous.hiddenSiblings.forEach(function (item) { item.element.inert = item.inert; item.element.classList.remove('generic-panel-fullscreen-hidden'); });
         closeMenus(previous.root);
         updateLabels();
@@ -77,7 +80,8 @@
 
     function checkActiveView() {
         if (!active) return;
-        if (!active.host.isConnected || (active.host.matches('.drawer') && !active.host.classList.contains('open'))) {
+        if (!active.host.isConnected || (active.host.matches('.drawer') && !active.host.classList.contains('open'))
+            || (active.drawer && (active.drawer.hidden || !active.drawer.classList.contains('is-open')))) {
             exit();
             return;
         }
@@ -95,15 +99,31 @@
         if (active && active.root === root) { exit(); return; }
         exit();
         var hostSelector = root.getAttribute('data-common-panel-fullscreen-isolate');
+        var windowMode = root.getAttribute('data-common-panel-fullscreen-mode') === 'window';
         var host = hostSelector ? root.closest(hostSelector) : (typeof options.getHost === 'function' ? options.getHost(root) : root);
+        if (windowMode && hostSelector && host) {
+            // Window previews must also escape any enclosing transformed app panel.
+            for (var outer = host.parentElement && host.parentElement.closest(hostSelector); outer; outer = host.parentElement && host.parentElement.closest(hostSelector)) {
+                host = outer;
+            }
+        }
         if (!host || !host.isConnected) return;
         var triggerMenu = trigger && trigger.closest('.generic-menu');
         var focusTrigger = triggerMenu ? triggerMenu.querySelector('.generic-menu-toggle') : trigger;
-        active = {root: root, host: host, trigger: focusTrigger, hiddenSiblings: [], scrollPositions: []};
+        var ownerSelector = root.getAttribute('data-common-panel-fullscreen-owner');
+        active = {root: root, host: host, trigger: focusTrigger, hiddenSiblings: [], scrollPositions: [], bridges: [], drawer: ownerSelector ? root.closest(ownerSelector) : null};
+        if (windowMode) {
+            host.classList.add('generic-panel-fullscreen-bridge');
+            active.bridges.push(host);
+        }
         if (hostSelector) {
             for (var ancestor = root.parentElement; ancestor; ancestor = ancestor.parentElement) {
                 active.scrollPositions.push({element: ancestor, top: ancestor.scrollTop, left: ancestor.scrollLeft});
                 if (ancestor === host) break;
+                if (windowMode) {
+                    ancestor.classList.add('generic-panel-fullscreen-bridge');
+                    active.bridges.push(ancestor);
+                }
             }
             root.classList.add('generic-panel-fullscreen-content');
             for (var branch = root; branch && branch !== host; branch = branch.parentElement) {
@@ -121,6 +141,7 @@
         observer = new MutationObserver(checkActiveView);
         observer.observe(document.body, {childList: true, subtree: true});
         observer.observe(host, {attributes: true, attributeFilter: ['class']});
+        if (active.drawer) observer.observe(active.drawer, {attributes: true, attributeFilter: ['class', 'hidden']});
         resize();
         var closeButton = Array.from(root.querySelectorAll('[data-common-panel-fullscreen-close]')).find(function (button) {
             return button.closest('[data-common-panel-view]') === root;
@@ -128,7 +149,7 @@
         if (closeButton) closeButton.focus({preventScroll: true});
         // Keep shared modals, notifications and subdrawers in the fullscreen document.
         // If native fullscreen is unavailable, the panel still fills the viewport.
-        if (!document.fullscreenElement && !nativeRequestPending && document.documentElement.requestFullscreen) {
+        if (!windowMode && !document.fullscreenElement && !nativeRequestPending && document.documentElement.requestFullscreen) {
             nativeRequestPending = true;
             try {
                 Promise.resolve(document.documentElement.requestFullscreen()).then(function () {

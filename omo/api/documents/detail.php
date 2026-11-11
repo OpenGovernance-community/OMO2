@@ -22,9 +22,9 @@ $sourceLang = [
     'documents.detail.action.delete' => ['text' => 'Effacer', 'context' => 'Icon-only button permanently deleting a document from the document detail drawer.'],
     'documents.detail.confirm_delete' => ['text' => 'Effacer définitivement ce document ?', 'context' => 'Confirmation shown before permanently deleting a document from its detail drawer.'],
     'documents.detail.delete_error' => ['text' => 'Impossible d’effacer le document.', 'context' => 'Error shown when permanent document deletion fails from its detail drawer.'],
-    'documents.detail.action.fullscreen' => ['text' => 'Plein écran', 'context' => 'Button used to show a collaborative document iframe in fullscreen.'],
+    'documents.detail.action.fullscreen' => ['text' => 'Plein écran', 'context' => 'Button used to expand a document preview within the browser window.'],
     'documents.detail.action.exit_fullscreen' => ['text' => 'Quitter le plein écran', 'context' => 'Button used to leave the collaborative document fullscreen mode.'],
-    'documents.detail.action.download' => ['text' => 'Télécharger', 'context' => 'Button used to download an uploaded PDF displayed in the document detail drawer.'],
+    'documents.detail.action.download' => ['text' => 'Télécharger', 'context' => 'Button used to download the original file displayed in the document detail drawer.'],
     'documents.detail.alt_texts.title' => ['text' => 'Versions texte', 'context' => 'Section title listing alternate text versions.'],
     'documents.detail.alt_texts.fallback' => ['text' => 'Version texte', 'context' => 'Fallback title for an alternate text variant.'],
     'documents.detail.media.title' => ['text' => 'Médias associés', 'context' => 'Section title listing associated media.'],
@@ -166,11 +166,12 @@ $hasCollaborativeFrame = $document->isEtherpadDocument()
     || $document->isEthercalcDocument()
     || $uploadedFileCollaboraAvailable
     || $spaceDeckOpenUrl !== '';
-$uploadedPdfDownloadUrl = $document->isStoredPdfFile()
+$hasPdfFrame = $document->isStoredPdfFile();
+$previewDownloadUrl = ($hasPdfFrame || $uploadedFileCollaboraAvailable)
     ? $document->buildStoredFileDownloadUrl(false, $organizationId, $holonId)
     : '';
-$uploadedPdfDownloadName = $uploadedPdfDownloadUrl !== ''
-    ? $document->getStoredPdfDownloadName()
+$previewDownloadName = $previewDownloadUrl !== ''
+    ? ($hasPdfFrame ? $document->getStoredPdfDownloadName() : $document->getStoredFileDownloadName())
     : '';
 $drawerTitle = trim((string)$document->get('title'));
 $drawerDescription = $createdAt instanceof DateTimeInterface ? $formatDateTime($createdAt) : '';
@@ -302,41 +303,6 @@ if ($associatedEvent instanceof \dbObject\Event) {
                 </div>
             <?php endif; ?>
 
-            <?php if ($keywords !== '' || $hasCollaborativeFrame || $uploadedPdfDownloadUrl !== ''): ?>
-                <div class="omo-document-detail__keyword-actions">
-                    <div class="omo-document-detail__keywords">
-                        <?php if ($keywords !== ''): ?>
-                    <?php foreach (preg_split('/\s*,\s*/', $keywords) as $keyword): ?>
-                        <?php if (trim((string)$keyword) !== ''): ?>
-                            <span class="omo-pill"><?= $escape(trim((string)$keyword)) ?></span>
-                        <?php endif; ?>
-                    <?php endforeach; ?>
-                        <?php endif; ?>
-                    </div>
-                    <?php if ($uploadedPdfDownloadUrl !== '' || $hasCollaborativeFrame): ?>
-                        <div class="omo-document-detail__preview-actions">
-                    <?php if ($uploadedPdfDownloadUrl !== ''): ?>
-                        <a
-                            class="generic-action-button generic-action-button--secondary omo-document-detail__fullscreen-button"
-                            href="<?= $escape($uploadedPdfDownloadUrl) ?>"
-                            download="<?= $escape($uploadedPdfDownloadName) ?>"
-                        ><?= $escape(omoDocumentsDetailT('documents.detail.action.download')) ?></a>
-                    <?php endif; ?>
-                    <?php if ($hasCollaborativeFrame || $uploadedPdfDownloadUrl !== ''): ?>
-                        <button
-                            type="button"
-                            class="generic-action-button generic-action-button--secondary omo-document-detail__fullscreen-button"
-                            data-omo-document-fullscreen
-                            data-omo-document-fullscreen-label="<?= $escape(omoDocumentsDetailT('documents.detail.action.fullscreen')) ?>"
-                            data-omo-document-exit-fullscreen-label="<?= $escape(omoDocumentsDetailT('documents.detail.action.exit_fullscreen')) ?>"
-                            aria-pressed="false"
-                        ><?= $escape(omoDocumentsDetailT('documents.detail.action.fullscreen')) ?></button>
-                    <?php endif; ?>
-                        </div>
-                    <?php endif; ?>
-                </div>
-            <?php endif; ?>
-
             <?php if ($associatedEvent instanceof \dbObject\Event): ?>
                 <section class="omo-document-detail__event omo-card generic-stack">
                     <h3 class="omo-document-detail__section-title generic-card-title generic-card-title--medium"><?= $escape(omoDocumentsDetailT('documents.detail.event.title')) ?></h3>
@@ -367,8 +333,50 @@ if ($associatedEvent instanceof \dbObject\Event) {
             <?php endif; ?>
         </header>
 
-        <section class="omo-document-detail__section generic-stack">
-            <div class="omo-document-detail__content prose">
+        <section
+            class="omo-document-detail__section generic-stack generic-panel-fullscreen-content--media"
+            data-common-panel-view
+            data-common-panel-fullscreen-isolate=".drawer, .panel"
+            data-common-panel-fullscreen-mode="window"
+            data-common-panel-fullscreen-owner="[data-omo-document-detail-drawer]"
+        >
+            <?php if ($keywords !== '' || $hasCollaborativeFrame || $previewDownloadUrl !== ''): ?>
+                <div class="omo-document-detail__keyword-actions" data-common-panel-media-toolbar>
+                    <div class="omo-document-detail__keywords">
+                        <?php if ($keywords !== ''): ?>
+                    <?php foreach (preg_split('/\s*,\s*/', $keywords) as $keyword): ?>
+                        <?php if (trim((string)$keyword) !== ''): ?>
+                            <span class="omo-pill"><?= $escape(trim((string)$keyword)) ?></span>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
+                    <?php if ($previewDownloadUrl !== '' || $hasCollaborativeFrame): ?>
+                        <div class="omo-document-detail__preview-actions">
+                    <?php if ($previewDownloadUrl !== ''): ?>
+                        <a
+                            class="generic-action-button generic-action-button--secondary omo-document-detail__fullscreen-button"
+                            href="<?= $escape($previewDownloadUrl) ?>"
+                            download="<?= $escape($previewDownloadName) ?>"
+                        ><?= $escape(omoDocumentsDetailT('documents.detail.action.download')) ?></a>
+                    <?php endif; ?>
+                    <?php if ($hasCollaborativeFrame || $previewDownloadUrl !== ''): ?>
+                        <button
+                            type="button"
+                            class="generic-action-button generic-action-button--secondary omo-document-detail__fullscreen-button"
+                            data-omo-document-fullscreen
+                            data-common-panel-fullscreen
+                            data-omo-document-fullscreen-label="<?= $escape(omoDocumentsDetailT('documents.detail.action.fullscreen')) ?>"
+                            data-omo-document-exit-fullscreen-label="<?= $escape(omoDocumentsDetailT('documents.detail.action.exit_fullscreen')) ?>"
+                            aria-pressed="false"
+                        ><?= $escape(omoDocumentsDetailT('documents.detail.action.fullscreen')) ?></button>
+                    <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+
+            <div class="omo-document-detail__content prose" data-common-panel-media-content>
                 <?= $renderedContent ?>
             </div>
         </section>
