@@ -6,6 +6,8 @@ Les dates déjà indiquées sont conservées. Les dates manquantes sont reconsti
 
 ## 2026-11-11
 
+- PV / éditeur : correction de la liste vide du bouton d’insertion de projets dans Summernote. Le chargement des projets, la recherche et l’insertion fonctionnent à nouveau ; le cache du sélecteur partagé suit ses mises à jour.
+
 - Documents / aperçus : bouton Télécharger à côté de Plein écran pour les fichiers ouverts avec Collabora. Le plein écran des aperçus remplit la fenêtre sans masquer les onglets du navigateur ; le bouton de retour reste accessible et le document conserve sa session.
 
 - Documents / Collabora : autorisation WOPI étendue à tous les sous-domaines de `omo2.org`, notamment `instantz.omo2.org`, en conservant le domaine principal. Autorisation d’affichage dans une iframe adaptée au même périmètre sur le VPS.
