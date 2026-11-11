@@ -17,12 +17,26 @@
 	require_once($_SERVER['DOCUMENT_ROOT']."/config.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/shared_functions.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/common/patreon.php");
-	require_once($_SERVER['DOCUMENT_ROOT']."/shared/openai.php");
+	require_once($_SERVER['DOCUMENT_ROOT']."/common/openai_text.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/common/openai_audio.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/shared/telegram.php");
 	require_once dirname(__DIR__) . '/common/assistant/telegram.php';
 
 	$minTimeMessage = 10; // Duree minimum en seconde du message pour justifier une transformation
+
+	function telegramMemoT(string $key): string {
+		static $bundle;
+		static $sourceLang = [
+			'default_title' => ['text' => 'Mémo vocal', 'context' => 'Fallback title for a Telegram voice memo.'],
+			'saved_without_summary' => ['text' => 'Mémo vocal enregistré, mais le résumé n’a pas pu être généré.', 'context' => 'Telegram confirmation when the memo was saved but metadata generation failed.'],
+			'summary_unavailable' => ['text' => 'Le résumé n’a pas pu être généré. Voici la transcription :', 'context' => 'Telegram reply before the full transcript when summarization failed without saving a memo.'],
+		];
+		if ($bundle === null) {
+			require_once dirname(__DIR__) . '/common/translation_bundles.php';
+			$bundle = loadTranslationBundle('telegram_memo', translationBundleResolveRequestLocale(), $sourceLang);
+		}
+		return t($key, [], $bundle, $sourceLang);
+	}
 
 	function saveLocalSession($data, $name) {
 		if (!is_dir("data")) {
@@ -1597,34 +1611,16 @@ Choisissez directement un sous-niveau ou une destination autorisée ci-dessous.'
 			return;
 		}
 
-		$title = "Mémo vocal";
-		$resume = '';
-		$keywords = '';
-		if ($summaryOnly) {
-			$resume = trim((string)say(
-				"Summarize the following French text in no more than 150 characters. Return only the summary, without a title, label, markdown, or quotation marks.\n".$response->text,
-				"You produce concise French summaries.",
-				$aiUserId
-			));
-		} else {
-			$metadataPrompt = "Return exactly three lines for the following text. TITLE: a concise document title. SUMMARY: a French summary of at most 150 characters. KEYWORDS: three to five French keywords separated only by commas. Do not use markdown or add any other text.\n".$response->text;
-			$metadataSystemInstruction = "You generate document metadata. Always return the requested TITLE, SUMMARY, and KEYWORDS lines exactly, even when the source text is in French.";
-			$metadata = (string)say($metadataPrompt, $metadataSystemInstruction, $aiUserId);
-			if (preg_match('/^(?:TITLE|TITRE)\s*:\s*(.+)$/miu', $metadata, $titleMatch)) {
-				$title = trim($titleMatch[1], " \t\n\r\0\x0B*\"");
-			}
-			if ($title === '') {
-				$title = "Mémo vocal";
-			}
-			if (preg_match('/^(?:SUMMARY|RESUME|RÉSUMÉ)\s*:\s*(.+)$/miu', $metadata, $resumeMatch)) {
-				$resume = trim($resumeMatch[1], " \t\n\r\0\x0B*\"");
-			}
-			if (preg_match('/^(?:KEYWORDS|MOTS[ _-]*CLES|MOTS[ _-]*CLÉS)\s*:\s*(.+)$/miu', $metadata, $keywordsMatch)) {
-				$keywordItems = array_filter(array_map(function ($keyword) {
-					return trim(ltrim((string)$keyword, '#'));
-				}, explode(',', $keywordsMatch[1])));
-				$keywords = implode(', ', array_unique($keywordItems));
-			}
+		$metadata = commonOpenAiGenerateDocumentMetadata((string)$response->text, ['user_id' => $aiUserId]);
+		$title = !empty($metadata['status']) && $metadata['title'] !== '' ? $metadata['title'] : telegramMemoT('default_title');
+		$resume = !empty($metadata['status']) ? $metadata['summary'] : '';
+		$keywords = !empty($metadata['status']) ? $metadata['keywords'] : '';
+		if (empty($metadata['status'])) {
+			// Keep diagnostics without logging the transcript, provider response or credentials.
+			error_log('telegram_memo_metadata_failed ' . json_encode([
+				'provider' => commonAiGetProvider(), 'model' => commonOpenAiGetRewriteModel(),
+				'code' => $metadata['code'] ?? 'metadata_failed', 'http_code' => $metadata['http_code'] ?? 0,
+			]));
 		}
 
 		$content = (string)$response->text;
@@ -1704,9 +1700,9 @@ Choisissez directement un sous-niveau ou une destination autorisée ci-dessous.'
 			deleteMessage($chatId, $waitMessageId, $threadId);
 		}
 
-		$messageText = $summaryOnly
-			? ($resume !== '' ? $resume : $content)
-			: "\xE2\xAC\x86 ".($resume !== '' ? $resume : "Mémo vocal enregistré.");
+		$messageText = $resume !== '' ? ($summaryOnly ? '' : "\xE2\xAC\x86 ").$resume
+			: ($doc && $doc->getId() > 0 ? telegramMemoT('saved_without_summary')
+				: telegramMemoT('summary_unavailable')."\n".$content);
 		if (!$summaryOnly && $doc && $doc->getId() > 0) {
 			$messageText .= "\n".formatDocumentLink($doc);
 		}

@@ -6,6 +6,10 @@ Les dates déjà indiquées sont conservées. Les dates manquantes sont reconsti
 
 ## 2026-11-11
 
+- Telegram / mémos vocaux : génération structurée du titre, des mots-clés et d’un résumé en une ou deux phrases, conservé dans le mémo et affiché au-dessus de son lien. Les échecs de résumé sont signalés et journalisés sans exposer le contenu vocal.
+
+- IA / Infomaniak : adaptation au format `json_schema` pour rétablir la réécriture et les résumés des mémos et PV. Même correction pour les résumés de décisions et l’aide FAQ ; schémas adaptés aux réponses attendues et formats des autres fournisseurs conservés.
+
 - PV / éditeur : bouton IA dans les champs Summernote des points, avec dictée au microphone, transcription, résumé et réécriture de la sélection, comme dans les mémos. Outils partagés avec les mémos, droits IA conservés et arrêt du micro à la fermeture ; le résultat reste attaché au point et à la sélection d’origine.
 
 - PV / décisions hors réorg : comparaison des autorités par identifiant pour éviter qu’une autorité importée, affichée par son numéro puis par son libellé, apparaisse comme supprimée et ajoutée. Les véritables renommages restent présentés comme une modification.

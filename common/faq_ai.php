@@ -58,7 +58,10 @@ function faqAiFindAnswer(string $question, string $description, array $faqSource
             }
             $payload = [
                 'model' => commonOpenAiGetRewriteModel(),
-                'response_format' => ['type' => 'json_object'],
+                'response_format' => commonAiJsonObjectResponseFormat('support_' . $kind, [
+                    'supported' => ['type' => 'boolean'],
+                    'answer' => ['type' => 'string'],
+                ] + ($kind === 'faq' ? ['faq_ids' => ['type' => 'array', 'items' => ['type' => 'integer']]] : [])),
                 'max_tokens' => 1200,
                 'messages' => [
                     ['role' => 'system', 'content' =>

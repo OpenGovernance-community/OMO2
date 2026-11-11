@@ -6,6 +6,25 @@ require_once __DIR__ . '/ai_config.php';
 require_once __DIR__ . '/ai_usage.php';
 require_once __DIR__ . '/ai_access.php';
 
+/** Infomaniak requires a schema; other providers retain their existing JSON mode. */
+function commonAiJsonObjectResponseFormat(string $name, array $properties): array
+{
+    if (commonAiGetProvider() !== 'infomaniak') return ['type' => 'json_object'];
+    return [
+        'type' => 'json_schema',
+        'json_schema' => [
+            'name' => $name,
+            'strict' => true,
+            'schema' => [
+                'type' => 'object',
+                'properties' => $properties,
+                'required' => array_keys($properties),
+                'additionalProperties' => false,
+            ],
+        ],
+    ];
+}
+
 /** Text-only adapter shared by document tools, Telegram and UI translations. */
 function commonAiBuildTextRequest(string $apiKey, array $payload): array
 {
