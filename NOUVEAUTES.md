@@ -6,6 +6,8 @@ Les dates déjà indiquées sont conservées. Les dates manquantes sont reconsti
 
 ## 2026-11-12
 
+- Documents / consultation : bouton « Plein écran » pour agrandir Collabora, les PDF, les images et les textes dans la fenêtre du navigateur. Retour par le bouton ou la touche Échap, sans rechargement du document et avec restauration de la position de lecture.
+
 - Documents / formulaire : retrait de l’aperçu Collabora pendant l’édition des paramètres, suppression du fichier distant à côté du sélecteur de remplacement et option d’historisation au-dessus de la liste des anciennes versions, désormais consultable dans le formulaire.
 
 - Documents / consultation : liens avec code aléatoire au lieu de l’identifiant du document, y compris pour les fichiers et documents intégrés. Aperçu Collabora des fichiers bureautiques en lecture seule, accessible sans compte pour les documents tout public ; l’écriture reste bloquée côté serveur, même pour le propriétaire.

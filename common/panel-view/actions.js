@@ -113,6 +113,8 @@
         var ownerSelector = root.getAttribute('data-common-panel-fullscreen-owner');
         active = {root: root, host: host, trigger: focusTrigger, hiddenSiblings: [], scrollPositions: [], bridges: [], drawer: ownerSelector ? root.closest(ownerSelector) : null};
         if (windowMode) {
+            var pageScroller = document.scrollingElement;
+            if (pageScroller) active.scrollPositions.push({element: pageScroller, top: pageScroller.scrollTop, left: pageScroller.scrollLeft});
             host.classList.add('generic-panel-fullscreen-bridge');
             active.bridges.push(host);
         }

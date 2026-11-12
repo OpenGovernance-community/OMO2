@@ -11,6 +11,7 @@ $sourceLang = [
     'omo' => ['text' => 'Voir dans OMO', 'context' => 'Open the document in the full OMO application.'],
     'download' => ['text' => 'Télécharger le fichier', 'context' => 'Download the document original file.'],
     'no_file' => ['text' => 'Aucun fichier n’est disponible pour ce document.', 'context' => 'Reader missing uploaded file message.'],
+    'fullscreen' => ['text' => 'Plein écran', 'context' => 'Expand the read-only document within the browser window.'],
 ];
 $lang = omoLoadTranslationBundle('omo_document_reader', $sourceLang);
 $text = static fn(string $key): string => t($key, [], $lang, $sourceLang);
@@ -61,6 +62,9 @@ if (!$allowed) {
 } else {
     $content = $document->getReaderContent();
 }
+$hasMediaPreview = $collaboraUrl !== '' || ($fileUrl !== '' && ($document->isStoredPdfFile() || $document->getStoredFileKind() === 'image'));
+$hasTextPreview = $allowed && trim($content) !== '' && ($document->supportsHtmlContent() || $document->isPvDocument() || $document->isEtherpadDocument());
+$hasVisualPreview = $hasMediaPreview || $hasTextPreview;
 ?>
 <!DOCTYPE html>
 <html lang="<?= $escape(omoGetTranslationLocale()) ?>">
@@ -77,7 +81,7 @@ if (!$allowed) {
     <link rel="stylesheet" href="<?= commonAssetUrl('/common/document/pv-report.css') ?>">
     <?php endif; ?>
 </head>
-<body class="generic-public-page">
+<body class="generic-public-page generic-public-page--scrollable">
     <main class="generic-page-shell generic-stack generic-stack--roomy">
         <header class="generic-public-brand">
             <img class="generic-public-brand__logo" src="/img/omo2/logo-omo-dark.png" alt="OMO" width="1076" height="332">
@@ -98,7 +102,18 @@ if (!$allowed) {
             <?php endif; ?>
         </section>
         <?php if ($allowed): ?>
-        <section class="generic-section generic-section--stack">
+        <section
+            class="generic-section generic-section--stack generic-panel-fullscreen-content--<?= $hasMediaPreview ? 'media' : 'scrollable' ?>"
+            data-common-panel-view
+            data-common-panel-fullscreen-isolate="main"
+            data-common-panel-fullscreen-mode="window"
+        >
+            <?php if ($hasVisualPreview): ?>
+            <div class="generic-form-actions" data-common-panel-media-toolbar>
+                <button type="button" class="generic-action-button generic-action-button--secondary" data-common-panel-fullscreen aria-pressed="false"><?= $escape($text('fullscreen')) ?></button>
+            </div>
+            <?php endif; ?>
+            <div data-common-panel-media-content>
             <?php if ($fileUrl !== ''): ?>
                 <?php if ($collaboraUrl !== ''): ?>
                 <iframe class="omo-document-reader__pdf" src="<?= $escape($collaboraUrl) ?>" title="<?= $escape($title) ?>" referrerpolicy="same-origin" allow="fullscreen" allowfullscreen></iframe>
@@ -110,9 +125,16 @@ if (!$allowed) {
                 <audio controls preload="metadata" src="<?= $escape($fileUrl . '&inline=1') ?>"></audio>
                 <?php endif; ?>
             <?php endif; ?>
-            <div class="omo-document-share__content prose"><?= $content ?></div>
+                <?php if ($content !== ''): ?>
+                <div class="omo-document-share__content prose"><?= $content ?></div>
+                <?php endif; ?>
+            </div>
         </section>
         <?php endif; ?>
     </main>
+    <?php if ($hasVisualPreview): ?>
+    <script src="<?= commonAssetUrl('/common/panel-view/actions.js') ?>"></script>
+    <script>window.commonPanelViewActions.mount(document);</script>
+    <?php endif; ?>
 </body>
 </html>
