@@ -1359,6 +1359,44 @@ class Project extends DbObject
         return $options;
     }
 
+    /** Active members, ordered by proximity to the receiving role or circle. */
+    public static function getResponsibleOptionGroups(int $organizationId, int $holonId): array
+    {
+        $remaining = self::getProposerOptions($organizationId);
+        natcasesort($remaining);
+        $groups = ['role' => [], 'circle' => [], 'organization' => []];
+        $holon = new Holon();
+        if ($holonId > 0 && $holon->load($holonId) && (int)$holon->get('IDorganization') === $organizationId) {
+            $scopes = [];
+            if ((int)$holon->get('IDtypeholon') === 1) $scopes['role'] = $holon;
+            $circle = $holon->getContainingCircle(true);
+            if ($circle instanceof Holon) $scopes['circle'] = $circle;
+            foreach ($scopes as $key => $scope) {
+                $memberIds = array_fill_keys($scope->getAssociatedMemberUserIds([
+                    'organizationId' => $organizationId,
+                    'includeDescendants' => $key === 'circle',
+                    'activeOnly' => true,
+                ]), true);
+                foreach ($remaining as $userId => $label) {
+                    if (!isset($memberIds[$userId])) continue;
+                    $groups[$key][$userId] = $label;
+                    unset($remaining[$userId]);
+                }
+            }
+        }
+        $groups['organization'] = $remaining;
+        return $groups;
+    }
+
+    public static function isAllowedResponsible(int $organizationId, int $userId, ?Project $existing = null): bool
+    {
+        return $userId === 0 || ($userId > 0 && (
+            ($existing instanceof self && (int)$existing->get('IDorganization') === $organizationId
+                && (int)$existing->get('IDuser') === $userId)
+            || UserOrganization::hasActiveMembership($userId, $organizationId)
+        ));
+    }
+
     public function getCreationContext(): array
     {
         $value = $this->get('creation_context');

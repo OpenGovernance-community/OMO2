@@ -20,6 +20,7 @@ const {chromium} = require('playwright');
         await page.setContent('<form id="create" action="/save.php"><input name="title" value="Folder">'
             + '<select data-omo-document-type name="document_type"><option value="folder">Folder</option></select>'
             + '<div data-omo-document-editor-status hidden></div><button type="submit">Save</button></form>');
+        await page.addScriptTag({path: path.join(__dirname, '..', 'common/document/html-ai-tools.js')});
         await page.addScriptTag({path: path.join(__dirname, '..', 'omo/api/documents/create.js')});
         await page.evaluate(() => {
             window.notices = [];

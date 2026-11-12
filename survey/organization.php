@@ -29,6 +29,7 @@ $pageSourceLang = [
     'survey.organization.agreement.description.polarized' => ['text' => 'Deux pôles de réponses opposés sont représentés.', 'context' => 'Explanation of polarized responses.'],
     'survey.organization.agreement.description.insufficient' => ['text' => 'Il faut au moins trois réponses pour proposer cette lecture.', 'context' => 'Explanation of insufficient data for agreement status.'],
     'survey.organization.agreement.stats' => ['text' => 'Échantillon : {count} · écart type : {stddev}', 'context' => 'Statistics shown in an agreement status tooltip.'],
+    'survey.organization.range' => ['text' => '{period} : minimum {min}/5, maximum {max}/5', 'context' => 'Tooltip and accessible description of the observed minimum and maximum ratings behind each average marker.'],
     'survey.organization.groups.eyebrow' => ['text' => 'Cartographie des perceptions', 'context' => 'Eyebrow above respondent profile groups.'],
     'survey.organization.groups.title' => ['text' => 'Les profils qui se dessinent', 'context' => 'Title above respondent profile groups.'],
     'survey.organization.groups.intro' => ['text' => 'Cette lecture exploratoire rapproche les personnes dont les 30 réponses se ressemblent. Elle décrit des tendances, pas des catégories figées.', 'context' => 'Method introduction above respondent profile groups.'],
@@ -490,6 +491,7 @@ $groupFeatureText = static function (array $feature) use ($pageLang, $pageSource
         window.SURVEY_PUBLIC_LABELS = <?= json_encode([
             'current' => t('survey.organization.current', [], $pageLang, $pageSourceLang),
             'desired' => t('survey.organization.desired', [], $pageLang, $pageSourceLang),
+            'range' => t('survey.organization.range', ['period' => '{period}', 'min' => '{min}', 'max' => '{max}'], $pageLang, $pageSourceLang),
             'affinity' => t('survey.organization.affinity', [], $pageLang, $pageSourceLang),
             'agreementTitle' => t('survey.organization.agreement_title', [], $pageLang, $pageSourceLang),
             'agreementStats' => t('survey.organization.agreement.stats', [], $pageLang, $pageSourceLang),
@@ -520,6 +522,7 @@ $groupFeatureText = static function (array $feature) use ($pageLang, $pageSource
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
         window.SURVEY_PUBLIC_OPTIONS = { separateDimensionList: true, distributions: true };
     </script>
+    <script src="<?= commonAssetUrl('/survey/result-scale.js') ?>"></script>
     <script src="<?= commonAssetUrl('/survey/public.js') ?>"></script>
     <script src="<?= commonAssetUrl('/survey/organization-distributions.js') ?>"></script>
     <script src="<?= commonAssetUrl('/survey/organization-radars.js') ?>"></script>

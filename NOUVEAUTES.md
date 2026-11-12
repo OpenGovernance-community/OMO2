@@ -4,7 +4,69 @@ Ce fichier garde une vue d'ensemble courte des évolutions récentes, avec un an
 
 Les dates déjà indiquées sont conservées. Les dates manquantes sont reconstituées à partir de la première apparition des entrées dans l'historique GitHub, en heure Europe/Zurich ; elles correspondent à leur ajout au journal, pas nécessairement à leur mise en production.
 
+## 2026-11-12
+
+- Évaluation organisationnelle / dispersion : sous les pastilles d’aujourd’hui et de demain, un segment de la même couleur indique la note minimale et la note maximale réellement données. Le survol précise les deux extrêmes.
+
+- Documents / consultation : bouton de plein écran déplacé dans l’en-tête, à côté du téléchargement. Collabora reçoit désormais un mode de lecture seule strict qui bloque le passage en édition dans l’interface, en plus du refus d’enregistrement déjà appliqué côté serveur, y compris pour l’auteur.
+
+- Évaluation organisationnelle / résultats : échelle horizontale fixe de 1 à 5 pour comparer aujourd’hui et demain. Les pastilles suivent les valeurs réelles, y compris les moyennes décimales, avec un trait proportionnel à leur écart ; les valeurs proches ou identiques restent lisibles sur mobile.
+
+- Documents / consultation : bouton « Plein écran » pour agrandir Collabora, les PDF, les images et les textes dans la fenêtre du navigateur. Retour par le bouton ou la touche Échap, sans rechargement du document et avec restauration de la position de lecture.
+
+- Documents / formulaire : retrait de l’aperçu Collabora pendant l’édition des paramètres, suppression du fichier distant à côté du sélecteur de remplacement et option d’historisation au-dessus de la liste des anciennes versions, désormais consultable dans le formulaire.
+
+- Documents / consultation : liens avec code aléatoire au lieu de l’identifiant du document, y compris pour les fichiers et documents intégrés. Aperçu Collabora des fichiers bureautiques en lecture seule, accessible sans compte pour les documents tout public ; l’écriture reste bloquée côté serveur, même pour le propriétaire.
+
+- Documents / tests MCP : vérification du libellé traduit indépendamment du type technique `html`, qui reste inchangé en base. Les accents des textes affichés ne font plus échouer les tests de création.
+
+- Documents / partage : lien permanent de consultation en lecture seule, accessible depuis « Partager ». Les documents tout public s’ouvrent directement ; les autres demandent une connexion et conservent leurs droits d’accès. Bouton « Voir dans OMO » pour retrouver les fonctions habituelles. Les fichiers peuvent être téléchargés, avec aperçu des PDF, images et fichiers audio.
+
+- Documents / historisation : option pour les fichiers téléversés et Collabora, conservation d’une copie avant chaque remplacement ou retrait, et bouton « Archiver maintenant ». Les anciennes versions restent téléchargeables depuis la fiche, même après désactivation de l’option. Les sauvegardes automatiques de Collabora ne créent pas d’archives.
+
+- Scrutins / invitations : les dates du mail suivent les phases prévues. Une phase seule affiche son début et sa fin ; avec élaboration puis évaluation, le mail précise les étapes jusqu’aux résultats. Une transition à la même date apparaît uniquement comme « Début évaluation ».
+
+- Évaluation organisationnelle / invitations : chaque envoi apparaît dans la boîte d’envoi OMO de son expéditeur pour l’organisation choisie, avec la date, l’objet, le texte et les destinataires. Le statut de chaque destinataire permet de retrouver les envois réussis, échoués ou incertains, y compris en cas d’échec partiel.
+
+- Scrutins / questions : la description d’une question laissée vide ne reprend plus automatiquement la description du scrutin, à la création comme lors des enregistrements suivants.
+
+- Évaluation organisationnelle / invitations : choix explicite de l’organisation lorsque plusieurs sont disponibles, avec « Choisissez votre organisation... » en première ligne. Les onglets et les boutons d’envoi restent grisés jusqu’au choix ; une organisation unique est sélectionnée automatiquement.
+
+- Évaluation organisationnelle / invitations : sélection du cercle organisation pour inviter ses membres actifs, bouton Envoyer compact à droite et menu pour cibler les personnes sans participation ou sans questionnaire terminé. Chaque option affiche le nombre de destinataires, actualisé selon la sélection et dédupliqué par adresse. Le texte du message peut être personnalisé avec l’éditeur HTML partagé avant l’envoi, avec conservation du lien personnel de participation.
+
+- Éditeur HTML partagé : les fenêtres Summernote restent accessibles lorsqu’un champ est ouvert dans une boîte de dialogue native.
+
+## 2026-11-11
+
+- Documents / stockage : ajout d’un serveur WebDAV générique, avec URL complète, identifiant, mot de passe, dossier racine facultatif et test de connexion. Envoi, téléchargement, suppression, navigation dans les dossiers et accès par Collabora réutilisent le connecteur partagé avec kDrive.
+
+- PV / éditeur : chronomètre partagé en haut à gauche, avec démarrage, pause, arrêt et remise à zéro. Une durée saisie ou reprise du point sélectionné prépare un compte à rebours, affiché en rouge sous une minute avec un signal sonore à zéro. Commandes réservées à la personne qui tient le PV et transférées lors de la passation ; les autres écrans voient le compteur en marche ou en pause.
+
+- PV / chronomètre : correction du premier démarrage lorsque le compteur ne possède encore aucun état enregistré, en tenant compte de la conversion des chaînes vides en `NULL` par dbObject.
+
+- PV / décisions hors réorg : choix de la personne en charge d’un projet créé, proposé ou modifié, juste avant le statut sur la même ligne. Liste regroupée sans doublons : personnes du rôle, autres membres du cercle, puis de l’organisation ; attribution conservée et visible dans le détail de la proposition.
+
+- Telegram / mémos vocaux : génération structurée du titre, des mots-clés et d’un résumé en une ou deux phrases, conservé dans le mémo et affiché au-dessus de son lien. Les échecs de résumé sont signalés et journalisés sans exposer le contenu vocal.
+
+- IA / Infomaniak : adaptation au format `json_schema` pour rétablir la réécriture et les résumés des mémos et PV. Même correction pour les résumés de décisions et l’aide FAQ ; schémas adaptés aux réponses attendues et formats des autres fournisseurs conservés.
+
+- PV / éditeur : bouton IA dans les champs Summernote des points, avec dictée au microphone, transcription, résumé et réécriture de la sélection, comme dans les mémos. Outils partagés avec les mémos, droits IA conservés et arrêt du micro à la fermeture ; le résultat reste attaché au point et à la sélection d’origine.
+
+- PV / décisions hors réorg : comparaison des autorités par identifiant pour éviter qu’une autorité importée, affichée par son numéro puis par son libellé, apparaisse comme supprimée et ajoutée. Les véritables renommages restent présentés comme une modification.
+
+- PV / décisions hors réorg : les propositions de modification d’un holon conservent ses listes héritées dans la comparaison. L’ajout ou la suppression d’une propriété locale ne signale plus de faux effacements dans les propriétés du modèle, y compris les listes d’autorités et les listes avec texte HTML.
+
+- PV / éditeur : correction de la liste vide du bouton d’insertion de projets dans Summernote. Le chargement des projets, la recherche et l’insertion fonctionnent à nouveau ; le cache du sélecteur partagé suit ses mises à jour.
+
+- Documents / aperçus : bouton Télécharger à côté de Plein écran pour les fichiers ouverts avec Collabora. Le plein écran des aperçus remplit la fenêtre sans masquer les onglets du navigateur ; le bouton de retour reste accessible et le document conserve sa session.
+
+- Documents / Collabora : autorisation WOPI étendue à tous les sous-domaines de `omo2.org`, notamment `instantz.omo2.org`, en conservant le domaine principal. Autorisation d’affichage dans une iframe adaptée au même périmètre sur le VPS.
+
 ## 2026-11-10
+
+- Processus / étapes : affichage des branches immédiatement visibles en premier ; chaque étape dépendante suit son étape de référence, avec une indentation progressive pour les dépendances en chaîne. L’ordre chronologique des étapes liées à la date de référence est conservé.
+
+- Recherche globale / règles et FAQ : recherche dans tous les espaces de l’organisation accessibles, indépendamment de l’espace sélectionné et de la portée d’application des règles. Les aperçus suivent le même périmètre ; les droits d’accès et le filtre des archives sont conservés.
 
 - Scrutins / enregistrement des réponses : sur la page de participation, confirmation par notification sans recharger le questionnaire ni ouvrir un tiroir « Prises de décision ». Les réponses en cours dans les autres blocs sont conservées ; le bloc enregistré reste modifiable ou se verrouille selon les paramètres du scrutin.
 

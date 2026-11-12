@@ -89,6 +89,7 @@ $hasDecisionApplication = !$isPublicParticipation && $hasOrganization && $organi
 $hasCalendarApplication = !$isPublicParticipation && $hasOrganization && $organization->isApplicationEnabled('calendar', $currentUserId);
 $hasStatsApplication = !$isPublicParticipation && $hasOrganization && $organization->isApplicationEnabled('stats', $currentUserId);
 $canUseAiTools = commonAiUserCanUse($currentUserId, commonOpenAiGetRewriteModel(), null, $organizationId);
+$canUseTranscription = !$isPublicParticipation && commonAiUserCanTranscribe($currentUserId, null, $organizationId);
 $hasUpcomingAssociatedEvent = $hasAssociatedEvent && $event->isUpcoming();
 $publicParticipationUserId = $isPublicParticipation
     ? commonPvParticipationRecipientOrganizationUserId($publicParticipationLink, $organizationId)
@@ -320,13 +321,15 @@ foreach ($points as $point) {
     $pointPayloads[] = $payload;
 }
 $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
+$pvTimer = $document->getPvTimerState();
+$showPvToolbar = $showPvApplicationTabs || $isParticipationPvEditor || $pvTimer['status'] !== 'stopped';
 ?>
 <link rel="stylesheet" href="<?= commonAssetUrl('/common/choice/change-details.css') ?>">
 <?php if ($isPvReviewDiscussion): ?>
 <link rel="stylesheet" href="<?= commonAssetUrl('/common/chat/thread.css') ?>">
 <?php endif; ?>
 <div
-    class="omo-pv-editor<?= $showPvApplicationTabs ? ' omo-pv-editor--has-application-tabs' : '' ?><?= $pvStage === \dbObject\Document::PV_STAGE_REVIEW ? ' omo-pv-editor--review' : '' ?>"
+    class="omo-pv-editor<?= $showPvApplicationTabs ? ' omo-pv-editor--has-application-tabs' : '' ?><?= $showPvToolbar ? ' omo-pv-editor--has-toolbar' : '' ?><?= $pvStage === \dbObject\Document::PV_STAGE_REVIEW ? ' omo-pv-editor--review' : '' ?>"
     data-omo-pv-editor-root="1"
     data-omo-pv-editor-document-id="<?= (int)$document->getId() ?>"
     data-omo-pv-editor-oid="<?= (int)$organizationId ?>"
@@ -341,6 +344,15 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/documents/pv/editor.css') ?>">
     <link rel="stylesheet" href="<?= commonAssetUrl('/common/document/pv-report.css') ?>">
 
+    <div class="omo-pv-editor__topbar" data-omo-pv-topbar<?= $showPvToolbar ? '' : ' hidden' ?>>
+        <div class="omo-pv-editor__timer" data-omo-pv-timer role="group" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.timer.label')) ?>"<?= $isParticipationPvEditor || $pvTimer['status'] !== 'stopped' ? '' : ' hidden' ?>>
+            <input type="text" class="generic-form-control generic-form-control--compact omo-pv-editor__timer-time" data-omo-pv-timer-time value="00:00:00" maxlength="8" autocomplete="off" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.timer.time')) ?>"<?= $isParticipationPvEditor && !$isPvValidated ? '' : ' readonly' ?>>
+            <span data-omo-pv-timer-controls<?= $isParticipationPvEditor && !$isPvValidated ? '' : ' hidden' ?>>
+                <?php foreach (['play' => '<path d="M8 5v14l11-7z"/>', 'pause' => '<path d="M6 5h4v14H6zm8 0h4v14h-4z"/>', 'stop' => '<path d="M5 5h14v14H5z"/>'] as $timerCommand => $timerIcon): ?>
+                    <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only generic-action-button--compact" data-omo-pv-timer-command="<?= $timerCommand ?>" title="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.timer.' . $timerCommand)) ?>" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.timer.' . $timerCommand)) ?>"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><?= $timerIcon ?></svg></button>
+                <?php endforeach; ?>
+            </span>
+        </div>
     <?php if ($showPvApplicationTabs): ?>
     <nav class="generic-tabs generic-tabs__list omo-pv-editor__application-tabs" data-omo-pv-application-tabs role="tablist" aria-label="<?= $escape((string)$uiText['applicationPickerTitle']) ?>">
         <button type="button" class="generic-tabs__tab omo-pv-editor__application-tab is-active" data-omo-pv-application-tab="0" role="tab" aria-selected="true">
@@ -358,6 +370,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         <button type="button" class="generic-action-button generic-action-button--main generic-action-button--icon-only omo-pv-editor__application-tab-add" data-omo-pv-application-tab-add aria-label="<?= $escape((string)$uiText['applicationAdd']) ?>" title="<?= $escape((string)$uiText['applicationAdd']) ?>"<?= $canManagePvStructure ? '' : ' hidden' ?>>+</button>
     </nav>
     <?php endif; ?>
+    </div>
 
     <aside class="omo-pv-editor__sidebar">
         <section class="omo-pv-editor__panel generic-section omo-pv-editor__agenda-panel">
@@ -668,7 +681,11 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
 
 <?php commonMeetingAvailabilityAssets(); ?>
 <script src="<?= commonAssetUrl('/common/calendar/recurrence.js') ?>"></script>
+<script src="<?= commonAssetUrl('/common/document/html-ai-tools.js') ?>"></script>
+<script src="<?= commonAssetUrl('/omo/api/documents/pv/timer.js') ?>"></script>
 <?= commonPageScriptTags('/omo/api/documents/pv/editor.js', [
+    'textToolsEnabled' => !$isPublicParticipation && $canUseAiTools,
+    'transcriptionEnabled' => $canUseTranscription,
     'meetingRecurrenceUi' => commonMeetingRecurrenceUi('omoDocumentsPvEditorT'),
     'meetingAvailability' => $event instanceof \dbObject\Event ? commonMeetingNextDateConfig($event) : null,
     'initialApplicationCatalog' => $pvApplicationCatalog,
@@ -683,6 +700,9 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     ],
     'initialPointPayloads' => $pointPayloads,
     'initialDocumentPayload' => [
+        'timer' => $pvTimer,
+        'canControlTimer' => $isParticipationPvEditor && !$isPvValidated,
+        'timerServerNow' => (int)floor(microtime(true) * 1000),
         'asksNextMeetingDate' => $event instanceof \dbObject\Event && !$event->get('recurrence_exception') && ($event->getRecurrence()?->get('active'))
             && $event->getRecurrence()->get('frequency') === 'on_close' && !$event->getParameter('next_meeting_id')
             && $event->getRecurrence()->canManage($organizationId, $currentUserId),
@@ -922,6 +942,8 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         'toolbarLabel' => omoDocumentsPvEditorT('documents.pv_editor.toolbar.indicator'),
     ],
     'editorClientUi' => [
+        'timerInvalid' => $uiText['timerInvalid'],
+        'timerError' => $uiText['timerError'],
         'pointImport' => array_combine(
             ['title', 'scope', 'local', 'global', 'members', 'mine', 'all', 'period', 'before', 'after', 'help', 'empty', 'loading', 'add', 'saving', 'retry', 'abandon', 'abandonConfirm', 'abandonSaving', 'abandonSuccess'],
             array_map(static fn($key) => omoDocumentsPvEditorT('documents.pv_editor.import.' . $key), ['title', 'scope', 'local', 'global', 'members', 'mine', 'all', 'period', 'before', 'after', 'help', 'empty', 'loading', 'add', 'saving', 'retry', 'abandon', 'abandonConfirm', 'abandonSaving', 'abandonSuccess'])

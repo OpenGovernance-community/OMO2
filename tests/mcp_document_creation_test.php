@@ -69,14 +69,19 @@ try {
     $items['folder_child'] = new Document(); $items['folder_child']->load($inFolder['record']['record_id']);
     mcpCheck($inFolder['record']['parent_id'] === (int)$items['folder']->getId() && $inFolder['record']['holon_id'] === $hid, 'Folder context inherited');
     mcpCheck(!str_contains($items['folder_child']->get('content'), '<script') && !str_contains($items['folder_child']->get('content'), 'onclick'), 'HTML uses existing sanitizer');
-    mcpCheck($inFolder['document_type_label'] === 'Memo' && $items['folder_child']->getDocumentTypeLabel() === 'Memo', 'Memo label applies to MCP and existing HTML documents');
+    mcpCheck($inFolder['document_type'] === Document::TYPE_HTML && $items['folder_child']->get('documenttype') === Document::TYPE_HTML,
+        'Localized labels never replace the stored HTML document type');
+    $memoLabel = Document::getDocumentTypeCatalog()[Document::TYPE_HTML];
+    mcpCheck($inFolder['document_type_label'] === $memoLabel && $items['folder_child']->getDocumentTypeLabel() === $memoLabel,
+        'MCP and existing HTML documents use the current display label');
     mcpCheck($spaces['content_formats'] === ['text', 'html', 'markdown', 'md'] && $spaces['external_links_available'], 'Discovery includes formatted content and links without file storage');
     $markdownArgs = ['title' => 'MCP Markdown Memo', 'request_key' => 'create-markdown-memo', 'holon_id' => $hid,
         'content_format' => 'md', 'content' => "# Heading\n\n**Bold** and *italic*.\n\n- First\n- Second\n\n<script>bad()</script>\n\n<p onclick=\"bad()\">Body</p>"];
     $markdownCreated = McpDocumentCreation::create($writeGrant, $markdownArgs);
     $items['markdown_memo'] = new Document(); $items['markdown_memo']->load($markdownCreated['record']['record_id']);
     $markdownContent = $items['markdown_memo']->get('content');
-    mcpCheck($markdownCreated['document_type'] === Document::TYPE_HTML && $markdownCreated['document_type_label'] === 'Memo'
+    mcpCheck($markdownCreated['document_type'] === Document::TYPE_HTML && $items['markdown_memo']->get('documenttype') === Document::TYPE_HTML
+        && $markdownCreated['document_type_label'] === $memoLabel
         && $markdownCreated['visibility_type'] === 'self', 'Markdown creates a native private Memo');
     mcpCheck(str_contains($markdownContent, '<h1>Heading</h1>') && str_contains($markdownContent, '<strong>Bold</strong>')
         && str_contains($markdownContent, '<li>First</li>'), 'Converted Markdown formatting persists');

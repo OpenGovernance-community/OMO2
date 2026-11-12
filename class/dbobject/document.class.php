@@ -6,6 +6,8 @@
         protected static function uiMessageSourceLang(): array
         {
             return [
+                'history_archive_failed' => ['text' => 'Impossible d’archiver cette version. Le fichier actuel a été conservé.', 'context' => 'Document version snapshot failure.'],
+                'history_unavailable' => ['text' => 'L’historisation est désactivée ou indisponible pour ce document.', 'context' => 'Document snapshot unavailable.'],
                 'document_introuvable' => ['text' => 'Document introuvable.', 'context' => 'Validation or action feedback for document.'],
                 'impossible_de_modifier_la_visibilite_du_document' => ['text' => 'Impossible de modifier la visibilité du document.', 'context' => 'Validation or action feedback for document.'],
                 'acces_refuse' => ['text' => 'Accès refusé.', 'context' => 'Validation or action feedback for document.'],
@@ -30,6 +32,8 @@
                 'chemin_nextcloud_invalide' => ['text' => 'Chemin NextCloud invalide.', 'context' => 'Validation or action feedback for document.'],
                 'le_stockage_de_dossiers_distants_est_indisponible' => ['text' => 'Le stockage de dossiers distants est indisponible.', 'context' => 'Validation or action feedback for document.'],
                 'chemin_kdrive_invalide' => ['text' => 'Chemin kDrive invalide.', 'context' => 'Validation or action feedback for document.'],
+                'chemin_distant_invalide' => ['text' => 'Chemin distant invalide.', 'context' => 'Invalid path for a root-relative WebDAV folder.'],
+                'dossier_distant_introuvable' => ['text' => 'Le dossier distant est introuvable.', 'context' => 'Missing root-relative WebDAV folder.'],
                 'organisation_invalide' => ['text' => 'Organisation invalide.', 'context' => 'Validation or action feedback for document.'],
                 'impossible_de_mettre_a_jour_un_document_apres_suppression_de_son_fichier' => ['text' => 'Impossible de mettre à jour un document après suppression de son fichier.', 'context' => 'Validation or action feedback for document.'],
                 'modele_de_pv_invalide_pour_les_applications_de_reunion' => ['text' => 'Modèle de PV invalide pour les applications de réunion.', 'context' => 'Validation or action feedback for document.'],
@@ -51,7 +55,7 @@
                 'utilisateur_invalide' => ['text' => 'Utilisateur invalide.', 'context' => 'Validation or action feedback for document.'],
                 'l_url_externe_est_obligatoire' => ['text' => 'L’URL externe est obligatoire.', 'context' => 'Validation or action feedback for document.'],
                 'un_fichier_est_obligatoire_pour_ce_type_de_document' => ['text' => 'Un fichier est obligatoire pour ce type de document.', 'context' => 'Validation or action feedback for document.'],
-                'le_chemin_du_dossier_nextcloud_est_obligatoire_et_ne_peut_pas_contenir_de_remontee_de_doss' => ['text' => 'Le chemin du dossier NextCloud est obligatoire et ne peut pas contenir de remontée de dossier.', 'context' => 'Validation or action feedback for document.'],
+                'le_chemin_du_dossier_nextcloud_est_obligatoire_et_ne_peut_pas_contenir_de_remontee_de_doss' => ['text' => 'Le chemin du dossier distant est obligatoire et ne peut pas contenir de remontée de dossier.', 'context' => 'Validation or action feedback for document.'],
                 'le_format_pv_n_est_pas_active_pour_cette_organisation' => ['text' => 'Le format PV n’est pas active pour cette organisation.', 'context' => 'Validation or action feedback for document.'],
                 'evenement_associe_introuvable' => ['text' => 'Événement associé introuvable.', 'context' => 'Validation or action feedback for document.'],
                 'le_stockage_de_documents_n_est_pas_configure_pour_cette_organisation' => ['text' => 'Le stockage de documents n’est pas configuré pour cette organisation.', 'context' => 'Validation or action feedback for document.'],
@@ -135,7 +139,7 @@
                 'option.valide' => ['text' => 'Valide', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
                 'option.lien_externe' => ['text' => 'Lien externe', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
                 'option.dossier' => ['text' => 'Dossier', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
-                'option.dossier_nextcloud' => ['text' => 'Dossier NextCloud', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
+                'option.dossier_nextcloud' => ['text' => 'Dossier distant', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
                 'option.pv' => ['text' => 'PV', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
                 'option.pad_cooperatif' => ['text' => 'Pad coopératif', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
                 'option.tableur_collaboratif' => ['text' => 'Tableur collaboratif', 'context' => 'Display label or help in a model choice catalog. Stored option values stay unchanged.'],
@@ -176,10 +180,11 @@
 		public static function rules()
 		{
 			return [
+				[['readercode'], 'string'],
 				[['title'], 'required'],						// Champs obligatoires
-				[['id', 'version', 'estDossier', 'active', 'is_template', 'pv_editor_handover_open', 'openinnewwindow', 'project_visible_in_holon', 'storedfilesize'], 'integer'],				// Nombres entiers
+				[['id', 'version', 'estDossier', 'active', 'is_template', 'pv_editor_handover_open', 'openinnewwindow', 'project_visible_in_holon', 'storedfilesize', 'history_enabled'], 'integer'],				// Nombres entiers
 				[['title', 'codeview', 'codeedit', 'keywords', 'documenttype', 'pvstage', 'externalurl', 'storedfilepath', 'storedfilename', 'storedfilemime', 'nextcloudfolderpath', 'nextcloudfolderfileid', 'etherpadpadid', 'ethercalcroomid', 'spacedeckspaceid'], 'string'],	// Chaines de caractere
-				[['description', 'content', 'contentedition'], 'text'],			// Textes libres
+				[['description', 'content', 'contentedition', 'pv_timer'], 'text'],			// Textes libres
 				[['datecreation', 'datemodification', 'dateconsultation', 'dateedition', 'datecontentedition', 'pv_review_started_at'], 'datetime'],	// Date avec precision des heures
 				[['IDuser', 'IDusercreation', 'IDusermodification', 'IDuseredition', 'IDuser_pv_editor', 'IDuser_pv_official_editor', 'IDorganization', 'IDholon', 'IDdocument_parent', 'IDevent'], 'fk'],	// Cles etrangeres
 				[['id'], 'safe'],								// Champs proteges
@@ -207,6 +212,7 @@
 				'IDuser_pv_editor' => 'Secrétaire du PV',
 				'IDuser_pv_official_editor' => 'Dernier secrétaire officiel du PV',
 				'pv_editor_handover_open' => 'Passation du secrétaire ouverte',
+				'pv_timer' => 'Chronomètre du PV',
 				'estDossier' => 'Dossier',
 				'IDdocument_parent' => 'Dossier parent',
 				'datecreation' => 'Date de création',
@@ -216,6 +222,7 @@
 				'datecontentedition' => 'Date du brouillon en édition',
 				'version' => 'Version',
 				'codeview' => 'Code d’affichage',
+				'readercode' => 'Code de consultation',
 				'codeedit' => 'Code d’édition',
 				'documenttype' => 'Type de document',
 				'pvstage' => 'Étape du PV',
@@ -228,6 +235,7 @@
 				'storedfilename' => 'Nom original du fichier',
 				'storedfilemime' => 'Type MIME du fichier',
 				'storedfilesize' => 'Taille du fichier',
+				'history_enabled' => 'Activer l’historisation',
 				'nextcloudfolderpath' => 'Chemin du dossier NextCloud',
 				'nextcloudfolderfileid' => 'Identifiant NextCloud du dossier',
 				'etherpadpadid' => 'Identifiant du pad Etherpad',
@@ -262,6 +270,7 @@
 				'IDuser_pv_editor' => 'Personne qui tient le PV pendant la réunion et peut modifier tous les points.',
 				'IDuser_pv_official_editor' => 'Dernière personne officielle a tenir le PV, utilisée pour le retour en relecture.',
 				'pv_editor_handover_open' => 'Indique que le secrétaire actuel autorise un invité à reprendre son rôle.',
+				'pv_timer' => 'État partagé du chronomètre et référence de temps du serveur.',
 				'externalurl' => 'Adresse du site a ouvrir pour un document de type lien externe',
 				'openinnewwindow' => 'Ouvre le lien externe directement dans une autre fenêtre',
 				'project_visible_in_holon' => 'Autorise l’affichage dans la liste du holon pour un document lié à un projet ou événement',
@@ -269,6 +278,7 @@
 				'storedfilename' => 'Nom du fichier téléversé par l’utilisateur',
 				'storedfilemime' => 'Type MIME détecté pour le fichier distant',
 				'storedfilesize' => 'Taille du fichier distant en octets',
+				'history_enabled' => 'Conserver une copie des anciennes versions lors du remplacement du fichier.',
 				'nextcloudfolderpath' => 'Chemin du dossier NextCloud, relatif au dossier configuré pour les documents',
 				'nextcloudfolderfileid' => 'Identifiant stable NextCloud utilisé pour retrouver un dossier renommé ou déplacé',
 				'etherpadpadid' => 'Identifiant technique du pad associe à ce document',
@@ -281,6 +291,7 @@
 		public static function attributeLength()
 		{
 			return [
+				'readercode' => 48,
 				'title' => 100,									// Nombre de caracteres maximum
 				'pvstage' => 30,
 				'externalurl' => 2000,
@@ -347,6 +358,7 @@
 				'externalurl',
 				'openinnewwindow',
 				'project_visible_in_holon',
+				'history_enabled',
 				'storedfilepath',
 				'storedfilename',
 				'storedfilemime',
@@ -363,6 +375,7 @@
 				'datecontentedition',
 				'version',
 				'codeview',
+				'readercode',
 				'codeedit',
 			);
 		}
@@ -653,6 +666,9 @@
 				if ($startedTransaction) {
 					$pdo->beginTransaction();
 				}
+				if ((int)$this->getId() > 0) {
+					$this->lockStoredFileState();
+				}
 
 				if ($this->isEtherpadDocument() && $this->getEtherpadPadId() !== '') {
 					require_once dirname(__DIR__, 2) . '/common/etherpad.php';
@@ -694,6 +710,14 @@
 					$deleteResult = $organization->deleteDocumentFileFromStorage((string)$this->get('storedfilepath'));
 					if (!is_array($deleteResult) || empty($deleteResult['status'])) {
 						throw new \RuntimeException('uploaded_file_delete_failed');
+					}
+				}
+
+				$versions = $this->getArchivedVersions();
+				if (count($versions) > 0) {
+					$organization ??= new Organization();
+					if (!$organization->load((int)$this->get('IDorganization')) || !$this->deleteArchivedVersionFiles($organization)) {
+						throw new \RuntimeException('document_version_delete_failed');
 					}
 				}
 
@@ -1115,6 +1139,97 @@
 				],
 			]);
 			return $medias;
+		}
+
+		public function buildReaderUrl(): string
+		{
+			return '/omo/document.php?code=' . rawurlencode((string)$this->get('readercode'));
+		}
+
+		public function save()
+		{
+			if ((int)$this->getId() <= 0 || trim((string)$this->get('readercode')) === '') {
+				$this->set('readercode', bin2hex(random_bytes(24)));
+			}
+			return parent::save();
+		}
+
+		public static function findByReaderCode(string $code): ?self
+		{
+			if (!preg_match('/^[a-f0-9]{48}$/D', $code)) {
+				return null;
+			}
+			$document = new self();
+			return $document->load(['readercode', $code]) ? $document : null;
+		}
+
+		public function getCollaboraSigningSecret(): string
+		{
+			$secret = trim((string)$this->get('codeedit'));
+			if ($secret === '' && (int)$this->getId() > 0) {
+				self::execute("UPDATE document SET codeedit = :secret WHERE id = :id AND (codeedit IS NULL OR codeedit = '')",
+					['secret' => bin2hex(random_bytes(24)), 'id' => (int)$this->getId()]);
+				$row = self::fetchRow('SELECT codeedit FROM document WHERE id = :id', ['id' => (int)$this->getId()]);
+				$secret = trim((string)($row['codeedit'] ?? ''));
+				$this->set('codeedit', $secret);
+			}
+			return $secret;
+		}
+
+		public function buildOmoDocumentUrl(): string
+		{
+			return '/omo/o/' . (int)$this->get('IDorganization') . '#documents-d' . (int)$this->getId();
+		}
+
+		public function isPubliclyReadable(): bool
+		{
+			$organizationId = (int)$this->get('IDorganization');
+			if ($organizationId <= 0 || $this->isArchived()) {
+				return false;
+			}
+			foreach (array_merge([$this], $this->getParentFolderChain()) as $document) {
+				$rule = $document->getPrimaryVisibilityRuleRow();
+				if ($document->isArchived()
+					|| (int)$document->get('IDorganization') !== $organizationId
+					|| ($document !== $this && !$document->isFolder())
+					|| ($rule['visibility_type'] ?? '') !== ObjectVisibility::TYPE_EVERYONE) {
+					return false;
+				}
+			}
+			return true;
+		}
+
+		public function canReadFromLink(int $userId): bool
+		{
+			$organizationId = (int)$this->get('IDorganization');
+			if ($this->isFolder() || $this->isNextcloudFolder() || $this->isArchived() || $organizationId <= 0
+				|| !$this->canUserPassPvMeetingVisibilityGate($userId, $organizationId)) {
+				return false;
+			}
+			return $this->isPubliclyReadable()
+				|| ($userId > 0 && $this->canViewDirectlyInOrganization($organizationId, $userId));
+		}
+
+		public function getReaderContent(): string
+		{
+			$options = ['readOnlyLink' => true, 'compactEmbeds' => true];
+			if ($this->isPvDocument()) {
+				return $this->renderPvForViewer($options);
+			}
+			if ($this->isEtherpadDocument()) {
+				return $this->renderEtherpadSnapshotForViewer();
+			}
+			if ($this->isEthercalcDocument()) {
+				return $this->renderEthercalcSnapshotForViewer();
+			}
+			if ($this->isWhiteboardDocument()) {
+				return '<p>' . self::uiMessage('copy.tableau_blanc_collaboratif_a_consulter_dans_omo') . '</p>';
+			}
+			if ($this->isExternalLink()) {
+				$url = htmlspecialchars($this->getExternalUrl(), ENT_QUOTES, 'UTF-8');
+				return $url !== '' ? '<p><a href="' . $url . '" target="_blank" rel="noopener noreferrer">' . $url . '</a></p>' : '';
+			}
+			return $this->renderResolvedHtmlForViewer((string)$this->get('content'), $this->get('IDorganization'), $options);
 		}
 
 		public function canView()
@@ -1795,6 +1910,7 @@
 				'pv_stage' => $this->getPvStage(),
 				'pv_editor_user_id' => $this->getPvEditorUserId(),
 				'pv_editor_handover_open' => $this->isPvEditorHandoverOpen() ? 1 : 0,
+				'pv_timer' => (string)$this->get('pv_timer'),
 				'is_template' => $this->isPvTemplate() ? 1 : 0,
 				'active' => !empty($this->get('active')) ? 1 : 0,
 				'modified_at' => $modifiedAt instanceof \DateTimeInterface
@@ -1810,6 +1926,69 @@
 				'discussions' => is_array($discussionRows) ? $discussionRows : [],
 				'organization_history_id' => \dbObject\History::getLatestOrganizationEntryId($organizationId),
 			], JSON_UNESCAPED_SLASHES));
+		}
+
+		public function getPvTimerState(): array
+		{
+			$state = json_decode((string)$this->get('pv_timer'), true);
+			return is_array($state) ? $state : [
+				'status' => 'stopped', 'mode' => 'stopwatch', 'milliseconds' => 0,
+				'anchor' => 0, 'revision' => '', 'runId' => '',
+			];
+		}
+
+		public function updatePvTimer(int $userId, string $command, string $revision, ?int $seconds = null, string $mode = 'countdown'): bool
+		{
+			if (!$this->isPvDocument() || !$this->isPvEditor($userId) || $this->isPvValidated()
+				|| !in_array($command, ['play', 'pause', 'stop', 'edit'], true)
+				|| ($seconds !== null && ($seconds < 0 || $seconds > 359999))
+				|| !in_array($mode, ['stopwatch', 'countdown'], true)) {
+				return false;
+			}
+			$rawState = (string)$this->get('pv_timer');
+			$state = $this->getPvTimerState();
+			if ($revision !== (string)$state['revision']) return false;
+			$now = (int)floor(microtime(true) * 1000);
+			$milliseconds = (int)$state['milliseconds'];
+			if ($state['status'] === 'playing') {
+				$elapsed = max(0, $now - (int)$state['anchor']);
+				$milliseconds = $state['mode'] === 'countdown'
+					? max(0, $milliseconds - $elapsed) : $milliseconds + $elapsed;
+			}
+			if ($command === 'stop') {
+				$state['status'] = 'stopped';
+				$state['mode'] = 'stopwatch';
+				$milliseconds = 0;
+			} elseif ($command === 'edit') {
+				if ($seconds === null) return false;
+				$milliseconds = $seconds * 1000;
+				$state['mode'] = 'countdown';
+				$state['runId'] = bin2hex(random_bytes(12));
+			} elseif ($command === 'play') {
+				if ($state['status'] === 'playing') return false;
+				if ($state['status'] === 'stopped') {
+					$milliseconds = ($seconds ?? 0) * 1000;
+					$state['mode'] = $mode;
+					$state['runId'] = bin2hex(random_bytes(12));
+				}
+				$state['status'] = 'playing';
+			} else {
+				if ($state['status'] !== 'playing') return false;
+				$state['status'] = 'paused';
+			}
+			$state['milliseconds'] = $milliseconds;
+			$state['anchor'] = $now;
+			$state['revision'] = bin2hex(random_bytes(12));
+			$encoded = json_encode($state, JSON_UNESCAPED_SLASHES);
+			// Compare both the current editor and revision atomically: a former editor
+			// or an older tab must never overwrite a handover or a newer timer action.
+			if (!self::execute(
+				"UPDATE document SET pv_timer = :timer WHERE id = :id AND IDuser_pv_editor = :editor
+				 AND COALESCE(pv_timer, '') = COALESCE(:previous, '') AND active = 1",
+				['timer' => $encoded, 'id' => (int)$this->getId(), 'editor' => $userId, 'previous' => $rawState]
+			)) return false;
+			$this->load((int)$this->getId(), true);
+			return (string)$this->get('pv_timer') === $encoded;
 		}
 
 		public function getPvEditorUserId(): int
@@ -3062,7 +3241,7 @@
 			if (!$this->isNextcloudFolder()) {
 				return '';
 			}
-			if (!$organization->isKdriveDocumentStorage()) {
+			if (!$organization->isWebdavDocumentStorage()) {
 				return $this->buildNextcloudFolderRemotePath($organization, $childPath);
 			}
 			return implode('/', array_filter(array(
@@ -3087,16 +3266,16 @@
 			if (!$this->isNextcloudFolder() || !$organization->hasDocumentStorage()) {
 				return array('status' => false, 'text' => self::uiMessage('le_stockage_de_dossiers_distants_est_indisponible'));
 			}
-			if (!$organization->isKdriveDocumentStorage()) {
+			if (!$organization->isWebdavDocumentStorage()) {
 				return $this->resolveNextcloudFolderLocation($organization);
 			}
 			$relativePath = $this->getNextcloudFolderPath();
 			$remotePath = $this->buildRemoteFolderStoragePath($organization);
 			$location = $remotePath !== ''
 				? $organization->getDocumentStorageDirectoryInfo($remotePath)
-				: array('status' => false, 'text' => self::uiMessage('chemin_kdrive_invalide'));
+				: array('status' => false, 'text' => self::uiMessage('chemin_distant_invalide'));
 			if (empty($location['status']) || empty($location['isFolder'])) {
-				return array('status' => false, 'text' => trim((string)($location['text'] ?? 'Le dossier kDrive est introuvable.')));
+				return array('status' => false, 'text' => trim((string)($location['text'] ?? self::uiMessage('dossier_distant_introuvable'))));
 			}
 			return array('status' => true, 'relativePath' => $relativePath, 'remotePath' => $remotePath, 'fileId' => '');
 		}
@@ -3172,7 +3351,7 @@
 			}
 
 			return self::fetchRow(
-				'select `id` from `document` where `IDorganization` = :organization_id and `documenttype` = :uploaded_type and `storedfilepath` is not null and `storedfilepath` <> :empty_path limit 1',
+				'select d.id from document d where d.IDorganization = :organization_id and ((d.documenttype = :uploaded_type and d.storedfilepath is not null and d.storedfilepath <> :empty_path) or exists (select v.id from document_version v where v.IDdocument = d.id)) limit 1',
 				array(
 					'organization_id' => $organizationId,
 					'uploaded_type' => self::TYPE_UPLOADED_FILE,
@@ -3197,6 +3376,9 @@
 
 			$deletedCount = 0;
 			foreach ($documents as $document) {
+				if (!$document->deleteArchivedVersionFiles($organization, $storageConfig)) {
+					return ['status' => false, 'text' => self::uiMessage('impossible_de_mettre_a_jour_un_document_apres_suppression_de_son_fichier')];
+				}
 				if (!$document instanceof self || $document->getDocumentType() !== self::TYPE_UPLOADED_FILE) {
 					continue;
 				}
@@ -3309,6 +3491,112 @@
 		{
 			$host = strtolower((string)parse_url($this->getExternalUrl(), PHP_URL_HOST));
 			return $this->isExternalLink() && ($host === 'framapad.org' || str_ends_with($host, '.framapad.org'));
+		}
+
+		public function supportsVersionHistory(): bool
+		{
+			// Extend this capability and the snapshot adapter when adding another document type.
+			return $this->isUploadedFile();
+		}
+
+		public function isVersionHistoryEnabled(): bool
+		{
+			return $this->supportsVersionHistory() && (bool)$this->get('history_enabled');
+		}
+
+		public function getArchivedVersions(): ArrayDocumentVersion
+		{
+			$versions = new ArrayDocumentVersion();
+			$versions->loadForDocument((int)$this->getId());
+			return $versions;
+		}
+
+		protected function deleteArchivedVersionFiles(Organization $organization, ?array $storageConfig = null): bool
+		{
+			foreach ($this->getArchivedVersions() as $version) {
+				$result = $organization->deleteDocumentFileFromStorage((string)$version->get('storedfilepath'), $storageConfig);
+				if (empty($result['status']) || !$version->delete()) return false;
+			}
+			return true;
+		}
+
+		protected function lockStoredFileState(): void
+		{
+			$row = self::fetchRow('SELECT storedfilepath, storedfilename, storedfilemime, storedfilesize, history_enabled FROM document WHERE id = :id FOR UPDATE', ['id' => (int)$this->getId()]);
+			if (!$row) {
+				throw new \RuntimeException('document_file_missing');
+			}
+			foreach ($row as $field => $value) {
+				$this->set($field, $value);
+			}
+		}
+
+		public function archiveCurrentVersion(int $userId): array
+		{
+			$organizationId = (int)$this->get('IDorganization');
+			if ($userId <= 0 || !$this->canEditInOrganizationContext($organizationId, $userId, false)) {
+				return ['status' => false, 'text' => self::uiMessage('acces_refuse')];
+			}
+			$pdo = self::getPdo();
+			$ownsTransaction = !$pdo->inTransaction();
+			$organization = new Organization();
+			$archivePath = '';
+			try {
+				if ($ownsTransaction) $pdo->beginTransaction();
+				$this->lockStoredFileState();
+				if (!$this->isVersionHistoryEnabled() || !$this->hasStoredFile()) {
+					if ($ownsTransaction) $pdo->rollBack();
+					return ['status' => false, 'text' => self::uiMessage('history_unavailable')];
+				}
+				if (!$organization->load($organizationId) || !$organization->hasDocumentStorage()) {
+					throw new \RuntimeException('document_storage_missing');
+				}
+				$result = DocumentVersion::createFileSnapshot($this, $organization, $userId, 'manual');
+				if (empty($result['status'])) {
+					throw new \RuntimeException('document_snapshot_failed');
+				}
+				$archivePath = (string)$result['version']->get('storedfilepath');
+				if ($ownsTransaction) $pdo->commit();
+				return $result;
+			} catch (\Throwable $exception) {
+				if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+				if ($archivePath !== '') $organization->deleteDocumentFileFromStorage($archivePath);
+				error_log('Document archive failed: ' . $exception->getMessage());
+				return ['status' => false, 'text' => self::uiMessage('history_archive_failed')];
+			}
+		}
+
+		public function saveCollaboraFileContents(Organization $organization, int $userId, string $contents, string $mimeType): array
+		{
+			if (!$this->canOpenWithCollabora() || (int)$organization->getId() !== (int)$this->get('IDorganization')
+				|| !$this->canEditInOrganizationContext((int)$organization->getId(), $userId, false)) {
+				return ['status' => false];
+			}
+			$pdo = self::getPdo();
+			$ownsTransaction = !$pdo->inTransaction();
+			$expectedPath = (string)$this->get('storedfilepath');
+			try {
+				if ($ownsTransaction) $pdo->beginTransaction();
+				$this->lockStoredFileState();
+				// Serialize saves with snapshots and reject a replacement made during this request.
+				if ((string)$this->get('storedfilepath') !== $expectedPath) {
+					throw new \RuntimeException('document_file_replaced');
+				}
+				$this->load($this->getId(), true);
+				$result = $organization->updateDocumentFileContentsOnStorage($expectedPath, $contents, $mimeType);
+				if (empty($result['status'])) throw new \RuntimeException('document_file_save_failed');
+				$this->set('storedfilesize', strlen($contents));
+				$this->set('IDusermodification', $userId);
+				$this->set('datemodification', new \DateTimeImmutable());
+				$result = $this->save();
+				if (empty($result['status'])) throw new \RuntimeException('document_file_metadata_failed');
+				if ($ownsTransaction) $pdo->commit();
+				return $result;
+			} catch (\Throwable $exception) {
+				if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+				error_log('Collabora document save failed: ' . $exception->getMessage());
+				return ['status' => false];
+			}
 		}
 
 		public function hasStoredFile(): bool
@@ -4423,7 +4711,9 @@
 
 			$targetOrganizationId = (int)$targetDocument->get('IDorganization');
 			$targetHolonId = (int)$targetDocument->get('IDholon');
-			if (isset($options['pvParticipationLink'])) {
+			if (!empty($options['readOnlyLink'])) {
+				$canViewTarget = $targetDocument->canReadFromLink((int)\commonGetCurrentUserId());
+			} elseif (isset($options['pvParticipationLink'])) {
 				$canViewTarget = $options['pvParticipationLink'] instanceof DocumentShareLink
 					&& $options['pvParticipationLink']->getReadablePvEmbeddedDocument($targetDocumentId) !== null;
 			} else {
@@ -4462,7 +4752,7 @@
 			}
 
 			if ($isCompactEmbed || !$targetDocument->supportsHtmlContent()) {
-				return self::buildDocumentEmbedDisplayHtml(
+				$html = self::buildDocumentEmbedDisplayHtml(
 					$targetDocumentId,
 					$targetTitle !== '' ? $targetTitle : $fallbackTitle,
 					self::truncateEmbeddedReferenceSummary(
@@ -4471,6 +4761,9 @@
 					'',
 					'compact'
 				);
+				return !empty($options['readOnlyLink'])
+					? str_replace('#documents-d' . $targetDocumentId . '"', htmlspecialchars($targetDocument->buildReaderUrl(), ENT_QUOTES, 'UTF-8') . '"', $html)
+					: $html;
 			}
 
 			$childOptions = $options;
@@ -5143,7 +5436,7 @@
 					continue;
 				}
 
-				$pointData = $point->buildViewerData($organizationId);
+				$pointData = $point->buildViewerData($organizationId, 0, '', $renderOptions);
 				$pointData['positionLabel'] = (string)($positionLabels[(int)$point->getId()] ?? '');
 				$pointTypeClass = preg_replace('/[^a-z0-9_-]+/i', '-', (string)($pointData['pointType'] ?? 'information'));
 				$pointTypeIconMap = array(
@@ -5955,13 +6248,17 @@
 
 		protected function applyUploadedFileToOrganizationStorage(\dbObject\Organization $organization, array $uploadedFile): array
 		{
+			// A new path prevents same-name replacements from destroying the current file before commit.
+			$originalName = trim((string)($uploadedFile['name'] ?? '')) ?: ('document-' . (int)$this->getId());
+			$extension = pathinfo($originalName, PATHINFO_EXTENSION);
+			$uploadedFile['name'] = 'file-' . bin2hex(random_bytes(16)) . ($extension !== '' ? '.' . $extension : '');
 			$uploadResult = $organization->uploadDocumentFileToStorage((int)$this->getId(), $uploadedFile);
 			if (!is_array($uploadResult) || empty($uploadResult['status'])) {
 				return $uploadResult;
 			}
 
 			$this->set('storedfilepath', (string)($uploadResult['relativePath'] ?? ''));
-			$this->set('storedfilename', (string)($uploadResult['originalName'] ?? ''));
+			$this->set('storedfilename', $originalName);
 			$this->set('storedfilemime', (string)($uploadResult['mimeType'] ?? 'application/octet-stream'));
 			$this->set('storedfilesize', (int)($uploadResult['size'] ?? 0));
 
@@ -6064,6 +6361,7 @@
 			$this->set('documenttype', $documentType);
 			$this->set('pvstage', $documentType === self::TYPE_PV ? self::normalizePvStage($values['pv_stage'] ?? null) : null);
 			$this->set('is_template', 0);
+			$this->set('history_enabled', $this->supportsVersionHistory() && !empty($values['history_enabled']) ? 1 : 0);
 			$this->set('externalurl', $externalUrl !== '' ? $externalUrl : null);
 			$this->set('openinnewwindow', $openInNewWindow ? 1 : 0);
 			$previousNextcloudFolderPath = $this->getNextcloudFolderPath();
@@ -6191,7 +6489,7 @@
 						if ($startedTransaction && $pdo->inTransaction()) {
 							$pdo->rollBack();
 						}
-						return array('status' => false, 'text' => trim((string)($nextcloudFolderLocation['text'] ?? 'Le dossier NextCloud est introuvable.')));
+						return array('status' => false, 'text' => trim((string)($nextcloudFolderLocation['text'] ?? self::uiMessage('dossier_distant_introuvable'))));
 					}
 					$this->set('nextcloudfolderfileid', trim((string)($nextcloudFolderLocation['fileId'] ?? '')) ?: null);
 				}
@@ -6992,6 +7290,9 @@
 			$pdo = self::getPdo();
 			$startedTransaction = $pdo instanceof \PDO && !$pdo->inTransaction();
 			$organization = new \dbObject\Organization();
+			$createdFilePaths = [];
+			$previousStoredPath = '';
+			$updateSucceeded = false;
 
 			try {
 				if ($startedTransaction) {
@@ -7061,10 +7362,17 @@
 						if ($startedTransaction && $pdo->inTransaction()) {
 							$pdo->rollBack();
 						}
-						return array('status' => false, 'text' => trim((string)($nextcloudFolderLocation['text'] ?? 'Le dossier NextCloud est introuvable.')));
+						return array('status' => false, 'text' => trim((string)($nextcloudFolderLocation['text'] ?? self::uiMessage('dossier_distant_introuvable'))));
 					}
 					$this->set('nextcloudfolderpath', (string)$nextcloudFolderLocation['relativePath']);
 					$this->set('nextcloudfolderfileid', trim((string)($nextcloudFolderLocation['fileId'] ?? '')) ?: null);
+				}
+
+				if ($documentType === self::TYPE_UPLOADED_FILE) {
+					$this->lockStoredFileState();
+					if ($canEditContent && array_key_exists('history_enabled', $values)) {
+						$this->set('history_enabled', !empty($values['history_enabled']) ? 1 : 0);
+					}
 				}
 
 				if ($canManagePvDocument) {
@@ -7088,15 +7396,18 @@
 
 				if (!$isWithoutContext && $documentType === self::TYPE_UPLOADED_FILE) {
 					$previousStoredPath = trim((string)$this->get('storedfilepath'));
-					if ($removeUploadedFile) {
-						$deleteResult = $this->deleteStoredFileFromOrganizationStorage($organization);
-						if (!is_array($deleteResult) || empty($deleteResult['status'])) {
+					if (($uploadedFile !== null || $removeUploadedFile) && $this->hasStoredFile() && $this->isVersionHistoryEnabled()) {
+						$archiveResult = DocumentVersion::createFileSnapshot($this, $organization, $userId, $uploadedFile !== null ? 'replacement' : 'removal');
+						if (empty($archiveResult['status'])) {
 							if ($startedTransaction && $pdo->inTransaction()) {
 								$pdo->rollBack();
 							}
-
-							return $deleteResult;
+							return ['status' => false, 'text' => self::uiMessage('history_archive_failed')];
 						}
+						$createdFilePaths[] = (string)$archiveResult['version']->get('storedfilepath');
+					}
+					if ($removeUploadedFile) {
+						$this->clearStoredFileState();
 					}
 
 					if ($uploadedFile !== null) {
@@ -7110,9 +7421,7 @@
 						}
 
 						$newStoredPath = trim((string)($fileStorageResult['uploadedPath'] ?? ''));
-						if ($previousStoredPath !== '' && $previousStoredPath !== $newStoredPath) {
-						$organization->deleteDocumentFileFromStorage($previousStoredPath);
-						}
+						$createdFilePaths[] = $newStoredPath;
 					}
 
 					if ($removeUploadedFile || $uploadedFile !== null) {
@@ -7150,6 +7459,12 @@
 				if ($startedTransaction && $pdo->inTransaction()) {
 					$pdo->commit();
 				}
+				$updateSucceeded = true;
+				// With an outer transaction, keep the old remote file until its owner commits.
+				if ($startedTransaction && ($uploadedFile !== null || $removeUploadedFile) && $previousStoredPath !== '') {
+					$cleanup = $organization->deleteDocumentFileFromStorage($previousStoredPath);
+					if (empty($cleanup['status'])) error_log('Previous document file cleanup failed for document ' . (int)$this->getId());
+				}
 
 				if ((int)$this->get('IDdocument_parent') > 0) {
 					$this->refreshAncestorFolderActivity();
@@ -7169,6 +7484,12 @@
 					'status' => false,
 					'text' => self::uiMessage('impossible_de_mettre_a_jour_ce_document'),
 				);
+			} finally {
+				if (!$updateSucceeded) {
+					foreach ($createdFilePaths as $createdFilePath) {
+						$organization->deleteDocumentFileFromStorage($createdFilePath);
+					}
+				}
 			}
 		}
 

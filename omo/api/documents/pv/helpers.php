@@ -5,6 +5,13 @@ require_once dirname(__DIR__, 4) . '/common/calendar/recurrence.php';
 function omoDocumentsPvEditorSourceLang(): array
 {
     return commonMeetingRecurrenceSourceLang() + [
+        'documents.pv_editor.timer.label' => ['text' => 'Chronomètre', 'context' => 'Shared timer at the top left of the PV editor.'],
+        'documents.pv_editor.timer.time' => ['text' => 'Durée (HH:MM:SS)', 'context' => 'Editable PV timer duration, hours minutes seconds.'],
+        'documents.pv_editor.timer.play' => ['text' => 'Démarrer ou reprendre', 'context' => 'PV timer play button.'],
+        'documents.pv_editor.timer.pause' => ['text' => 'Mettre en pause', 'context' => 'PV timer pause button.'],
+        'documents.pv_editor.timer.stop' => ['text' => 'Arrêter et remettre à zéro', 'context' => 'PV timer stop button.'],
+        'documents.pv_editor.timer.invalid' => ['text' => 'Saisissez une durée au format HH:MM:SS (de 00:00:00 à 99:59:59).', 'context' => 'Invalid manual timer duration.'],
+        'documents.pv_editor.timer.error' => ['text' => 'Le chronomètre a changé ou la commande a échoué. Réessayez.', 'context' => 'Failed timer action or concurrent timer update.'],
         'documents.pv_editor.notice.review_readonly' => ['text' => 'Ce point est verrouillé pendant la relecture. Utilisez la discussion pour signaler une correction.', 'context' => 'Helper text shown on PV points while the document is in review.'],
         'documents.pv_editor.error.operation_failed' => ['text' => 'L’opération n’a pas pu être effectuée.', 'context' => 'Generic fallback error returned by a PV editor action.'],
         'documents.pv_editor.error.generic' => ['text' => 'Une erreur est survenue.', 'context' => 'Generic fallback error shown in the PV editor.'],
@@ -418,6 +425,8 @@ function omoDocumentsPvEditorBuildUiText(?callable $translate = null, array $pri
     };
 
     $uiText = [
+        'timerInvalid' => $resolve('documents.pv_editor.timer.invalid', 'Saisissez une durée au format HH:MM:SS (de 00:00:00 à 99:59:59).'),
+        'timerError' => $resolve('documents.pv_editor.timer.error', 'Le chronomètre a changé ou la commande a échoué. Réessayez.'),
         'movedReadonly' => $resolve('documents.pv_editor.import.readonly', omoDocumentsUiT('copy.ce_point_a_ete_deplace_vers_une_autre_reunion')),
         'reviewReadonly' => $resolve('documents.pv_editor.notice.review_readonly', 'Ce point est verrouillé pendant la relecture. Utilisez la discussion pour signaler une correction.'),
         'save' => $resolve('documents.pv_editor.action.save', 'Enregistrer'),

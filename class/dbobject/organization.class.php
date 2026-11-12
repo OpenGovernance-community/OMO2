@@ -10,6 +10,21 @@
         protected static function uiMessageSourceLang(): array
         {
             return [
+                'configuration_webdav_invalide' => ['text' => 'Configuration WebDAV invalide.', 'context' => 'Invalid generic WebDAV connection settings.'],
+                'le_stockage_webdav_est_indisponible' => ['text' => 'Le stockage WebDAV est indisponible.', 'context' => 'Unavailable WebDAV storage.'],
+                'reponse_webdav_invalide' => ['text' => 'La réponse WebDAV du dossier est invalide.', 'context' => 'Invalid WebDAV directory metadata.'],
+                'chemin_webdav_invalide' => ['text' => 'Chemin WebDAV invalide.', 'context' => 'Invalid WebDAV path.'],
+                'dossier_webdav_introuvable' => ['text' => 'Le dossier WebDAV est introuvable.', 'context' => 'Missing WebDAV directory.'],
+                'requete_webdav_echouee' => ['text' => 'La requête WebDAV a échoué.', 'context' => 'WebDAV transport failure.'],
+                'requete_webdav_refusee' => ['text' => 'Requête WebDAV refusée ({code}).', 'context' => 'WebDAV HTTP failure with status code.'],
+                'envoi_webdav_echoue' => ['text' => 'Impossible d’envoyer le fichier vers le serveur WebDAV.', 'context' => 'WebDAV upload failure.'],
+                'lecture_webdav_echouee' => ['text' => 'Impossible de récupérer le fichier distant.', 'context' => 'WebDAV download failure.'],
+                'mise_a_jour_webdav_echouee' => ['text' => 'Impossible de mettre à jour le fichier distant.', 'context' => 'WebDAV update failure.'],
+                'lecture_dossier_webdav_echouee' => ['text' => 'Impossible de lire le dossier WebDAV.', 'context' => 'WebDAV directory read failure.'],
+                'curl_requis_pour_webdav' => ['text' => 'cURL est requis pour communiquer avec le serveur WebDAV.', 'context' => 'Missing cURL support for WebDAV.'],
+                'connexion_webdav_reussie' => ['text' => 'Connexion WebDAV réussie. Le dossier configuré est accessible.', 'context' => 'Successful generic WebDAV connection test.'],
+                'webdav_identifiants_refuses' => ['text' => 'Le serveur WebDAV refuse les identifiants ou le mot de passe.', 'context' => 'WebDAV authentication failure.'],
+                'webdav_acces_refuse' => ['text' => 'Le serveur WebDAV refuse l’accès au dossier configuré.', 'context' => 'WebDAV forbidden response.'],
                 'type_de_stockage_invalide' => ['text' => 'Type de stockage invalide.', 'context' => 'Validation or action feedback for organization.'],
                 'curl_est_requis_pour_tester_la_connexion_kdrive' => ['text' => 'cURL est requis pour tester la connexion kDrive.', 'context' => 'Validation or action feedback for organization.'],
                 'connexion_kdrive_reussie_le_compte_webdav_est_accessible' => ['text' => 'Connexion kDrive réussie. Le compte WebDAV est accessible.', 'context' => 'Validation or action feedback for organization.'],
@@ -1389,6 +1404,22 @@
 			return ($this->getDocumentStorageConfig()['type'] ?? '') === 'kdrive' && $this->hasDocumentStorage();
 		}
 
+		// Both connectors use paths relative to their configured WebDAV root.
+		public function isWebdavDocumentStorage(): bool
+		{
+			return in_array($this->getDocumentStorageConfig()['type'] ?? '', array('kdrive', 'webdav'), true)
+				&& $this->hasDocumentStorage();
+		}
+
+		public function getDocumentStorageLabel(): string
+		{
+			return match ($this->getDocumentStorageConfig()['type'] ?? '') {
+				'kdrive' => 'kDrive',
+				'webdav' => 'WebDAV',
+				default => 'Nextcloud',
+			};
+		}
+
 		public function testDocumentStorageConnection(array $config): array
 		{
 			require_once dirname(__DIR__, 2) . '/omo/api/documents/params/shared.php';
@@ -1398,6 +1429,28 @@
 
 			if (($config['type'] ?? '') === 'nextcloud') {
 				return $this->testNextcloudDocumentStorageConnection($config);
+			}
+
+			if (($config['type'] ?? '') === 'webdav') {
+				$result = $this->executeWebdavDocumentsRequest('PROPFIND', '', $config, array(
+					'timeout' => 30,
+					'headers' => array('Depth: 0', 'Content-Length: 0'),
+				));
+				if (!empty($result['status'])) {
+					$entries = $this->parseWebdavDocumentsEntries((string)($result['body'] ?? ''), '', $config);
+					foreach ($entries ?? array() as $entry) {
+						if ($entry['path'] === '' && $entry['isFolder']) {
+							return array('status' => true, 'text' => self::uiMessage('connexion_webdav_reussie'));
+						}
+					}
+					return array('status' => false, 'text' => self::uiMessage('reponse_webdav_invalide'));
+				}
+				$key = match ((int)($result['httpCode'] ?? 0)) {
+					401 => 'webdav_identifiants_refuses',
+					403 => 'webdav_acces_refuse',
+					default => '',
+				};
+				return array('status' => false, 'text' => $key !== '' ? self::uiMessage($key) : $result['text']);
 			}
 
 			if (($config['type'] ?? '') !== 'kdrive') {
@@ -1410,7 +1463,7 @@
 
 			$testConfig = $config;
 			$testConfig['folder'] = '';
-			$result = $this->executeKdriveDocumentsRequest('PROPFIND', '', $testConfig, array(
+			$result = $this->executeWebdavDocumentsRequest('PROPFIND', '', $testConfig, array(
 				'timeout' => 30,
 				'headers' => array('Depth: 0', 'Content-Length: 0'),
 			));
@@ -1429,15 +1482,27 @@
 			return array('status' => false, 'text' => trim((string)($result['text'] ?? 'La connexion kDrive a échoué.')));
 		}
 
-		protected function buildKdriveDocumentsDavUrl(array $config, string $relativePath = ''): string
+		protected function buildWebdavDocumentsDavUrl(array $config, string $relativePath = ''): string
 		{
-			$driveId = preg_replace('/[^0-9]/', '', trim((string)($config['driveId'] ?? '')));
-			if ($driveId === '') {
+			$isGeneric = ($config['type'] ?? '') === 'webdav';
+			if ($isGeneric) {
+				require_once dirname(__DIR__, 2) . '/omo/api/documents/params/shared.php';
+				$config = \omoDocumentsParamsNormalizeWebdavConfig($config);
+				$baseUrl = $config['baseUrl'];
+			} else {
+				$driveId = preg_replace('/[^0-9]/', '', trim((string)($config['driveId'] ?? '')));
+				$baseUrl = $driveId !== '' ? 'https://' . $driveId . '.connect.kdrive.infomaniak.com' : '';
+			}
+			if ($baseUrl === '') {
+				return '';
+			}
+			$relativePath = str_replace('\\', '/', $relativePath);
+			if (preg_match('#(?:^|/)\.{1,2}(?:/|$)|[\x00-\x1f\x7f]#', $relativePath)) {
 				return '';
 			}
 
 			$segments = array_filter(
-				array_map('trim', explode('/', trim((string)($config['folder'] ?? '') . '/' . trim($relativePath, '/'), '/'))),
+				explode('/', trim((string)($config['folder'] ?? '') . '/' . trim($relativePath, '/'), '/')),
 				static function ($segment) {
 					return $segment !== '';
 				}
@@ -1446,18 +1511,24 @@
 			$encodedPath = count($segments) > 0
 				? '/' . implode('/', array_map('rawurlencode', $segments))
 				: '';
-			return 'https://' . $driveId . '.connect.kdrive.infomaniak.com' . $encodedPath;
+			return $baseUrl . $encodedPath;
 		}
 
-		protected function executeKdriveDocumentsRequest(string $method, string $relativePath, array $config, array $options = array()): array
+		protected function executeWebdavDocumentsRequest(string $method, string $relativePath, array $config, array $options = array()): array
 		{
-			$url = $this->buildKdriveDocumentsDavUrl($config, $relativePath);
+			if (!function_exists('curl_init')) {
+				return array('status' => false, 'text' => self::uiMessage('curl_requis_pour_webdav'));
+			}
+			$url = $this->buildWebdavDocumentsDavUrl($config, $relativePath);
 			$username = trim((string)($config['username'] ?? ''));
-			$appPassword = trim((string)($config['appPassword'] ?? ''));
+			$appPassword = (string)($config['appPassword'] ?? '');
 			if ($url === '' || $username === '' || $appPassword === '') {
-				return array('status' => false, 'text' => self::uiMessage('configuration_kdrive_invalide'));
+				return array('status' => false, 'text' => self::uiMessage('configuration_webdav_invalide'));
 			}
 
+			if (($config['type'] ?? '') === 'webdav' && in_array(strtoupper($method), array('PROPFIND', 'MKCOL'), true)) {
+				$url = rtrim($url, '/') . '/';
+			}
 			$curl = curl_init($url);
 			$body = array_key_exists('body', $options) ? $options['body'] : null;
 			$headers = !empty($options['headers']) && is_array($options['headers']) ? array_values($options['headers']) : array();
@@ -1466,12 +1537,13 @@
 				CURLOPT_RETURNTRANSFER => true,
 				CURLOPT_FOLLOWLOCATION => false,
 				CURLOPT_CUSTOMREQUEST => strtoupper($method),
-				CURLOPT_HTTPAUTH => CURLAUTH_BASIC,
+				CURLOPT_HTTPAUTH => ($config['type'] ?? '') === 'webdav' ? (CURLAUTH_BASIC | CURLAUTH_DIGEST) : CURLAUTH_BASIC,
 				CURLOPT_USERPWD => $username . ':' . $appPassword,
 				CURLOPT_TIMEOUT => $timeout,
 				CURLOPT_HEADER => true,
 				CURLOPT_HTTPHEADER => $headers,
-				CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+				(defined('CURLOPT_PROTOCOLS_STR') ? constant('CURLOPT_PROTOCOLS_STR') : CURLOPT_PROTOCOLS)
+					=> defined('CURLOPT_PROTOCOLS_STR') ? 'http,https' : (CURLPROTO_HTTP | CURLPROTO_HTTPS),
 			));
 			if ($body !== null) {
 				curl_setopt($curl, CURLOPT_POSTFIELDS, $body);
@@ -1482,7 +1554,7 @@
 			$httpCode = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
 			$headerSize = (int)curl_getinfo($curl, CURLINFO_HEADER_SIZE);
 			if ($response === false) {
-				return array('status' => false, 'httpCode' => $httpCode, 'text' => $curlError !== '' ? $curlError : 'La requête kDrive a échoué.');
+				return array('status' => false, 'httpCode' => $httpCode, 'text' => $curlError !== '' ? $curlError : self::uiMessage('requete_webdav_echouee'));
 			}
 
 			$rawHeaders = substr((string)$response, 0, max(0, $headerSize));
@@ -1504,11 +1576,11 @@
 				'httpCode' => $httpCode,
 				'headers' => $headerMap,
 				'body' => $responseBody,
-				'text' => $httpCode >= 200 && $httpCode < 300 ? 'OK' : 'Requête kDrive refusée (' . $httpCode . ').',
+				'text' => $httpCode >= 200 && $httpCode < 300 ? 'OK' : self::uiMessage('requete_webdav_refusee', array('code' => $httpCode)),
 			);
 		}
 
-		protected function ensureKdriveDocumentsFolder(string $relativeFolder, array $config): array
+		protected function ensureWebdavDocumentsFolder(string $relativeFolder, array $config): array
 		{
 			$normalizedFolder = trim(str_replace('\\', '/', $relativeFolder), '/');
 			if ($normalizedFolder === '') {
@@ -1518,17 +1590,17 @@
 			$currentPath = '';
 			foreach (array_filter(explode('/', $normalizedFolder), static function ($segment) { return trim((string)$segment) !== ''; }) as $segment) {
 				$currentPath = $currentPath === '' ? $segment : $currentPath . '/' . $segment;
-				$result = $this->executeKdriveDocumentsRequest('MKCOL', $currentPath, $config, array('timeout' => 30));
+				$result = $this->executeWebdavDocumentsRequest('MKCOL', $currentPath, $config, array('timeout' => 30));
 				$httpCode = (int)($result['httpCode'] ?? 0);
 				if (!is_array($result) || (!empty($result['status']) ? false : !in_array($httpCode, array(201, 405), true))) {
-					return array('status' => false, 'text' => trim((string)($result['text'] ?? 'Impossible de préparer le dossier kDrive.')));
+					return array('status' => false, 'text' => trim((string)($result['text'] ?? self::uiMessage('impossible_de_creer_le_dossier_distant'))));
 				}
 			}
 
 			return array('status' => true);
 		}
 
-		protected function buildKdriveDocumentStorageRoot(array $config): string
+		protected function buildWebdavDocumentStorageRoot(array $config): string
 		{
 			return 'omo-documents';
 		}
@@ -1536,7 +1608,7 @@
 		public function uploadDocumentFileToStorage(int $documentId, array $uploadedFile): array
 		{
 			$config = $this->getDocumentStorageConfig();
-			if (($config['type'] ?? '') !== 'kdrive') {
+			if (!in_array($config['type'] ?? '', array('kdrive', 'webdav'), true)) {
 				if (($config['type'] ?? '') !== 'nextcloud' || !$this->hasDocumentStorage()) {
 					return array('status' => false, 'text' => self::uiMessage('le_stockage_de_documents_n_est_pas_configure_pour_cette_organisation'));
 				}
@@ -1558,8 +1630,8 @@
 			$mimeType = $mimeType !== '' ? $mimeType : 'application/octet-stream';
 			$fileSize = isset($uploadedFile['size']) ? (int)$uploadedFile['size'] : (int)filesize($tmpName);
 			$remoteFilename = self::sanitizeNextcloudRemoteFilename($originalName !== '' ? $originalName : ('document-' . $documentId));
-			$storageDirectory = $this->buildKdriveDocumentStorageRoot($config) . '/' . $documentId;
-			$directoryResult = $this->ensureKdriveDocumentsFolder($storageDirectory, $config);
+			$storageDirectory = $this->buildWebdavDocumentStorageRoot($config) . '/' . $documentId;
+			$directoryResult = $this->ensureWebdavDocumentsFolder($storageDirectory, $config);
 			if (!is_array($directoryResult) || empty($directoryResult['status'])) {
 				return $directoryResult;
 			}
@@ -1569,13 +1641,13 @@
 				return array('status' => false, 'text' => self::uiMessage('impossible_de_lire_le_fichier_a_envoyer'));
 			}
 			$relativePath = $storageDirectory . '/' . $remoteFilename;
-			$uploadResult = $this->executeKdriveDocumentsRequest('PUT', $relativePath, $config, array(
+			$uploadResult = $this->executeWebdavDocumentsRequest('PUT', $relativePath, $config, array(
 				'body' => $fileContent,
 				'timeout' => 300,
 				'headers' => array('Content-Type: ' . $mimeType, 'Content-Length: ' . strlen($fileContent)),
 			));
 			if (!is_array($uploadResult) || empty($uploadResult['status'])) {
-				return array('status' => false, 'text' => trim((string)($uploadResult['text'] ?? 'Impossible d’envoyer le fichier vers kDrive.')));
+				return array('status' => false, 'text' => trim((string)($uploadResult['text'] ?? self::uiMessage('envoi_webdav_echoue'))));
 			}
 
 			return array(
@@ -1590,7 +1662,7 @@
 		public function deleteDocumentFileFromStorage(string $relativePath, ?array $storageConfig = null): array
 		{
 			$config = $storageConfig ?: $this->getDocumentStorageConfig();
-			if (($config['type'] ?? '') !== 'kdrive') {
+			if (!in_array($config['type'] ?? '', array('kdrive', 'webdav'), true)) {
 				if (($config['type'] ?? '') !== 'nextcloud' || !$this->hasDocumentStorage()) {
 					return array('status' => false, 'text' => self::uiMessage('le_stockage_de_documents_n_est_pas_configure_pour_cette_organisation'));
 				}
@@ -1601,17 +1673,17 @@
 			if ($normalizedPath === '') {
 				return array('status' => true);
 			}
-			$result = $this->executeKdriveDocumentsRequest('DELETE', $normalizedPath, $config, array('timeout' => 120));
+			$result = $this->executeWebdavDocumentsRequest('DELETE', $normalizedPath, $config, array('timeout' => 120));
 			$httpCode = (int)($result['httpCode'] ?? 0);
 			return in_array($httpCode, array(204, 404), true) || !empty($result['status'])
 				? array('status' => true)
-				: array('status' => false, 'text' => trim((string)($result['text'] ?? 'Impossible de supprimer le fichier distant.')));
+				: array('status' => false, 'text' => trim((string)($result['text'] ?? self::uiMessage('impossible_de_supprimer_le_fichier_distant'))));
 		}
 
 		public function downloadDocumentFileFromStorage(string $relativePath): array
 		{
 			$config = $this->getDocumentStorageConfig();
-			if (($config['type'] ?? '') !== 'kdrive') {
+			if (!in_array($config['type'] ?? '', array('kdrive', 'webdav'), true)) {
 				if (($config['type'] ?? '') !== 'nextcloud' || !$this->hasDocumentStorage()) {
 					return array('status' => false, 'text' => self::uiMessage('le_stockage_de_documents_n_est_pas_configure_pour_cette_organisation'));
 				}
@@ -1622,9 +1694,9 @@
 			if ($normalizedPath === '') {
 				return array('status' => false, 'text' => self::uiMessage('chemin_de_fichier_distant_invalide'));
 			}
-			$result = $this->executeKdriveDocumentsRequest('GET', $normalizedPath, $config, array('timeout' => 300, 'headers' => array('Accept: */*')));
+			$result = $this->executeWebdavDocumentsRequest('GET', $normalizedPath, $config, array('timeout' => 300, 'headers' => array('Accept: */*')));
 			if (!is_array($result) || empty($result['status'])) {
-				return array('status' => false, 'text' => trim((string)($result['text'] ?? 'Impossible de récupérer le fichier distant.')));
+				return array('status' => false, 'text' => trim((string)($result['text'] ?? self::uiMessage('lecture_webdav_echouee'))));
 			}
 
 			return array(
@@ -1638,7 +1710,7 @@
 		public function updateDocumentFileContentsOnStorage(string $relativePath, string $contents, string $mimeType = 'application/octet-stream'): array
 		{
 			$config = $this->getDocumentStorageConfig();
-			if (($config['type'] ?? '') !== 'kdrive') {
+			if (!in_array($config['type'] ?? '', array('kdrive', 'webdav'), true)) {
 				if (($config['type'] ?? '') !== 'nextcloud' || !$this->hasDocumentStorage()) {
 					return array('status' => false, 'text' => self::uiMessage('le_stockage_de_documents_n_est_pas_configure_pour_cette_organisation'));
 				}
@@ -1649,124 +1721,163 @@
 			if ($normalizedPath === '') {
 				return array('status' => false, 'text' => self::uiMessage('chemin_de_fichier_distant_invalide'));
 			}
-			$result = $this->executeKdriveDocumentsRequest('PUT', $normalizedPath, $config, array(
+			$result = $this->executeWebdavDocumentsRequest('PUT', $normalizedPath, $config, array(
 				'body' => $contents,
 				'timeout' => 300,
 				'headers' => array('Content-Type: ' . ($mimeType !== '' ? $mimeType : 'application/octet-stream'), 'Content-Length: ' . strlen($contents)),
 			));
 			return !is_array($result) || empty($result['status'])
-				? array('status' => false, 'text' => trim((string)($result['text'] ?? 'Impossible de mettre à jour le fichier distant.')))
+				? array('status' => false, 'text' => trim((string)($result['text'] ?? self::uiMessage('mise_a_jour_webdav_echouee'))))
 				: array('status' => true, 'size' => strlen($contents));
 		}
 
-		public function listKdriveDocumentsDirectory(string $relativePath): array
+		protected function parseWebdavDocumentsEntries(string $body, string $relativePath, array $config): ?array
 		{
-			$config = $this->getDocumentStorageConfig();
-			if (($config['type'] ?? '') !== 'kdrive' || !$this->hasDocumentStorage()) {
-				return array('status' => false, 'text' => self::uiMessage('le_stockage_kdrive_est_indisponible'));
+			$xml = @simplexml_load_string($body, \SimpleXMLElement::class, LIBXML_NONET);
+			if (!($xml instanceof \SimpleXMLElement)) {
+				return null;
 			}
+			$xml->registerXPathNamespace('d', 'DAV:');
+			$responses = $xml->xpath('/d:multistatus/d:response');
+			if (!is_array($responses) || count($responses) === 0) {
+				return null;
+			}
+			$rootUrl = $this->buildWebdavDocumentsDavUrl($config);
+			$root = trim(rawurldecode((string)parse_url($rootUrl, PHP_URL_PATH)), '/');
+			$requestPath = rtrim((string)parse_url($this->buildWebdavDocumentsDavUrl($config, $relativePath), PHP_URL_PATH), '/') . '/';
+			$entries = array();
+			foreach ($responses as $response) {
+				$response->registerXPathNamespace('d', 'DAV:');
+				$properties = $response->xpath('./d:propstat[contains(d:status, " 200 ")]/d:prop');
+				$property = $properties[0] ?? null;
+				$hrefs = $response->xpath('./d:href');
+				$href = (string)($hrefs[0] ?? '');
+				if (!($property instanceof \SimpleXMLElement) || $href === '') {
+					continue;
+				}
+				$hrefUrl = parse_url($href);
+				if (!is_array($hrefUrl)) {
+					continue;
+				}
+				if (isset($hrefUrl['host'])) {
+					$origin = parse_url($rootUrl);
+					if (strtolower($hrefUrl['host']) !== strtolower($origin['host'])
+						|| strtolower($hrefUrl['scheme'] ?? $origin['scheme']) !== strtolower($origin['scheme'])
+						|| ($hrefUrl['port'] ?? null) !== ($origin['port'] ?? null)) {
+						continue;
+					}
+				}
+				$path = (string)($hrefUrl['path'] ?? '');
+				if (!str_starts_with($path, '/')) {
+					$path = $requestPath . $path;
+				}
+				$path = trim(rawurldecode($path), '/');
+				if (preg_match('#(?:^|/)\.{1,2}(?:/|$)|[\\\\\x00-\x1f\x7f]#', $path)) {
+					continue;
+				}
+				if ($root !== '') {
+					if ($path !== $root && !str_starts_with($path, $root . '/')) {
+						continue;
+					}
+					$path = $path === $root ? '' : substr($path, strlen($root) + 1);
+				}
+				$property->registerXPathNamespace('d', 'DAV:');
+				$collections = $property->xpath('./d:resourcetype/d:collection');
+				$names = $property->xpath('./d:displayname');
+				$types = $property->xpath('./d:getcontenttype');
+				$sizes = $property->xpath('./d:getcontentlength');
+				$modified = $property->xpath('./d:getlastmodified');
+				$entries[] = array(
+					'path' => $path,
+					'name' => trim((string)($names[0] ?? '')) ?: basename($path),
+					'isFolder' => !empty($collections),
+					'mimeType' => trim((string)($types[0] ?? '')),
+					'size' => max(0, (int)($sizes[0] ?? 0)),
+					'modifiedAt' => trim((string)($modified[0] ?? '')),
+				);
+			}
+			return $entries;
+		}
 
+		public function listWebdavDocumentsDirectory(string $relativePath): array
+		{
+			if (!$this->isWebdavDocumentStorage()) {
+				return array('status' => false, 'text' => self::uiMessage('le_stockage_webdav_est_indisponible'));
+			}
+			$config = $this->getDocumentStorageConfig();
 			$relativePath = trim(str_replace('\\', '/', $relativePath), '/');
-			$result = $this->executeKdriveDocumentsRequest('PROPFIND', $relativePath, $config, array(
+			$result = $this->executeWebdavDocumentsRequest('PROPFIND', $relativePath, $config, array(
 				'timeout' => 60,
 				'headers' => array('Depth: 1', 'Content-Length: 0'),
 			));
-			if (!is_array($result) || empty($result['status'])) {
-				return array('status' => false, 'text' => trim((string)($result['text'] ?? 'Impossible de lire le dossier kDrive.')));
+			if (empty($result['status'])) {
+				return $result;
 			}
-
-			$xml = @simplexml_load_string((string)($result['body'] ?? ''));
-			if (!($xml instanceof \SimpleXMLElement)) {
-				return array('status' => false, 'text' => self::uiMessage('la_reponse_webdav_du_dossier_kdrive_est_invalide'));
+			$entries = $this->parseWebdavDocumentsEntries((string)($result['body'] ?? ''), $relativePath, $config);
+			if ($entries === null) {
+				return array('status' => false, 'text' => self::uiMessage('reponse_webdav_invalide'));
 			}
-			$xml->registerXPathNamespace('d', 'DAV:');
-			$responses = $xml->xpath('//d:response');
-			if (!is_array($responses)) {
-				return array('status' => true, 'entries' => array());
-			}
-
-			$configFolder = trim(str_replace('\\', '/', (string)($config['folder'] ?? '')), '/');
-			$entries = array();
-			foreach ($responses as $response) {
-				$propertyNodes = $response->xpath('./d:propstat/d:prop');
-				$property = is_array($propertyNodes) && isset($propertyNodes[0]) ? $propertyNodes[0] : null;
-				if (!($property instanceof \SimpleXMLElement)) {
-					continue;
-				}
-				$hrefNodes = $response->xpath('./d:href');
-				$hrefPath = is_array($hrefNodes) && isset($hrefNodes[0]) ? (string)parse_url((string)$hrefNodes[0], PHP_URL_PATH) : '';
-				$path = trim(rawurldecode($hrefPath), '/');
-				if ($configFolder !== '' && ($path === $configFolder || str_starts_with($path, $configFolder . '/'))) {
-					$path = $path === $configFolder ? '' : substr($path, strlen($configFolder) + 1);
-				}
-				if ($path === '' || $path === $relativePath) {
-					continue;
-				}
-				$collectionNodes = $property->xpath('./d:resourcetype/d:collection');
-				$nameNodes = $property->xpath('./d:displayname');
-				$name = is_array($nameNodes) && isset($nameNodes[0]) ? trim((string)$nameNodes[0]) : basename($path);
-				$typeNodes = $property->xpath('./d:getcontenttype');
-				$sizeNodes = $property->xpath('./d:getcontentlength');
-				$modifiedNodes = $property->xpath('./d:getlastmodified');
-				$entries[] = array(
-					'path' => $path,
-					'name' => $name !== '' ? $name : basename($path),
-					'isFolder' => is_array($collectionNodes) && count($collectionNodes) > 0,
-					'mimeType' => is_array($typeNodes) && isset($typeNodes[0]) ? trim((string)$typeNodes[0]) : '',
-					'size' => is_array($sizeNodes) && isset($sizeNodes[0]) ? max(0, (int)$sizeNodes[0]) : 0,
-					'modifiedAt' => is_array($modifiedNodes) && isset($modifiedNodes[0]) ? trim((string)$modifiedNodes[0]) : '',
-				);
-			}
+			$entries = array_values(array_filter($entries, static function (array $entry) use ($relativePath): bool {
+				$parent = dirname($entry['path']);
+				return $entry['path'] !== '' && $entry['path'] !== $relativePath
+					&& ($parent === '.' ? '' : $parent) === $relativePath;
+			}));
 			usort($entries, static function (array $left, array $right): int {
-				if ((bool)$left['isFolder'] !== (bool)$right['isFolder']) {
-					return (bool)$left['isFolder'] ? -1 : 1;
-				}
-				return strnatcasecmp((string)$left['name'], (string)$right['name']);
+				return $left['isFolder'] !== $right['isFolder']
+					? ($left['isFolder'] ? -1 : 1)
+					: strnatcasecmp($left['name'], $right['name']);
 			});
 			return array('status' => true, 'entries' => $entries);
 		}
 
-		public function getKdriveDocumentsDirectoryInfo(string $relativePath): array
+		public function getWebdavDocumentsDirectoryInfo(string $relativePath): array
 		{
+			if (!$this->isWebdavDocumentStorage()) {
+				return array('status' => false, 'text' => self::uiMessage('le_stockage_webdav_est_indisponible'));
+			}
 			$config = $this->getDocumentStorageConfig();
 			$relativePath = trim(str_replace('\\', '/', $relativePath), '/');
-			if (($config['type'] ?? '') !== 'kdrive' || !$this->hasDocumentStorage() || $relativePath === '') {
-				return array('status' => false, 'text' => self::uiMessage('chemin_kdrive_invalide'));
-			}
-			$result = $this->executeKdriveDocumentsRequest('PROPFIND', $relativePath, $config, array(
+			$result = $this->executeWebdavDocumentsRequest('PROPFIND', $relativePath, $config, array(
 				'timeout' => 60,
 				'headers' => array('Depth: 0', 'Content-Length: 0'),
 			));
-			if (!is_array($result) || empty($result['status'])) {
-				return array('status' => false, 'text' => trim((string)($result['text'] ?? 'Impossible de lire le dossier kDrive.')));
+			if (empty($result['status'])) {
+				return $result;
 			}
-			$xml = @simplexml_load_string((string)($result['body'] ?? ''));
-			if (!($xml instanceof \SimpleXMLElement)) {
-				return array('status' => false, 'text' => self::uiMessage('la_reponse_webdav_du_dossier_kdrive_est_invalide'));
+			$entries = $this->parseWebdavDocumentsEntries((string)($result['body'] ?? ''), $relativePath, $config);
+			if ($entries === null) {
+				return array('status' => false, 'text' => self::uiMessage('reponse_webdav_invalide'));
 			}
-			$xml->registerXPathNamespace('d', 'DAV:');
-			$responses = $xml->xpath('//d:response');
-			$response = is_array($responses) && isset($responses[0]) ? $responses[0] : null;
-			$propertyNodes = $response instanceof \SimpleXMLElement ? $response->xpath('./d:propstat/d:prop') : array();
-			$property = is_array($propertyNodes) && isset($propertyNodes[0]) ? $propertyNodes[0] : null;
-			if (!($property instanceof \SimpleXMLElement)) {
-				return array('status' => false, 'text' => self::uiMessage('le_dossier_kdrive_est_introuvable'));
+			foreach ($entries as $entry) {
+				if ($entry['path'] === $relativePath) {
+					return array('status' => true, 'path' => $relativePath, 'fileId' => '', 'isFolder' => $entry['isFolder']);
+				}
 			}
-			$collectionNodes = $property->xpath('./d:resourcetype/d:collection');
-			return array('status' => true, 'path' => $relativePath, 'fileId' => '', 'isFolder' => is_array($collectionNodes) && count($collectionNodes) > 0);
+			return array('status' => false, 'text' => self::uiMessage('dossier_webdav_introuvable'));
+		}
+
+		// Keep the existing public entry points for callers using the kDrive API.
+		public function listKdriveDocumentsDirectory(string $relativePath): array
+		{
+			return $this->listWebdavDocumentsDirectory($relativePath);
+		}
+
+		public function getKdriveDocumentsDirectoryInfo(string $relativePath): array
+		{
+			return $this->getWebdavDocumentsDirectoryInfo($relativePath);
 		}
 
 		public function listDocumentStorageDirectory(string $relativePath): array
 		{
-			return $this->isKdriveDocumentStorage()
-				? $this->listKdriveDocumentsDirectory($relativePath)
+			return $this->isWebdavDocumentStorage()
+				? $this->listWebdavDocumentsDirectory($relativePath)
 				: $this->listNextcloudDocumentsDirectory($relativePath);
 		}
 
 		public function getDocumentStorageDirectoryInfo(string $relativePath): array
 		{
-			return $this->isKdriveDocumentStorage()
-				? $this->getKdriveDocumentsDirectoryInfo($relativePath)
+			return $this->isWebdavDocumentStorage()
+				? $this->getWebdavDocumentsDirectoryInfo($relativePath)
 				: $this->getNextcloudDocumentsDirectoryInfo($relativePath);
 		}
 
@@ -15862,40 +15973,7 @@
 			return !empty($visibleRows[$parcoursId]);
 		}
 
-		protected static function topbarSearchResolveCurrentHolon(\dbObject\Organization $organization, array &$viewerContext)
-		{
-			if (array_key_exists('topbarCurrentHolon', $viewerContext)) {
-				return $viewerContext['topbarCurrentHolon'] instanceof \dbObject\Holon
-					? $viewerContext['topbarCurrentHolon']
-					: null;
-			}
-
-			$currentHolon = null;
-			$rootHolon = $organization->getStructuralRootHolon();
-			if ($rootHolon instanceof \dbObject\Holon && (int)$rootHolon->getId() > 0) {
-				$currentHolon = $rootHolon;
-				$currentHolonId = (int)($viewerContext['currentHolonId'] ?? 0);
-
-				if ($currentHolonId > 0 && $currentHolonId !== (int)$rootHolon->getId()) {
-					$candidateHolon = new \dbObject\Holon();
-					if (
-						$candidateHolon->load($currentHolonId)
-						&& $candidateHolon->isDescendantOf((int)$rootHolon->getId(), true)
-					) {
-						$currentHolon = $candidateHolon;
-					}
-				}
-
-				if (!self::topbarSearchViewerCanViewHolon($currentHolon, $viewerContext)) {
-					$currentHolon = null;
-				}
-			}
-
-			$viewerContext['topbarCurrentHolon'] = $currentHolon;
-			return $currentHolon;
-		}
-
-		protected static function topbarSearchViewerCanViewFaq(\dbObject\FAQ $faq, \dbObject\Organization $organization, array &$viewerContext, $scope = 'contextual')
+		protected static function topbarSearchViewerCanViewFaq(\dbObject\FAQ $faq, \dbObject\Organization $organization, array &$viewerContext)
 		{
 			$organizationId = (int)$organization->getId();
 			if (
@@ -15928,24 +16006,10 @@
 				return self::topbarSearchViewerCanViewParcours($parcoursId, $viewerContext, $organizationId);
 			}
 
-			$currentHolon = self::topbarSearchResolveCurrentHolon($organization, $viewerContext);
-			$currentHolonId = $currentHolon instanceof \dbObject\Holon
-				? (int)$currentHolon->getId()
-				: 0;
 			$faqHolon = $faq->getContextHolon();
 			if ($faqHolon instanceof \dbObject\Holon) {
-				if (
-					$currentHolonId <= 0
-					|| !self::topbarSearchViewerCanViewHolon($faqHolon, $viewerContext)
-				) {
-					return false;
-				}
-
-				if ($scope === 'descendants') {
-					return $faqHolon->isDescendantOf($currentHolonId, true);
-				}
-
-				return (int)$faqHolon->getId() === $currentHolonId;
+				return $faq->getResolvedOrganizationId() === $organizationId
+					&& self::topbarSearchViewerCanViewHolon($faqHolon, $viewerContext);
 			}
 
 			return $faq->getResolvedOrganizationId() === $organizationId;
@@ -16002,14 +16066,10 @@
 					&& self::topbarSearchViewerCanViewUser($object, $viewerContext, true) ? $object : null;
 			}
 			if ($module === 'rules') {
-				$currentHolon = self::topbarSearchResolveCurrentHolon($this, $viewerContext);
-				if (!$currentHolon) {
-					return null;
-				}
 				$rules = new ArrayRule();
-				$rules->loadForPolicyContexts($organizationId, [(int)$currentHolon->getId()], false, $archived ? 'global' : 'contextual', null, $archived);
+				$rules->loadForPolicyContexts($organizationId, [], false, 'global', null, $archived);
 				foreach ($rules as $rule) {
-					$holon = $rule->getHolon();
+					$holon = $rule->getHolon() ?? $this->getStructuralRootHolon();
 					if ((int)$rule->getId() === $id && $holon && self::topbarSearchViewerCanViewHolon($holon, $viewerContext)) {
 						return $rule;
 					}
@@ -16190,7 +16250,7 @@
 			foreach ($faqCollection as $faq) {
 				if (
 					!($faq instanceof \dbObject\FAQ)
-					|| !self::topbarSearchViewerCanViewFaq($faq, $this, $viewerContext, 'contextual')
+					|| !self::topbarSearchViewerCanViewFaq($faq, $this, $viewerContext)
 				) {
 					continue;
 				}
@@ -16325,13 +16385,9 @@
 				return array();
 			}
 
-			$currentHolon = self::topbarSearchResolveCurrentHolon($this, $viewerContext);
-			if (!($currentHolon instanceof \dbObject\Holon)) {
-				return array();
-			}
-
 			$rules = new \dbObject\ArrayRule();
-			$rules->loadForPolicyContexts($organizationId, [(int)$currentHolon->getId()], false, !empty($viewerContext['archived']) ? 'global' : 'contextual', null, !empty($viewerContext['archived']));
+			// Global search covers every rule; applicability only filters the policy views.
+			$rules->loadForPolicyContexts($organizationId, [], false, 'global', null, !empty($viewerContext['archived']));
 			$results = array();
 
 			foreach ($rules as $rule) {
@@ -16339,7 +16395,7 @@
 					continue;
 				}
 
-				$ruleHolon = $rule->getHolon();
+				$ruleHolon = $rule->getHolon() ?? $this->getStructuralRootHolon();
 				if (
 					!($ruleHolon instanceof \dbObject\Holon)
 					|| !self::topbarSearchViewerCanViewHolon($ruleHolon, $viewerContext)

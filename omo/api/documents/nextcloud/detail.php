@@ -34,7 +34,7 @@ $mimeType = omoDocumentsNextcloudFileMimeType($filename, (string)($_GET['mime'] 
 $isPdf = strtolower((string)pathinfo($filename, PATHINFO_EXTENSION)) === 'pdf' || in_array(strtolower($mimeType), array('application/pdf', 'application/x-pdf'), true);
 $canUseCollabora = !$isPdf && omoCollaboraHasConfig($context['organization']) && omoCollaboraSupportsFilename($filename);
 $canEdit = $context['folder']->canEditInOrganizationContext($context['organizationId'], $context['userId'], false);
-$storageLabel = $context['organization']->isKdriveDocumentStorage() ? 'kDrive' : 'NextCloud';
+$storageLabel = $context['organization']->getDocumentStorageLabel();
 $baseQuery = 'id=' . rawurlencode((string)(int)$context['folder']->getId()) . '&oid=' . rawurlencode((string)$context['organizationId']) . '&path=' . rawurlencode($remotePath);
 $downloadUrl = '/omo/api/documents/nextcloud/file.php?' . $baseQuery;
 $inlineUrl = $downloadUrl . '&inline=1';
@@ -47,14 +47,15 @@ $collaboraOrigin = $canUseCollabora ? omoCollaboraBuildPostMessageOrigin((string
     <div hidden data-omo-subdrawer-header data-omo-subdrawer-title="<?= $escape($filename) ?>">
         <?php if ($canEdit): ?><span class="generic-help-text"><?= $escape($t('documents.nextcloud.detail.rights')) ?></span><?php endif; ?>
     </div>
-    <article class="omo-document-detail__article generic-stack generic-stack--roomy">
-        <div class="omo-document-detail__keyword-actions">
+    <article class="omo-document-detail__article generic-stack generic-stack--roomy generic-panel-fullscreen-content--media" data-common-panel-view data-common-panel-fullscreen-isolate=".drawer, .panel" data-common-panel-fullscreen-mode="window" data-common-panel-fullscreen-owner="[data-omo-document-detail-drawer]">
+        <div class="omo-document-detail__keyword-actions" data-common-panel-media-toolbar>
             <div class="omo-document-detail__keywords"><span class="omo-pill"><?= $escape($storageLabel) ?></span></div>
             <div class="omo-document-detail__preview-actions">
                 <a class="generic-action-button generic-action-button--secondary" href="<?= $escape($downloadUrl) ?>" download="<?= $escape($filename) ?>"><?= $escape($t('documents.nextcloud.detail.download')) ?></a>
-                <?php if ($isPdf || $collaboraUrl !== ''): ?><button type="button" class="generic-action-button generic-action-button--secondary omo-document-detail__fullscreen-button" data-omo-document-fullscreen data-omo-document-fullscreen-label="<?= $escape($t('documents.nextcloud.detail.fullscreen')) ?>" data-omo-document-exit-fullscreen-label="<?= $escape($t('documents.nextcloud.detail.exit_fullscreen')) ?>"><?= $escape($t('documents.nextcloud.detail.fullscreen')) ?></button><?php endif; ?>
+                <?php if ($isPdf || $collaboraUrl !== ''): ?><button type="button" class="generic-action-button generic-action-button--secondary omo-document-detail__fullscreen-button" data-omo-document-fullscreen data-common-panel-fullscreen aria-pressed="false" data-omo-document-fullscreen-label="<?= $escape($t('documents.nextcloud.detail.fullscreen')) ?>" data-omo-document-exit-fullscreen-label="<?= $escape($t('documents.nextcloud.detail.exit_fullscreen')) ?>"><?= $escape($t('documents.nextcloud.detail.fullscreen')) ?></button><?php endif; ?>
             </div>
         </div>
+        <div data-common-panel-media-content>
         <?php if ($isPdf): ?>
             <iframe class="omo-document-file__pdf-frame" src="<?= $escape($inlineUrl) ?>" title="<?= $escape($filename) ?>"></iframe>
         <?php elseif ($collaboraUrl !== ''): ?>
@@ -62,5 +63,7 @@ $collaboraOrigin = $canUseCollabora ? omoCollaboraBuildPostMessageOrigin((string
         <?php else: ?>
             <div class="omo-empty-state"><?= $escape($t('documents.nextcloud.detail.download_only')) ?></div>
         <?php endif; ?>
+        </div>
     </article>
 </div>
+<link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/documents/detail.css') ?>">

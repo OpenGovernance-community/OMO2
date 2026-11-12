@@ -12,6 +12,10 @@ class OrganizationalMaturityInvitation extends DbObject
             'copy.le_questionnaire_prend_environ_dix_minutes_vous_pourrez_revenir_sur_vo' => ['text' => 'Le questionnaire prend environ dix minutes. Vous pourrez revenir sur vos réponses avec ce même lien.', 'context' => 'Interface text in class/dbobject/organizationalmaturityinvitation.class.php'],
             'copy.evaluer_l_organisation' => ['text' => 'Évaluer l’organisation', 'context' => 'Interface text in class/dbobject/organizationalmaturityinvitation.class.php'],
             'copy.votre_acces_a_l_evaluation_de_name' => ['text' => 'Votre accès à l’évaluation de {name}', 'context' => 'Interface text in class/dbobject/organizationalmaturityinvitation.class.php'],
+            'invalid_message' => ['text' => 'Saisissez un texte d’invitation de 20 000 caractères maximum.', 'context' => 'Validation of the editable survey invitation body.'],
+            'empty_selection' => ['text' => 'Choisissez au moins une personne ou une adresse e-mail.', 'context' => 'Validation when no survey invitation recipient is selected.'],
+            'invitation_subject' => ['text' => 'Votre perception de {name}', 'context' => 'Subject of the survey invitation email and its outbox entry.'],
+            'history_error' => ['text' => 'Impossible d’enregistrer les invitations dans la boîte d’envoi.', 'context' => 'Error before sending survey invitations when the outbox cannot be created.'],
         ];
     }
 
@@ -58,25 +62,82 @@ class OrganizationalMaturityInvitation extends DbObject
         $item->setId((int)$row['id']);
         return $item;
     }
-    public static function issueForEmails($organizationId, array $emails)
+    public static function getDefaultMessageHtml(): string
+    {
+        return '<p>' . htmlspecialchars(self::uiMessage('copy.votre_regard_aidera_cette_organisation_a_mieux_comprendre_sa_maturite_'), ENT_QUOTES, 'UTF-8') . '</p>'
+            . '<p>' . htmlspecialchars(self::uiMessage('copy.le_questionnaire_prend_environ_dix_minutes_vous_pourrez_revenir_sur_vo'), ENT_QUOTES, 'UTF-8') . '</p>';
+    }
+
+    public static function issueForEmails($organizationId, array $emails, ?string $messageHtml = null)
     {
         $organizationId = (int)$organizationId;
         $organization = new Organization();
         if ($organizationId <= 0 || !$organization->load($organizationId)) return ['status' => false, 'message' => 'Organisation introuvable.'];
-        $issued = [];
-        foreach (array_values(array_unique(array_filter(array_map([self::class, 'normalizeEmail'], $emails)))) as $email) {
-            $item = new self();
-            if (!$item->load([['IDorganization', $organizationId], ['email', $email]])) {
-                try { $token = bin2hex(random_bytes(16)); } catch (\Throwable $error) { return ['status' => false, 'message' => self::uiMessage('copy.generation_de_lien_impossible')]; }
-                $item->set('IDorganization', $organizationId); $item->set('email', $email); $item->set('token', $token); $item->set('created_at', new \DateTimeImmutable());
+        if ($messageHtml !== null) {
+            if (mb_strlen($messageHtml, 'UTF-8') > 20000) {
+                return ['status' => false, 'message' => self::uiMessage('invalid_message')];
             }
-            $user = new User();
-            if ($user->load(['email', $email])) $item->set('IDuser', (int)$user->getId());
-            $item->set('updated_at', new \DateTimeImmutable());
-            if (empty($item->save()['status']) || !$item->sendEmail()) return ['status' => false, 'message' => 'Envoi impossible pour ' . $email . '.'];
-            $item->set('last_sent_at', new \DateTimeImmutable()); $item->save(); $issued[] = $email;
+            $messageHtml = ObjectMail::renderMessage($messageHtml, 'html');
+            if (trim(str_replace("\u{00a0}", ' ', ObjectMail::messageText($messageHtml, 'html'))) === '') {
+                return ['status' => false, 'message' => self::uiMessage('invalid_message')];
+            }
         }
-        return ['status' => true, 'emails' => $issued];
+        $emails = array_values(array_unique(array_filter(array_map([self::class, 'normalizeEmail'], $emails))));
+        if ($emails === []) {
+            return ['status' => true, 'emails' => []];
+        }
+        $messageHtml ??= self::getDefaultMessageHtml();
+        $recipients = array_map(static fn(string $email): array => ['email' => $email], $emails);
+        try {
+            $historyMail = ObjectMail::beginSurveyInvitationDelivery($organization, self::getEmailSubject($organization), $messageHtml, $recipients);
+        } catch (\Throwable $error) {
+            error_log('Survey invitation history creation failed: ' . get_class($error));
+            return ['status' => false, 'message' => self::uiMessage('history_error')];
+        }
+        $issued = [];
+        $historyWarning = false;
+        foreach ($emails as $email) {
+            $deliveryStatus = 'failed';
+            try {
+                $item = new self();
+                if (!$item->load([['IDorganization', $organizationId], ['email', $email]])) {
+                    $item->set('IDorganization', $organizationId);
+                    $item->set('email', $email);
+                    $item->set('token', bin2hex(random_bytes(16)));
+                    $item->set('created_at', new \DateTimeImmutable());
+                }
+                $user = new User();
+                if ($user->load(['email', $email])) $item->set('IDuser', (int)$user->getId());
+                $item->set('updated_at', new \DateTimeImmutable());
+                if (!empty($item->save()['status'])) {
+                    $deliveryStatus = 'unknown';
+                    $deliveryStatus = $item->sendEmail($messageHtml) ? 'sent' : 'failed';
+                    if ($deliveryStatus === 'sent') {
+                        $issued[] = $email;
+                        $item->set('last_sent_at', new \DateTimeImmutable());
+                        $item->save();
+                    }
+                }
+            } catch (\Throwable $error) {
+                error_log('Survey invitation delivery interrupted for mail ' . (int)$historyMail->getId() . ': ' . get_class($error));
+            }
+            try {
+                $historyMail->recordRecipientDelivery($email, $deliveryStatus);
+            } catch (\Throwable $error) {
+                error_log('Survey invitation tracking failed for mail ' . (int)$historyMail->getId() . ': ' . get_class($error));
+                $historyWarning = true;
+            }
+        }
+        return [
+            'status' => count($issued) === count($emails), 'emails' => $issued,
+            'mail_id' => (int)$historyMail->getId(), 'historyWarning' => $historyWarning,
+        ];
+    }
+
+    private static function getEmailSubject(Organization $organization): string
+    {
+        $name = trim((string)$organization->get('name')) ?: 'votre organisation';
+        return mb_substr(self::uiMessage('invitation_subject', ['name' => $name]), 0, 250, 'UTF-8');
     }
 
     public static function findOrCreateForEmail($organizationId, $email)
@@ -157,7 +218,22 @@ class OrganizationalMaturityInvitation extends DbObject
         return ['status' => true];
     }
 
-    public static function issueForSelections($organizationId, array $holonIds, array $userIds, array $emails)
+    public static function issueForSelections($organizationId, array $holonIds, array $userIds, array $emails, string $recipientMode = 'all', ?string $messageHtml = null)
+    {
+        if (!in_array($recipientMode, ['all', 'not_started', 'not_completed'], true)) {
+            return ['status' => false, 'error' => 'invalid_recipient_mode'];
+        }
+        $selection = self::previewForSelections($organizationId, $holonIds, $userIds, $emails);
+        if (empty($selection['status'])) {
+            return $selection;
+        }
+        if ($selection['recipients']['all'] === []) {
+            return ['status' => false, 'message' => self::uiMessage('empty_selection')];
+        }
+        return self::issueForEmails($organizationId, $selection['recipients'][$recipientMode], $messageHtml);
+    }
+
+    public static function previewForSelections($organizationId, array $holonIds, array $userIds, array $emails)
     {
         $organizationId = (int)$organizationId;
         $organization = new Organization();
@@ -174,7 +250,16 @@ class OrganizationalMaturityInvitation extends DbObject
         $rootHolonId = $rootHolon ? (int)$rootHolon->getId() : 0;
         foreach (array_values(array_unique(array_filter(array_map('intval', $holonIds)))) as $holonId) {
             $holon = new Holon();
-            if (!$holon->load($holonId) || (int)$holon->get('IDholon_org') !== $rootHolonId) {
+            if ($rootHolonId <= 0 || !$holon->load($holonId)
+                || ($holonId !== $rootHolonId && (int)$holon->get('IDholon_org') !== $rootHolonId)) {
+                continue;
+            }
+            if ($holonId === $rootHolonId && $holon->isOrganizationHolon()) {
+                $memberships = new ArrayUserOrganization();
+                $memberships->loadActiveForOrganization($organizationId, true);
+                foreach ($memberships as $membership) {
+                    self::addUserEmail((int)$membership->get('IDuser'), $emailMap);
+                }
                 continue;
             }
             foreach ($holon->getVisibleDescendantIds(true) as $descendantId) {
@@ -183,7 +268,7 @@ class OrganizationalMaturityInvitation extends DbObject
                     continue;
                 }
                 foreach ($descendant->getDirectActiveMemberUserIds($organizationId) as $userId) {
-                    self::addUserEmail((int)$userId, $emailMap);
+                    self::addActiveOrganizationUserEmail($organizationId, (int)$userId, $emailMap);
                 }
             }
         }
@@ -195,10 +280,35 @@ class OrganizationalMaturityInvitation extends DbObject
             }
         }
 
-        if (count($emailMap) === 0) {
-            return ['status' => false, 'message' => 'Choisissez au moins une personne ou une adresse e-mail.'];
+        $recipients = ['all' => array_values($emailMap), 'not_started' => $emailMap, 'not_completed' => $emailMap];
+        if ($emailMap !== []) {
+            // Match both personal responses and invitation drafts, including external guests.
+            $rows = self::fetchAll(
+                'SELECT a.completed_at, u.email AS user_email, i.email AS invitation_email,
+                        iu.email AS invitation_user_email
+                 FROM organizational_maturity_assessment a
+                 LEFT JOIN `user` u ON u.id = a.IDuser
+                 LEFT JOIN organizational_maturity_invitation i
+                    ON i.id = a.IDinvitation AND i.IDorganization = a.IDorganization
+                 LEFT JOIN `user` iu ON iu.id = i.IDuser
+                 WHERE a.IDorganization = :organization_id',
+                ['organization_id' => (int)$organizationId]
+            );
+            if (!is_array($rows)) {
+                return ['status' => false, 'error' => 'participation_unavailable'];
+            }
+            foreach ($rows as $row) {
+                foreach (['user_email', 'invitation_email', 'invitation_user_email'] as $field) {
+                    $email = self::normalizeEmail($row[$field] ?? '');
+                    unset($recipients['not_started'][$email]);
+                    if (!empty($row['completed_at'])) {
+                        unset($recipients['not_completed'][$email]);
+                    }
+                }
+            }
         }
-        return self::issueForEmails($organizationId, array_values($emailMap));
+        $recipients = array_map('array_values', $recipients);
+        return ['status' => true, 'recipients' => $recipients, 'counts' => array_map('count', $recipients)];
     }
     public function resolveOrCreateUser()
     {
@@ -211,15 +321,24 @@ class OrganizationalMaturityInvitation extends DbObject
     {
         $organization = new Organization(); return $organization->load((int)$this->get('IDorganization')) ? $organization : null;
     }
-    public function sendEmail()
+    public function sendEmail(?string $messageHtml = null)
     {
         require_once dirname(__DIR__, 2) . '/common/email_layout.php';
         $organization = $this->getOrganizationObject(); if (!$organization) return false;
         $name = trim((string)$organization->get('name')) ?: 'votre organisation';
         $url = appBuildAbsoluteUrl('/survey/?invitation=' . rawurlencode((string)$this->get('token')));
-        $message = \commonRenderMailLayout(['brand_name' => $name, 'brand_color' => (string)$organization->get('color'), 'logo_url' => \commonBuildAbsoluteAssetUrl((string)$organization->get('logo')), 'banner_url' => \commonBuildAbsoluteAssetUrl((string)$organization->get('banner')), 'heading' => self::uiMessage('copy.partagez_votre_perception_de_name', ['name' => $name]), 'intro_html' => ('<p style="margin:0; color:#475569; line-height:1.7;">' . self::uiMessage('copy.votre_regard_aidera_cette_organisation_a_mieux_comprendre_sa_maturite_') . '</p>'), 'body_html' => ('<p style="margin:0; color:#475569; line-height:1.7;">' . self::uiMessage('copy.le_questionnaire_prend_environ_dix_minutes_vous_pourrez_revenir_sur_vo') . '</p>'), 'button_label' => self::uiMessage('copy.evaluer_l_organisation'), 'button_url' => $url]);
+        $message = \commonRenderMailLayout([
+            'brand_name' => $name,
+            'brand_color' => (string)$organization->get('color'),
+            'logo_url' => \commonBuildAbsoluteAssetUrl((string)$organization->get('logo')),
+            'banner_url' => \commonBuildAbsoluteAssetUrl((string)$organization->get('banner')),
+            'heading' => self::uiMessage('copy.partagez_votre_perception_de_name', ['name' => $name]),
+            'body_html' => $messageHtml ?? self::getDefaultMessageHtml(),
+            'button_label' => self::uiMessage('copy.evaluer_l_organisation'),
+            'button_url' => $url,
+        ]);
         $from = trim((string)($GLOBALS['mailUser'] ?? '')); if ($from === '') $from = 'noreply@' . (preg_replace('/:\d+$/', '', \commonGetRootHost() ?: 'localhost'));
-        return \myHTMLMail([$from, $name], (string)$this->get('email'), 'Votre perception de ' . $name, $message, organizationId: (int)$organization->getId());
+        return \myHTMLMail([$from, $name], (string)$this->get('email'), self::getEmailSubject($organization), $message, organizationId: (int)$organization->getId());
     }
 
     public function sendPublicAccessCodeEmail($publicAccessUrl)

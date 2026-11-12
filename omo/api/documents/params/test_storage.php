@@ -20,27 +20,7 @@ if ($currentUserId <= 0 || $organizationId <= 0 || !$organization->load($organiz
 }
 
 $storedConfig = omoDocumentsParamsGetDocumentStorageConfig($organization, null);
-$storageType = omoDocumentsParamsNormalizeStorageType($_POST['storage_type'] ?? '');
-$appPassword = trim((string)($_POST[$storageType === 'kdrive' ? 'kdrive_app_password' : 'nextcloud_app_password'] ?? ''));
-if ($appPassword === '' && ($storedConfig['type'] ?? '') === $storageType) {
-    $appPassword = (string)($storedConfig['appPassword'] ?? '');
-}
-
-if ($storageType === 'kdrive') {
-    $config = omoDocumentsParamsNormalizeDocumentStorageConfig(array(
-        'driveId' => trim((string)($_POST['kdrive_id'] ?? '')),
-        'username' => trim((string)($_POST['kdrive_username'] ?? '')),
-        'appPassword' => $appPassword,
-        'folder' => trim((string)($_POST['kdrive_folder'] ?? '')),
-    ), 'kdrive');
-} else {
-    $config = omoDocumentsParamsNormalizeDocumentStorageConfig(array(
-        'baseUrl' => trim((string)($_POST['nextcloud_base_url'] ?? '')),
-        'username' => trim((string)($_POST['nextcloud_username'] ?? '')),
-        'appPassword' => $appPassword,
-        'folder' => trim((string)($_POST['nextcloud_folder'] ?? '')),
-    ), 'nextcloud');
-}
+$config = omoDocumentsParamsBuildDocumentStorageConfigFromValues($_POST, $storedConfig);
 
 $result = $organization->testDocumentStorageConnection($config);
 $status = is_array($result) && !empty($result['status']);

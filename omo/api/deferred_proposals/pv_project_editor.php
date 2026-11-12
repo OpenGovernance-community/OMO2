@@ -75,10 +75,10 @@ $saveLabel = $isCreation ? $tr($operation === DeferredProposal::OPERATION_PROPOS
     <?php if (count($children) > 0): ?><p class="generic-feedback"><?= omoApiEscape($tr('delete_children')) ?></p><?php endif; ?>
     <div class="generic-action-row"><button type="button" class="generic-action-button generic-action-button--danger" data-deferred-project-save<?= count($children) > 0 ? ' disabled' : '' ?>><?= omoApiEscape($tr('delete_confirm')) ?></button><button type="button" class="generic-action-button generic-action-button--secondary" data-deferred-project-cancel><?= omoApiEscape($tr('cancel')) ?></button></div>
 <?php else: ?>
-    <form class="generic-form-stack" data-deferred-project-form>
+    <form class="generic-form-stack" data-deferred-project-form data-deferred-project-context-url="<?= omoApiEscape('/omo/api/deferred_proposals/pv_proposal_context.php?' . http_build_query(['oid' => $organizationId, 'point_id' => $pointId, 'target_type' => 'project', 'operation' => $operation]) . '&context_holon_id=') ?>">
         <?php omoDeferredEditorRenderFields('project', $state, $memberLabels, $isCreation
             ? static fn () => omoDeferredEditorRenderCreationHolonField($organizationId, $holonId, $projectCatalog, $operation)
-            : null); ?>
+            : null, Project::getResponsibleOptionGroups($organizationId, $holonId)); ?>
         <p class="generic-feedback" data-deferred-project-feedback hidden></p><div class="generic-action-row"><button class="generic-action-button generic-action-button--main" type="submit"><?= omoApiEscape($saveLabel) ?></button><button class="generic-action-button generic-action-button--secondary" type="button" data-deferred-project-cancel><?= omoApiEscape($tr('cancel')) ?></button></div>
     </form>
 <?php endif; ?>

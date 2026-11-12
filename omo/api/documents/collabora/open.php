@@ -1,7 +1,14 @@
 <?php
 require_once __DIR__ . '/../ui_translations.php';
 
-require_once dirname(__DIR__, 2) . '/bootstrap.php';
+$reader = isset($_GET['reader']);
+if ($reader) {
+    require_once dirname(__DIR__, 4) . '/shared_functions.php';
+    require_once dirname(__DIR__, 4) . '/common/auth.php';
+    require_once dirname(__DIR__, 3) . '/translations.php';
+} else {
+    require_once dirname(__DIR__, 2) . '/bootstrap.php';
+}
 require_once dirname(__DIR__, 4) . '/common/collabora.php';
 
 use dbObject\Document;
@@ -11,26 +18,29 @@ $documentId = (int)($_GET['id'] ?? $_GET['folder_id'] ?? 0);
 $remotePath = \dbObject\Document::normalizeNextcloudFolderPath($_GET['path'] ?? '');
 $userId = (int)commonGetCurrentUserId();
 
-if ($documentId <= 0 || $userId <= 0) {
+if (!$reader && ($documentId <= 0 || $userId <= 0)) {
     http_response_code(400);
     echo omoDocumentsUiT('demande_invalide');
     exit;
 }
 
-$document = new Document();
-if (!$document->load($documentId) || (!$document->canOpenWithCollabora() && !$document->isNextcloudFolder())) {
+$document = $reader ? Document::findByReaderCode(trim((string)($_GET['code'] ?? ''))) : new Document();
+if (!$document || (!$reader && !$document->load($documentId))
+    || ($reader && !$document->canReadFromLink($userId))
+    || (!$document->canOpenWithCollabora() && !(!$reader && $document->isNextcloudFolder()))) {
     http_response_code(404);
     echo omoDocumentsUiT('document_introuvable');
     exit;
 }
+$documentId = (int)$document->getId();
 
 $organizationId = (int)$document->get('IDorganization');
 $holonId = (int)$document->get('IDholon');
-if (
+if (!$reader && (
     $organizationId <= 0
     || !commonUserHasOrganizationAccess($userId, $organizationId)
     || !$document->canViewInOrganizationContext($organizationId, $holonId > 0 ? $holonId : null, $userId)
-) {
+)) {
     http_response_code(403);
     echo omoDocumentsUiT('acces_refuse');
     exit;
@@ -66,7 +76,8 @@ if ($isRemoteFile && ($remotePath === '' || !$document->isRemoteFolderStoragePat
 
 $filename = $isRemoteFile ? basename($remotePath) : $document->getStoredFileDownloadName();
 $extension = strtolower((string)pathinfo($filename, PATHINFO_EXTENSION));
-$canEdit = $document->canEditInOrganizationContext($organizationId, $userId, false);
+$canEdit = !$reader && $document->canEditInOrganizationContext($organizationId, $userId, false);
+$permission = $reader ? 'readonly' : ($canEdit ? 'edit' : 'view');
 $actionName = $canEdit ? 'edit' : 'view';
 $actionUrl = '';
 $discoveryDocument = new DOMDocument();
@@ -93,7 +104,11 @@ if ($actionUrl === '') {
 $publicUrl = rtrim((string)$config['baseUrl'], '/');
 $actionUrl = preg_replace('#^https?://[^/]+#i', $publicUrl, $actionUrl);
 $tokenExpiresAt = time() + omoCollaboraGetWopiTokenLifetimeSeconds();
-$accessToken = omoCollaboraBuildWopiToken($document, $userId, $tokenExpiresAt, $isRemoteFile ? $remotePath : '');
+$accessToken = omoCollaboraBuildWopiToken($document, $userId, $tokenExpiresAt, $isRemoteFile ? $remotePath : '', $reader);
+if ($accessToken === '') {
+    http_response_code(503);
+    exit;
+}
 $wopiSource = omoCollaboraBuildWopiSource($documentId);
 $uiDefaults = 'UIMode=tabbed;SavedUIState=false;';
 $cssVariables = omoCollaboraBuildOrganizationCssVariables($organization);
@@ -101,7 +116,7 @@ $separator = str_contains($actionUrl, '?') ? '&' : '?';
 $actionUrl .= $separator . 'WOPISrc=' . rawurlencode($wopiSource);
 $actionUrl .= '&access_token=' . rawurlencode($accessToken);
 $actionUrl .= '&access_token_ttl=' . rawurlencode((string)$tokenExpiresAt . '000');
-$actionUrl .= '&permission=' . rawurlencode($canEdit ? 'edit' : 'view');
+$actionUrl .= '&permission=' . rawurlencode($permission);
 
 $user = new User();
 $displayName = $user->load($userId) ? trim((string)$user->getScopedDisplayName($organizationId)) : '';
@@ -122,7 +137,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
         <input type="hidden" name="WOPISrc" value="<?= htmlspecialchars($wopiSource, ENT_QUOTES, 'UTF-8') ?>" data-collabora-wopi-source>
         <input type="hidden" name="access_token" value="<?= htmlspecialchars($accessToken, ENT_QUOTES, 'UTF-8') ?>">
         <input type="hidden" name="access_token_ttl" value="<?= (int)$tokenExpiresAt ?>000">
-        <input type="hidden" name="permission" value="<?= htmlspecialchars($canEdit ? 'edit' : 'view', ENT_QUOTES, 'UTF-8') ?>">
+        <input type="hidden" name="permission" value="<?= htmlspecialchars($permission, ENT_QUOTES, 'UTF-8') ?>">
         <input type="hidden" name="ui_defaults" value="<?= htmlspecialchars($uiDefaults, ENT_QUOTES, 'UTF-8') ?>" data-collabora-ui-defaults>
         <input type="hidden" name="css_variables" value="<?= htmlspecialchars($cssVariables, ENT_QUOTES, 'UTF-8') ?>">
         <noscript><?= htmlspecialchars(omoDocumentsUiT('activez_javascript_pour_ouvrir_le_document'), ENT_QUOTES, 'UTF-8') ?></noscript>

@@ -9,6 +9,7 @@ require_once dirname(__DIR__, 3) . '/common/spacedeck.php';
 require_once dirname(__DIR__, 3) . '/common/patreon.php';
 require_once dirname(__DIR__, 3) . '/common/openai_text.php';
 require_once dirname(__DIR__, 3) . '/common/object_visibility_selector.php';
+require_once __DIR__ . '/history_helpers.php';
 
 use dbObject\Document;
 use dbObject\Holon;
@@ -16,6 +17,9 @@ use dbObject\ObjectVisibility;
 use dbObject\Organization;
 
 $sourceLang = [
+    'documents.create.history.enabled' => ['text' => 'Activer l’historisation', 'context' => 'Checkbox enabling document version history.'],
+    'documents.create.history.hint' => ['text' => 'Chaque remplacement ou retrait du fichier conserve une copie de la version précédente. Pour Collabora, utilisez « Archiver maintenant » sur la fiche avant de commencer une nouvelle version. Les sauvegardes automatiques de Collabora ne créent pas d’archives.', 'context' => 'Help for file history and manual collaborative snapshots.'],
+    'documents.create.history.replace_confirm' => ['text' => 'La version actuelle sera archivée avant son remplacement. Continuer ?', 'context' => 'Confirmation when replacing a file with history enabled.'],
     'documents.create.error.edit' => ['text' => 'Impossible de modifier ce document.', 'context' => 'Error shown when the document editor cannot be opened in edit mode.'],
     'documents.create.error.pv_unsupported' => ['text' => 'Ce document PV se crée ici, mais son contenu se modifie via l’éditeur PV dédié.', 'context' => 'Error shown when trying to edit a PV document from the generic documents editor.'],
     'documents.create.error.create' => ['text' => 'Impossible de créer un document dans ce contexte.', 'context' => 'Error shown when the document editor cannot be opened in creation mode.'],
@@ -42,6 +46,10 @@ $sourceLang = [
 	'documents.create.field.kdrive_folder_path' => ['text' => 'Chemin du dossier kDrive', 'context' => 'Label for the selected remote kDrive folder path.'],
 	'documents.create.field.kdrive_folder_hint' => ['text' => 'Le chemin est relatif au dossier kDrive configuré pour les documents. Le contenu sera relu à chaque ouverture.', 'context' => 'Hint for the remote kDrive folder path.'],
 	'documents.create.action.kdrive_browse' => ['text' => 'Parcourir kDrive', 'context' => 'Button opening the remote kDrive folder browser.'],
+	'documents.create.type.webdav_folder' => ['text' => 'Dossier WebDAV', 'context' => 'Option label for a generic WebDAV folder.'],
+	'documents.create.field.webdav_folder_path' => ['text' => 'Chemin du dossier WebDAV', 'context' => 'Label for the selected generic WebDAV folder path.'],
+	'documents.create.field.webdav_folder_hint' => ['text' => 'Le chemin est relatif au dossier WebDAV configuré pour les documents. Le contenu sera relu à chaque ouverture.', 'context' => 'Hint for the generic WebDAV folder path.'],
+	'documents.create.action.webdav_browse' => ['text' => 'Parcourir le serveur WebDAV', 'context' => 'Button opening the generic WebDAV folder browser.'],
     'documents.create.field.nextcloud_folder_path' => ['text' => 'Chemin du dossier NextCloud', 'context' => 'Label for the selected remote folder path.'],
     'documents.create.field.nextcloud_folder_hint' => ['text' => 'Le chemin est relatif au dossier NextCloud configuré pour les documents. Le contenu sera relu à chaque ouverture.', 'context' => 'Hint for the remote NextCloud folder path.'],
     'documents.create.action.nextcloud_browse' => ['text' => 'Parcourir NextCloud', 'context' => 'Button opening the remote NextCloud folder browser.'],
@@ -193,6 +201,8 @@ $documentStoredFilename = '';
 $documentStoredFileMime = '';
 $documentStoredFileSize = 0;
 $documentHasStoredFile = false;
+$editorArchivedVersions = $isEditing && $canUseForm && $document->supportsVersionHistory()
+    ? $document->getArchivedVersions() : [];
 $documentNextcloudFolderPath = '';
 $isFolder = false;
 $selectedVisibilityType = $organizationId > 0
@@ -212,18 +222,12 @@ $organizationLoaded = $organizationId > 0 && $organization->load($organizationId
 $nextcloudDocumentsAvailable = $organizationLoaded && $organization->hasDocumentStorage();
 $pvDocumentsEnabled = $organizationLoaded && $organization->isPvDocumentEnabled();
 $nextcloudFoldersAvailable = $organizationLoaded && $organization->hasDocumentStorage();
-$remoteFolderTypeLabel = $organizationLoaded && $organization->isKdriveDocumentStorage()
-	? omoDocumentsCreateT('documents.create.type.kdrive_folder')
-	: omoDocumentsCreateT('documents.create.type.nextcloud_folder');
-$remoteFolderPathLabel = $organizationLoaded && $organization->isKdriveDocumentStorage()
-	? omoDocumentsCreateT('documents.create.field.kdrive_folder_path')
-	: omoDocumentsCreateT('documents.create.field.nextcloud_folder_path');
-$remoteFolderHint = $organizationLoaded && $organization->isKdriveDocumentStorage()
-	? omoDocumentsCreateT('documents.create.field.kdrive_folder_hint')
-	: omoDocumentsCreateT('documents.create.field.nextcloud_folder_hint');
-$remoteFolderBrowseLabel = $organizationLoaded && $organization->isKdriveDocumentStorage()
-	? omoDocumentsCreateT('documents.create.action.kdrive_browse')
-	: omoDocumentsCreateT('documents.create.action.nextcloud_browse');
+$remoteStorageType = $organizationLoaded ? ($organization->getDocumentStorageConfig()['type'] ?? 'nextcloud') : 'nextcloud';
+$remoteStorageType = in_array($remoteStorageType, array('kdrive', 'webdav'), true) ? $remoteStorageType : 'nextcloud';
+$remoteFolderTypeLabel = omoDocumentsCreateT('documents.create.type.' . $remoteStorageType . '_folder');
+$remoteFolderPathLabel = omoDocumentsCreateT('documents.create.field.' . $remoteStorageType . '_folder_path');
+$remoteFolderHint = omoDocumentsCreateT('documents.create.field.' . $remoteStorageType . '_folder_hint');
+$remoteFolderBrowseLabel = omoDocumentsCreateT('documents.create.action.' . $remoteStorageType . '_browse');
 $etherpadDocumentsAvailable = $organizationLoaded && omoEtherpadCanUseEditingSessions($organization);
 $collaboraDocumentsAvailable = $organizationLoaded && $nextcloudDocumentsAvailable && omoCollaboraHasConfig($organization);
 $whiteboardDocumentsAvailable = omoSpacedeckHasConfig();
@@ -666,7 +670,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                     </span>
                 </div>
 
-                <?php if ($isEditing && ($document->isEtherpadDocument() || $document->isEthercalcDocument() || $document->isWhiteboardDocument() || $document->canOpenWithCollabora())): ?>
+                <?php if ($isEditing && ($document->isEtherpadDocument() || $document->isEthercalcDocument() || $document->isWhiteboardDocument())): ?>
                     <div class="omo-document-detail__content generic-section generic-section--stack">
                         <?= $document->getRenderedContentForCurrentViewer() ?>
                     </div>
@@ -705,15 +709,24 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                 </div>
 
                 <div class="omo-document-editor__upload-section" data-omo-document-upload-section<?= $documentType !== Document::TYPE_UPLOADED_FILE ? ' hidden' : '' ?>>
-                    <label class="omo-document-editor__field generic-form-field">
-                        <span class="omo-document-editor__label generic-form-label"><?= $escape(omoDocumentsCreateT('documents.create.field.upload')) ?></span>
-                        <input
-                            type="file"
-                            name="uploaded_file"
-                            class="generic-form-control generic-form-control--compact"
-                            data-omo-document-upload-input
-                            <?= $isEditing && !$canEditDocumentContent ? ' disabled' : '' ?>
-                        >
+                    <div class="omo-document-editor__field generic-form-field">
+                        <label class="omo-document-editor__label generic-form-label" for="<?= $escape($documentFormId) ?>-upload"><?= $escape(omoDocumentsCreateT('documents.create.field.upload')) ?></label>
+                        <div class="omo-document-editor__upload-row generic-form-grid">
+                            <input
+                                id="<?= $escape($documentFormId) ?>-upload"
+                                type="file"
+                                name="uploaded_file"
+                                class="generic-form-control generic-form-control--compact"
+                                data-omo-document-upload-input
+                                <?= $isEditing && !$canEditDocumentContent ? ' disabled' : '' ?>
+                            >
+                            <?php if ($documentType === Document::TYPE_UPLOADED_FILE && $documentHasStoredFile): ?>
+                                <label class="generic-checkbox generic-checkbox--control">
+                                    <input type="checkbox" name="remove_uploaded_file" value="1"<?= $isEditing && !$canEditDocumentContent ? ' disabled' : '' ?>>
+                                    <span><?= $escape(omoDocumentsCreateT('documents.create.upload.remove')) ?></span>
+                                </label>
+                            <?php endif; ?>
+                        </div>
                         <span class="omo-document-editor__hint generic-help-text">
                             <?php if ($nextcloudDocumentsAvailable): ?>
                                 <?= $escape(omoDocumentsCreateT('documents.create.upload.hint_nextcloud')) ?>
@@ -721,7 +734,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                                 <?= $escape(omoDocumentsCreateT('documents.create.upload.hint_missing')) ?>
                             <?php endif; ?>
                         </span>
-                    </label>
+                    </div>
 
                     <?php if ($documentType === Document::TYPE_UPLOADED_FILE && $documentHasStoredFile): ?>
                         <div class="omo-document-editor__upload-current generic-soft-panel generic-soft-panel--stack">
@@ -734,13 +747,31 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                                 <?php endif; ?>
                             </div>
                         </div>
-
-                        <label class="omo-document-editor__checkbox generic-checkbox">
-                            <input type="checkbox" name="remove_uploaded_file" value="1"<?= $isEditing && !$canEditDocumentContent ? ' disabled' : '' ?>>
-                            <span><?= $escape(omoDocumentsCreateT('documents.create.upload.remove')) ?></span>
-                        </label>
                     <?php endif; ?>
                 </div>
+
+                <section class="generic-section generic-section--stack" data-omo-document-history-section<?= !$document->supportsVersionHistory() && !in_array($documentType, [Document::TYPE_UPLOADED_FILE, Document::TYPE_COLLABORA_DOCUMENT, Document::TYPE_COLLABORA_SPREADSHEET, Document::TYPE_COLLABORA_PRESENTATION, Document::TYPE_COLLABORA_DRAWING], true) ? ' hidden' : '' ?>>
+                    <?php if ($isEditing && $document->supportsVersionHistory()): ?>
+                        <h3 class="generic-card-title generic-card-title--medium"><?= $escape(omoDocumentHistoryT('title')) ?></h3>
+                    <?php endif; ?>
+                    <div class="generic-inline-help">
+                        <label class="generic-checkbox">
+                            <input type="checkbox" name="history_enabled" value="1"<?= $document->isVersionHistoryEnabled() ? ' checked' : '' ?><?= $isEditing && !$canEditDocumentContent ? ' disabled' : '' ?>>
+                            <span><?= $escape(omoDocumentsCreateT('documents.create.history.enabled')) ?></span>
+                        </label>
+                        <?= $documentHelp(omoDocumentsCreateT('documents.create.history.enabled'), omoDocumentsCreateT('documents.create.history.hint')) ?>
+                    </div>
+                    <?php if ($isEditing && $document->supportsVersionHistory()): ?>
+                        <?php if (count($editorArchivedVersions) === 0): ?>
+                            <p class="generic-help-text"><?= $escape(omoDocumentHistoryT('empty')) ?></p>
+                        <?php endif; ?>
+                        <ul class="generic-stack" data-omo-document-history-list>
+                            <?php foreach ($editorArchivedVersions as $archivedVersion): ?>
+                                <?= omoDocumentHistoryVersionHtml($archivedVersion, $organizationId) ?>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php endif; ?>
+                </section>
             </div>
 
             <div class="omo-document-editor__status generic-soft-panel generic-feedback" data-omo-document-editor-status hidden></div>
@@ -755,12 +786,13 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     <?php endif; ?>
 </div>
 
-<link rel="stylesheet" href="/omo/api/documents/editor.css?v=20260917-style-review-final">
+<link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/documents/editor.css') ?>">
 <?php if ($isEditing): ?>
 <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/documents/detail.css') ?>">
 <?php endif; ?>
 
 <script src="<?= commonAssetUrl('/common/document/embed-picker.js') ?>"></script>
+<script src="<?= commonAssetUrl('/common/document/html-ai-tools.js') ?>"></script>
 <?= commonPageScriptTags('/omo/api/documents/create.js', [
     'documentFormId' => $documentFormId,
     'uploadHasExistingFile' => ($documentType === Document::TYPE_UPLOADED_FILE && $documentHasStoredFile),
@@ -788,6 +820,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         ],
         'tagRemove' => omoDocumentsCreateT('documents.create.field.tags_remove'),
         'uploadReplaceConfirm' => omoDocumentsCreateT('documents.create.upload.replace_confirm'),
+        'uploadArchiveConfirm' => omoDocumentsCreateT('documents.create.history.replace_confirm'),
     ],
     'editingDocumentId' => $isEditing && $canEditDocumentContent && $document->supportsHtmlContent() ? (int)$document->getId() : 0,
     'editLockHeartbeatIntervalMs' => (int)(\dbObject\Document::getDraftHeartbeatIntervalSeconds() * 1000),

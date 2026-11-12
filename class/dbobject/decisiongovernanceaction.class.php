@@ -436,8 +436,14 @@ class DecisionGovernanceAction extends DbObject
         return count($items) ? '<ul>' . implode('', $items) . '</ul>' : '';
     }
 
-    public static function buildRoleUpdateDescription(array $beforeState, array $afterState)
+    public static function buildRoleUpdateDescription(array $beforeState, array $afterState, ?Organization $organization = null)
     {
+        if ($organization !== null) {
+            $beforeState = DeferredProposal::decorateHolonTemplateDisplayState($beforeState, $organization);
+            $afterState = DeferredProposal::decorateHolonTemplateDisplayState($afterState, $organization, $beforeState);
+            $beforeState = DeferredProposal::decorateHolonListDisplayState($beforeState, $organization);
+            $afterState = DeferredProposal::decorateHolonListDisplayState($afterState, $organization);
+        }
         $changes = [];
         foreach (['name' => 'Nom', 'full_name' => 'Nom complet', 'color' => 'Couleur'] as $field => $label) {
             $before = trim((string)($beforeState[$field] ?? ''));

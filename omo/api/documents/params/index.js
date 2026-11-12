@@ -18,6 +18,7 @@ window.commonPageScripts["/omo/api/documents/params/index.js"] = function (pageC
         var storageTypeInputs = root.querySelectorAll('[data-omo-documents-storage-type]');
         var nextcloudFields = root.querySelector('[data-omo-documents-nextcloud-fields]');
         var kdriveFields = root.querySelector('[data-omo-documents-kdrive-fields]');
+        var webdavFields = root.querySelector('[data-omo-documents-webdav-fields]');
         var nextcloudTestButton = root.querySelector('[data-omo-documents-nextcloud-test]');
         var nextcloudTestFeedback = root.querySelector('[data-omo-documents-nextcloud-test-feedback]');
         var kdriveTestButton = root.querySelector('[data-omo-documents-storage-test]');
@@ -51,6 +52,9 @@ window.commonPageScripts["/omo/api/documents/params/index.js"] = function (pageC
             }
             if (kdriveFields) {
                 kdriveFields.hidden = !enabled || selectedType !== 'kdrive';
+            }
+            if (webdavFields) {
+                webdavFields.hidden = !enabled || selectedType !== 'webdav';
             }
             if (collaboraToggle && !enabled) {
                 collaboraToggle.checked = false;
@@ -119,13 +123,17 @@ window.commonPageScripts["/omo/api/documents/params/index.js"] = function (pageC
                     });
                 }).then(function (payload) {
                     var status = !!(payload && payload.status);
-                    if (testFeedback) {
+                    if (typeof window.commonNotify === 'function') {
+                        window.commonNotify(String(payload && payload.message ? payload.message : pageConfig.message), status ? 'success' : 'error');
+                    } else if (testFeedback) {
                         testFeedback.textContent = String(payload && payload.message ? payload.message : '');
                         testFeedback.classList.toggle('is-error', !status);
                         testFeedback.classList.toggle('is-success', status);
                     }
                 }).catch(function () {
-                    if (testFeedback) {
+                    if (typeof window.commonNotify === 'function') {
+                        window.commonNotify(pageConfig.message, 'error');
+                    } else if (testFeedback) {
                         testFeedback.textContent = pageConfig.message;
                         testFeedback.classList.add('is-error');
                         testFeedback.classList.remove('is-success');
@@ -139,6 +147,7 @@ window.commonPageScripts["/omo/api/documents/params/index.js"] = function (pageC
 
         testStorage(nextcloudTestButton, nextcloudTestFeedback);
         testStorage(kdriveTestButton, kdriveTestFeedback);
+        testStorage(root.querySelector('[data-omo-documents-webdav-test]'), root.querySelector('[data-omo-documents-webdav-test-feedback]'));
 
         function renderFeedback(message, isError) {
             if (typeof window.commonNotify === 'function') {

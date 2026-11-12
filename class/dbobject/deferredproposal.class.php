@@ -8,6 +8,13 @@ namespace dbObject;
  */
 class DeferredProposal extends DbObject
 {
+    protected static function uiMessageSourceLang(): array
+    {
+        return [
+            'project_responsible_membership' => ['text' => 'La personne en charge du projet doit être membre de l’organisation.', 'context' => 'Project assignee validation when applying a collective proposal'],
+        ];
+    }
+
     public const OPERATION_CREATE = 'create';
     public const OPERATION_PROPOSE = 'propose';
     public const OPERATION_UPDATE = 'update';
@@ -733,16 +740,20 @@ class DeferredProposal extends DbObject
         foreach ($state['editor_payload']['properties'] as &$property) {
             if (!is_array($property)) continue;
             $formatId = (int)($property['formatId'] ?? 0);
-            $localValue = $property['value'] ?? '';
+            $localValue = $property['localValue'] ?? $property['value'] ?? '';
             $inheritedValue = $property['inheritedValue'] ?? '';
-            if (in_array($formatId, [PropertyFormat::FORMAT_TEXT, PropertyFormat::FORMAT_HTML, PropertyFormat::FORMAT_TEXT_HTML], true)) {
-                $property['localValue'] = !empty($property['effectiveLocked']) ? '' : $localValue;
-            }
+            // Snapshots can pass through this decorator more than once.
+            $property['localValue'] = !empty($property['effectiveLocked']) ? '' : $localValue;
             if (!empty($property['effectiveLocked'])) {
                 $effectiveValue = $inheritedValue;
             } elseif (PropertyFormat::isListFormat($formatId)) {
-                $parseList = static function ($value): array {
-                    if (is_array($value)) return array_values($value);
+                $parseList = static function ($value) use ($formatId): array {
+                    if ($formatId === PropertyFormat::FORMAT_HTML_LIST) {
+                        $value = PropertyFormat::getHtmlListParts($value)['items'];
+                    }
+                    if (is_array($value)) {
+                        return array_values(array_filter($value, static fn ($item): bool => !(is_array($item) && !empty($item['delete']))));
+                    }
                     $raw = trim((string)$value);
                     if ($raw === '') return [];
                     $decoded = json_decode($raw, true);
@@ -759,7 +770,17 @@ class DeferredProposal extends DbObject
                     $seen[$key] = true;
                     $items[] = $item;
                 }
-                $effectiveValue = $items ? json_encode($items, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : '';
+                if ($formatId === PropertyFormat::FORMAT_HTML_LIST) {
+                    $inheritedParts = PropertyFormat::getHtmlListParts($inheritedValue);
+                    $localParts = PropertyFormat::getHtmlListParts($localValue);
+                    $effectiveValue = json_encode([
+                        'before' => $localParts['before'] !== '' ? $localParts['before'] : $inheritedParts['before'],
+                        'items' => $items,
+                        'after' => $localParts['after'] !== '' ? $localParts['after'] : $inheritedParts['after'],
+                    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                } else {
+                    $effectiveValue = $items ? json_encode($items, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : '';
+                }
             } else {
                 $effectiveValue = !PropertyFormat::isEmptyValue($formatId, $localValue) ? $localValue : $inheritedValue;
             }
@@ -774,7 +795,7 @@ class DeferredProposal extends DbObject
         return $state;
     }
 
-    public static function decorateHolonTemplateDisplayState(array $state, Organization $organization): array
+    public static function decorateHolonTemplateDisplayState(array $state, Organization $organization, array $beforeState = []): array
     {
         $payload = is_array($state['editor_payload'] ?? null) ? $state['editor_payload'] : [];
         $templateId = (int)($payload['templateId'] ?? $state['template_id'] ?? 0);
@@ -785,6 +806,18 @@ class DeferredProposal extends DbObject
             $templateHolon->getHolonCreationPropertyDefinitions(),
             $organization->getLexicon()
         );
+
+        // The editor snapshot contains the instance's inherited values, including
+        // authority IDs remapped from the template to the actual holon.
+        $beforeProperties = [];
+        $beforeTemplateId = (int)($beforeState['editor_payload']['templateId'] ?? $beforeState['template_id'] ?? 0);
+        if ($beforeTemplateId === $templateId) {
+            foreach ((array)($beforeState['editor_payload']['properties'] ?? []) as $property) {
+                if (is_array($property) && (int)($property['id'] ?? 0) > 0) {
+                    $beforeProperties[(int)$property['id']] = $property;
+                }
+            }
+        }
 
         $submittedProperties = [];
         foreach ((array)($payload['properties'] ?? []) as $property) {
@@ -802,7 +835,7 @@ class DeferredProposal extends DbObject
             $submitted = $submittedProperties[$propertyId] ?? [];
             $properties[] = array_merge($definition, $submitted, [
                 'id' => $propertyId,
-                'inheritedValue' => $definition['inheritedValue'] ?? '',
+                'inheritedValue' => $beforeProperties[$propertyId]['inheritedValue'] ?? $submitted['inheritedValue'] ?? $definition['inheritedValue'] ?? '',
                 'effectiveLocked' => !empty($definition['effectiveLocked']),
                 'value' => $submitted['value'] ?? ($definition['value'] ?? ''),
             ]);
@@ -847,7 +880,7 @@ class DeferredProposal extends DbObject
             $organization = new Organization();
             if ($organization->load((int)$this->get('IDorganization'))) {
                 $beforeState = self::decorateHolonTemplateDisplayState($beforeState, $organization);
-                $afterState = self::decorateHolonTemplateDisplayState($afterState, $organization);
+                $afterState = self::decorateHolonTemplateDisplayState($afterState, $organization, $beforeState);
                 $beforeState = self::decorateHolonListDisplayState($beforeState, $organization);
                 $afterState = self::decorateHolonListDisplayState($afterState, $organization);
             }
@@ -926,6 +959,8 @@ class DeferredProposal extends DbObject
         $responsibleLabels = [];
         if ($targetType === self::TARGET_PROJECT) {
             foreach (array_unique(array_filter([
+                (int)($beforeState['IDuser'] ?? 0),
+                (int)($afterState['IDuser'] ?? 0),
                 (int)($beforeState['IDuser_proposed'] ?? 0),
                 (int)($afterState['IDuser_proposed'] ?? 0),
             ])) as $proposerId) {
@@ -1187,6 +1222,7 @@ class DeferredProposal extends DbObject
             $state = self::normalizeProjectState(self::normalizeState($proposal->get('after_state')));
             $state['IDholon'] = $contextHolonId;
             if ($state['title'] === '') return ['status' => false, 'message' => 'Le titre du projet est obligatoire.'];
+            if (!Project::isAllowedResponsible($organizationId, (int)$state['IDuser'])) return ['status' => false, 'message' => self::uiMessage('project_responsible_membership')];
             if ($targetId > 0) return ['status' => false, 'conflict' => true, 'message' => 'La création du projet est dans un état incohérent.'];
             $project = new Project();
             self::applyProjectState($project, $state, $organizationId);
@@ -1228,6 +1264,7 @@ class DeferredProposal extends DbObject
         if ($current === $after) return ['status' => true, 'target_id' => $targetId];
         if ($current !== $before) return ['status' => false, 'conflict' => true, 'message' => 'Le projet a été modifié depuis la préparation de cette modification.'];
         if ($after['title'] === '') return ['status' => false, 'message' => 'Le titre du projet est obligatoire.'];
+        if (!Project::isAllowedResponsible($organizationId, (int)$after['IDuser'], $project)) return ['status' => false, 'message' => self::uiMessage('project_responsible_membership')];
         self::applyProjectState($project, $after, $organizationId);
         $result = $project->save();
         return is_array($result) && !empty($result['status'])

@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../translations.php';
 function omoDeferredProposalsUiSourceLang(): array
 {
     static $sourceLang = [
+        'project_responsible_membership' => ['text' => 'La personne en charge du projet doit être membre de l’organisation.', 'context' => 'Deferred project assignee validation'],
         'acces_refuse' => ['text' => 'Accès refusé.', 'context' => 'Validation or action feedback in api/deferred_proposals/pv_holon_save.php, api/deferred_proposals/pv_object_save.php, api/deferred_proposals/pv_project_save.php, api/deferred_proposals/pv_proposal_context.php, api/deferred_proposals/pv_rule_context.php, api/deferred_proposals/pv_rule_save.php'],
         'action_invalide' => ['text' => 'Action invalide.', 'context' => 'Validation or action feedback in api/deferred_proposals/pv_holon_save.php, api/deferred_proposals/pv_project_save.php, api/deferred_proposals/pv_rule_save.php'],
         'le_collectif_du_pv_ne_dispose_pas_du_droit_necessaire_dans_cet_espace' => ['text' => 'Le collectif du PV ne dispose pas du droit nécessaire dans cet espace.', 'context' => 'Validation or action feedback in api/deferred_proposals/pv_holon_save.php, api/deferred_proposals/pv_project_save.php, api/deferred_proposals/pv_proposal_context.php'],

@@ -280,6 +280,7 @@ function omoDocumentsPvEditorBuildDocumentPayload(\dbObject\Document $document, 
             ? \dbObject\DocumentPvPoint::getUserDisplayNameForOrganization($document->getCreatedByUserId(), $organizationId)
             : '',
         'isPvEditor' => $document->isPvEditor($currentUserId),
+        'canControlTimer' => $document->isPvEditor($stageUserId) && !$document->isPvValidated(),
         'canManagePvDocument' => $document->canUserManagePvDocument($currentUserId),
         'canManagePvStructure' => $document->canUserManagePvStructure($organizationId, $currentUserId),
         'canSendPvInvitations' => $publicParticipationLink === null && $document->canUserSendPvInvitations($organizationId, $currentUserId),
@@ -386,7 +387,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
 }
 
 $action = trim((string)($_POST['action'] ?? ''));
-if ($action === 'poll_updates') {
+if ($action === 'poll_updates' || $action === 'timer_state') {
     // This POST only reads; never enable a snapshot around mutation validation.
     omoDocumentsPvEditorPrepareResponseReads();
 }
@@ -464,11 +465,48 @@ if ($action === 'heartbeat_locks' || $action === 'release_locks') {
 }
 
 $document = omoDocumentsPvEditorLoadDocumentOrFail($documentId, $organizationId, $currentUserId);
+if ($action === 'timer_state') {
+    omoDocumentsPvEditorJsonResponse([
+        'status' => true,
+        'timer' => $document->getPvTimerState(),
+        'serverNow' => (int)floor(microtime(true) * 1000),
+        'timerPermissions' => [
+            'canControlTimer' => $document->isPvEditor($isPublicParticipation ? $publicParticipationUserId : $currentUserId)
+                && !$document->isPvValidated(),
+        ],
+    ]);
+}
 $agendaUserId = $isPublicParticipation ? $publicParticipationLink->getPvAgendaManagerUserId($document) : $currentUserId;
 $publicAgendaActionAllowed = $isPublicParticipation && $agendaUserId > 0
     && in_array($action, ['add_group', 'update_group', 'reorder_points', 'sort_points'], true)
     && omoDocumentsPvEditorHasValidSessionToken($organizationId, $documentId, $editorActorKey, $editorToken);
 $handoverUserId = $isPublicParticipation ? $publicParticipationUserId : $currentUserId;
+if ($action === 'timer') {
+    if (!$document->isPvEditor($handoverUserId) || $document->isPvValidated()
+        || !omoDocumentsPvEditorHasValidSessionToken($organizationId, $documentId, $editorActorKey, $editorToken)) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
+            'document' => omoDocumentsPvEditorBuildDocumentPayload($document, $organizationId, $currentUserId, $publicParticipationLink),
+        ], 403);
+    }
+    $seconds = $_POST['seconds'] ?? null;
+    $validSeconds = $seconds === null || (is_string($seconds) && preg_match('/^\d{1,6}$/D', $seconds));
+    $success = $validSeconds && $document->updatePvTimer(
+        $handoverUserId,
+        (string)($_POST['command'] ?? ''),
+        (string)($_POST['revision'] ?? ''),
+        $seconds === null ? null : (int)$seconds,
+        (string)($_POST['mode'] ?? 'countdown')
+    );
+    omoDocumentsPvEditorJsonResponse([
+        'status' => (bool)$success,
+        'message' => $success ? '' : omoDocumentsPvEditorActionT('documents.pv_editor.timer.error'),
+        'timer' => $document->getPvTimerState(),
+        'serverNow' => (int)floor(microtime(true) * 1000),
+        'document' => omoDocumentsPvEditorBuildDocumentPayload($document, $organizationId, $currentUserId, $publicParticipationLink),
+    ], $success ? 200 : 409);
+}
 $publicHandoverActionAllowed = $isPublicParticipation && $handoverUserId > 0
     && in_array($action, ['claim_pv_editor', 'replace_pv_editor', 'pass_pv_editor'], true)
     && omoDocumentsPvEditorHasValidSessionToken($organizationId, $documentId, $editorActorKey, $editorToken);
@@ -571,6 +609,8 @@ if ($action === 'poll_updates') {
         omoDocumentsPvEditorJsonResponse([
             'status' => true,
             'unchanged' => true,
+            'timer' => $document->getPvTimerState(),
+            'serverNow' => (int)floor(microtime(true) * 1000),
             'pollRevision' => $pollingRevision,
             'serverTime' => date(DATE_ATOM),
         ]);
@@ -585,6 +625,8 @@ if ($action === 'poll_updates') {
     omoDocumentsPvEditorJsonResponse([
         'status' => true,
         'unchanged' => false,
+        'timer' => $document->getPvTimerState(),
+        'serverNow' => (int)floor(microtime(true) * 1000),
         'pollRevision' => $pollingRevision,
         'serverTime' => date(DATE_ATOM),
         'document' => omoDocumentsPvEditorBuildDocumentPayload($document, $organizationId, $currentUserId, $publicParticipationLink),

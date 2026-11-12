@@ -250,7 +250,7 @@
         questions.forEach(function (question) {
             var card = element('article', 'survey-result-card');
             var copy = element('div', 'survey-result-card__copy');
-            var visual = element('div', 'survey-result-card__visual');
+            var visual = window.SurveyResultScale.create(question.today, question.tomorrow, labels, null, question.distributions);
             card.id = 'surveyPublicPrinciple' + question.number;
             copy.appendChild(element('span', '', String(question.number)));
             copy.appendChild(element('h2', '', question.title));
@@ -287,11 +287,6 @@
                 }
                 copy.appendChild(affinity);
             }
-            var todayValue = element('span', 'survey-result-card__score', formatScore(question.today));
-            visual.appendChild(todayValue);
-            visual.appendChild(element('div', 'survey-result-card__line'));
-            var tomorrowValue = element('span', 'survey-result-card__score survey-result-card__score--tomorrow', formatScore(question.tomorrow));
-            visual.appendChild(tomorrowValue);
             card.append(copy, visual);
             fragment.appendChild(card);
         });

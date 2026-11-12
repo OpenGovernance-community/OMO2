@@ -141,6 +141,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
     };
     const activeLockPointIds = new Set();
     const pendingLockPointIds = new Set();
+    const pendingPointLockRequests = new Map();
     const pendingUnlockPointIds = new Set();
     const locallyEngagedPointIds = new Set();
     const pendingTakeoverPointIds = new Set();
@@ -151,6 +152,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
     const pointEditSnapshots = new Map();
     const saveOnPointLeaveIds = new Set();
     let activePointId = 0;
+    let pvTimer = null;
     let knownPointSignatures = {};
     let currentPointPayloads = {};
     let currentDocumentPayload = initialDocumentPayload && typeof initialDocumentPayload === 'object'
@@ -1158,7 +1160,9 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         }
         window.addEventListener('common-topbar-modal-close', function () { if (!resolved) cleanup(); if (projectPickerController && typeof projectPickerController.destroy === 'function') projectPickerController.destroy(); projectPickerController = null; }, {once: true}); cancelButtons.forEach(function (button) { button.addEventListener('click', function () { cleanup(); window.commonTopbarCloseModal(); }); }); if (remove) remove.addEventListener('click', function () { if (targetNode && typeof field.removeNode === 'function') resolved = field.removeNode(targetNode); window.commonTopbarCloseModal(); }); if (insert) insert.addEventListener('click', function () { if (selected) insertProject(selected); });
         if (createForm instanceof HTMLFormElement) createForm.addEventListener('submit', function (event) { event.preventDefault(); const titleInput = createForm.elements.namedItem('title'), title = titleInput ? String(titleInput.value || '').trim() : ''; if (title === '') { if (titleInput && typeof titleInput.focus === 'function') titleInput.focus(); return; } if (createSubmit) createSubmit.disabled = true; const formData = new FormData(createForm); formData.set('project_action', 'save_project'); formData.set('oid', String(projectCreateContext.organizationId || 0)); formData.set('cid', String(projectCreateContext.holonId || 0)); formData.set('IDuser', String(projectCreateContext.responsibleId || 0)); fetch('/omo/api/projects/action.php', {method: 'POST', body: formData, credentials: 'same-origin'}).then(function (response) { return response.json(); }).then(function (payload) { const projectId = Number(payload && payload.id || 0); if (!payload || !payload.success || projectId <= 0) throw new Error(payload && payload.message ? payload.message : projectEmbedUi.createError || ''); const statusSelect = createForm.elements.namedItem('status'), sizeSelect = createForm.elements.namedItem('project_size'), prioritySelect = createForm.elements.namedItem('priority'), startInput = createForm.elements.namedItem('planned_start_date'), endInput = createForm.elements.namedItem('planned_end_date'), statusValue = statusSelect ? String(statusSelect.value || '') : '', statusOption = statusOptions.find(function (option) { return String(option.value) === statusValue; }) || {}, toDateLabel = function (input) { const value = input ? String(input.value || '') : ''; return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value.slice(8, 10) + '.' + value.slice(5, 7) + '.' + value.slice(0, 4) : ''; }, project = {id: projectId, title: title, summary: String(formData.get('description') || ''), contextHolonId: Number(projectCreateContext.holonId || 0), contextLabel: String(projectCreateContext.holonLabel || ''), isMine: true, isFollowed: false, responsibleLabel: String(projectCreateContext.responsibleLabel || ''), status: statusValue, statusLabel: String(statusOption.label || statusValue), priorityLabel: prioritySelect && prioritySelect.value ? 'P' + String(prioritySelect.value) : '', sizeLabel: sizeSelect ? String(sizeSelect.value || 'M') : 'M', plannedStartLabel: toDateLabel(startInput), plannedEndLabel: toDateLabel(endInput)}; embeddableProjects.push(project); if (typeof window.omoRefreshProjectsDrawerAfterMutation === 'function') window.omoRefreshProjectsDrawerAfterMutation(); insertProject(project); }).catch(function (error) { window.omoNotify(String(error && error.message || projectEmbedUi.createError || ''), 'error'); }).finally(function () { if (createSubmit) createSubmit.disabled = false; }); });
-        loadPvResourceCatalog('projects', embeddableProjects, body.querySelector('.omo-document-embed-picker'), function () { if (projectPickerController) projectPickerController.setProjects(embeddableProjects, currentProjectId > 0 ? [currentProjectId] : []); render(); });
+        loadPvResourceCatalog('projects', embeddableProjects, body.querySelector('.omo-document-embed-picker'), function () {
+            if (projectPickerController) projectPickerController.setProjects(embeddableProjects, currentProjectId > 0 ? [currentProjectId] : []);
+        });
     }
 
     function buildPvEventEmbedHtml(eventItem) {
@@ -2420,6 +2424,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         const card = root.querySelector('[data-omo-pv-point-card="' + pointId + '"]');
         const isDirty = !!card && card.getAttribute('data-omo-pv-point-dirty') === '1';
         const isSaving = !!card && card.getAttribute('data-omo-pv-point-saving') === '1';
+        const isAiBusy = !!card && card.getAttribute('data-omo-pv-point-ai-busy') === '1';
 
         if (!card) {
             return;
@@ -2428,8 +2433,8 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         const saveButton = root.querySelector('[data-omo-pv-point-save="' + pointId + '"]');
         if (saveButton) {
             saveButton.hidden = !isDirty && !isSaving;
-            saveButton.disabled = !isDirty || isSaving;
-            saveButton.setAttribute('aria-disabled', (!isDirty || isSaving) ? 'true' : 'false');
+            saveButton.disabled = !isDirty || isSaving || isAiBusy;
+            saveButton.setAttribute('aria-disabled', (!isDirty || isSaving || isAiBusy) ? 'true' : 'false');
             saveButton.classList.toggle('generic-action-button--main', isDirty);
             saveButton.classList.toggle('is-saving', isSaving);
             saveButton.textContent = isSaving ? savingLabel : (isDirty ? saveLabel : savedLabel);
@@ -2441,8 +2446,16 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         }
     }
 
+    function preparePvTimerForPoint(pointId) {
+        if (!pvTimer) return;
+        const duration = root.querySelector('[data-omo-pv-point-duration="' + pointId + '"]');
+        const payload = currentPointPayloads[pointId] || {};
+        pvTimer.selectPoint(Number(duration ? duration.value : payload.desiredDurationMinutes || 0), pointId);
+    }
+
     // A popup or toolbar can steal focus; only entering another point saves drafts.
     function activatePoint(pointId) {
+        preparePvTimerForPoint(pointId);
         if (activePointId === pointId) {
             return;
         }
@@ -2463,6 +2476,8 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         }
         preMountEditorDrafts.delete(pointId);
         saveOnPointLeaveIds.delete(pointId);
+        const editorHost = card.querySelector('[data-omo-pv-point-editor-host]');
+        if (editorHost && editorHost.__omoPvPointAiTools) editorHost.__omoPvPointAiTools.cancel();
         restoreDraftState({ [pointId]: Object.assign({}, snapshot, {isDirty: false, statusText: ''}) });
         card.__omoPvPointEditStart = captureDraftState(pointId)[pointId];
         renderTimingSummary();
@@ -2507,6 +2522,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         }
 
         return locallyEngagedPointIds.has(pointId)
+            || card.getAttribute('data-omo-pv-point-ai-busy') === '1'
             || card.getAttribute('data-omo-pv-point-dirty') === '1'
             || card.contains(document.activeElement);
     }
@@ -2531,6 +2547,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
     }
 
     function stopPvEditorBackgroundWork() {
+        if (pvTimer && !root.isConnected) pvTimer.destroy();
         window.removeEventListener('focus', updateEditorPollingActivity);
         window.removeEventListener('blur', updateEditorPollingActivity);
         document.removeEventListener('visibilitychange', updateEditorPollingActivity);
@@ -2550,6 +2567,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
 
         activeLockPointIds.clear();
         pendingLockPointIds.clear();
+        pendingPointLockRequests.clear();
         pendingUnlockPointIds.clear();
         locallyEngagedPointIds.clear();
         pendingTakeoverPointIds.clear();
@@ -2559,6 +2577,9 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         preMountEditorFocusPointIds.clear();
         pointEditSnapshots.clear();
         saveOnPointLeaveIds.clear();
+        root.querySelectorAll('[data-omo-pv-point-editor-host]').forEach(function (host) {
+            if (host.__omoPvPointAiTools) host.__omoPvPointAiTools.destroy();
+        });
     }
 
     function markDocumentMetadataDirty() {
@@ -2761,6 +2782,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             root.classList.toggle('omo-pv-editor--has-application-tabs', !hideApplicationTabs);
             if (hideApplicationTabs) setActiveApplicationTab(0);
         }
+        if (pvTimer) pvTimer.sync(documentPayload);
         const applicationTabAddButton = applicationTabsNav instanceof Element
             ? applicationTabsNav.querySelector('[data-omo-pv-application-tab-add]')
             : null;
@@ -3327,8 +3349,43 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             }
 
             let field = null;
+            let aiTools = null;
+            if (pageConfig.textToolsEnabled || pageConfig.transcriptionEnabled) {
+                const aiStatus = document.createElement('div');
+                aiStatus.className = 'generic-soft-panel';
+                aiStatus.setAttribute('role', 'status');
+                aiStatus.setAttribute('data-omo-pv-point-ai-status', String(pointId));
+                aiStatus.hidden = true;
+                editorHost.after(aiStatus);
+                aiTools = window.omoHtmlAiTools.create({
+                    host: editorHost,
+                    statusNode: aiStatus,
+                    textToolsEnabled: pageConfig.textToolsEnabled,
+                    transcriptionEnabled: pageConfig.transcriptionEnabled,
+                    isAvailable: function () {
+                        const drawer = root.closest('[data-omo-external-panel-drawer="1"]');
+                        return card.getAttribute('data-omo-pv-point-editable') === '1'
+                            && card.getAttribute('data-omo-pv-point-saving') !== '1'
+                            && (!drawer || (!drawer.hidden && drawer.classList.contains('is-open')));
+                    },
+                    getContext: function () {
+                        return {organizationId: organizationId, holonId: 0, title: titleField ? titleField.value : ''};
+                    },
+                    beforeAction: function () {
+                        return ensurePointLock(pointId).then(function () { return activeLockPointIds.has(pointId); });
+                    },
+                    onBusyChange: function (busy) {
+                        if (busy) card.setAttribute('data-omo-pv-point-ai-busy', '1');
+                        else card.removeAttribute('data-omo-pv-point-ai-busy');
+                        syncPointDirtyUi(pointId);
+                        if (!busy && card.isConnected && saveOnPointLeaveIds.has(pointId)) savePoint(pointId);
+                    }
+                });
+                editorHost.__omoPvPointAiTools = aiTools;
+            }
             suppressPointDirtyDuring(pointId, function () {
                 const customButtons = [];
+                if (aiTools) customButtons.push(...aiTools.buttons);
                 customButtons.push({
                     name: 'omoPvHighlight',
                     group: 'color',
@@ -3506,6 +3563,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
 
             editorHost.__omoPvPointMounted = true;
             editorHost.__omoPvPointField = field;
+            if (aiTools) aiTools.bind(field);
 
             if (titleField) {
                 titleField.addEventListener('focus', function () {
@@ -3537,6 +3595,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
                 durationField.addEventListener('input', function () {
                     ensurePointLock(pointId);
                     markPointDirty(pointId, true);
+                    if (pvTimer) pvTimer.selectPoint(Number(durationField.value || 0));
                     renderTimingSummary();
                 });
             }
@@ -3645,6 +3704,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         }
 
         return documentMetadataSaving
+            || root.querySelector('[data-omo-pv-point-ai-busy="1"]') !== null
             || getDirtyPointIds().length > 0
             || root.querySelector('[data-omo-pv-point-save]:not(:disabled), [data-omo-pv-document-meta-save]:not(:disabled)') !== null;
     }
@@ -4343,6 +4403,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
 
         return card.getAttribute('data-omo-pv-point-dirty') === '1'
             || card.getAttribute('data-omo-pv-point-saving') === '1'
+            || card.getAttribute('data-omo-pv-point-ai-busy') === '1'
             || locallyEngagedPointIds.has(Number(card.getAttribute('data-omo-pv-point-card') || 0))
             || card.contains(document.activeElement);
     }
@@ -4799,6 +4860,10 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
                     throw payload || new Error('request_failed');
                 }
 
+                if (payload.timer && pvTimer && action !== 'timer_state') {
+                    pvTimer.sync(payload.document || currentDocumentPayload, payload.timer, payload.serverNow);
+                }
+
                 return payload;
             });
         });
@@ -5015,13 +5080,14 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             return Promise.resolve(null);
         }
 
-        if (activeLockPointIds.has(pointId) || pendingLockPointIds.has(pointId) || pendingUnlockPointIds.has(pointId)) {
+        if (pendingPointLockRequests.has(pointId)) return pendingPointLockRequests.get(pointId);
+        if (activeLockPointIds.has(pointId) || pendingUnlockPointIds.has(pointId)) {
             return Promise.resolve(null);
         }
 
         const focusStateAtRequest = captureFocusedEditor();
         pendingLockPointIds.add(pointId);
-        return postPointAction('lock_point', pointId)
+        const request = postPointAction('lock_point', pointId)
             .then(function (payload) {
                 pendingLockPointIds.delete(pointId);
                 activeLockPointIds.add(pointId);
@@ -5046,7 +5112,9 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
                     replacePointHtml(payload.point);
                 }
                 return null;
-            });
+            }).finally(function () { pendingPointLockRequests.delete(pointId); });
+        pendingPointLockRequests.set(pointId, request);
+        return request;
     }
 
     function releasePointLock(pointId) {
@@ -5221,6 +5289,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             !card
             || card.getAttribute('data-omo-pv-point-dirty') !== '1'
             || card.getAttribute('data-omo-pv-point-saving') === '1'
+            || card.getAttribute('data-omo-pv-point-ai-busy') === '1'
         ) {
             return Promise.resolve(false);
         }
@@ -6236,6 +6305,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         const navButton = event.target.closest('[data-omo-pv-point-nav-target]');
         if (navButton && root.contains(navButton)) {
             const pointId = Number(navButton.getAttribute('data-omo-pv-point-nav-target') || 0);
+            preparePvTimerForPoint(pointId);
             const target = pointId > 0 ? root.querySelector('#omo-pv-editor-point-' + pointId) : null;
             if (target) {
                 target.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -7051,6 +7121,20 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
     });
     resizeDocumentDescriptionInput();
     syncEmptyNavState();
+    pvTimer = window.omoPvTimer.mount({
+        root: root,
+        state: initialDocumentPayload.timer,
+        serverNow: initialDocumentPayload.timerServerNow,
+        ui: editorClientUi,
+        send: function (fields) { return postPointAction('timer', 0, fields); },
+        poll: function () {
+            return postPointAction('timer_state', 0).then(function (payload) {
+                currentDocumentPayload.canControlTimer = payload.timerPermissions.canControlTimer;
+                return payload;
+            });
+        },
+        onDocument: mergeCurrentDocumentPayload
+    });
     mergeCurrentDocumentPayload(initialDocumentPayload);
     if (attendanceEnabled) {
         renderAttendancePayload(initialAttendancePayload);

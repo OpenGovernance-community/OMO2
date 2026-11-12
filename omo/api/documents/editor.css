@@ -2,6 +2,15 @@
     --param-form-grid-min: 230px;
 }
 
+.omo-document-editor__upload-row {
+    /* Keep replacement and removal together, including in a narrow drawer. */
+    --param-form-grid-columns: minmax(0, 2fr) minmax(0, 1fr);
+}
+
+.omo-document-editor__upload-row > :only-child {
+    grid-column: 1 / -1;
+}
+
 .omo-document-editor__metadata {
     display: contents;
     min-width: 0;

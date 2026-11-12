@@ -19,6 +19,13 @@ if (!function_exists('omoDocumentsParamsSourceLang')) {
             'documents.params.field.storage_type' => ['text' => 'Serveur de stockage', 'context' => 'Label for the remote document storage provider choice.'],
             'documents.params.field.storage_type_nextcloud' => ['text' => 'Nextcloud', 'context' => 'Radio label for Nextcloud document storage.'],
             'documents.params.field.storage_type_kdrive' => ['text' => 'kDrive (Infomaniak)', 'context' => 'Radio label for Infomaniak kDrive document storage.'],
+            'documents.params.field.storage_type_webdav' => ['text' => 'Serveur WebDAV générique', 'context' => 'Radio label for a generic WebDAV document storage server.'],
+            'documents.params.field.webdav_url' => ['text' => 'URL complète du serveur WebDAV', 'context' => 'Label for the exact WebDAV endpoint URL.'],
+            'documents.params.field.webdav_url_hint' => ['text' => 'Indiquez l’adresse WebDAV complète fournie par votre hébergeur, avec son chemin. Aucun suffixe Nextcloud ne sera ajouté. Utilisez de préférence HTTPS.', 'context' => 'Help for configuring a generic WebDAV endpoint.'],
+            'documents.params.field.webdav_username' => ['text' => 'Identifiant WebDAV', 'context' => 'Label for the generic WebDAV username.'],
+            'documents.params.field.webdav_password' => ['text' => 'Mot de passe WebDAV', 'context' => 'Label for the generic WebDAV password.'],
+            'documents.params.field.webdav_password_keep' => ['text' => 'Laisser vide pour conserver le mot de passe actuel', 'context' => 'Placeholder when the generic WebDAV password is already stored.'],
+            'documents.params.field.webdav_folder_hint' => ['text' => 'Optionnel, relatif à l’URL WebDAV. OMO créera son dossier omo-documents dans ce dossier. Le serveur doit accepter l’authentification par identifiant et mot de passe.', 'context' => 'Help for the generic WebDAV root folder and authentication requirements.'],
             'documents.params.status.storage_ready' => ['text' => 'Stockage de documents configuré.', 'context' => 'Status shown when a document storage provider is configured.'],
             'documents.params.status.storage_empty' => ['text' => 'Aucun stockage de documents configuré. Les fichiers téléversés et les documents coopératifs ne seront pas proposés.', 'context' => 'Status shown when no document storage provider is configured.'],
             'documents.params.section.storage' => ['text' => 'Stockage des documents', 'context' => 'Heading of the remote document storage settings section.'],
@@ -35,7 +42,7 @@ if (!function_exists('omoDocumentsParamsSourceLang')) {
             'documents.params.action.testing_storage' => ['text' => 'Test en cours…', 'context' => 'Button label shown while testing document storage.'],
             'documents.params.feedback.storage_test_invalid' => ['text' => 'Impossible de tester la connexion au stockage.', 'context' => 'Fallback error shown when the document storage test fails unexpectedly.'],
             'documents.params.feedback.storage_invalid' => ['text' => 'Renseignez les informations complètes du serveur de stockage choisi.', 'context' => 'Error returned when document storage settings are incomplete.'],
-            'documents.params.feedback.storage_change_warning' => ['text' => 'Ce changement fera perdre les fichiers associés aux documents existants. Confirmez pour supprimer ces fichiers de l’ancien stockage et enregistrer le nouveau serveur.', 'context' => 'Confirmation message shown before replacing a document storage server.'],
+            'documents.params.feedback.storage_change_warning' => ['text' => 'Ce changement fera perdre les fichiers associés aux documents existants, y compris leurs versions archivées. Confirmez pour supprimer ces fichiers de l’ancien stockage et enregistrer le nouveau serveur.', 'context' => 'Confirmation message shown before replacing a document storage server.'],
             'documents.params.feedback.storage_cleanup_failed' => ['text' => 'Le nouveau stockage n’a pas été enregistré : certains fichiers de l’ancien stockage n’ont pas pu être supprimés.', 'context' => 'Error shown when old remote files cannot be removed during a storage change.'],
             'documents.params.status.ready' => ['text' => 'Connexion Nextcloud configurée pour les documents téléversés.', 'context' => 'Status text shown when Documents Nextcloud storage is configured.'],
             'documents.params.status.empty' => ['text' => 'Aucune connexion Nextcloud configurée. Le type de document téléversé ne sera pas proposé.', 'context' => 'Status text shown when no Documents Nextcloud storage is configured.'],
@@ -296,7 +303,7 @@ if (!function_exists('omoDocumentsParamsGetNextcloudConfig')) {
             if ($storageType === 'nextcloud') {
                 return omoDocumentsParamsNormalizeNextcloudConfig($appParameters['storage']);
             }
-            if ($storageType === 'kdrive') {
+            if (in_array($storageType, array('kdrive', 'webdav'), true)) {
                 return omoDocumentsParamsNormalizeNextcloudConfig(array());
             }
         }
@@ -335,7 +342,35 @@ if (!function_exists('omoDocumentsParamsNormalizeStorageType')) {
     function omoDocumentsParamsNormalizeStorageType($value): string
     {
         $value = strtolower(trim((string)$value));
-        return in_array($value, array('nextcloud', 'kdrive'), true) ? $value : '';
+        return in_array($value, array('nextcloud', 'kdrive', 'webdav'), true) ? $value : '';
+    }
+}
+
+if (!function_exists('omoDocumentsParamsNormalizeWebdavConfig')) {
+    function omoDocumentsParamsNormalizeWebdavConfig(array $config): array
+    {
+        $baseUrl = rtrim(trim((string)($config['baseUrl'] ?? '')), '/');
+        $url = parse_url($baseUrl);
+        if (!filter_var($baseUrl, FILTER_VALIDATE_URL) || !is_array($url)
+            || !in_array(strtolower((string)($url['scheme'] ?? '')), array('http', 'https'), true)
+            || isset($url['user']) || isset($url['pass']) || isset($url['query']) || isset($url['fragment'])
+            || preg_match('/[\\\\\x00-\x20\x7f]/', $baseUrl)
+            || preg_match('/%(?![0-9a-f]{2})/i', $baseUrl)
+            || preg_match('/[\\\\\x00-\x1f\x7f]/', rawurldecode((string)($url['path'] ?? '')))
+            || preg_match('#(?:^|/)\.{1,2}(?:/|$)#', rawurldecode((string)($url['path'] ?? '')))) {
+            $baseUrl = '';
+        }
+        $folder = trim(str_replace('\\', '/', (string)($config['folder'] ?? '')), '/');
+        if (preg_match('#(?:^|/)\.{1,2}(?:/|$)|[\x00-\x1f\x7f]#', $folder)) {
+            $baseUrl = '';
+        }
+        return array(
+            'type' => 'webdav',
+            'baseUrl' => $baseUrl,
+            'username' => trim((string)($config['username'] ?? '')),
+            'appPassword' => (string)($config['appPassword'] ?? ''),
+            'folder' => $folder,
+        );
     }
 }
 
@@ -372,6 +407,9 @@ if (!function_exists('omoDocumentsParamsNormalizeDocumentStorageConfig')) {
     function omoDocumentsParamsNormalizeDocumentStorageConfig(array $config, string $type = ''): array
     {
         $type = omoDocumentsParamsNormalizeStorageType($type !== '' ? $type : ($config['type'] ?? ''));
+        if ($type === 'webdav') {
+            return omoDocumentsParamsNormalizeWebdavConfig($config);
+        }
         if ($type === 'kdrive') {
             return omoDocumentsParamsNormalizeKdriveConfig($config);
         }
@@ -398,6 +436,9 @@ if (!function_exists('omoDocumentsParamsHasDocumentStorageConfig')) {
     function omoDocumentsParamsHasDocumentStorageConfig(array $config): bool
     {
         $config = omoDocumentsParamsNormalizeDocumentStorageConfig($config);
+        if ($config['type'] === 'webdav') {
+            return $config['baseUrl'] !== '' && $config['username'] !== '' && $config['appPassword'] !== '';
+        }
         if ($config['type'] === 'kdrive') {
             return omoDocumentsParamsHasKdriveConfig($config);
         }
@@ -451,6 +492,18 @@ if (!function_exists('omoDocumentsParamsBuildDocumentStorageConfigFromValues')) 
         }
 
         $storageType = omoDocumentsParamsNormalizeStorageType($values['storage_type'] ?? '');
+        if ($storageType === 'webdav') {
+            $appPassword = (string)($values['webdav_app_password'] ?? '');
+            if ($preserveExistingPassword && $appPassword === '' && ($currentConfig['type'] ?? '') === 'webdav') {
+                $appPassword = (string)($currentConfig['appPassword'] ?? '');
+            }
+            return omoDocumentsParamsNormalizeDocumentStorageConfig(array(
+                'baseUrl' => (string)($values['webdav_base_url'] ?? ''),
+                'username' => (string)($values['webdav_username'] ?? ''),
+                'appPassword' => $appPassword,
+                'folder' => (string)($values['webdav_folder'] ?? ''),
+            ), 'webdav');
+        }
         if ($storageType === 'nextcloud') {
             $appPassword = trim((string)($values['nextcloud_app_password'] ?? ''));
             if ($preserveExistingPassword && $appPassword === '' && ($currentConfig['type'] ?? '') === 'nextcloud') {

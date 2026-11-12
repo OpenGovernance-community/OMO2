@@ -43,7 +43,7 @@ if ($folderId > 0) {
     }
 
     $relativePath = \dbObject\Document::normalizeNextcloudFolderPath($rawPath);
-    $configFolder = $organization->isKdriveDocumentStorage()
+    $configFolder = $organization->isWebdavDocumentStorage()
         ? ''
         : \dbObject\Document::normalizeNextcloudFolderPath(($organization->getNextcloudDocumentsConfig()['folder'] ?? ''));
     $remotePath = implode('/', array_filter(array($configFolder, $relativePath)));
@@ -57,7 +57,7 @@ if (empty($result['status'])) {
 }
 
 $entries = array();
-$configFolder = $folderId > 0 || $organization->isKdriveDocumentStorage()
+$configFolder = $folderId > 0 || $organization->isWebdavDocumentStorage()
     ? ''
     : \dbObject\Document::normalizeNextcloudFolderPath(($organization->getNextcloudDocumentsConfig()['folder'] ?? ''));
 foreach ((array)($result['entries'] ?? array()) as $entry) {

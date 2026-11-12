@@ -260,6 +260,7 @@
                 if (targetType === 'project' && isCreation(actionParts(action).operation)) {
                     editor.querySelector('[type="submit"]').textContent = actionParts(action).operation === 'propose' ? texts.projectPropose : texts.projectCreate;
                 }
+                if (targetType === 'project' && window.omoSetDeferredProjectResponsibleOptions) window.omoSetDeferredProjectResponsibleOptions(editor, scopeContext, state.IDuser || '');
                 Object.keys(state).forEach(function (name) {
                     var field = editor.elements.namedItem(name);
                     var htmlEditor = editor.querySelector('[data-omo-deferred-html="' + name + '"]');
@@ -305,7 +306,15 @@
                     .catch(function (error) { if (window.commonNotify) window.commonNotify(error.message, 'error'); });
             }
             function openProjectEditor(pi, ai, action, state) {
-                openFieldsEditor(pi, ai, action, Object.assign({title:'',description:'',status:'in_progress',project_size:'M',IDuser_proposed:isCreation(actionParts(action).operation) ? Number(payload.currentUserId || 0) : null}, state || {}), 'project');
+                fetch(contextUrl('project', actionParts(action).operation, action.holonId), {credentials:'same-origin'})
+                    .then(function (response) { return response.json().then(function (data) {
+                        if (!response.ok || !data.status) throw new Error(data.message || texts.emptyObjects);
+                        return data;
+                    }); })
+                    .then(function (data) {
+                        openFieldsEditor(pi, ai, action, Object.assign({title:'',description:'',status:'in_progress',project_size:'M',IDuser_proposed:isCreation(actionParts(action).operation) ? Number(payload.currentUserId || 0) : null}, state || {}), 'project', data.projectResponsibleGroups);
+                    })
+                    .catch(function (error) { if (window.commonNotify) window.commonNotify(error.message, 'error'); });
             }
             function openObjectEditor(pi, ai, action, state, targetType) {
                 var defaults = targetType === 'recurring_task'

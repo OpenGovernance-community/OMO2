@@ -49,12 +49,14 @@ function harness() {
     const timers = [];
     const requests = [];
     const notices = [];
+    const timerDurations = [];
     root.addEventListener = (name, callback) => { listeners[name] = callback; };
     const context = {
         root, Element, HTMLInputElement: Input, HTMLTextAreaElement: Textarea,
         document: {activeElement: null, body: new Element(), documentElement: new Element()},
         window: {setTimeout: callback => timers.push(callback), omoNotify: (...args) => notices.push(args)},
         pointEditSnapshots: new Map(), saveOnPointLeaveIds: new Set(), activePointId: 0,
+        currentPointPayloads: {}, pvTimer: {selectPoint: minutes => timerDurations.push(minutes)},
         pointChangeVersions: new Map(), locallyEngagedPointIds: new Set(),
         preMountEditorDrafts: new Map(), preMountEditorFocusPointIds: new Set(),
         pendingLockPointIds: new Set(), activeLockPointIds: new Set(), pendingUnlockPointIds: new Set(),
@@ -69,7 +71,7 @@ function harness() {
     };
     vm.createContext(context);
     const functions = ['setPointDirtySuppressed', 'isPointDirtySuppressed', 'syncPointDirtyUi',
-        'activatePoint', 'cancelPointEdit', 'markPointDirty', 'getDirtyPointIds', 'captureDraftState',
+        'preparePvTimerForPoint', 'activatePoint', 'cancelPointEdit', 'markPointDirty', 'getDirtyPointIds', 'captureDraftState',
         'restoreDraftState', 'savePoint'];
     vm.runInContext(functions.map(functionSource).join('\n'), context);
     context.suppressPointDirtyDuring = (id, callback) => {
@@ -134,7 +136,7 @@ function harness() {
         requests[index].resolve({ok: true, json: async () => ({status: true, point: {id, draft}})});
     }
     addCard(1); addCard(2); addCard(3);
-    return {context, root, listeners, requests, notices, timers, card, field, focus, type, succeed};
+    return {context, root, listeners, requests, notices, timers, timerDurations, card, field, focus, type, succeed};
 }
 
 const settle = () => new Promise(resolve => setImmediate(resolve));
@@ -143,6 +145,7 @@ const settle = () => new Promise(resolve => setImmediate(resolve));
     const h = harness();
     const c = h.context;
     h.focus(h.field(1, 'title'));
+    assert.equal(h.timerDurations[0], 15, 'Selecting a point offers its duration to the timer.');
     assert.equal(h.field(1, 'save').hidden, true, 'Focus alone is not an unsaved change.');
     const original = JSON.parse(JSON.stringify(c.captureDraftState(1)[1]));
     h.type(1, 'Changed title');

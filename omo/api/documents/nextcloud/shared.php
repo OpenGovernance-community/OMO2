@@ -7,7 +7,7 @@ function omoDocumentsNextcloudLoadFolder(int $folderId, int $organizationId = 0)
     $userId = (int)commonGetCurrentUserId();
     $folder = new \dbObject\Document();
     if ($folderId <= 0 || $userId <= 0 || !$folder->load($folderId) || !$folder->isNextcloudFolder()) {
-        return array('status' => false, 'httpCode' => 404, 'text' => 'Dossier NextCloud introuvable.');
+        return array('status' => false, 'httpCode' => 404, 'text' => omoDocumentsUiT('dossier_distant_introuvable'));
     }
 
     $resolvedOrganizationId = $organizationId > 0 ? $organizationId : (int)$folder->get('IDorganization');
@@ -18,19 +18,19 @@ function omoDocumentsNextcloudLoadFolder(int $folderId, int $organizationId = 0)
         || !commonUserHasOrganizationAccess($userId, $resolvedOrganizationId)
         || !$folder->canViewInOrganizationContext($resolvedOrganizationId, $holonId > 0 ? $holonId : null, $userId)
     ) {
-        return array('status' => false, 'httpCode' => 403, 'text' => 'Accès refusé.');
+        return array('status' => false, 'httpCode' => 403, 'text' => omoDocumentsUiT('acces_refuse'));
     }
 
     $organization = new \dbObject\Organization();
     if (!$organization->load($resolvedOrganizationId) || !$organization->hasDocumentStorage()) {
-        return array('status' => false, 'httpCode' => 503, 'text' => 'Le stockage de documents est indisponible.');
+        return array('status' => false, 'httpCode' => 503, 'text' => omoDocumentsUiT('stockage_documents_indisponible'));
     }
 
 	$location = $folder->resolveRemoteFolderStorageLocation($organization);
 	if (empty($location['status'])) {
 		$fallbackRemotePath = $folder->buildRemoteFolderStoragePath($organization);
 		if ($fallbackRemotePath === '') {
-			return array('status' => false, 'httpCode' => 404, 'text' => trim((string)($location['text'] ?? omoDocumentsUiT('dossier_nextcloud_introuvable'))));
+			return array('status' => false, 'httpCode' => 404, 'text' => trim((string)($location['text'] ?? omoDocumentsUiT('dossier_distant_introuvable'))));
 		}
 
 		return array(
@@ -45,7 +45,7 @@ function omoDocumentsNextcloudLoadFolder(int $folderId, int $organizationId = 0)
 	$resolvedPath = trim((string)($location['relativePath'] ?? ''));
 	$resolvedFileId = trim((string)($location['fileId'] ?? ''));
 	if ($resolvedPath === '') {
-		return array('status' => false, 'httpCode' => 404, 'text' => 'Dossier NextCloud introuvable.');
+		return array('status' => false, 'httpCode' => 404, 'text' => omoDocumentsUiT('dossier_distant_introuvable'));
 	}
 	if (
 		$resolvedPath !== $folder->getNextcloudFolderPath()
@@ -57,7 +57,7 @@ function omoDocumentsNextcloudLoadFolder(int $folderId, int $organizationId = 0)
 		}
 		$saveResult = $folder->save();
 		if (!is_array($saveResult) || empty($saveResult['status'])) {
-			return array('status' => false, 'httpCode' => 500, 'text' => 'Impossible de mettre à jour le chemin du dossier NextCloud.');
+			return array('status' => false, 'httpCode' => 500, 'text' => omoDocumentsUiT('mise_a_jour_chemin_distant_impossible'));
 		}
 	}
 

@@ -93,6 +93,10 @@ $sourceLang = [
         'text' => 'Organisation',
         'context' => 'Organization field label in the survey invitation dialog.',
     ],
+    'survey.invite.choose_organization' => [
+        'text' => 'Choisissez votre organisation...',
+        'context' => 'First option in the survey invitation organization selector. An explicit choice is required when several organizations are available.',
+    ],
     'survey.invite.holons' => [
             'text' => 'Espaces',
         'context' => 'Holon selector tab in the survey invitation dialog.',
@@ -218,12 +222,44 @@ $sourceLang = [
         'context' => 'Placeholder in external email textarea in the survey invitation dialog.',
     ],
     'survey.invite.send' => [
-        'text' => 'Envoyer les invitations',
+        'text' => 'Envoyer',
         'context' => 'Submit button in the survey invitation dialog.',
     ],
     'survey.invite.sending' => [
         'text' => 'Envoi en cours…',
         'context' => 'Busy label for the invitation dialog submit button.',
+    ],
+    'survey.invite.not_started' => [
+        'text' => 'Envoyer à ceux qui n’ont pas encore participé',
+        'context' => 'Send invitations only to selected recipients without a saved assessment for this organization.',
+    ],
+    'survey.invite.not_completed' => [
+        'text' => 'Envoyer à ceux qui n’ont pas terminé',
+        'context' => 'Send invitations to selected recipients without a completed assessment, including those who have not started.',
+    ],
+    'survey.invite.send_options' => [
+        'text' => 'Options d’envoi',
+        'context' => 'Accessible label for the invitation split button menu.',
+    ],
+    'survey.invite.edit_message' => [
+        'text' => 'Éditer le texte d’invitation',
+        'context' => 'Button revealing the survey invitation rich text editor.',
+    ],
+    'survey.invite.message' => [
+        'text' => 'Texte d’invitation',
+        'context' => 'Label of the editable email body. The personal survey link is added automatically.',
+    ],
+    'survey.invite.invalid_message' => [
+        'text' => 'Saisissez un texte d’invitation de 20 000 caractères maximum.',
+        'context' => 'Validation of the invitation rich text editor.',
+    ],
+    'survey.invite.no_recipients' => [
+        'text' => 'Aucun destinataire ne correspond à cette sélection et à ce mode d’envoi.',
+        'context' => 'Feedback when the selected invitation audience is empty.',
+    ],
+    'survey.invite.preview_error' => [
+        'text' => 'Impossible de calculer le nombre de destinataires.',
+        'context' => 'Error while updating the invitation recipient counters.',
     ],
     'survey.invite.sent' => [
         'text' => '{count} invitation(s) envoyée(s).',
@@ -232,6 +268,14 @@ $sourceLang = [
     'survey.invite.error' => [
         'text' => 'Les invitations n’ont pas pu être envoyées.',
         'context' => 'Generic error message in the survey invitation dialog.',
+    ],
+    'survey.invite.delivery_error' => [
+        'text' => 'L’envoi a rencontré une erreur. Consultez le détail dans la boîte d’envoi de l’organisation dans OMO.',
+        'context' => 'Survey invitation delivery failure after a tracking entry was created, including partial sends.',
+    ],
+    'survey.invite.history_warning' => [
+        'text' => 'Certaines informations de suivi n’ont pas pu être enregistrées dans la boîte d’envoi OMO.',
+        'context' => 'Warning when SMTP was attempted but saving some delivery statuses failed.',
     ],
     'survey.invite.empty' => [
         'text' => 'Aucune organisation active n’est associée à votre compte.',

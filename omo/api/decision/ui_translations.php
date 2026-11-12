@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../translations.php';
 function omoDecisionUiSourceLang(): array
 {
     static $sourceLang = [
+        'project_responsible_membership' => ['text' => 'La personne en charge du projet doit être membre de l’organisation.', 'context' => 'Governance decision project assignee validation'],
         'invitation_history_error' => ['text' => 'Impossible de créer le journal des envois. Aucune invitation envoyée.', 'context' => 'Decision invitation tracking must be stored before sending.'],
         'invitation_history_warning' => ['text' => 'Le suivi de certains envois est incomplet. Consultez le journal du bouton mail avant de relancer.', 'context' => 'Decision delivery succeeded or failed but its tracking could not be updated.'],
         'invitation_delivery_unknown' => ['text' => 'Le résultat de certains envois est incertain. Consultez le journal du bouton mail avant de relancer.', 'context' => 'An interrupted decision invitation may have reached SMTP; avoid duplicate sends.'],

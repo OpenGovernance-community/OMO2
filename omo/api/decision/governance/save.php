@@ -272,7 +272,7 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
                     $afterState = (array)$validation['state'];
                     if ($beforeState === $afterState) $respond(422, ['status' => false, 'message' => omoDecisionUiT('la_modification_du_role_ne_contient_aucun_changement')]);
                     $suggestedTitles[] = 'Modifier le rôle ' . $roleName;
-                    $actionDescriptions[] = ('<h4>' . htmlspecialchars(omoDecisionUiT('modifier_le_role'), ENT_QUOTES, 'UTF-8')) . htmlspecialchars($roleName, ENT_QUOTES, 'UTF-8') . '</h4>' . DecisionGovernanceAction::buildRoleUpdateDescription($beforeState, $afterState);
+                    $actionDescriptions[] = ('<h4>' . htmlspecialchars(omoDecisionUiT('modifier_le_role'), ENT_QUOTES, 'UTF-8')) . htmlspecialchars($roleName, ENT_QUOTES, 'UTF-8') . '</h4>' . DecisionGovernanceAction::buildRoleUpdateDescription($beforeState, $afterState, $contextOrganization);
                 }
             }
             $normalizedActions[] = ['id' => $actionId, 'existing' => $existingAction, 'existing_deferred' => $existingDeferred, 'action_type' => $actionType, 'operation' => $operation, 'holon_id' => $actionContextHolonId, 'target_id' => $targetId, 'target_type' => DeferredProposal::TARGET_HOLON, 'before' => $beforeState, 'after' => $afterState, 'position' => $actionIndex + 1];
@@ -295,6 +295,10 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
             $beforeState = $isCreation ? [] : ($existingDeferred instanceof DeferredProposal ? DeferredProposal::normalizeState($existingDeferred->get('before_state')) : DeferredProposal::captureProjectState($project));
             $afterState = $operation === DeferredProposal::OPERATION_DELETE ? [] : DeferredProposal::normalizeProjectState((array)($actionInput['after'] ?? []), $operation === DeferredProposal::OPERATION_UPDATE ? $project : null);
             if ($operation !== DeferredProposal::OPERATION_DELETE) $afterState['IDholon'] = $actionContextHolonId;
+            if ($operation !== DeferredProposal::OPERATION_DELETE
+                && !Project::isAllowedResponsible($organizationId, (int)$afterState['IDuser'], $isCreation ? null : $project)) {
+                $respond(422, ['status' => false, 'message' => omoDecisionUiT('project_responsible_membership')]);
+            }
             if ($operation !== DeferredProposal::OPERATION_DELETE && (int)$afterState['IDuser_proposed'] > 0
                 && !\dbObject\UserOrganization::hasActiveMembership((int)$afterState['IDuser_proposed'], $organizationId)
                 && ($isCreation || (int)$afterState['IDuser_proposed'] !== (int)$project->get('IDuser_proposed'))) {

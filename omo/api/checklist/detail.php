@@ -44,6 +44,10 @@ foreach ($checklist->getItems(true) as $item) {
 $trigger = omoChecklistGetPrimaryTrigger($checklist);
 $isContainerChecklist = $trigger instanceof ChecklistTrigger
     && ChecklistTrigger::normalizeTriggerType($trigger->get('trigger_type')) === ChecklistTrigger::TYPE_CONTAINER;
+$itemFlow = $isContainerChecklist
+    ? array_map(static fn (ChecklistItem $item): array => ['item' => $item, 'depth' => 0, 'dependency' => null], $items)
+    : omoChecklistBuildItemFlow($items);
+$itemDisplayDepths = [];
 $itemKind = $isContainerChecklist ? 'activity' : 'step';
 $itemCountKey = $isContainerChecklist ? 'checklist.detail.activity_count' : 'checklist.detail.step_count';
 $itemSectionKey = $isContainerChecklist ? 'checklist.detail.activities' : 'checklist.detail.steps';
@@ -287,8 +291,9 @@ $formatDelay = static function ($value, $unit) {
             <?php if (count($items) === 0): ?>
                 <div class="omo-empty-state"><?= omoApiEscape(omoChecklistT($emptyItemsKey)) ?></div>
             <?php endif; ?>
-            <?php foreach ($items as $position => $item): ?>
+            <?php foreach ($itemFlow as $position => $itemRow): ?>
                 <?php
+                $item = $itemRow['item'];
                 $project = $item->getProjectTemplate();
                 if (!($project instanceof Project)) {
                     continue;
@@ -321,21 +326,24 @@ $formatDelay = static function ($value, $unit) {
                     }
                 }
                 if (!$isContainerChecklist && $activationType === ChecklistItem::ACTIVATION_AFTER_COMPLETION) {
-                    foreach ($item->getDependencies() as $dependency) {
-                        if (!($dependency instanceof ChecklistItemDependency)) {
-                            continue;
-                        }
+                    $dependency = $itemRow['dependency'];
+                    if ($dependency instanceof ChecklistItemDependency) {
                         $requiredItem = $itemsById[(int)$dependency->get('IDchecklistitem_required')] ?? null;
                         $requiredProject = $requiredItem instanceof ChecklistItem ? $requiredItem->getProjectTemplate() : null;
                         if ($requiredProject instanceof Project) {
                             $relationLabel .= ' · ' . (string)$requiredProject->get('title');
                         }
                         $delayLabel = $formatDelay($dependency->get('delay_value'), $dependency->get('delay_unit'));
-                        break;
                     }
                 }
                 $parentItem = $isContainerChecklist ? null : ($itemsByProjectId[(int)$project->get('IDproject_parent')] ?? null);
                 $parentProject = $parentItem instanceof ChecklistItem ? $parentItem->getProjectTemplate() : null;
+                $itemDepth = max((int)$itemRow['depth'], $parentProject instanceof Project ? 1 : 0);
+                $requiredItemId = (int)($itemRow['dependency']?->get('IDchecklistitem_required') ?? 0);
+                if (isset($itemDisplayDepths[$requiredItemId])) {
+                    $itemDepth = max($itemDepth, $itemDisplayDepths[$requiredItemId] + 1);
+                }
+                $itemDisplayDepths[(int)$item->getId()] = $itemDepth;
                 $itemProjectInstances = $projectInstancesByItem[(int)$item->getId()] ?? [];
                 $itemEditUrl = '/omo/api/checklist/item_edit.php?oid=' . rawurlencode((string)$organizationId)
                     . '&checklist_id=' . rawurlencode((string)$checklistId)
@@ -344,7 +352,7 @@ $formatDelay = static function ($value, $unit) {
                     $itemEditUrl .= '&cid=' . rawurlencode((string)$currentHolonId);
                 }
                 ?>
-                <article class="generic-section omo-checklist-flow__item" style="--checklist-depth: <?= $parentProject instanceof Project ? '1' : '0' ?>">
+                <article class="generic-section omo-checklist-flow__item" style="--checklist-depth: <?= $itemDepth ?>">
                     <div class="omo-checklist-flow__index"><?= (int)$position + 1 ?></div>
                     <div class="omo-checklist-flow__copy">
                         <div class="omo-checklist-flow__title-row">

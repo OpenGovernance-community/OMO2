@@ -17,6 +17,7 @@ const embed = id => '<span class="omo-document-embed" data-omo-embed-type="docum
         await page.addStyleTag({path: path.join(root, 'common/assets/components.css')});
         await page.addScriptTag({url: 'https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js'});
         await page.addScriptTag({path: path.join(root, 'omo/assets/js/simple-html-field.js')});
+        await page.addScriptTag({path: path.join(root, 'common/document/html-ai-tools.js')});
         await page.addScriptTag({path: path.join(root, 'omo/api/documents/create.js')});
         await page.evaluate(value => {
             document.querySelector('#memo').addEventListener('submit', event => { event.preventDefault(); window.unexpectedSubmit = true; });

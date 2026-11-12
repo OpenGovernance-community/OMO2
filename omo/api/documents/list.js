@@ -2293,6 +2293,10 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
 
                             if (detailDrawer) {
                                 const notifyEthercalcFrameResize = function () {
+                                    if (!detailDrawer.isConnected) {
+                                        window.removeEventListener('resize', notifyEthercalcFrameResize);
+                                        return;
+                                    }
                                     const frame = detailDrawer.querySelector('.omo-document-ethercalc__frame');
                                     if (!(frame instanceof HTMLIFrameElement) || !frame.contentWindow) {
                                         return;
@@ -2300,6 +2304,9 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
 
                                     [0, 80, 260, 700].forEach(function (delay) {
                                         window.setTimeout(function () {
+                                            if (!frame.isConnected || !frame.contentWindow) {
+                                                return;
+                                            }
                                             const bounds = frame.getBoundingClientRect();
                                             frame.contentWindow.postMessage({
                                                 type: 'omo-ethercalc-resize',
@@ -2312,25 +2319,7 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                     });
                                 };
 
-                                const syncDocumentFullscreenButton = function () {
-                                    const fullscreenButton = detailDrawer.querySelector('[data-omo-document-fullscreen]');
-                                     const frame = detailDrawer.querySelector('.omo-document-etherpad__frame, .omo-document-ethercalc__frame, .omo-document-collabora__frame, .omo-document-spacedeck__frame, .omo-document-file__pdf-frame');
-                                    if (!(fullscreenButton instanceof HTMLButtonElement) || !(frame instanceof HTMLElement)) {
-                                        return;
-                                    }
-
-                                    const isFullscreen = document.fullscreenElement === frame;
-                                    fullscreenButton.setAttribute('aria-pressed', isFullscreen ? 'true' : 'false');
-                                    fullscreenButton.textContent = isFullscreen
-                                        ? (fullscreenButton.dataset.omoDocumentExitFullscreenLabel || '')
-                                        : (fullscreenButton.dataset.omoDocumentFullscreenLabel || '');
-
-                                    if (frame.classList.contains('omo-document-ethercalc__frame')) {
-                                        notifyEthercalcFrameResize();
-                                    }
-                                };
-
-                                document.addEventListener('fullscreenchange', syncDocumentFullscreenButton);
+                                window.addEventListener('resize', notifyEthercalcFrameResize);
                                 detailDrawer.addEventListener('click', function (event) {
                                     const deleteButton = event.target.closest('[data-omo-document-delete-id]');
                                     if (deleteButton) {
@@ -2376,26 +2365,6 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                             .finally(function () {
                                                 deleteButton.disabled = false;
                                             });
-                                        return;
-                                    }
-
-                                    const fullscreenButton = event.target.closest('[data-omo-document-fullscreen]');
-                                    if (fullscreenButton) {
-                                        event.preventDefault();
-                                         const frame = detailDrawer.querySelector('.omo-document-etherpad__frame, .omo-document-ethercalc__frame, .omo-document-collabora__frame, .omo-document-spacedeck__frame, .omo-document-file__pdf-frame');
-                                        if (!(frame instanceof HTMLElement)) {
-                                            return;
-                                        }
-
-                                        if (document.fullscreenElement === frame) {
-                                            document.exitFullscreen().catch(function () {});
-                                        } else if (typeof frame.requestFullscreen === 'function') {
-                                            frame.requestFullscreen().then(function () {
-                                                if (frame.classList.contains('omo-document-ethercalc__frame')) {
-                                                    notifyEthercalcFrameResize();
-                                                }
-                                            }).catch(function () {});
-                                        }
                                         return;
                                     }
 

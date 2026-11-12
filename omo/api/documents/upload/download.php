@@ -13,6 +13,18 @@ if (isset($_GET['pv_document_id'])) {
         echo omoDocumentsUiT('document_introuvable_ou_inaccessible_avec_ce_lien_de_reunion');
         exit;
     }
+} elseif (isset($_GET['reader'])) {
+    require_once dirname(__DIR__, 4) . '/shared_functions.php';
+    require_once dirname(__DIR__, 4) . '/common/auth.php';
+    $readerDocument = \dbObject\Document::findByReaderCode(trim((string)($_GET['code'] ?? '')));
+    if (!$readerDocument
+        || !$readerDocument->canReadFromLink((int)commonGetCurrentUserId())
+        || array_key_exists('version_id', $_GET)) {
+        http_response_code(404);
+        header('Content-Type: text/plain; charset=UTF-8');
+        echo omoDocumentsUiT('document_introuvable_ou_inaccessible');
+        exit;
+    }
 } else {
     require_once dirname(__DIR__, 2) . '/bootstrap.php';
 }
@@ -20,9 +32,11 @@ if (isset($_GET['pv_document_id'])) {
 use dbObject\Document;
 use dbObject\Organization;
 
-$documentId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$documentId = isset($readerDocument) ? (int)$readerDocument->getId() : (int)($_GET['id'] ?? 0);
 $organizationId = isset($_GET['oid']) ? (int)$_GET['oid'] : (int)($_SESSION['currentOrganization'] ?? 0);
 $holonId = isset($_GET['cid']) ? (int)$_GET['cid'] : 0;
+$versionId = isset($_GET['version_id']) ? (int)$_GET['version_id'] : 0;
+$isVersionRequest = array_key_exists('version_id', $_GET);
 
 if ($documentId <= 0) {
     http_response_code(400);
@@ -32,7 +46,7 @@ if ($documentId <= 0) {
 }
 
 $document = new Document();
-if (!$document->load($documentId) || !$document->isUploadedFile() || !$document->hasStoredFile()) {
+if (!$document->load($documentId) || !$document->isUploadedFile() || (!$isVersionRequest && !$document->hasStoredFile())) {
     http_response_code(404);
     header('Content-Type: text/plain; charset=UTF-8');
     echo omoDocumentsUiT('document_introuvable_ou_inaccessible');
@@ -47,11 +61,24 @@ if ($holonId <= 0) {
     $holonId = (int)$document->get('IDholon');
 }
 
-if (!isset($pvDocument) && !$document->canViewInOrganizationContext($organizationId, $holonId > 0 ? $holonId : null)) {
+if (($isVersionRequest && (isset($pvDocument) || isset($readerDocument))) || (!isset($pvDocument) && !isset($readerDocument)
+    && !$document->canViewInOrganizationContext($organizationId, $holonId > 0 ? $holonId : null)
+    && !$document->canViewDirectlyInOrganization($organizationId))) {
     http_response_code(404);
     header('Content-Type: text/plain; charset=UTF-8');
     echo omoDocumentsUiT('document_introuvable_ou_inaccessible');
     exit;
+}
+
+$version = null;
+if ($isVersionRequest) {
+    $version = new \dbObject\DocumentVersion();
+    if ($versionId <= 0 || !$version->load($versionId) || !$version->belongsToDocument($document)) {
+        http_response_code(404);
+        header('Content-Type: text/plain; charset=UTF-8');
+        echo omoDocumentsUiT('document_introuvable_ou_inaccessible');
+        exit;
+    }
 }
 
 $organization = new Organization();
@@ -65,7 +92,7 @@ if (
     exit;
 }
 
-$downloadResult = $organization->downloadDocumentFileFromStorage((string)$document->get('storedfilepath'));
+$downloadResult = $organization->downloadDocumentFileFromStorage((string)($version ?? $document)->get('storedfilepath'));
 if (!is_array($downloadResult) || empty($downloadResult['status'])) {
     http_response_code(502);
     header('Content-Type: text/plain; charset=UTF-8');
@@ -73,7 +100,7 @@ if (!is_array($downloadResult) || empty($downloadResult['status'])) {
     exit;
 }
 
-$downloadName = $document->getStoredFileDownloadName();
+$downloadName = $version ? (string)$version->get('storedfilename') : $document->getStoredFileDownloadName();
 $asciiFallbackName = preg_replace('/[^A-Za-z0-9._-]+/', '-', $downloadName);
 $asciiFallbackName = trim((string)$asciiFallbackName, '-.');
 if ($asciiFallbackName === '') {
@@ -82,15 +109,18 @@ if ($asciiFallbackName === '') {
 
 $contentType = trim((string)($downloadResult['contentType'] ?? 'application/octet-stream'));
 if ($contentType === '' || $contentType === 'application/octet-stream') {
-    $storedMimeType = trim($document->getStoredFileMimeType());
+    $storedMimeType = trim($version ? (string)$version->get('storedfilemime') : $document->getStoredFileMimeType());
     if ($storedMimeType !== '') {
         $contentType = $storedMimeType;
     }
 }
 $contentLength = max(0, (int)($downloadResult['contentLength'] ?? 0));
 $body = (string)($downloadResult['body'] ?? '');
-$inline = !empty($_GET['inline']) && (!isset($pvDocument) || $document->isStoredPdfFile());
+$inline = !$isVersionRequest && !empty($_GET['inline'])
+    && ((!isset($pvDocument) && !isset($readerDocument)) || $document->isStoredPdfFile()
+        || (isset($readerDocument) && in_array($document->getStoredFileKind(), ['image', 'audio'], true)));
 
+header('Cache-Control: private, no-store');
 header('X-Content-Type-Options: nosniff');
 header('Content-Type: ' . $contentType);
 header('Content-Disposition: ' . ($inline ? 'inline' : 'attachment') . '; filename="' . addcslashes($asciiFallbackName, "\\\"") . '"; filename*=UTF-8\'\'' . rawurlencode($downloadName));

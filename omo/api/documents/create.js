@@ -26,6 +26,8 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
     const pvSection = form.querySelector('[data-omo-document-pv-section]');
     const externalSection = form.querySelector('[data-omo-document-external-section]');
     const uploadSection = form.querySelector('[data-omo-document-upload-section]');
+    const historySection = form.querySelector('[data-omo-document-history-section]');
+    const historyCheckbox = form.querySelector('input[name="history_enabled"]');
     const nextcloudFolderSection = form.querySelector('[data-omo-document-nextcloud-folder-section]');
     const nextcloudFolderPathField = form.querySelector('[data-omo-document-nextcloud-folder-path]');
     const nextcloudBrowseButton = form.querySelector('[data-omo-document-nextcloud-browse]');
@@ -51,18 +53,22 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
     let keywordTags = [];
     let htmlField = null;
     let htmlValueCache = String(initialHtmlValue || '');
-    let mediaStream = null;
-    let mediaRecorder = null;
-    let recordedChunks = [];
-    let recordingMimeType = '';
-    let transcriptionController = null;
-    let dictationMode = 'idle';
-    let rewriteController = null;
-    let rewriteMode = 'idle';
-    let summarizeController = null;
-    let summarizeMode = 'idle';
-    let aiToolsOpen = false;
     let editLockLost = false;
+    const aiTools = window.omoHtmlAiTools.create({
+        host: htmlHost,
+        statusNode: dictationStatusNode,
+        textToolsEnabled: aiToolsEnabled && textToolsEnabled,
+        transcriptionEnabled: aiToolsEnabled && transcriptionEnabled,
+        isAvailable: function () { return !editLockLost && isHtmlTypeSelected(); },
+        getContext: function () {
+            const title = form.querySelector('input[name="title"]');
+            return {organizationId: pageConfig.organizationId, holonId: pageConfig.holonId, title: title ? title.value : ''};
+        },
+        onBusyChange: function (busy) {
+            const submit = form.querySelector('[data-omo-document-editor-submit]');
+            if (submit) submit.disabled = editLockLost || busy;
+        }
+    });
     let editLockHeartbeatTimer = null;
     let draftSyncTimer = null;
 
@@ -134,6 +140,9 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
         if (uploadSection) {
             uploadSection.hidden = !isUploadedFile;
         }
+        if (historySection) {
+            historySection.hidden = !(isUploadedFile || isCollabora);
+        }
 
         if (nextcloudFolderSection) {
             nextcloudFolderSection.hidden = !isNextcloudFolder;
@@ -164,9 +173,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
         }
 
         if (!isHtmlDocument) {
-            cleanupDictation({ discard: true });
-            cleanupRewrite({ keepStatus: true });
-            cleanupSummarize({ keepStatus: true });
+            aiTools.cancel();
             destroyHtmlField();
         } else {
             ensureHtmlFieldMounted();
@@ -478,10 +485,11 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
 
     function markEditLockLost(message) {
         editLockLost = true;
+        aiTools.cancel();
         clearEditLockHeartbeatTimer();
         clearDraftSyncTimer();
         setStatus(String(message || omoUiText("ce_document_n_est_plus_verrouille_pour_votre_edition", "Ce document n’est plus verrouillé pour votre édition.")));
-        syncDictationToolbarButtons();
+        aiTools.sync();
     }
 
     function scheduleDraftSync(delayMs) {
@@ -558,321 +566,8 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
             });
     }
 
-    function setDictationStatus(message, type) {
-        const text = String(message || '').trim();
-        const statusType = String(type || '').trim().toLowerCase();
-        if (text && (statusType === 'success' || statusType === 'error') && typeof window.commonNotify === 'function') {
-            if (dictationStatusNode) {
-                dictationStatusNode.hidden = true;
-                dictationStatusNode.textContent = '';
-                dictationStatusNode.classList.remove('is-live', 'is-error', 'is-success');
-            }
-            window.commonNotify(text, statusType);
-            return;
-        }
-
-        if (!dictationStatusNode) {
-            return;
-        }
-
-        dictationStatusNode.hidden = text === '';
-        dictationStatusNode.textContent = text;
-        dictationStatusNode.classList.toggle('is-live', statusType === 'live');
-        dictationStatusNode.classList.toggle('is-error', statusType === 'error');
-        dictationStatusNode.classList.toggle('is-success', statusType === 'success');
-    }
-
-    function getRecordingMimeType() {
-        if (typeof window.MediaRecorder === 'undefined' || typeof window.MediaRecorder.isTypeSupported !== 'function') {
-            return '';
-        }
-
-        const candidates = [
-            'audio/webm;codecs=opus',
-            'audio/webm',
-            'audio/mp4',
-            'audio/ogg;codecs=opus',
-            'audio/ogg'
-        ];
-
-        for (let index = 0; index < candidates.length; index += 1) {
-            if (window.MediaRecorder.isTypeSupported(candidates[index])) {
-                return candidates[index];
-            }
-        }
-
-        return '';
-    }
-
-    function getRecordingFileExtension(mimeType) {
-        const normalizedMimeType = String(mimeType || '').toLowerCase();
-
-        if (normalizedMimeType.indexOf('mp4') >= 0 || normalizedMimeType.indexOf('m4a') >= 0) {
-            return 'm4a';
-        }
-
-        if (normalizedMimeType.indexOf('ogg') >= 0) {
-            return 'ogg';
-        }
-
-        if (normalizedMimeType.indexOf('wav') >= 0) {
-            return 'wav';
-        }
-
-        return 'webm';
-    }
-
-    function releaseMediaStream() {
-        if (mediaStream && typeof mediaStream.getTracks === 'function') {
-            mediaStream.getTracks().forEach(function (track) {
-                try {
-                    track.stop();
-                } catch (error) {
-                }
-            });
-        }
-
-        mediaStream = null;
-    }
-
-    function resetDictationRecorderState() {
-        mediaRecorder = null;
-        recordedChunks = [];
-        recordingMimeType = '';
-        releaseMediaStream();
-    }
-
-    function syncDictationToolbarButtons() {
-        if (!aiToolsEnabled || !htmlField || typeof htmlField.setToolbarButtonState !== 'function') {
-            return;
-        }
-
-        const isRecording = dictationMode === 'recording';
-        const isTranscribing = dictationMode === 'transcribing';
-        const isRewriting = rewriteMode === 'pending';
-        const isSummarizing = summarizeMode === 'pending';
-        const isAiBusy = isRecording || isTranscribing || isRewriting || isSummarizing;
-        const aiToolsVisible = aiToolsOpen || isAiBusy;
-        const submitButton = form.querySelector('[data-omo-document-editor-submit]');
-
-        htmlField.setToolbarButtonState('omoDocumentAiToggle', {
-            label: omoUiText("ia", "IA"),
-            title: aiToolsVisible ? omoUiText("masquer_les_outils_ia", "Masquer les outils IA") : omoUiText("afficher_les_outils_ia", "Afficher les outils IA"),
-            active: aiToolsVisible,
-            disabled: false
-        });
-
-        htmlField.setToolbarButtonState('omoDocumentDictate', {
-            label: isRecording ? omoUiText("en_cours", "En cours…") : omoUiText("dicter", "Dicter"),
-            title: isRecording ? omoUiText("enregistrement_en_cours", "Enregistrement en cours") : omoUiText("demarrer_une_dictee", "Démarrer une dictée"),
-            disabled: isRecording || isTranscribing || isRewriting || isSummarizing,
-            hidden: !aiToolsVisible || !transcriptionEnabled
-        });
-        htmlField.setToolbarButtonState('omoDocumentTranscript', {
-            label: isTranscribing ? omoUiText("transcription", "Transcription…") : omoUiText("transcrire", "Transcrire"),
-            title: omoUiText("arreter_l_enregistrement_et_transcrire", "Arrêter l’enregistrement et transcrire"),
-            disabled: !isRecording || isTranscribing || isRewriting || isSummarizing,
-            hidden: !aiToolsVisible || !transcriptionEnabled
-        });
-        htmlField.setToolbarButtonState('omoDocumentDictationCancel', {
-            label: omoUiText("annuler", "Annuler"),
-            title: omoUiText("annuler_la_dictee_en_cours", "Annuler la dictée en cours"),
-            disabled: (!isRecording && !isTranscribing),
-            hidden: !aiToolsVisible || !transcriptionEnabled || (!isRecording && !isTranscribing)
-        });
-        htmlField.setToolbarButtonState('omoDocumentRewrite', {
-            label: isRewriting ? omoUiText("reecriture", "Réécriture…") : omoUiText("reecrire", "Réécrire"),
-            title: isRewriting ? omoUiText("reecriture_en_cours", "Réécriture en cours") : omoUiText("reecrire_la_selection", "Réécrire la sélection"),
-            disabled: isRecording || isTranscribing || isRewriting || isSummarizing,
-            hidden: !aiToolsVisible || !textToolsEnabled
-        });
-        htmlField.setToolbarButtonState('omoDocumentSummarize', {
-            label: isSummarizing ? omoUiText("resume", "Résumé…") : omoUiText("resumer", "Résumer"),
-            title: isSummarizing ? omoUiText("resume_en_cours", "Résumé en cours") : omoUiText("resumer_la_selection", "Résumer la sélection"),
-            disabled: isRecording || isTranscribing || isRewriting || isSummarizing,
-            hidden: !aiToolsVisible || !textToolsEnabled
-        });
-
-        if (submitButton) {
-            submitButton.disabled = editLockLost || isRecording || isTranscribing || isRewriting || isSummarizing;
-        }
-    }
-
-    function setDictationMode(nextMode) {
-        dictationMode = String(nextMode || 'idle').trim().toLowerCase() || 'idle';
-        syncDictationToolbarButtons();
-    }
-
-    function toggleAiTools(forceOpen) {
-        if (!aiToolsEnabled) {
-            return;
-        }
-
-        const shouldOpen = forceOpen === undefined
-            ? !aiToolsOpen
-            : !!forceOpen;
-
-        aiToolsOpen = shouldOpen;
-        syncDictationToolbarButtons();
-    }
-
-    function formatDictationError(error) {
-        const errorName = error && error.name ? String(error.name) : '';
-
-        if (errorName === 'NotAllowedError' || errorName === 'SecurityError') {
-            return omoUiText("l_acces_au_micro_a_ete_refuse", "L’accès au micro a été refusé.");
-        }
-
-        if (errorName === 'NotFoundError' || errorName === 'DevicesNotFoundError') {
-            return omoUiText("aucun_micro_n_est_disponible_sur_cet_appareil", "Aucun micro n’est disponible sur cet appareil.");
-        }
-
-        if (errorName === 'AbortError') {
-            return omoUiText("la_dictee_a_ete_interrompue", "La dictée a été interrompue.");
-        }
-
-        if (error && error.message) {
-            return String(error.message);
-        }
-
-        return omoUiText("impossible_d_utiliser_la_dictee_pour_le_moment", "Impossible d’utiliser la dictée pour le moment.");
-    }
-
-    function abortTranscriptionRequest() {
-        if (transcriptionController && typeof transcriptionController.abort === 'function') {
-            try {
-                transcriptionController.abort();
-            } catch (error) {
-            }
-        }
-
-        transcriptionController = null;
-    }
-
-    function abortRewriteRequest() {
-        if (rewriteController && typeof rewriteController.abort === 'function') {
-            try {
-                rewriteController.abort();
-            } catch (error) {
-            }
-        }
-
-        rewriteController = null;
-    }
-
-    function abortSummarizeRequest() {
-        if (summarizeController && typeof summarizeController.abort === 'function') {
-            try {
-                summarizeController.abort();
-            } catch (error) {
-            }
-        }
-
-        summarizeController = null;
-    }
-
-    function stopRecorder(discardRecording) {
-        return new Promise(function (resolve, reject) {
-            if (!mediaRecorder) {
-                resetDictationRecorderState();
-                resolve(null);
-                return;
-            }
-
-            const recorder = mediaRecorder;
-            const mimeType = recordingMimeType || recorder.mimeType || 'audio/webm';
-
-            const handleStop = function () {
-                const blob = discardRecording
-                    ? null
-                    : new Blob(recordedChunks, { type: mimeType });
-                resetDictationRecorderState();
-                resolve(blob);
-            };
-
-            const handleError = function () {
-                resetDictationRecorderState();
-                reject(new Error(omoUiText("impossible_de_finaliser_l_enregistrement_audio", "Impossible de finaliser l’enregistrement audio.")));
-            };
-
-            recorder.addEventListener('stop', handleStop, { once: true });
-            recorder.addEventListener('error', handleError, { once: true });
-
-            try {
-                // stop() emits the final data before "stop". A prior requestData()
-                // flush prevents Chromium from finalizing the WebM size/duration.
-                if (recorder.state !== 'inactive') {
-                    recorder.stop();
-                    return;
-                }
-
-                handleStop();
-            } catch (error) {
-                resetDictationRecorderState();
-                reject(error);
-            }
-        });
-    }
-
-    function cleanupDictation(options) {
-        const shouldDiscardRecording = !options || options.discard !== false;
-        abortTranscriptionRequest();
-
-        if (mediaRecorder) {
-            stopRecorder(shouldDiscardRecording).catch(function () {
-            });
-        } else {
-            resetDictationRecorderState();
-        }
-
-        setDictationMode('idle');
-        if (options && options.keepStatus) {
-            return;
-        }
-
-        setDictationStatus('', '');
-    }
-
-    function setRewriteMode(nextMode) {
-        rewriteMode = String(nextMode || 'idle').trim().toLowerCase() || 'idle';
-        syncDictationToolbarButtons();
-    }
-
-    function normalizeRewriteComparisonText(text) {
-        return String(text || '')
-            .replace(/\r\n?/g, '\n')
-            .replace(/\s+/g, ' ')
-            .trim();
-    }
-
-    function cleanupRewrite(options) {
-        abortRewriteRequest();
-        setRewriteMode('idle');
-
-        if (options && options.keepStatus) {
-            return;
-        }
-
-        setDictationStatus('', '');
-    }
-
-    function setSummarizeMode(nextMode) {
-        summarizeMode = String(nextMode || 'idle').trim().toLowerCase() || 'idle';
-        syncDictationToolbarButtons();
-    }
-
-    function cleanupSummarize(options) {
-        abortSummarizeRequest();
-        setSummarizeMode('idle');
-
-        if (options && options.keepStatus) {
-            return;
-        }
-
-        setDictationStatus('', '');
-    }
-
     function destroyHtmlField() {
+        aiTools.cancel();
         if (!htmlField) {
             return;
         }
@@ -916,82 +611,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
             }
         });
 
-        if (aiToolsEnabled) {
-            customButtons.push({
-                name: 'omoDocumentAiToggle',
-                group: 'omo-ai-toggle',
-                label: omoUiText("ia", "IA"),
-                title: omoUiText("afficher_les_outils_ia", "Afficher les outils IA"),
-                className: 'note-btn-light',
-                onClick: function () {
-                    toggleAiTools();
-                }
-            });
-            customButtons.push({
-                name: 'omoDocumentDictate',
-                group: 'omo-ai-tools',
-                label: omoUiText("dicter", "Dicter"),
-                title: omoUiText("demarrer_une_dictee", "Démarrer une dictée"),
-                className: 'note-btn-light',
-                // These actions disable/hide their button: keep focus in the editor.
-                focusForInsertion: true,
-                hidden: true,
-                onClick: function () {
-                    startDictation();
-                }
-            });
-            customButtons.push({
-                name: 'omoDocumentTranscript',
-                group: 'omo-ai-tools',
-                label: omoUiText("transcrire", "Transcrire"),
-                title: omoUiText("arreter_l_enregistrement_et_transcrire", "Arrêter l’enregistrement et transcrire"),
-                className: 'note-btn-light',
-                focusForInsertion: true,
-                disabled: true,
-                hidden: true,
-                onClick: function () {
-                    transcribeCurrentRecording();
-                }
-            });
-            customButtons.push({
-                name: 'omoDocumentDictationCancel',
-                group: 'omo-ai-tools',
-                label: omoUiText("annuler", "Annuler"),
-                title: omoUiText("annuler_la_dictee_en_cours", "Annuler la dictée en cours"),
-                className: 'note-btn-light',
-                focusForInsertion: true,
-                hidden: true,
-                disabled: true,
-                onClick: function () {
-                    cleanupDictation({ discard: true });
-                    setDictationStatus(omoUiText("dictee_annulee", "Dictée annulée."), 'error');
-                }
-            });
-            customButtons.push({
-                name: 'omoDocumentRewrite',
-                group: 'omo-ai-tools',
-                label: omoUiText("rewrite", "Réécrire"),
-                title: omoUiText("reecrire_la_selection", "Réécrire la sélection"),
-                className: 'note-btn-light',
-                focusForInsertion: true,
-                hidden: true,
-                onClick: function () {
-                    rewriteSelectedPassage();
-                }
-            });
-            customButtons.push({
-                name: 'omoDocumentSummarize',
-                group: 'omo-ai-tools',
-                label: omoUiText("resumer", "Résumer"),
-                title: omoUiText("resumer_la_selection", "Résumer la sélection"),
-                className: 'note-btn-light',
-                focusForInsertion: true,
-                hidden: true,
-                onClick: function () {
-                    summarizeSelectedPassage();
-                }
-            });
-        }
+        customButtons.push(...aiTools.buttons);
 
         htmlField = window.omoSimpleHtmlField.mount(htmlHost, {
             value: htmlValueCache,
@@ -1018,29 +638,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
             }
         });
 
-        syncDictationToolbarButtons();
-
-        if (aiToolsEnabled && htmlField && typeof htmlField.setToolbarButtonState === 'function') {
-            htmlField.setToolbarButtonState('omoDocumentAiToggle', {
-                label: omoUiText("ia", "IA"),
-                title: omoUiText("afficher_les_outils_ia", "Afficher les outils IA")
-            });
-            htmlField.setToolbarButtonState('omoDocumentDictate', {
-                label: omoUiText("dicter", "Dicter"),
-                title: omoUiText("demarrer_une_dictee", "Démarrer une dictée")
-            });
-            htmlField.setToolbarButtonState('omoDocumentTranscript', {
-                title: omoUiText("arreter_l_enregistrement_et_transcrire", "Arrêter l’enregistrement et transcrire")
-            });
-            htmlField.setToolbarButtonState('omoDocumentRewrite', {
-                title: omoUiText("reecrire_la_selection", "Réécrire la sélection")
-            });
-            htmlField.setToolbarButtonState('omoDocumentSummarize', {
-                title: omoUiText("resumer_la_selection", "Résumer la sélection")
-            });
-        }
-
-        syncDictationToolbarButtons();
+        aiTools.bind(htmlField);
     }
 
     function ensureHtmlFieldMounted() {
@@ -1082,300 +680,10 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
         document.head.appendChild(script);
     }
 
-    async function startDictation() {
-        if (!transcriptionEnabled || dictationMode === 'recording' || dictationMode === 'transcribing') {
-            return;
-        }
-
-        if (typeof window.MediaRecorder === 'undefined' || !navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
-            setDictationStatus(omoUiText("la_dictee_n_est_pas_disponible_sur_ce_navigateur", "La dictée n’est pas disponible sur ce navigateur."), 'error');
-            return;
-        }
-
-        try {
-            if (htmlField && typeof htmlField.saveRange === 'function') {
-                htmlField.saveRange();
-            }
-
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const mimeType = getRecordingMimeType();
-            const recorder = mimeType !== ''
-                ? new window.MediaRecorder(stream, { mimeType: mimeType })
-                : new window.MediaRecorder(stream);
-
-            mediaStream = stream;
-            mediaRecorder = recorder;
-            recordedChunks = [];
-            recordingMimeType = mimeType || recorder.mimeType || 'audio/webm';
-
-            recorder.addEventListener('dataavailable', function (recordEvent) {
-                if (recordEvent.data && recordEvent.data.size > 0) {
-                    recordedChunks.push(recordEvent.data);
-                }
-            });
-
-            recorder.start();
-            setDictationMode('recording');
-            setDictationStatus(omoUiText("enregistrement_en_cours_quand_vous_avez_termine_cliquez_sur_transcrire", "Enregistrement en cours. Quand vous avez terminé, cliquez sur Transcrire."), 'live');
-        } catch (error) {
-            cleanupDictation({ discard: true, keepStatus: true });
-            setDictationStatus(formatDictationError(error), 'error');
-        }
-    }
-
-    async function transcribeCurrentRecording() {
-        if (dictationMode !== 'recording') {
-            return;
-        }
-
-        setDictationMode('transcribing');
-        setDictationStatus(omoUiText("transcription_en_cours", "Transcription en cours…"), 'live');
-
-        try {
-            const audioBlob = await stopRecorder(false);
-            if (!audioBlob || audioBlob.size <= 0) {
-                throw new Error(omoUiText("aucun_son_n_a_ete_enregistre", "Aucun son n’a été enregistré."));
-            }
-
-            const formData = new FormData();
-            formData.set('oid', String(pageConfig.organizationId));
-            formData.set('cid', String(pageConfig.holonId));
-            formData.set('title', String(form.querySelector('input[name="title"]') ? form.querySelector('input[name="title"]').value || '' : ''));
-            formData.set(
-                'audio',
-                audioBlob,
-                'document-dictation.' + getRecordingFileExtension(audioBlob.type || recordingMimeType)
-            );
-
-            transcriptionController = typeof window.AbortController === 'function'
-                ? new window.AbortController()
-                : null;
-
-            const response = await fetch('/omo/api/documents/html/transcribe.php', {
-                method: 'POST',
-                body: formData,
-                credentials: 'same-origin',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                signal: transcriptionController ? transcriptionController.signal : undefined,
-                cache: 'no-store'
-            });
-
-            // The endpoint sends its useful error message with a non-2xx status.
-            const payload = await response.json().catch(function () { return null; });
-            if (!response.ok || !payload || payload.status !== true) {
-                throw new Error(payload && payload.message ? payload.message : omoUiText("impossible_de_transcrire_cet_enregistrement", "Impossible de transcrire cet enregistrement."));
-            }
-
-            const transcriptText = String(payload.text || '').trim();
-            if (transcriptText === '') {
-                throw new Error(omoUiText("la_transcription_est_vide", "La transcription est vide."));
-            }
-
-            if (!htmlField || typeof htmlField.insertTextAtCursor !== 'function') {
-                throw new Error(omoUiText("impossible_d_inserer_la_transcription_dans_l_editeur", "Impossible d’insérer la transcription dans l’éditeur."));
-            }
-
-            htmlField.insertTextAtCursor(transcriptText);
-            if (typeof htmlField.focus === 'function') {
-                htmlField.focus();
-            }
-
-            setDictationMode('idle');
-            setDictationStatus(omoUiText("transcription_inseree_dans_le_document", "Transcription insérée dans le document."), 'success');
-        } catch (error) {
-            setDictationMode('idle');
-            setDictationStatus(formatDictationError(error), 'error');
-        } finally {
-            transcriptionController = null;
-        }
-    }
-
-    async function rewriteSelectedPassage() {
-        if (!textToolsEnabled || rewriteMode === 'pending' || summarizeMode === 'pending' || dictationMode === 'recording' || dictationMode === 'transcribing') {
-            return;
-        }
-
-        if (!htmlField || typeof htmlField.getSelectedText !== 'function' || typeof htmlField.getPlainText !== 'function') {
-            setDictationStatus(omoUiText("impossible_d_acceder_a_la_selection_dans_l_editeur", "Impossible d’accéder à la sélection dans l’éditeur."), 'error');
-            return;
-        }
-
-        if (typeof htmlField.saveRange === 'function') {
-            htmlField.saveRange();
-        }
-
-        const selectedText = String(htmlField.getSelectedText() || '').trim();
-        const fullText = String(htmlField.getPlainText() || '').trim();
-        const rewritesWholeDocument = normalizeRewriteComparisonText(selectedText) === normalizeRewriteComparisonText(fullText);
-
-        if (selectedText === '') {
-            setDictationStatus(omoUiText("selectionnez_un_bloc_de_texte_avant_de_lancer_la_reecriture", "Sélectionnez un bloc de texte avant de lancer la réécriture."), 'error');
-            return;
-        }
-
-        if (fullText === '') {
-            setDictationStatus(omoUiText("le_document_est_vide", "Le document est vide."), 'error');
-            return;
-        }
-
-        setRewriteMode('pending');
-        setDictationStatus(omoUiText("reecriture_en_cours_2", "Réécriture en cours…"), 'live');
-
-        try {
-            const formData = new FormData();
-            formData.set('oid', String(pageConfig.organizationId));
-            formData.set('cid', String(pageConfig.holonId));
-            formData.set('title', String(form.querySelector('input[name="title"]') ? form.querySelector('input[name="title"]').value || '' : ''));
-            formData.set('selected_text', selectedText);
-            formData.set('full_text', fullText);
-            formData.set('rewrite_full_document', rewritesWholeDocument ? '1' : '0');
-
-            rewriteController = typeof window.AbortController === 'function'
-                ? new window.AbortController()
-                : null;
-
-            const response = await fetch('/omo/api/documents/html/rewrite.php', {
-                method: 'POST',
-                body: formData,
-                credentials: 'same-origin',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                signal: rewriteController ? rewriteController.signal : undefined,
-                cache: 'no-store'
-            });
-
-            if (!response.ok) {
-                throw new Error(omoUiText("impossible_de_reecrire_cette_selection", "Impossible de réécrire cette sélection."));
-            }
-
-            const payload = await response.json();
-            if (!payload || payload.status !== true) {
-                throw new Error(payload && payload.message ? payload.message : omoUiText("impossible_de_reecrire_cette_selection", "Impossible de réécrire cette sélection."));
-            }
-
-            const rewrittenText = String(payload.text || '').trim();
-            if (rewrittenText === '') {
-                throw new Error(omoUiText("la_reecriture_est_vide", "La réécriture est vide."));
-            }
-
-            if (typeof htmlField.replaceSelectionWithText !== 'function') {
-                throw new Error(omoUiText("impossible_de_remplacer_la_selection_dans_l_editeur", "Impossible de remplacer la sélection dans l’éditeur."));
-            }
-
-            htmlField.replaceSelectionWithText(rewrittenText);
-            if (typeof htmlField.focus === 'function') {
-                htmlField.focus();
-            }
-
-            setRewriteMode('idle');
-            setDictationStatus(omoUiText("selection_reecrite", "Sélection réécrite."), 'success');
-        } catch (error) {
-            setRewriteMode('idle');
-            setDictationStatus(
-                error && error.message ? String(error.message) : omoUiText("impossible_de_reecrire_cette_selection", "Impossible de réécrire cette sélection."),
-                'error'
-            );
-        } finally {
-            rewriteController = null;
-        }
-    }
-
-    async function summarizeSelectedPassage() {
-        if (!textToolsEnabled || summarizeMode === 'pending' || rewriteMode === 'pending' || dictationMode === 'recording' || dictationMode === 'transcribing') {
-            return;
-        }
-
-        if (!htmlField || typeof htmlField.getSelectedText !== 'function' || typeof htmlField.getPlainText !== 'function') {
-            setDictationStatus(omoUiText("impossible_d_acceder_a_la_selection_dans_l_editeur", "Impossible d’accéder à la sélection dans l’éditeur."), 'error');
-            return;
-        }
-
-        if (typeof htmlField.saveRange === 'function') {
-            htmlField.saveRange();
-        }
-
-        const selectedText = String(htmlField.getSelectedText() || '').trim();
-        const fullText = String(htmlField.getPlainText() || '').trim();
-
-        if (selectedText === '') {
-            setDictationStatus(omoUiText("selectionnez_un_bloc_de_texte_avant_de_lancer_le_resume", "Sélectionnez un bloc de texte avant de lancer le résumé."), 'error');
-            return;
-        }
-
-        if (fullText === '') {
-            setDictationStatus(omoUiText("le_document_est_vide", "Le document est vide."), 'error');
-            return;
-        }
-
-        setSummarizeMode('pending');
-        setDictationStatus(omoUiText("resume_en_cours_2", "Résumé en cours…"), 'live');
-
-        try {
-            const formData = new FormData();
-            formData.set('oid', String(pageConfig.organizationId));
-            formData.set('cid', String(pageConfig.holonId));
-            formData.set('title', String(form.querySelector('input[name="title"]') ? form.querySelector('input[name="title"]').value || '' : ''));
-            formData.set('selected_text', selectedText);
-            formData.set('full_text', fullText);
-
-            summarizeController = typeof window.AbortController === 'function'
-                ? new window.AbortController()
-                : null;
-
-            const response = await fetch('/omo/api/documents/html/summarize.php', {
-                method: 'POST',
-                body: formData,
-                credentials: 'same-origin',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                signal: summarizeController ? summarizeController.signal : undefined,
-                cache: 'no-store'
-            });
-
-            if (!response.ok) {
-                throw new Error(omoUiText("impossible_de_resumer_cette_selection", "Impossible de résumer cette sélection."));
-            }
-
-            const payload = await response.json();
-            if (!payload || payload.status !== true) {
-                throw new Error(payload && payload.message ? payload.message : omoUiText("impossible_de_resumer_cette_selection", "Impossible de résumer cette sélection."));
-            }
-
-            const summarizedText = String(payload.text || '').trim();
-            if (summarizedText === '') {
-                throw new Error(omoUiText("le_resume_est_vide", "Le résumé est vide."));
-            }
-
-            if (typeof htmlField.replaceSelectionWithText !== 'function') {
-                throw new Error(omoUiText("impossible_de_remplacer_la_selection_dans_l_editeur", "Impossible de remplacer la sélection dans l’éditeur."));
-            }
-
-            htmlField.replaceSelectionWithText(summarizedText);
-            if (typeof htmlField.focus === 'function') {
-                htmlField.focus();
-            }
-
-            setSummarizeMode('idle');
-            setDictationStatus(omoUiText("selection_resumee", "Sélection résumée."), 'success');
-        } catch (error) {
-            setSummarizeMode('idle');
-            setDictationStatus(
-                error && error.message ? String(error.message) : omoUiText("impossible_de_resumer_cette_selection", "Impossible de résumer cette sélection."),
-                'error'
-            );
-        } finally {
-            summarizeController = null;
-        }
-    }
-
     ensureHtmlFieldMounted();
     initializeKeywordTags();
 
-    syncDictationToolbarButtons();
+    aiTools.sync();
 
     function setStatus(message) {
         if (message && typeof window.commonNotify === 'function') {
@@ -1411,18 +719,14 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
 
     if (cancelButton) {
         cancelButton.addEventListener('click', function () {
-            cleanupDictation({ discard: true });
-            cleanupRewrite({ keepStatus: true });
-            cleanupSummarize({ keepStatus: true });
+            aiTools.cancel();
             releaseEditLock({ keepalive: true });
             closeDocumentEditor({ returnToDetail: true });
         });
     }
 
     const handleDrawerClose = function () {
-        cleanupDictation({ discard: true });
-        cleanupRewrite({ keepStatus: true });
-        cleanupSummarize({ keepStatus: true });
+        aiTools.cancel();
         releaseEditLock({ keepalive: true });
         destroyHtmlField();
         window.removeEventListener('omo-document-editor-drawer-close', handleDrawerClose);
@@ -1510,7 +814,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
                 .then(function (response) {
                     return response.json().then(function (payload) {
                         if (!response.ok || !payload || payload.status !== true) {
-                            throw new Error(String(payload && payload.message || omoUiText("impossible_de_lire_nextcloud", "Impossible de lire NextCloud.")));
+                            throw new Error(String(payload && payload.message || omoUiText("impossible_de_lire_nextcloud", "Impossible de lire le serveur de stockage.")));
                         }
                         return payload;
                     });
@@ -1555,7 +859,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
                     });
                 })
                 .catch(function (error) {
-                    nextcloudBrowser.textContent = String(error && error.message || omoUiText("impossible_de_lire_nextcloud", "Impossible de lire NextCloud."));
+                    nextcloudBrowser.textContent = String(error && error.message || omoUiText("impossible_de_lire_nextcloud", "Impossible de lire le serveur de stockage."));
                 })
                 .finally(function () {
                     nextcloudBrowseButton.disabled = false;
@@ -1569,6 +873,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
 
     form.addEventListener('submit', function (event) {
         event.preventDefault();
+        if (aiTools.isBusy()) return;
         setStatus('');
 
         if (editLockLost) {
@@ -1583,7 +888,9 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
             && uploadInput
             && uploadInput.files
             && uploadInput.files.length > 0
-            && !window.confirm(String(uiText.uploadReplaceConfirm || 'Le fichier actuel sera remplacé. Continuer ?'))
+            && !window.confirm(String(historyCheckbox && historyCheckbox.checked
+                ? uiText.uploadArchiveConfirm
+                : (uiText.uploadReplaceConfirm || 'Le fichier actuel sera remplacé. Continuer ?')))
         ) {
             return;
         }
@@ -1632,9 +939,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
 
                 return Promise.resolve(refreshPromise).finally(function () {
                     releaseEditLock({ keepalive: true });
-                    cleanupDictation({ discard: true });
-                    cleanupRewrite({ keepStatus: true });
-                    cleanupSummarize({ keepStatus: true });
+                    aiTools.cancel();
 
                     if (editorHost === 'project' || editorHost === 'project_picker') {
                         window.dispatchEvent(new CustomEvent('omo-project-document-saved', {
@@ -1676,7 +981,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
                 if (usesSharedPendingState && typeof window.omoEndPendingAction === 'function') {
                     window.omoEndPendingAction(form);
                 }
-                syncDictationToolbarButtons();
+                aiTools.sync();
             });
     });
 

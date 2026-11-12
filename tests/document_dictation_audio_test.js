@@ -21,6 +21,7 @@ const root = path.join(__dirname, '..');
         await page.addStyleTag({url: 'https://cdnjs.cloudflare.com/ajax/libs/summernote/0.8.18/summernote-lite.min.css'});
         await page.addScriptTag({url: 'https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js'});
         await page.addScriptTag({path: path.join(root, 'omo/assets/js/simple-html-field.js')});
+        await page.addScriptTag({path: path.join(root, 'common/document/html-ai-tools.js')});
         await page.addScriptTag({path: path.join(root, 'omo/api/documents/create.js')});
         await page.evaluate(() => {
             window.audioContext = new AudioContext();
