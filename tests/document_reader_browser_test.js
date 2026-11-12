@@ -9,6 +9,29 @@ const root = path.resolve(__dirname, '..');
 (async () => {
     const browser = await chromium.launch({headless: true, channel: 'msedge'});
     try {
+        if (process.argv.includes('--live')) {
+            const fixture = path.join(root, 'tmp/document-reader-live.json');
+            try {
+                const {url} = JSON.parse(fs.readFileSync(fixture, 'utf8'));
+                const page = await browser.newPage({ignoreHTTPSErrors: true, viewport: {width: 1280, height: 1050}});
+                const errors = [];
+                page.on('pageerror', error => errors.push(error.message));
+                const ready = page.waitForEvent('framenavigated', {predicate: frame => frame.url().includes('document.localtest.me/browser/'), timeout: 30000});
+                await page.goto(url, {waitUntil: 'domcontentloaded'});
+                const office = await ready;
+                await office.waitForFunction(() => window.app?.file?.readOnly === true && window.app?.map?._permission === 'view', null, {timeout: 30000});
+                await office.locator('.status-readonly-mode').waitFor();
+                assert.equal(await page.locator('[contenteditable="true"]').count(), 0);
+                for (const width of [1280, 390]) {
+                    await page.setViewportSize({width, height: 1050});
+                    assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Collabora reader fits ' + width);
+                    await page.screenshot({path: path.join(root, `tmp/document-reader-collabora-live-${width}.png`), fullPage: true});
+                }
+                assert.deepEqual(errors, []);
+                console.log('document_reader_browser_test: OK (live Collabora, anonymous view mode, mobile/desktop)');
+            } finally { if (fs.existsSync(fixture)) fs.unlinkSync(fixture); }
+            return;
+        }
         for (const width of [390, 1280]) {
             const page = await browser.newPage({viewport: {width, height: 950}});
             const errors = [];
@@ -47,6 +70,8 @@ const root = path.resolve(__dirname, '..');
             }
             await page.locator('#omoDocumentReaderLink').waitFor();
             const link = await page.locator('#omoDocumentReaderLink').inputValue();
+            assert.match(new URL(link).searchParams.get('code'), /^[a-f0-9]{48}$/);
+            assert.equal(new URL(link).searchParams.has('id'), false, 'Shared links hide the document id');
             await page.getByRole('button', {name: 'Copier le lien de consultation'}).click();
             assert.deepEqual(await page.evaluate(() => window.copied), [link]);
             assert.equal(await page.evaluate(() => window.notifications[0].kind), 'success');

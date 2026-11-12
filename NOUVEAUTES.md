@@ -6,6 +6,10 @@ Les dates déjà indiquées sont conservées. Les dates manquantes sont reconsti
 
 ## 2026-11-12
 
+- Documents / formulaire : retrait de l’aperçu Collabora pendant l’édition des paramètres, suppression du fichier distant à côté du sélecteur de remplacement et option d’historisation au-dessus de la liste des anciennes versions, désormais consultable dans le formulaire.
+
+- Documents / consultation : liens avec code aléatoire au lieu de l’identifiant du document, y compris pour les fichiers et documents intégrés. Aperçu Collabora des fichiers bureautiques en lecture seule, accessible sans compte pour les documents tout public ; l’écriture reste bloquée côté serveur, même pour le propriétaire.
+
 - Documents / tests MCP : vérification du libellé traduit indépendamment du type technique `html`, qui reste inchangé en base. Les accents des textes affichés ne font plus échouer les tests de création.
 
 - Documents / partage : lien permanent de consultation en lecture seule, accessible depuis « Partager ». Les documents tout public s’ouvrent directement ; les autres demandent une connexion et conservent leurs droits d’accès. Bouton « Voir dans OMO » pour retrouver les fonctions habituelles. Les fichiers peuvent être téléchargés, avec aperçu des PDF, images et fichiers audio.

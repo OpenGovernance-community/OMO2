@@ -61,14 +61,15 @@ if (!is_array($tokenPayload)) {
 }
 
 $userId = (int)($tokenPayload['userId'] ?? 0);
+$reader = ($tokenPayload['reader'] ?? false) === true;
 $organizationId = (int)$document->get('IDorganization');
 $holonId = (int)$document->get('IDholon');
-if (
+if (($reader && !$document->canReadFromLink($userId)) || (!$reader && (
     $userId <= 0
     || $organizationId <= 0
     || !commonUserHasOrganizationAccess($userId, $organizationId)
     || !$document->canViewInOrganizationContext($organizationId, $holonId > 0 ? $holonId : null, $userId)
-) {
+))) {
     http_response_code(403);
     exit;
 }
@@ -80,7 +81,7 @@ if (!$organization->load($organizationId) || !$organization->hasDocumentStorage(
 }
 
 $collaboraConfig = omoCollaboraGetConfig($organization);
-$canEdit = $document->canEditInOrganizationContext($organizationId, $userId, false);
+$canEdit = !$reader && $document->canEditInOrganizationContext($organizationId, $userId, false);
 $remotePath = $document->isNextcloudFolder()
     ? Document::normalizeNextcloudFolderPath($tokenPayload['remotePath'] ?? '')
     : '';
@@ -153,10 +154,10 @@ if ($method === 'GET' && $isContentsRequest) {
 
 if ($method === 'GET') {
     $user = new User();
-    $displayName = $user->load($userId) ? trim((string)$user->getScopedDisplayName($organizationId)) : '';
-    $email = trim((string)$user->getScopedEmail($organizationId));
+    $displayName = $userId > 0 && $user->load($userId) ? trim((string)$user->getScopedDisplayName($organizationId)) : '';
+    $email = $userId > 0 ? trim((string)$user->getScopedEmail($organizationId)) : '';
     if ($displayName === '') {
-        $displayName = 'Utilisateur ' . $userId;
+        $displayName = $userId > 0 ? 'Utilisateur ' . $userId : commonDocumentServiceT('collabora.guest');
     }
 
     $lastModified = $document->get('datemodification');
@@ -182,7 +183,7 @@ if ($method === 'GET') {
         'UserId' => (string)$userId,
         'UserFriendlyName' => $displayName,
         'UserPrincipalName' => $email,
-        'IsAnonymousUser' => false,
+        'IsAnonymousUser' => $userId <= 0,
         'UserCanWrite' => $canEdit,
         'UserCanNotWriteRelative' => true,
         'Size' => $isRemoteFile ? 0 : $document->getStoredFileSize(),
@@ -190,7 +191,7 @@ if ($method === 'GET') {
         'LastModifiedTime' => $lastModifiedTime,
         'SupportsLocks' => false,
         'SupportsGetLock' => false,
-        'SupportsUpdate' => true,
+        'SupportsUpdate' => !$reader,
         'SupportsRename' => false,
         'SupportsDeleteFile' => false,
         'UserSettings' => array('uri' => $userSettingsUrl),

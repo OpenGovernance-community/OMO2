@@ -20,10 +20,9 @@ header('Referrer-Policy: no-referrer');
 header('X-Content-Type-Options: nosniff');
 header('X-Robots-Tag: noindex, nofollow');
 
-$document = new \dbObject\Document();
-$documentId = (int)($_GET['id'] ?? 0);
+$document = \dbObject\Document::findByReaderCode(trim((string)($_GET['code'] ?? '')));
 $userId = (int)commonGetCurrentUserId();
-$loaded = $documentId > 0 && $document->load($documentId)
+$loaded = $document instanceof \dbObject\Document
     && !$document->isFolder() && !$document->isNextcloudFolder() && !$document->isArchived()
     && (int)$document->get('IDorganization') > 0;
 
@@ -41,11 +40,21 @@ $title = $allowed ? (string)$document->get('title') : $text('title');
 $description = $allowed ? trim((string)$document->get('description')) : '';
 $content = '';
 $fileUrl = '';
+$collaboraUrl = '';
 if (!$allowed) {
     http_response_code(404);
 } elseif ($document->isUploadedFile()) {
     if ($document->hasStoredFile()) {
-        $fileUrl = $document->buildStoredFileDownloadUrl() . '&reader=1';
+        $readerQuery = http_build_query(['reader' => 1, 'code' => (string)$document->get('readercode')]);
+        $fileUrl = '/omo/api/documents/upload/download.php?' . $readerQuery;
+        if ($document->canOpenWithCollabora()) {
+            require_once dirname(__DIR__) . '/common/collabora.php';
+            $organization = new \dbObject\Organization();
+            if ($organization->load((int)$document->get('IDorganization'))
+                && $organization->hasDocumentStorage() && omoCollaboraHasConfig($organization)) {
+                $collaboraUrl = '/omo/api/documents/collabora/open.php?' . $readerQuery;
+            }
+        }
     } else {
         $content = '<p>' . $escape($text('no_file')) . '</p>';
     }
@@ -91,7 +100,9 @@ if (!$allowed) {
         <?php if ($allowed): ?>
         <section class="generic-section generic-section--stack">
             <?php if ($fileUrl !== ''): ?>
-                <?php if ($document->isStoredPdfFile()): ?>
+                <?php if ($collaboraUrl !== ''): ?>
+                <iframe class="omo-document-reader__pdf" src="<?= $escape($collaboraUrl) ?>" title="<?= $escape($title) ?>" referrerpolicy="same-origin" allow="fullscreen" allowfullscreen></iframe>
+                <?php elseif ($document->isStoredPdfFile()): ?>
                 <iframe class="omo-document-reader__pdf" src="<?= $escape($fileUrl . '&inline=1') ?>" title="<?= $escape($title) ?>"></iframe>
                 <?php elseif ($document->getStoredFileKind() === 'image'): ?>
                 <img class="omo-document-reader__image" src="<?= $escape($fileUrl . '&inline=1') ?>" alt="<?= $escape($title) ?>">
@@ -103,11 +114,5 @@ if (!$allowed) {
         </section>
         <?php endif; ?>
     </main>
-    <script>
-    document.querySelectorAll('a[href^="#documents-d"]').forEach(function (link) {
-        var match = /^#documents-d(\d+)$/.exec(link.getAttribute('href'));
-        if (match) link.href = '/omo/document.php?id=' + match[1];
-    });
-    </script>
 </body>
 </html>

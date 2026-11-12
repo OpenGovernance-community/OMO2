@@ -220,7 +220,7 @@ if (!function_exists('omoCollaboraBuildPostMessageOrigin')) {
 }
 
 if (!function_exists('omoCollaboraBuildWopiToken')) {
-    function omoCollaboraBuildWopiToken(\dbObject\Document $document, int $userId, int $validUntil = 0, string $remotePath = ''): string
+    function omoCollaboraBuildWopiToken(\dbObject\Document $document, int $userId, int $validUntil = 0, string $remotePath = '', bool $reader = false): string
     {
         $documentId = (int)$document->getId();
         $userId = (int)$userId;
@@ -232,12 +232,16 @@ if (!function_exists('omoCollaboraBuildWopiToken')) {
             'nonce' => bin2hex(random_bytes(12)),
         );
         $remotePath = \dbObject\Document::normalizeNextcloudFolderPath($remotePath);
+        if ($reader) {
+            $payload['reader'] = true;
+        }
         if ($remotePath !== '') {
             $payload['remotePath'] = $remotePath;
         }
         $encodedPayload = omoCollaboraBase64UrlEncode((string)json_encode($payload, JSON_UNESCAPED_SLASHES));
-        $secret = trim((string)$document->get('codeedit'));
+        $secret = $reader ? $document->getCollaboraSigningSecret() : trim((string)$document->get('codeedit'));
         if ($secret === '') {
+            if ($reader) return '';
             $secret = 'document-' . $documentId . '-collabora';
         }
 
@@ -266,6 +270,7 @@ if (!function_exists('omoCollaboraVerifyWopiToken')) {
 
         $secret = trim((string)$document->get('codeedit'));
         if ($secret === '') {
+            if (($payload['reader'] ?? false) === true) return false;
             $secret = 'document-' . (int)$document->getId() . '-collabora';
         }
 
@@ -278,7 +283,8 @@ if (!function_exists('omoCollaboraVerifyWopiToken')) {
             return false;
         }
 
-        if ((int)($payload['userId'] ?? 0) <= 0 || (int)($payload['expiresAt'] ?? 0) < time()) {
+        if (((int)($payload['userId'] ?? 0) <= 0 && ($payload['reader'] ?? false) !== true)
+            || (int)($payload['userId'] ?? 0) < 0 || (int)($payload['expiresAt'] ?? 0) < time()) {
             return false;
         }
 

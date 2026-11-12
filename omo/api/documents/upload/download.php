@@ -16,8 +16,8 @@ if (isset($_GET['pv_document_id'])) {
 } elseif (isset($_GET['reader'])) {
     require_once dirname(__DIR__, 4) . '/shared_functions.php';
     require_once dirname(__DIR__, 4) . '/common/auth.php';
-    $readerDocument = new \dbObject\Document();
-    if (!$readerDocument->load((int)($_GET['id'] ?? 0))
+    $readerDocument = \dbObject\Document::findByReaderCode(trim((string)($_GET['code'] ?? '')));
+    if (!$readerDocument
         || !$readerDocument->canReadFromLink((int)commonGetCurrentUserId())
         || array_key_exists('version_id', $_GET)) {
         http_response_code(404);
@@ -32,7 +32,7 @@ if (isset($_GET['pv_document_id'])) {
 use dbObject\Document;
 use dbObject\Organization;
 
-$documentId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$documentId = isset($readerDocument) ? (int)$readerDocument->getId() : (int)($_GET['id'] ?? 0);
 $organizationId = isset($_GET['oid']) ? (int)$_GET['oid'] : (int)($_SESSION['currentOrganization'] ?? 0);
 $holonId = isset($_GET['cid']) ? (int)$_GET['cid'] : 0;
 $versionId = isset($_GET['version_id']) ? (int)$_GET['version_id'] : 0;

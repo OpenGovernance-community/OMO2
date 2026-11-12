@@ -9,6 +9,7 @@ require_once dirname(__DIR__, 3) . '/common/spacedeck.php';
 require_once dirname(__DIR__, 3) . '/common/patreon.php';
 require_once dirname(__DIR__, 3) . '/common/openai_text.php';
 require_once dirname(__DIR__, 3) . '/common/object_visibility_selector.php';
+require_once __DIR__ . '/history_helpers.php';
 
 use dbObject\Document;
 use dbObject\Holon;
@@ -200,6 +201,8 @@ $documentStoredFilename = '';
 $documentStoredFileMime = '';
 $documentStoredFileSize = 0;
 $documentHasStoredFile = false;
+$editorArchivedVersions = $isEditing && $canUseForm && $document->supportsVersionHistory()
+    ? $document->getArchivedVersions() : [];
 $documentNextcloudFolderPath = '';
 $isFolder = false;
 $selectedVisibilityType = $organizationId > 0
@@ -667,7 +670,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                     </span>
                 </div>
 
-                <?php if ($isEditing && ($document->isEtherpadDocument() || $document->isEthercalcDocument() || $document->isWhiteboardDocument() || $document->canOpenWithCollabora())): ?>
+                <?php if ($isEditing && ($document->isEtherpadDocument() || $document->isEthercalcDocument() || $document->isWhiteboardDocument())): ?>
                     <div class="omo-document-detail__content generic-section generic-section--stack">
                         <?= $document->getRenderedContentForCurrentViewer() ?>
                     </div>
@@ -705,24 +708,25 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                     </label>
                 </div>
 
-                <div class="generic-form-field" data-omo-document-history-section<?= !$document->supportsVersionHistory() && !in_array($documentType, [Document::TYPE_UPLOADED_FILE, Document::TYPE_COLLABORA_DOCUMENT, Document::TYPE_COLLABORA_SPREADSHEET, Document::TYPE_COLLABORA_PRESENTATION, Document::TYPE_COLLABORA_DRAWING], true) ? ' hidden' : '' ?>>
-                    <label class="generic-checkbox">
-                        <input type="checkbox" name="history_enabled" value="1"<?= $document->isVersionHistoryEnabled() ? ' checked' : '' ?><?= $isEditing && !$canEditDocumentContent ? ' disabled' : '' ?>>
-                        <span><?= $escape(omoDocumentsCreateT('documents.create.history.enabled')) ?></span>
-                    </label>
-                    <span class="generic-help-text"><?= $escape(omoDocumentsCreateT('documents.create.history.hint')) ?></span>
-                </div>
-
                 <div class="omo-document-editor__upload-section" data-omo-document-upload-section<?= $documentType !== Document::TYPE_UPLOADED_FILE ? ' hidden' : '' ?>>
-                    <label class="omo-document-editor__field generic-form-field">
-                        <span class="omo-document-editor__label generic-form-label"><?= $escape(omoDocumentsCreateT('documents.create.field.upload')) ?></span>
-                        <input
-                            type="file"
-                            name="uploaded_file"
-                            class="generic-form-control generic-form-control--compact"
-                            data-omo-document-upload-input
-                            <?= $isEditing && !$canEditDocumentContent ? ' disabled' : '' ?>
-                        >
+                    <div class="omo-document-editor__field generic-form-field">
+                        <label class="omo-document-editor__label generic-form-label" for="<?= $escape($documentFormId) ?>-upload"><?= $escape(omoDocumentsCreateT('documents.create.field.upload')) ?></label>
+                        <div class="omo-document-editor__upload-row generic-form-grid">
+                            <input
+                                id="<?= $escape($documentFormId) ?>-upload"
+                                type="file"
+                                name="uploaded_file"
+                                class="generic-form-control generic-form-control--compact"
+                                data-omo-document-upload-input
+                                <?= $isEditing && !$canEditDocumentContent ? ' disabled' : '' ?>
+                            >
+                            <?php if ($documentType === Document::TYPE_UPLOADED_FILE && $documentHasStoredFile): ?>
+                                <label class="generic-checkbox generic-checkbox--control">
+                                    <input type="checkbox" name="remove_uploaded_file" value="1"<?= $isEditing && !$canEditDocumentContent ? ' disabled' : '' ?>>
+                                    <span><?= $escape(omoDocumentsCreateT('documents.create.upload.remove')) ?></span>
+                                </label>
+                            <?php endif; ?>
+                        </div>
                         <span class="omo-document-editor__hint generic-help-text">
                             <?php if ($nextcloudDocumentsAvailable): ?>
                                 <?= $escape(omoDocumentsCreateT('documents.create.upload.hint_nextcloud')) ?>
@@ -730,7 +734,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                                 <?= $escape(omoDocumentsCreateT('documents.create.upload.hint_missing')) ?>
                             <?php endif; ?>
                         </span>
-                    </label>
+                    </div>
 
                     <?php if ($documentType === Document::TYPE_UPLOADED_FILE && $documentHasStoredFile): ?>
                         <div class="omo-document-editor__upload-current generic-soft-panel generic-soft-panel--stack">
@@ -743,13 +747,31 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                                 <?php endif; ?>
                             </div>
                         </div>
-
-                        <label class="omo-document-editor__checkbox generic-checkbox">
-                            <input type="checkbox" name="remove_uploaded_file" value="1"<?= $isEditing && !$canEditDocumentContent ? ' disabled' : '' ?>>
-                            <span><?= $escape(omoDocumentsCreateT('documents.create.upload.remove')) ?></span>
-                        </label>
                     <?php endif; ?>
                 </div>
+
+                <section class="generic-section generic-section--stack" data-omo-document-history-section<?= !$document->supportsVersionHistory() && !in_array($documentType, [Document::TYPE_UPLOADED_FILE, Document::TYPE_COLLABORA_DOCUMENT, Document::TYPE_COLLABORA_SPREADSHEET, Document::TYPE_COLLABORA_PRESENTATION, Document::TYPE_COLLABORA_DRAWING], true) ? ' hidden' : '' ?>>
+                    <?php if ($isEditing && $document->supportsVersionHistory()): ?>
+                        <h3 class="generic-card-title generic-card-title--medium"><?= $escape(omoDocumentHistoryT('title')) ?></h3>
+                    <?php endif; ?>
+                    <div class="generic-inline-help">
+                        <label class="generic-checkbox">
+                            <input type="checkbox" name="history_enabled" value="1"<?= $document->isVersionHistoryEnabled() ? ' checked' : '' ?><?= $isEditing && !$canEditDocumentContent ? ' disabled' : '' ?>>
+                            <span><?= $escape(omoDocumentsCreateT('documents.create.history.enabled')) ?></span>
+                        </label>
+                        <?= $documentHelp(omoDocumentsCreateT('documents.create.history.enabled'), omoDocumentsCreateT('documents.create.history.hint')) ?>
+                    </div>
+                    <?php if ($isEditing && $document->supportsVersionHistory()): ?>
+                        <?php if (count($editorArchivedVersions) === 0): ?>
+                            <p class="generic-help-text"><?= $escape(omoDocumentHistoryT('empty')) ?></p>
+                        <?php endif; ?>
+                        <ul class="generic-stack" data-omo-document-history-list>
+                            <?php foreach ($editorArchivedVersions as $archivedVersion): ?>
+                                <?= omoDocumentHistoryVersionHtml($archivedVersion, $organizationId) ?>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php endif; ?>
+                </section>
             </div>
 
             <div class="omo-document-editor__status generic-soft-panel generic-feedback" data-omo-document-editor-status hidden></div>
@@ -764,7 +786,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     <?php endif; ?>
 </div>
 
-<link rel="stylesheet" href="/omo/api/documents/editor.css?v=20260917-style-review-final">
+<link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/documents/editor.css') ?>">
 <?php if ($isEditing): ?>
 <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/documents/detail.css') ?>">
 <?php endif; ?>

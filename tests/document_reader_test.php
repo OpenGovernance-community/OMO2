@@ -44,6 +44,13 @@ try {
     $doc = $items['doc'];
     mcpCheck(!empty($doc->saveVisibilityRule('everyone')['status']), 'Public rule saved');
     $url = $doc->buildReaderUrl();
+    mcpCheck((bool)preg_match('/^\/omo\/document\.php\?code=[a-f0-9]{48}$/D', $url), 'Reader URL contains only an opaque access code');
+    $doc->set('description', 'Updated description'); $doc->save();
+    mcpCheck($doc->buildReaderUrl() === $url, 'Reader code remains stable after document updates');
+    $items['copy'] = mcpFixture(Document::class, $fields + ['title' => 'Independent copy', 'readercode' => $doc->get('readercode')]);
+    mcpCheck($items['copy']->buildReaderUrl() !== $url, 'A newly copied document receives its own code');
+    mcpCheck(readerHttp('/omo/document.php?id=' . $doc->getId())['status'] === 404, 'Numeric ids cannot open the reader');
+    mcpCheck(readerHttp('/omo/document.php?code=' . str_repeat('0', 48))['status'] === 404, 'Unknown access code is unavailable');
     mcpCheck($doc->canReadFromLink(0), 'Everyone is readable without membership');
     $response = readerHttp($url);
     mcpCheck($response['status'] === 200 && str_contains($response['body'], 'READER_SAVED_CONTENT'), 'Anonymous public reader opens saved content');
@@ -89,7 +96,7 @@ try {
     $doc->set('content', '<p>READER_SAVED_CONTENT</p>' . $embed($items['hidden'])); $doc->save();
     mcpCheck(!str_contains(readerHttp($url)['body'], 'READER_HIDDEN_CONTENT'), 'Public page cannot disclose private embeds');
     $items['hidden']->saveVisibilityRule('everyone');
-    mcpCheck(str_contains(readerHttp($url)['body'], '#documents-d' . $items['hidden']->getId()), 'Public embeds can be opened in the reader');
+    mcpCheck(str_contains(readerHttp($url)['body'], $items['hidden']->buildReaderUrl()), 'Public embeds can be opened by code in the reader');
 
     $items['pv'] = mcpFixture(Document::class, array_replace($fields, ['documenttype' => Document::TYPE_PV, 'title' => 'Public PV', 'pvstage' => Document::PV_STAGE_PREPARATION]));
     $pv = $items['pv']; $pv->saveVisibilityRule('everyone');
@@ -108,7 +115,8 @@ try {
     file_put_contents(dirname(__DIR__) . '/tmp/document-reader-pdf.html', $response['body']);
     $popup = readerHttp('/omo/api/documents/share_popup.php?id=' . $file->getId(), true);
     mcpCheck($popup['status'] === 200 && str_contains($popup['body'], 'omoDocumentReaderLink'), 'Uploaded files also have a permanent share link');
-    $download = $file->buildStoredFileDownloadUrl() . '&reader=1';
+    $download = '/omo/api/documents/upload/download.php?reader=1&code=' . $file->get('readercode');
+    mcpCheck(readerHttp($file->buildStoredFileDownloadUrl() . '&reader=1')['status'] === 404, 'Numeric ids cannot bypass the reader download code');
     mcpCheck(readerHttp($download)['status'] === 503, 'Public download reaches the storage check');
     mcpCheck(readerHttp($download . '&version_id=1')['status'] === 404, 'Public reader does not expose version history');
     $file->saveVisibilityRule('self');

@@ -180,6 +180,7 @@
 		public static function rules()
 		{
 			return [
+				[['readercode'], 'string'],
 				[['title'], 'required'],						// Champs obligatoires
 				[['id', 'version', 'estDossier', 'active', 'is_template', 'pv_editor_handover_open', 'openinnewwindow', 'project_visible_in_holon', 'storedfilesize', 'history_enabled'], 'integer'],				// Nombres entiers
 				[['title', 'codeview', 'codeedit', 'keywords', 'documenttype', 'pvstage', 'externalurl', 'storedfilepath', 'storedfilename', 'storedfilemime', 'nextcloudfolderpath', 'nextcloudfolderfileid', 'etherpadpadid', 'ethercalcroomid', 'spacedeckspaceid'], 'string'],	// Chaines de caractere
@@ -221,6 +222,7 @@
 				'datecontentedition' => 'Date du brouillon en édition',
 				'version' => 'Version',
 				'codeview' => 'Code d’affichage',
+				'readercode' => 'Code de consultation',
 				'codeedit' => 'Code d’édition',
 				'documenttype' => 'Type de document',
 				'pvstage' => 'Étape du PV',
@@ -289,6 +291,7 @@
 		public static function attributeLength()
 		{
 			return [
+				'readercode' => 48,
 				'title' => 100,									// Nombre de caracteres maximum
 				'pvstage' => 30,
 				'externalurl' => 2000,
@@ -372,6 +375,7 @@
 				'datecontentedition',
 				'version',
 				'codeview',
+				'readercode',
 				'codeedit',
 			);
 		}
@@ -1139,7 +1143,37 @@
 
 		public function buildReaderUrl(): string
 		{
-			return '/omo/document.php?id=' . (int)$this->getId();
+			return '/omo/document.php?code=' . rawurlencode((string)$this->get('readercode'));
+		}
+
+		public function save()
+		{
+			if ((int)$this->getId() <= 0 || trim((string)$this->get('readercode')) === '') {
+				$this->set('readercode', bin2hex(random_bytes(24)));
+			}
+			return parent::save();
+		}
+
+		public static function findByReaderCode(string $code): ?self
+		{
+			if (!preg_match('/^[a-f0-9]{48}$/D', $code)) {
+				return null;
+			}
+			$document = new self();
+			return $document->load(['readercode', $code]) ? $document : null;
+		}
+
+		public function getCollaboraSigningSecret(): string
+		{
+			$secret = trim((string)$this->get('codeedit'));
+			if ($secret === '' && (int)$this->getId() > 0) {
+				self::execute("UPDATE document SET codeedit = :secret WHERE id = :id AND (codeedit IS NULL OR codeedit = '')",
+					['secret' => bin2hex(random_bytes(24)), 'id' => (int)$this->getId()]);
+				$row = self::fetchRow('SELECT codeedit FROM document WHERE id = :id', ['id' => (int)$this->getId()]);
+				$secret = trim((string)($row['codeedit'] ?? ''));
+				$this->set('codeedit', $secret);
+			}
+			return $secret;
 		}
 
 		public function buildOmoDocumentUrl(): string
@@ -4718,7 +4752,7 @@
 			}
 
 			if ($isCompactEmbed || !$targetDocument->supportsHtmlContent()) {
-				return self::buildDocumentEmbedDisplayHtml(
+				$html = self::buildDocumentEmbedDisplayHtml(
 					$targetDocumentId,
 					$targetTitle !== '' ? $targetTitle : $fallbackTitle,
 					self::truncateEmbeddedReferenceSummary(
@@ -4727,6 +4761,9 @@
 					'',
 					'compact'
 				);
+				return !empty($options['readOnlyLink'])
+					? str_replace('#documents-d' . $targetDocumentId . '"', htmlspecialchars($targetDocument->buildReaderUrl(), ENT_QUOTES, 'UTF-8') . '"', $html)
+					: $html;
 			}
 
 			$childOptions = $options;
