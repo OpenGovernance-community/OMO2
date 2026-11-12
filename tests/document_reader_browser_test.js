@@ -7,8 +7,11 @@ const {chromium} = require('playwright');
 const root = path.resolve(__dirname, '..');
 
 async function verifyWindowPreview(page, width, media = false) {
-    const button = page.locator('[data-common-panel-fullscreen]');
+    const openButton = page.locator('[data-common-panel-fullscreen-target]');
+    const button = page.locator('[data-common-panel-view] [data-common-panel-fullscreen]');
     const view = page.locator('[data-common-panel-view]');
+    assert.equal(await view.locator('[data-common-panel-media-toolbar]').isVisible(), false, 'Normal preview has no extra toolbar row');
+    assert.equal(await openButton.locator('..').getByRole('link', {name: 'Voir dans OMO'}).count(), 1, 'Fullscreen is in the document header');
     await page.evaluate(() => {
         window.nativeCalls = 0;
         Element.prototype.requestFullscreen = () => { window.nativeCalls++; throw new Error('Native fullscreen must not be requested'); };
@@ -27,13 +30,15 @@ async function verifyWindowPreview(page, width, media = false) {
     const hasFramedInput = await page.locator('[data-common-panel-media-content] iframe').count() > 0 && await framedInput.count() > 0;
     if (hasFramedInput) await framedInput.fill('Preserved preview state');
     await page.evaluate(() => window.addEventListener('click', event => {
-        const rect = event.target.closest('[data-common-panel-view]').getBoundingClientRect();
+        const button = event.target.closest('[data-common-panel-fullscreen]');
+        const target = button.getAttribute('data-common-panel-fullscreen-target');
+        const rect = (target ? document.getElementById(target) : button.closest('[data-common-panel-view]')).getBoundingClientRect();
         window.previewEntry = {scrollTop: window.scrollY, rect: {x: rect.x, y: rect.y, width: rect.width, height: rect.height}};
     }, {capture: true, once: true}));
     let frameNavigations = 0;
     const onNavigation = frame => { if (frame !== page.mainFrame()) frameNavigations++; };
     page.on('framenavigated', onNavigation);
-    await button.click();
+    await openButton.click();
     const entry = await page.evaluate(() => window.previewEntry);
     assert.equal(await button.getAttribute('aria-pressed'), 'true');
     const bounds = await view.boundingBox();
@@ -56,11 +61,12 @@ async function verifyWindowPreview(page, width, media = false) {
     }
     await page.screenshot({path: path.join(root, `tmp/document-reader-fullscreen-${media ? 'media' : 'text'}-${width}.png`)});
     await button.click();
+    assert.equal(await openButton.getAttribute('aria-pressed'), 'false');
     assert.equal(await button.getAttribute('aria-pressed'), 'false');
     assert.equal(await page.evaluate(() => window.scrollY), entry.scrollTop, 'Leaving fullscreen restores page scroll at ' + width);
     const restored = await view.boundingBox();
     for (const axis of ['x', 'y', 'width', 'height']) assert(Math.abs(restored[axis] - entry.rect[axis]) < 1, 'Original geometry returns: ' + axis);
-    await button.click();
+    await openButton.click();
     await button.focus();
     await page.keyboard.press('Escape');
     assert.equal(await button.getAttribute('aria-pressed'), 'false', 'Escape exits window mode');
@@ -76,15 +82,16 @@ async function verifyWindowPreview(page, width, media = false) {
         if (process.argv.includes('--live')) {
             const fixture = path.join(root, 'tmp/document-reader-live.json');
             try {
-                const {url} = JSON.parse(fs.readFileSync(fixture, 'utf8'));
+                const {url, ownerCookie, editorUrl} = JSON.parse(fs.readFileSync(fixture, 'utf8'));
                 const page = await browser.newPage({ignoreHTTPSErrors: true, viewport: {width: 1280, height: 1050}});
                 const errors = [];
                 page.on('pageerror', error => errors.push(error.message));
                 const ready = page.waitForEvent('framenavigated', {predicate: frame => frame.url().includes('document.localtest.me/browser/'), timeout: 30000});
                 await page.goto(url, {waitUntil: 'domcontentloaded'});
                 const office = await ready;
-                await office.waitForFunction(() => window.app?.file?.readOnly === true && window.app?.map?._permission === 'view', null, {timeout: 30000});
+                await office.waitForFunction(() => window.app?.file?.readOnly === true && window.app?.map?._permission === 'readonly', null, {timeout: 30000});
                 await office.locator('.status-readonly-mode').waitFor();
+                assert.equal(await office.locator('#viewModeDropdown').isVisible(), false, 'Strict reader offers no editing mode switch');
                 assert.equal(await page.locator('[contenteditable="true"]').count(), 0);
                 for (const width of [1280, 390]) {
                     await page.setViewportSize({width, height: 1050});
@@ -92,8 +99,22 @@ async function verifyWindowPreview(page, width, media = false) {
                     await verifyWindowPreview(page, width, true);
                     await page.screenshot({path: path.join(root, `tmp/document-reader-collabora-live-${width}.png`), fullPage: true});
                 }
+                const ownerContext = await browser.newContext({ignoreHTTPSErrors: true});
+                await ownerContext.addCookies([ownerCookie]);
+                const editor = await ownerContext.newPage();
+                await editor.goto(editorUrl, {waitUntil: 'domcontentloaded'});
+                await editor.waitForFunction(() => window.app?.map?.wopi?.UserCanWrite === true, null, {timeout: 30000});
+                const ownerPage = await ownerContext.newPage();
+                const ownerReady = ownerPage.waitForEvent('framenavigated', {predicate: frame => frame.url().includes('document.localtest.me/browser/'), timeout: 30000});
+                await ownerPage.goto(url, {waitUntil: 'domcontentloaded'});
+                const ownerOffice = await ownerReady;
+                await ownerOffice.waitForFunction(() => window.app?.file?.readOnly === true && window.app?.map?._permission === 'readonly', null, {timeout: 30000});
+                assert.equal(await ownerOffice.evaluate(() => app.map.wopi.UserCanWrite), false, 'An existing editable session does not grant writing to the reader');
+                assert.equal(await ownerOffice.locator('#viewModeDropdown').isVisible(), false, 'Author also has no editing mode switch in the reader');
+                await ownerPage.screenshot({path: path.join(root, 'tmp/document-reader-owner-strict-readonly.png')});
+                await ownerContext.close();
                 assert.deepEqual(errors, []);
-                console.log('document_reader_browser_test: OK (live Collabora, anonymous view mode, mobile/desktop)');
+                console.log('document_reader_browser_test: OK (live Collabora strict read-only, anonymous/author, existing editor session, mobile/desktop)');
             } finally { if (fs.existsSync(fixture)) fs.unlinkSync(fixture); }
             return;
         }

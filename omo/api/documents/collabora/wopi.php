@@ -185,6 +185,7 @@ if ($method === 'GET') {
         'UserPrincipalName' => $email,
         'IsAnonymousUser' => $userId <= 0,
         'UserCanWrite' => $canEdit,
+        'ReadOnly' => !$canEdit,
         'UserCanNotWriteRelative' => true,
         'Size' => $isRemoteFile ? 0 : $document->getStoredFileSize(),
         'Version' => $version,

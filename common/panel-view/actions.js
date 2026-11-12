@@ -11,15 +11,24 @@
     var translationsRequested = false;
     var options = {};
 
+    function fullscreenRoot(button) {
+        var targetId = button.getAttribute('data-common-panel-fullscreen-target');
+        var root = targetId ? document.getElementById(targetId) : button.closest('[data-common-panel-view]');
+        return root && root.matches('[data-common-panel-view]') ? root : null;
+    }
+
     function updateLabels() {
         document.querySelectorAll('[data-common-panel-fullscreen]').forEach(function (button) {
-            var isActive = !!(active && button.closest('[data-common-panel-view]') === active.root);
+            var isActive = !!(active && fullscreenRoot(button) === active.root);
             var label = isActive ? texts.exitFullscreen : texts.fullscreen;
             if (button.hasAttribute('aria-pressed')) button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
             if (button.hasAttribute('data-common-panel-fullscreen-icon')) {
                 button.setAttribute('aria-label', label);
                 button.title = label;
             } else if (button.textContent !== label) button.textContent = label;
+        });
+        document.querySelectorAll('[data-common-panel-fullscreen-only]').forEach(function (element) {
+            element.hidden = !(active && element.closest('[data-common-panel-view]') === active.root);
         });
         document.querySelectorAll('[data-common-panel-menu-toggle]').forEach(function (button) {
             button.setAttribute('aria-label', texts.more);
@@ -245,7 +254,7 @@
     document.addEventListener('click', function (event) {
         var button = event.target.closest('[data-common-panel-fullscreen]');
         if (button) {
-            var root = button.closest('[data-common-panel-view]');
+            var root = fullscreenRoot(button);
             if (!root) return;
             event.preventDefault();
             event.stopPropagation();

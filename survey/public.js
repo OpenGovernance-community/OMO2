@@ -250,7 +250,7 @@
         questions.forEach(function (question) {
             var card = element('article', 'survey-result-card');
             var copy = element('div', 'survey-result-card__copy');
-            var visual = window.SurveyResultScale.create(question.today, question.tomorrow, labels);
+            var visual = window.SurveyResultScale.create(question.today, question.tomorrow, labels, null, question.distributions);
             card.id = 'surveyPublicPrinciple' + question.number;
             copy.appendChild(element('span', '', String(question.number)));
             copy.appendChild(element('h2', '', question.title));

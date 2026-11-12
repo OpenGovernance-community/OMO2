@@ -98,18 +98,22 @@ $hasVisualPreview = $hasMediaPreview || $hasTextPreview;
                     <?php if ($fileUrl !== ''): ?>
                     <a class="generic-action-button generic-action-button--secondary" href="<?= $escape($fileUrl) ?>"><?= $escape($text('download')) ?></a>
                     <?php endif; ?>
+                    <?php if ($hasVisualPreview): ?>
+                    <button type="button" class="generic-action-button generic-action-button--secondary" data-common-panel-fullscreen data-common-panel-fullscreen-target="omoDocumentReaderPreview" aria-pressed="false"><?= $escape($text('fullscreen')) ?></button>
+                    <?php endif; ?>
                 </div>
             <?php endif; ?>
         </section>
         <?php if ($allowed): ?>
         <section
+            id="omoDocumentReaderPreview"
             class="generic-section generic-section--stack generic-panel-fullscreen-content--<?= $hasMediaPreview ? 'media' : 'scrollable' ?>"
             data-common-panel-view
             data-common-panel-fullscreen-isolate="main"
             data-common-panel-fullscreen-mode="window"
         >
             <?php if ($hasVisualPreview): ?>
-            <div class="generic-form-actions" data-common-panel-media-toolbar>
+            <div class="generic-form-actions" data-common-panel-media-toolbar data-common-panel-fullscreen-only hidden>
                 <button type="button" class="generic-action-button generic-action-button--secondary" data-common-panel-fullscreen aria-pressed="false"><?= $escape($text('fullscreen')) ?></button>
             </div>
             <?php endif; ?>

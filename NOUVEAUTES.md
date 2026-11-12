@@ -6,6 +6,10 @@ Les dates déjà indiquées sont conservées. Les dates manquantes sont reconsti
 
 ## 2026-11-12
 
+- Évaluation organisationnelle / dispersion : sous les pastilles d’aujourd’hui et de demain, un segment de la même couleur indique la note minimale et la note maximale réellement données. Le survol précise les deux extrêmes.
+
+- Documents / consultation : bouton de plein écran déplacé dans l’en-tête, à côté du téléchargement. Collabora reçoit désormais un mode de lecture seule strict qui bloque le passage en édition dans l’interface, en plus du refus d’enregistrement déjà appliqué côté serveur, y compris pour l’auteur.
+
 - Évaluation organisationnelle / résultats : échelle horizontale fixe de 1 à 5 pour comparer aujourd’hui et demain. Les pastilles suivent les valeurs réelles, y compris les moyennes décimales, avec un trait proportionnel à leur écart ; les valeurs proches ou identiques restent lisibles sur mobile.
 
 - Documents / consultation : bouton « Plein écran » pour agrandir Collabora, les PDF, les images et les textes dans la fenêtre du navigateur. Retour par le bouton ou la touche Échap, sans rechargement du document et avec restauration de la position de lecture.

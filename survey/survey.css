@@ -2145,6 +2145,37 @@ input:focus-visible + label {
     text-align: center;
 }
 
+.survey-result-scale__range {
+    position: absolute;
+    top: 23px;
+    height: 4px;
+    background: var(--survey-aqua);
+}
+
+.survey-result-scale__range::before,
+.survey-result-scale__range::after {
+    content: '';
+    position: absolute;
+    top: -4px;
+    width: 2px;
+    height: 12px;
+    background: inherit;
+    transform: translateX(-50%);
+}
+
+.survey-result-scale__range::before {
+    left: 0;
+}
+
+.survey-result-scale__range::after {
+    left: 100%;
+}
+
+.survey-result-scale__range--tomorrow {
+    top: 73px;
+    background: var(--survey-blue);
+}
+
 .survey-result-card__score {
     position: absolute;
     top: 6px;

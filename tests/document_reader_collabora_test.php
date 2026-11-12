@@ -30,7 +30,7 @@ function readerOfficeToken(array $response): string
     $xpath = new DOMXPath($dom);
     $token = $xpath->query('//input[@name="access_token"]')->item(0)?->getAttribute('value') ?? '';
     mcpCheck($token !== '', 'Launcher provides a WOPI token.');
-    mcpCheck($xpath->query('//input[@name="permission"]')->item(0)?->getAttribute('value') === 'view', 'Launcher forces view mode.');
+    mcpCheck($xpath->query('//input[@name="permission"]')->item(0)?->getAttribute('value') === 'readonly', 'Launcher forces strict read-only mode.');
     return $token;
 }
 
@@ -92,17 +92,18 @@ try {
     mcpCheck(strlen((string)$doc->get('codeedit')) >= 40, 'Legacy documents receive an unpredictable signing secret');
     $wopi = '/omo/api/documents/collabora/wopi.php/' . $doc->getId() . '?access_token=' . rawurlencode($guestToken);
     $info = readerOfficeHttp($wopi);
-    mcpCheck($info['status'] === 200 && $info['json']['UserCanWrite'] === false && $info['json']['IsAnonymousUser'] === true && $info['json']['SupportsUpdate'] === false, 'WOPI advertises read-only anonymous access');
+    mcpCheck($info['status'] === 200 && $info['json']['UserCanWrite'] === false && $info['json']['ReadOnly'] === true && $info['json']['IsAnonymousUser'] === true && $info['json']['SupportsUpdate'] === false, 'WOPI advertises strict read-only anonymous access');
     $contentsUrl = str_replace('?access_token=', '/contents?access_token=', $wopi);
     mcpCheck(readerOfficeHttp($contentsUrl)['body'] === $content, 'Collabora can retrieve actual file contents anonymously');
     mcpCheck(readerOfficeHttp($contentsUrl, false, 'FORGED_WRITE', ['X-WOPI-Override: PUT'])['status'] === 403, 'Anonymous token cannot write');
     $ownerToken = readerOfficeToken(readerOfficeHttp($open, true));
     $ownerWopi = '/omo/api/documents/collabora/wopi.php/' . $doc->getId() . '?access_token=' . rawurlencode($ownerToken);
-    mcpCheck(readerOfficeHttp($ownerWopi)['json']['UserCanWrite'] === false, 'Owner also receives read-only access from the reader');
+    $ownerInfo = readerOfficeHttp($ownerWopi);
+    mcpCheck($ownerInfo['json']['UserCanWrite'] === false && $ownerInfo['json']['ReadOnly'] === true, 'Owner also receives strict read-only access from the reader');
     mcpCheck(readerOfficeHttp(str_replace('?access_token=', '/contents?access_token=', $ownerWopi), true, 'OWNER_WRITE', ['X-WOPI-Override: PUT'])['status'] === 403, 'Owner reader token cannot write');
     $normalToken = omoCollaboraBuildWopiToken($doc, $uid);
     $normalInfo = readerOfficeHttp('/omo/api/documents/collabora/wopi.php/' . $doc->getId() . '?access_token=' . rawurlencode($normalToken));
-    mcpCheck($normalInfo['status'] === 200 && $normalInfo['json']['UserCanWrite'] === true, 'Normal OMO editing keeps the owner rights');
+    mcpCheck($normalInfo['status'] === 200 && $normalInfo['json']['UserCanWrite'] === true && $normalInfo['json']['ReadOnly'] === false, 'Normal OMO editing keeps the owner rights');
     $parts = explode('.', $guestToken);
     $payload['reader'] = false; $payload['userId'] = $uid;
     $forged = omoCollaboraBase64UrlEncode(json_encode($payload)) . '.' . $parts[1];
@@ -111,12 +112,16 @@ try {
     // Optional live browser verification while this isolated storage server is running.
     if (getenv('DOCUMENT_READER_BROWSER_FIXTURE')) {
         $fixture = dirname(__DIR__) . '/tmp/document-reader-live.json';
-        file_put_contents($fixture, json_encode(['url' => 'https://localtest.me' . $doc->buildReaderUrl()]));
-        for ($attempt = 0; $attempt < 500 && is_file($fixture); $attempt++) {
+        file_put_contents($fixture, json_encode(['url' => 'https://localtest.me' . $doc->buildReaderUrl(),
+            'ownerCookie' => ['name' => session_name(), 'value' => session_id(), 'domain' => 'localtest.me', 'path' => '/', 'secure' => true],
+            'editorUrl' => 'https://localtest.me/omo/api/documents/collabora/open.php?id=' . $doc->getId() . '&oid=' . $oid]));
+        session_write_close();
+        for ($attempt = 0; $attempt < 900 && is_file($fixture); $attempt++) {
             clearstatcache(true, $fixture);
             usleep(100000);
         }
         if (is_file($fixture)) unlink($fixture);
+        session_start();
     }
     $doc->saveVisibilityRule('self');
     mcpCheck(readerOfficeHttp($open)['status'] === 404 && readerOfficeHttp($wopi)['status'] === 403, 'Visibility changes revoke existing anonymous Collabora tokens');

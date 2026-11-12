@@ -77,6 +77,7 @@ if ($isRemoteFile && ($remotePath === '' || !$document->isRemoteFolderStoragePat
 $filename = $isRemoteFile ? basename($remotePath) : $document->getStoredFileDownloadName();
 $extension = strtolower((string)pathinfo($filename, PATHINFO_EXTENSION));
 $canEdit = !$reader && $document->canEditInOrganizationContext($organizationId, $userId, false);
+$permission = $reader ? 'readonly' : ($canEdit ? 'edit' : 'view');
 $actionName = $canEdit ? 'edit' : 'view';
 $actionUrl = '';
 $discoveryDocument = new DOMDocument();
@@ -115,7 +116,7 @@ $separator = str_contains($actionUrl, '?') ? '&' : '?';
 $actionUrl .= $separator . 'WOPISrc=' . rawurlencode($wopiSource);
 $actionUrl .= '&access_token=' . rawurlencode($accessToken);
 $actionUrl .= '&access_token_ttl=' . rawurlencode((string)$tokenExpiresAt . '000');
-$actionUrl .= '&permission=' . rawurlencode($canEdit ? 'edit' : 'view');
+$actionUrl .= '&permission=' . rawurlencode($permission);
 
 $user = new User();
 $displayName = $user->load($userId) ? trim((string)$user->getScopedDisplayName($organizationId)) : '';
@@ -136,7 +137,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
         <input type="hidden" name="WOPISrc" value="<?= htmlspecialchars($wopiSource, ENT_QUOTES, 'UTF-8') ?>" data-collabora-wopi-source>
         <input type="hidden" name="access_token" value="<?= htmlspecialchars($accessToken, ENT_QUOTES, 'UTF-8') ?>">
         <input type="hidden" name="access_token_ttl" value="<?= (int)$tokenExpiresAt ?>000">
-        <input type="hidden" name="permission" value="<?= htmlspecialchars($canEdit ? 'edit' : 'view', ENT_QUOTES, 'UTF-8') ?>">
+        <input type="hidden" name="permission" value="<?= htmlspecialchars($permission, ENT_QUOTES, 'UTF-8') ?>">
         <input type="hidden" name="ui_defaults" value="<?= htmlspecialchars($uiDefaults, ENT_QUOTES, 'UTF-8') ?>" data-collabora-ui-defaults>
         <input type="hidden" name="css_variables" value="<?= htmlspecialchars($cssVariables, ENT_QUOTES, 'UTF-8') ?>">
         <noscript><?= htmlspecialchars(omoDocumentsUiT('activez_javascript_pour_ouvrir_le_document'), ENT_QUOTES, 'UTF-8') ?></noscript>

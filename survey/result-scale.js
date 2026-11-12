@@ -10,7 +10,7 @@
 
     // Both report renderers use the same fixed scale, including fractional averages.
     window.SurveyResultScale = {
-        create: function (today, tomorrow, labels, gapText) {
+        create: function (today, tomorrow, labels, gapText, distributions) {
             var visual = element('div', 'survey-result-card__visual');
             var legend = element('div', 'survey-result-scale__legend');
             var scale = element('div', 'survey-result-scale');
@@ -38,6 +38,26 @@
                 var marker = element('span', 'survey-result-card__score survey-result-card__score--' + period, text);
                 marker.style.left = positions[index] + '%';
                 marker.title = label + ' : ' + text + '/5';
+                var counts = distributions && distributions[period];
+                if (Array.isArray(counts) && counts.length === 5) {
+                    var levels = [];
+                    counts.forEach(function (count, index) {
+                        if (Number(count) > 0) levels.push(index + 1);
+                    });
+                    if (levels.length > 0) {
+                        var minimum = levels[0];
+                        var maximum = levels[levels.length - 1];
+                        var range = element('span', 'survey-result-scale__range survey-result-scale__range--' + period);
+                        range.style.left = ((minimum - 1) * 25) + '%';
+                        range.style.width = ((maximum - minimum) * 25) + '%';
+                        if (labels.range) {
+                            var variables = { period: label, min: minimum, max: maximum };
+                            range.title = labels.range.replace(/\{(period|min|max)\}/g, function (match, key) { return variables[key]; });
+                            marker.title += '. ' + range.title;
+                        }
+                        track.appendChild(range);
+                    }
+                }
                 descriptions.push(marker.title);
                 legend.appendChild(element('span', 'survey-result-scale__key survey-result-scale__key--' + period, label));
                 track.appendChild(marker);
