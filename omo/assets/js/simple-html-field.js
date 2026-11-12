@@ -2442,7 +2442,7 @@ var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; 
                     height: null,
                     maxHeight: null,
                     disableResizeEditor: true,
-                    dialogsInBody: true,
+                    dialogsInBody: !container.closest('dialog'),
                     disableDragAndDrop: true,
                     styleTags: [
                         'p',

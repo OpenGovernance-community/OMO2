@@ -3224,6 +3224,12 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
     z-index: 100;
 }
 
+/* Use above a footer action when a scroll container limits the space below it. */
+.generic-menu--dropup > .generic-menu-panel {
+    top: auto;
+    bottom: calc(100% + 6px);
+}
+
 .generic-menu-panel {
     min-width: 140px;
     max-width: calc(100vw - 24px);

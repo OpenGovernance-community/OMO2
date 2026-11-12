@@ -16,6 +16,7 @@
     var automaticInvitationSaveAttempted = false;
     var associatedSaveChain = Promise.resolve();
     var principleVideoPlayer = null;
+    var inviteDialogCleanup = null;
 
     var elements = {
         welcome: document.getElementById('surveyWelcome'),
@@ -1035,6 +1036,10 @@
     }
 
     function closeInviteDialog() {
+        if (inviteDialogCleanup) {
+            inviteDialogCleanup();
+            inviteDialogCleanup = null;
+        }
         if (typeof elements.inviteDialog.close === 'function' && elements.inviteDialog.open) {
             elements.inviteDialog.close();
             return;
@@ -1086,6 +1091,9 @@
         if (!organization) {
             return;
         }
+        if (inviteDialogCleanup) {
+            inviteDialogCleanup();
+        }
         var fragment = document.createDocumentFragment();
         var form = el('form', 'survey-invite-dialog__form');
         var organizationLabel = el('label', 'survey-invite-dialog__organization');
@@ -1094,7 +1102,199 @@
         var panels = el('div', 'survey-invite-dialog__panels');
         var feedback = el('p', 'survey-invite-dialog__feedback');
         var submit = el('button', 'generic-action-button generic-action-button--main', labels.inviteSend);
+        var actions = el('div', 'generic-form-actions');
+        var editMessage = el('button', 'generic-action-button generic-action-button--secondary', labels.inviteEditMessage);
+        var sendGroup = el('div', 'generic-menu generic-menu--split generic-menu--dropup');
+        var menuToggle = el('button', 'generic-menu-toggle', '▾');
+        var menu = el('div', 'generic-menu-panel generic-menu-panel--wide');
+        var messageSection = el('div', 'generic-form-field');
+        var messageHost = el('div', '');
+        var messageError = el('p', 'survey-invite-dialog__help', labels.inviteInvalidMessage);
+        var editor = null;
+        var counts = null;
+        var previewTimer = null;
+        var previewController = null;
+        var previewVersion = 0;
+        var sending = false;
+        var modeButtons = {};
         var activeTabKey = 'holons';
+
+        function selectionPayload() {
+            var emailField = form.querySelector('[data-invite-emails]');
+            var values = function (selector) {
+                return Array.from(form.querySelectorAll(selector + ':checked')).map(function (input) { return Number(input.value); });
+            };
+            return {
+                organizationId: Number(organization.id),
+                holonIds: values('[data-invite-holons]'),
+                userIds: values('[data-invite-members]'),
+                emails: String(emailField ? emailField.value : '').split(/[\s,;]+/).filter(Boolean)
+            };
+        }
+
+        function updateSendButtons() {
+            submit.textContent = sending ? labels.inviteSending : labels.inviteSend + ' (' + (counts ? counts.all : '…') + ')';
+            submit.disabled = sending || !counts || counts.all === 0;
+            menuToggle.disabled = sending || !counts;
+            Object.keys(modeButtons).forEach(function (mode) {
+                var label = mode === 'not_started' ? labels.inviteNotStarted : labels.inviteNotCompleted;
+                modeButtons[mode].textContent = label + ' (' + (counts ? counts[mode] : '…') + ')';
+                modeButtons[mode].disabled = sending || !counts || counts[mode] === 0;
+            });
+        }
+
+        function updateCounts() {
+            window.clearTimeout(previewTimer);
+            if (previewController) previewController.abort();
+            var version = ++previewVersion;
+            counts = null;
+            updateSendButtons();
+            previewTimer = window.setTimeout(function () {
+                previewController = new AbortController();
+                window.fetch(String(invite.endpoint || '/survey/api/invitations.php'), {
+                    method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+                    signal: previewController.signal,
+                    body: JSON.stringify(Object.assign(selectionPayload(), { mode: 'preview' }))
+                }).then(function (response) { return response.json(); }).then(function (result) {
+                    if (version !== previewVersion) return;
+                    if (!result || result.status !== true || !result.counts) throw new Error('preview_failed');
+                    counts = result.counts;
+                    feedback.hidden = true;
+                    updateSendButtons();
+                }).catch(function (error) {
+                    if (error.name === 'AbortError' || version !== previewVersion) return;
+                    feedback.textContent = labels.invitePreviewError;
+                    feedback.hidden = false;
+                });
+            }, 200);
+        }
+
+        function closeMenu() {
+            menu.hidden = true;
+            menuToggle.setAttribute('aria-expanded', 'false');
+        }
+
+        function sendInvitations(mode) {
+            closeMenu();
+            if (sending || !counts) return;
+            if (counts[mode] === 0) {
+                window.commonNotify(labels.inviteNoRecipients, 'error', { container: elements.inviteNotifications });
+                return;
+            }
+            var payload = Object.assign(selectionPayload(), { recipientMode: mode });
+            if (editor) {
+                payload.messageHtml = editor.getValue();
+                var content = document.createElement('div');
+                content.innerHTML = payload.messageHtml;
+                if (!content.textContent.replace(/\u00a0/g, ' ').trim() || Array.from(payload.messageHtml).length > 20000) {
+                    messageSection.hidden = false;
+                    editMessage.setAttribute('aria-expanded', 'true');
+                    messageError.hidden = false;
+                    editor.focus();
+                    return;
+                }
+            }
+            sending = true;
+            select.disabled = true;
+            editMessage.disabled = true;
+            form.setAttribute('aria-busy', 'true');
+            updateSendButtons();
+            feedback.hidden = true;
+            window.fetch(String(invite.endpoint || '/survey/api/invitations.php'), {
+                method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(function (response) { return response.json(); }).then(function (result) {
+                if (!result || result.status !== true) throw new Error('invite_failed');
+                var count = Array.isArray(result.emails) ? result.emails.length : 0;
+                window.commonNotify(count > 0 ? interpolate(labels.inviteSent, { count: count }) : labels.inviteNoRecipients, count > 0 ? 'success' : 'error', { container: elements.inviteNotifications });
+            }).catch(function () {
+                window.commonNotify(labels.inviteError, 'error', { container: elements.inviteNotifications });
+            }).finally(function () {
+                sending = false;
+                select.disabled = false;
+                editMessage.disabled = false;
+                form.removeAttribute('aria-busy');
+                if (form.isConnected) updateCounts();
+            });
+        }
+
+        editMessage.type = 'button';
+        editMessage.setAttribute('aria-expanded', 'false');
+        editMessage.setAttribute('aria-controls', 'surveyInviteMessage');
+        messageSection.id = 'surveyInviteMessage';
+        messageSection.hidden = true;
+        messageError.hidden = true;
+        var messageLabel = el('label', '', labels.inviteMessage);
+        messageLabel.htmlFor = 'surveyInviteMessageEditor';
+        messageSection.append(messageLabel, messageHost, messageError);
+        editMessage.addEventListener('click', function () {
+            messageSection.hidden = !messageSection.hidden;
+            editMessage.setAttribute('aria-expanded', String(!messageSection.hidden));
+            if (messageSection.hidden) return;
+            if (!editor) {
+                editor = window.omoSimpleHtmlField.mount(messageHost, {
+                    value: String(invite.defaultMessageHtml || ''), simpleOnly: true,
+                    surfaceId: 'surveyInviteMessageEditor',
+                    onChange: function () { messageError.hidden = true; }
+                });
+            }
+            editor.focus();
+        });
+        menuToggle.type = 'button';
+        menuToggle.setAttribute('aria-label', labels.inviteSendOptions);
+        menuToggle.setAttribute('aria-haspopup', 'menu');
+        menuToggle.setAttribute('aria-expanded', 'false');
+        menuToggle.setAttribute('aria-controls', 'surveyInviteSendMenu');
+        menu.id = 'surveyInviteSendMenu';
+        menu.setAttribute('role', 'menu');
+        menu.hidden = true;
+        ['not_started', 'not_completed'].forEach(function (mode) {
+            var button = el('button', 'generic-menu-item');
+            button.type = 'button';
+            button.setAttribute('role', 'menuitem');
+            button.addEventListener('click', function () { sendInvitations(mode); });
+            modeButtons[mode] = button;
+            menu.appendChild(button);
+        });
+        menuToggle.addEventListener('click', function () {
+            menu.hidden = !menu.hidden;
+            menuToggle.setAttribute('aria-expanded', String(!menu.hidden));
+            if (!menu.hidden) menu.querySelector('button:not(:disabled)')?.focus();
+        });
+        form.addEventListener('keydown', function (event) {
+            if (menu.hidden) return;
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
+                closeMenu();
+                menuToggle.focus();
+            } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                event.preventDefault();
+                var buttons = Array.from(menu.querySelectorAll('button:not(:disabled)'));
+                var step = event.key === 'ArrowDown' ? 1 : -1;
+                if (buttons.length) buttons[(buttons.indexOf(document.activeElement) + step + buttons.length) % buttons.length].focus();
+            }
+        });
+        function dismissMenu(event) {
+            if (!sendGroup.contains(event.target)) closeMenu();
+        }
+        document.addEventListener('pointerdown', dismissMenu);
+        form.addEventListener('focusout', function (event) {
+            if (!sendGroup.contains(event.relatedTarget)) closeMenu();
+        });
+        form.addEventListener('input', function (event) {
+            if (event.target.matches('[data-invite-emails]')) updateCounts();
+        });
+        form.addEventListener('change', function (event) {
+            if (event.target.matches('[data-invite-holons], [data-invite-members]')) updateCounts();
+        });
+        inviteDialogCleanup = function () {
+            window.clearTimeout(previewTimer);
+            ++previewVersion;
+            if (previewController) previewController.abort();
+            document.removeEventListener('pointerdown', dismissMenu);
+            if (editor) editor.destroy();
+        };
 
         elements.inviteDialogEyebrow.textContent = labels.inviteEyebrow;
         elements.inviteDialogTitle.textContent = labels.inviteTitle;
@@ -1128,7 +1328,9 @@
                 panels.querySelectorAll('section').forEach(function (item) { item.hidden = true; });
                 tab.setAttribute('aria-selected', 'true');
                 panel.hidden = false;
-                submit.hidden = activeTabKey === 'public';
+                actions.hidden = activeTabKey === 'public';
+                messageSection.hidden = activeTabKey === 'public' || editMessage.getAttribute('aria-expanded') !== 'true';
+                closeMenu();
             });
             if (definition.key === 'public') {
                 panel.appendChild(el('p', 'survey-invite-dialog__help', labels.invitePublicHelp));
@@ -1184,35 +1386,19 @@
         form.append(tabs, panels);
         feedback.hidden = true;
         submit.type = 'submit';
-        form.append(feedback, submit);
+        sendGroup.append(submit, menuToggle, menu);
+        actions.append(editMessage, sendGroup);
+        form.append(feedback, actions, messageSection);
         form.addEventListener('submit', function (event) {
             event.preventDefault();
             if (activeTabKey === 'public') {
                 return;
             }
-            submit.disabled = true;
-            submit.textContent = labels.inviteSending;
-            feedback.hidden = true;
-            var emailField = form.querySelector('[data-invite-emails]');
-            var emails = String(emailField ? emailField.value : '').split(/[\s,;]+/).filter(Boolean);
-            var values = function (selector) {
-                return Array.prototype.slice.call(form.querySelectorAll(selector + ':checked')).map(function (input) { return Number(input.value); });
-            };
-            window.fetch(String(invite.endpoint || '/survey/api/invitations.php'), {
-                method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ organizationId: Number(organization.id), holonIds: values('[data-invite-holons]'), userIds: values('[data-invite-members]'), emails: emails })
-            }).then(function (response) { return response.json().catch(function () { return { status: false }; }); }).then(function (result) {
-                if (!result || result.status !== true) { throw new Error('invite_failed'); }
-                window.commonNotify(interpolate(labels.inviteSent, { count: Array.isArray(result.emails) ? result.emails.length : 0 }), 'success', { container: elements.inviteNotifications });
-            }).catch(function (error) {
-                window.commonNotify(labels.inviteError, 'error', { container: elements.inviteNotifications });
-            }).finally(function () {
-                submit.disabled = false;
-                submit.textContent = labels.inviteSend;
-            });
+            sendInvitations('all');
         });
         fragment.appendChild(form);
         elements.inviteContent.replaceChildren(fragment);
+        updateCounts();
     }
 
     function svgEl(tagName, attributes, text) {
@@ -1514,6 +1700,12 @@
         elements.inviteAction.addEventListener('click', openInviteDialog);
     }
     elements.inviteClose.addEventListener('click', closeInviteDialog);
+    elements.inviteDialog.addEventListener('close', function () {
+        if (inviteDialogCleanup) {
+            inviteDialogCleanup();
+            inviteDialogCleanup = null;
+        }
+    });
     elements.inviteDialog.addEventListener('click', function (event) {
         if (event.target === elements.inviteDialog) {
             closeInviteDialog();

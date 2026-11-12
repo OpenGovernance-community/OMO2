@@ -4,6 +4,12 @@ Ce fichier garde une vue d'ensemble courte des évolutions récentes, avec un an
 
 Les dates déjà indiquées sont conservées. Les dates manquantes sont reconstituées à partir de la première apparition des entrées dans l'historique GitHub, en heure Europe/Zurich ; elles correspondent à leur ajout au journal, pas nécessairement à leur mise en production.
 
+## 2026-11-12
+
+- Évaluation organisationnelle / invitations : sélection du cercle organisation pour inviter ses membres actifs, bouton Envoyer compact à droite et menu pour cibler les personnes sans participation ou sans questionnaire terminé. Chaque option affiche le nombre de destinataires, actualisé selon la sélection et dédupliqué par adresse. Le texte du message peut être personnalisé avec l’éditeur HTML partagé avant l’envoi, avec conservation du lien personnel de participation.
+
+- Éditeur HTML partagé : les fenêtres Summernote restent accessibles lorsqu’un champ est ouvert dans une boîte de dialogue native.
+
 ## 2026-11-11
 
 - Documents / stockage : ajout d’un serveur WebDAV générique, avec URL complète, identifiant, mot de passe, dossier racine facultatif et test de connexion. Envoi, téléchargement, suppression, navigation dans les dossiers et accès par Collabora réutilisent le connecteur partagé avec kDrive.

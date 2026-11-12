@@ -87,6 +87,13 @@ if ($currentUserId > 0) {
         $holons = new \dbObject\ArrayHolon();
         $holons->loadVisibilityTargetsForOrganization($organizationId, [2, 1]);
         $holonOptions = $holons->buildVisibilityTargetOptions();
+        $rootHolon = $organization->getEnabledStructuralRootHolon();
+        if ($rootHolon && $rootHolon->isOrganizationHolon()) {
+            array_unshift($holonOptions['circle'], [
+                'id' => (int)$rootHolon->getId(),
+                'label' => $rootHolon->getDisplayName(),
+            ]);
+        }
         $organizationMembers = new \dbObject\ArrayUserOrganization();
         $organizationMembers->loadActiveForOrganization($organizationId);
         $memberOptions = [];
@@ -171,6 +178,7 @@ $surveyConfig = [
         'authenticated' => $currentUserId > 0,
         'openDialog' => $currentUserId > 0 && isset($_GET['invite']),
         'endpoint' => '/survey/api/invitations.php',
+        'defaultMessageHtml' => \dbObject\OrganizationalMaturityInvitation::getDefaultMessageHtml(),
     ],
     'labels' => [
         'start' => t('survey.action.start', [], $lang, $sourceLang),
@@ -280,6 +288,14 @@ $surveyConfig = [
         'inviteEmailHelp' => t('survey.invite.email_help', [], $lang, $sourceLang),
         'inviteEmailPlaceholder' => t('survey.invite.email_placeholder', [], $lang, $sourceLang),
         'inviteSend' => t('survey.invite.send', [], $lang, $sourceLang),
+        'inviteNotStarted' => t('survey.invite.not_started', [], $lang, $sourceLang),
+        'inviteNotCompleted' => t('survey.invite.not_completed', [], $lang, $sourceLang),
+        'inviteSendOptions' => t('survey.invite.send_options', [], $lang, $sourceLang),
+        'inviteEditMessage' => t('survey.invite.edit_message', [], $lang, $sourceLang),
+        'inviteMessage' => t('survey.invite.message', [], $lang, $sourceLang),
+        'inviteInvalidMessage' => t('survey.invite.invalid_message', [], $lang, $sourceLang),
+        'inviteNoRecipients' => t('survey.invite.no_recipients', [], $lang, $sourceLang),
+        'invitePreviewError' => t('survey.invite.preview_error', [], $lang, $sourceLang),
         'inviteSending' => t('survey.invite.sending', [], $lang, $sourceLang),
         'inviteSent' => t('survey.invite.sent', [], $lang, $sourceLang),
         'inviteError' => t('survey.invite.error', [], $lang, $sourceLang),
@@ -295,7 +311,7 @@ $surveyConfig = [
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#073a59">
     <title><?= $escape($pageTitle) ?></title>
-    <link rel="stylesheet" href="/common/assets/components.css?v=20260830-layout7">
+    <link rel="stylesheet" href="<?= $escape(commonAssetUrl('/common/assets/components.css')) ?>">
     <link rel="stylesheet" href="<?= $escape(commonAssetUrl('/common/notifications/notifications.css')) ?>">
     <link rel="stylesheet" href="<?= $escape(commonAssetUrl('/survey/survey.css')) ?>">
 </head>
@@ -518,6 +534,8 @@ $surveyConfig = [
         window.SURVEY_PROTOTYPE = <?= json_encode($surveyConfig, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
     </script>
     <script src="<?= $escape(commonAssetUrl('/common/notifications/notifications.js')) ?>"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="<?= $escape(commonAssetUrl('/omo/assets/js/simple-html-field.js')) ?>"></script>
     <script src="https://player.vimeo.com/api/player.js" id="surveyVimeoSdk" async></script>
     <script src="<?= $escape(commonAssetUrl('/survey/survey.js')) ?>"></script>
 </body>

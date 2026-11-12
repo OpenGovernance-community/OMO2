@@ -26,11 +26,20 @@ if (($payload['mode'] ?? '') === 'public_link') {
     surveyJsonResponse($result, !empty($result['status']) ? 200 : 422);
 }
 
-$result = \dbObject\OrganizationalMaturityInvitation::issueForSelections(
-    $organizationId,
-    is_array($payload['holonIds'] ?? null) ? $payload['holonIds'] : [],
-    is_array($payload['userIds'] ?? null) ? $payload['userIds'] : [],
-    is_array($payload['emails'] ?? null) ? $payload['emails'] : []
-);
+$holonIds = is_array($payload['holonIds'] ?? null) ? $payload['holonIds'] : [];
+$userIds = is_array($payload['userIds'] ?? null) ? $payload['userIds'] : [];
+$emails = is_array($payload['emails'] ?? null) ? $payload['emails'] : [];
+if (($payload['mode'] ?? '') === 'preview') {
+    $result = \dbObject\OrganizationalMaturityInvitation::previewForSelections($organizationId, $holonIds, $userIds, $emails);
+    unset($result['recipients']);
+} else {
+    if (!is_string($payload['recipientMode'] ?? 'all') || (isset($payload['messageHtml']) && !is_string($payload['messageHtml']))) {
+        surveyJsonResponse(['status' => false, 'error' => 'invalid_payload'], 400);
+    }
+    $result = \dbObject\OrganizationalMaturityInvitation::issueForSelections(
+        $organizationId, $holonIds, $userIds, $emails,
+        $payload['recipientMode'] ?? 'all', $payload['messageHtml'] ?? null
+    );
+}
 
 surveyJsonResponse($result, !empty($result['status']) ? 200 : 422);
