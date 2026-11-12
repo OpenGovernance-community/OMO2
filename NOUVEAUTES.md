@@ -6,6 +6,8 @@ Les dates déjà indiquées sont conservées. Les dates manquantes sont reconsti
 
 ## 2026-11-12
 
+- Évaluation organisationnelle / résultats : échelle horizontale fixe de 1 à 5 pour comparer aujourd’hui et demain. Les pastilles suivent les valeurs réelles, y compris les moyennes décimales, avec un trait proportionnel à leur écart ; les valeurs proches ou identiques restent lisibles sur mobile.
+
 - Documents / consultation : bouton « Plein écran » pour agrandir Collabora, les PDF, les images et les textes dans la fenêtre du navigateur. Retour par le bouton ou la touche Échap, sans rechargement du document et avec restauration de la position de lecture.
 
 - Documents / formulaire : retrait de l’aperçu Collabora pendant l’édition des paramètres, suppression du fichier distant à côté du sélecteur de remplacement et option d’historisation au-dessus de la liste des anciennes versions, désormais consultable dans le formulaire.

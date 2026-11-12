@@ -540,6 +540,7 @@ $surveyConfig = [
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="<?= $escape(commonAssetUrl('/omo/assets/js/simple-html-field.js')) ?>"></script>
     <script src="https://player.vimeo.com/api/player.js" id="surveyVimeoSdk" async></script>
+    <script src="<?= $escape(commonAssetUrl('/survey/result-scale.js')) ?>"></script>
     <script src="<?= $escape(commonAssetUrl('/survey/survey.js')) ?>"></script>
 </body>
 </html>

@@ -520,6 +520,7 @@ $groupFeatureText = static function (array $feature) use ($pageLang, $pageSource
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
         window.SURVEY_PUBLIC_OPTIONS = { separateDimensionList: true, distributions: true };
     </script>
+    <script src="<?= commonAssetUrl('/survey/result-scale.js') ?>"></script>
     <script src="<?= commonAssetUrl('/survey/public.js') ?>"></script>
     <script src="<?= commonAssetUrl('/survey/organization-distributions.js') ?>"></script>
     <script src="<?= commonAssetUrl('/survey/organization-radars.js') ?>"></script>

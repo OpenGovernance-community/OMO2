@@ -53,7 +53,7 @@ foreach ($surveyQuestionDefinitions as $questionIndex => $questionDefinition) {
     <meta name="theme-color" content="#073a59">
     <title><?= $escape(t('survey.public.page_title', [], $lang, $sourceLang)) ?></title>
     <link rel="stylesheet" href="/common/assets/components.css?v=20260830-layout5">
-    <link rel="stylesheet" href="/survey/survey.css?v=20260830-layout5">
+    <link rel="stylesheet" href="<?= $escape(commonAssetUrl('/survey/survey.css')) ?>">
 </head>
 <body>
     <main class="survey-page">
@@ -87,6 +87,7 @@ foreach ($surveyQuestionDefinitions as $questionIndex => $questionDefinition) {
             'desired' => t('survey.public.desired_label', [], $lang, $sourceLang),
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
     </script>
-    <script src="/survey/public.js"></script>
+    <script src="<?= $escape(commonAssetUrl('/survey/result-scale.js')) ?>"></script>
+    <script src="<?= $escape(commonAssetUrl('/survey/public.js')) ?>"></script>
 </body>
 </html>

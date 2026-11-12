@@ -1578,8 +1578,10 @@
             var card = el('article', 'survey-result-card');
             var copy = el('div', 'survey-result-card__copy');
             var situations = el('div', 'survey-result-card__situations');
-            var visual = el('div', 'survey-result-card__visual');
-            var line = el('div', 'survey-result-card__line');
+            var visual = window.SurveyResultScale.create(answer.situation.today, answer.situation.tomorrow, {
+                current: labels.radarToday,
+                desired: labels.radarTomorrow
+            }, gapLabel(gap));
 
             copy.appendChild(el('span', '', interpolate(labels.progressPrinciple, { current: question.number, total: questions.length })));
             copy.appendChild(el('h2', '', question.title));
@@ -1592,10 +1594,6 @@
             situations.appendChild(el('span', '', interpolate(labels.affinityValue, { value: answer.affinity })));
             copy.appendChild(situations);
 
-            line.appendChild(el('span', '', gapLabel(gap)));
-            visual.appendChild(el('span', 'survey-result-card__score', answer.situation.today));
-            visual.appendChild(line);
-            visual.appendChild(el('span', 'survey-result-card__score survey-result-card__score--tomorrow', answer.situation.tomorrow));
             card.append(copy, visual);
             fragment.appendChild(card);
         });
