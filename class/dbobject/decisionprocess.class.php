@@ -1432,11 +1432,6 @@ class DecisionProcess extends DbObject
             $group->set('title', trim((string)$this->get('title')));
         }
 
-        $currentGroupDescription = trim((string)$group->get('description'));
-        if (!$preservePresentation || $currentGroupDescription === '') {
-            $group->set('description', $this->get('description'));
-        }
-
         $groupParameters = DecisionGovernanceAction::normalizeState($group->get('parameters'));
         $processParameters = DecisionGovernanceAction::normalizeState($this->get('parameters'));
         if (isset($groupParameters['calendar_statuses'])) $processParameters['calendar_statuses'] = $groupParameters['calendar_statuses'];

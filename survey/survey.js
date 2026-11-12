@@ -1025,7 +1025,7 @@
             window.location.assign(String(invite.loginUrl || '/survey/invite.php'));
             return;
         }
-        renderInviteDialog(organizations[0].id);
+        renderInviteDialog(organizations.length === 1 ? organizations[0].id : '');
         if (typeof elements.inviteDialog.showModal === 'function') {
             if (!elements.inviteDialog.open) {
                 elements.inviteDialog.showModal();
@@ -1087,10 +1087,8 @@
     }
 
     function renderInviteDialog(organizationId) {
-        var organization = getInviteOrganization(organizationId);
-        if (!organization) {
-            return;
-        }
+        var organization = getInviteOrganization(organizationId) || { id: 0 };
+        var hasOrganization = Number(organization.id) > 0;
         if (inviteDialogCleanup) {
             inviteDialogCleanup();
         }
@@ -1134,12 +1132,12 @@
 
         function updateSendButtons() {
             submit.textContent = sending ? labels.inviteSending : labels.inviteSend + ' (' + (counts ? counts.all : '…') + ')';
-            submit.disabled = sending || !counts || counts.all === 0;
-            menuToggle.disabled = sending || !counts;
+            submit.disabled = !hasOrganization || sending || !counts || counts.all === 0;
+            menuToggle.disabled = !hasOrganization || sending || !counts;
             Object.keys(modeButtons).forEach(function (mode) {
                 var label = mode === 'not_started' ? labels.inviteNotStarted : labels.inviteNotCompleted;
                 modeButtons[mode].textContent = label + ' (' + (counts ? counts[mode] : '…') + ')';
-                modeButtons[mode].disabled = sending || !counts || counts[mode] === 0;
+                modeButtons[mode].disabled = !hasOrganization || sending || !counts || counts[mode] === 0;
             });
         }
 
@@ -1147,8 +1145,9 @@
             window.clearTimeout(previewTimer);
             if (previewController) previewController.abort();
             var version = ++previewVersion;
-            counts = null;
+            counts = hasOrganization ? null : { all: 0, not_started: 0, not_completed: 0 };
             updateSendButtons();
+            if (!hasOrganization) return;
             previewTimer = window.setTimeout(function () {
                 previewController = new AbortController();
                 window.fetch(String(invite.endpoint || '/survey/api/invitations.php'), {
@@ -1176,7 +1175,7 @@
 
         function sendInvitations(mode) {
             closeMenu();
-            if (sending || !counts) return;
+            if (!hasOrganization || sending || !counts) return;
             if (counts[mode] === 0) {
                 window.commonNotify(labels.inviteNoRecipients, 'error', { container: elements.inviteNotifications });
                 return;
@@ -1204,9 +1203,13 @@
                 method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             }).then(function (response) { return response.json(); }).then(function (result) {
-                if (!result || result.status !== true) throw new Error('invite_failed');
+                if (!result || typeof result.status !== 'boolean') throw new Error('invite_failed');
                 var count = Array.isArray(result.emails) ? result.emails.length : 0;
-                window.commonNotify(count > 0 ? interpolate(labels.inviteSent, { count: count }) : labels.inviteNoRecipients, count > 0 ? 'success' : 'error', { container: elements.inviteNotifications });
+                var message = result.status
+                    ? (count > 0 ? interpolate(labels.inviteSent, { count: count }) : labels.inviteNoRecipients)
+                    : (result.message || (result.mail_id ? labels.inviteDeliveryError : labels.inviteError));
+                if (result.historyWarning) message += ' ' + labels.inviteHistoryWarning;
+                window.commonNotify(message, result.status && count > 0 && !result.historyWarning ? 'success' : 'error', { container: elements.inviteNotifications });
             }).catch(function () {
                 window.commonNotify(labels.inviteError, 'error', { container: elements.inviteNotifications });
             }).finally(function () {
@@ -1219,6 +1222,7 @@
         }
 
         editMessage.type = 'button';
+        editMessage.disabled = !hasOrganization;
         editMessage.setAttribute('aria-expanded', 'false');
         editMessage.setAttribute('aria-controls', 'surveyInviteMessage');
         messageSection.id = 'surveyInviteMessage';
@@ -1301,6 +1305,11 @@
         form.appendChild(el('p', 'survey-omo-intro', labels.inviteIntro));
         organizationLabel.appendChild(el('span', '', labels.inviteOrganization));
         select.className = 'generic-form-control';
+        select.required = true;
+        var placeholder = el('option', '', labels.inviteChooseOrganization);
+        placeholder.value = '';
+        placeholder.selected = !hasOrganization;
+        select.appendChild(placeholder);
         (Array.isArray(invite.organizations) ? invite.organizations : []).forEach(function (item) {
             var option = document.createElement('option');
             option.value = String(item.id);
@@ -1321,7 +1330,8 @@
             var tab = el('button', 'survey-invite-dialog__tab', definition.label);
             var panel = el('section', 'survey-invite-dialog__panel');
             tab.type = 'button';
-            tab.setAttribute('aria-selected', index === 0 ? 'true' : 'false');
+            tab.disabled = !hasOrganization;
+            tab.setAttribute('aria-selected', hasOrganization && index === 0 ? 'true' : 'false');
             tab.addEventListener('click', function () {
                 activeTabKey = definition.key;
                 tabs.querySelectorAll('button').forEach(function (button) { button.setAttribute('aria-selected', 'false'); });
@@ -1336,6 +1346,7 @@
                 panel.appendChild(el('p', 'survey-invite-dialog__help', labels.invitePublicHelp));
                 var generate = el('button', 'generic-action-button generic-action-button--main', labels.invitePublicGenerate);
                 generate.type = 'button';
+                generate.disabled = !hasOrganization;
                 var linkBox = el('div', 'survey-invite-dialog__public-link');
                 linkBox.hidden = true;
                 generate.addEventListener('click', function () {
@@ -1371,6 +1382,7 @@
                 var textarea = document.createElement('textarea');
                 textarea.className = 'generic-form-control';
                 textarea.rows = 5;
+                textarea.disabled = !hasOrganization;
                 textarea.placeholder = labels.inviteEmailPlaceholder;
                 textarea.setAttribute('data-invite-emails', '1');
                 panel.append(textarea, el('p', 'survey-invite-dialog__help', labels.inviteEmailHelp));

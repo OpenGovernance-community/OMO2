@@ -6,6 +6,8 @@
         protected static function uiMessageSourceLang(): array
         {
             return [
+                'history_archive_failed' => ['text' => 'Impossible d’archiver cette version. Le fichier actuel a été conservé.', 'context' => 'Document version snapshot failure.'],
+                'history_unavailable' => ['text' => 'L’historisation est désactivée ou indisponible pour ce document.', 'context' => 'Document snapshot unavailable.'],
                 'document_introuvable' => ['text' => 'Document introuvable.', 'context' => 'Validation or action feedback for document.'],
                 'impossible_de_modifier_la_visibilite_du_document' => ['text' => 'Impossible de modifier la visibilité du document.', 'context' => 'Validation or action feedback for document.'],
                 'acces_refuse' => ['text' => 'Accès refusé.', 'context' => 'Validation or action feedback for document.'],
@@ -179,7 +181,7 @@
 		{
 			return [
 				[['title'], 'required'],						// Champs obligatoires
-				[['id', 'version', 'estDossier', 'active', 'is_template', 'pv_editor_handover_open', 'openinnewwindow', 'project_visible_in_holon', 'storedfilesize'], 'integer'],				// Nombres entiers
+				[['id', 'version', 'estDossier', 'active', 'is_template', 'pv_editor_handover_open', 'openinnewwindow', 'project_visible_in_holon', 'storedfilesize', 'history_enabled'], 'integer'],				// Nombres entiers
 				[['title', 'codeview', 'codeedit', 'keywords', 'documenttype', 'pvstage', 'externalurl', 'storedfilepath', 'storedfilename', 'storedfilemime', 'nextcloudfolderpath', 'nextcloudfolderfileid', 'etherpadpadid', 'ethercalcroomid', 'spacedeckspaceid'], 'string'],	// Chaines de caractere
 				[['description', 'content', 'contentedition', 'pv_timer'], 'text'],			// Textes libres
 				[['datecreation', 'datemodification', 'dateconsultation', 'dateedition', 'datecontentedition', 'pv_review_started_at'], 'datetime'],	// Date avec precision des heures
@@ -231,6 +233,7 @@
 				'storedfilename' => 'Nom original du fichier',
 				'storedfilemime' => 'Type MIME du fichier',
 				'storedfilesize' => 'Taille du fichier',
+				'history_enabled' => 'Activer l’historisation',
 				'nextcloudfolderpath' => 'Chemin du dossier NextCloud',
 				'nextcloudfolderfileid' => 'Identifiant NextCloud du dossier',
 				'etherpadpadid' => 'Identifiant du pad Etherpad',
@@ -273,6 +276,7 @@
 				'storedfilename' => 'Nom du fichier téléversé par l’utilisateur',
 				'storedfilemime' => 'Type MIME détecté pour le fichier distant',
 				'storedfilesize' => 'Taille du fichier distant en octets',
+				'history_enabled' => 'Conserver une copie des anciennes versions lors du remplacement du fichier.',
 				'nextcloudfolderpath' => 'Chemin du dossier NextCloud, relatif au dossier configuré pour les documents',
 				'nextcloudfolderfileid' => 'Identifiant stable NextCloud utilisé pour retrouver un dossier renommé ou déplacé',
 				'etherpadpadid' => 'Identifiant technique du pad associe à ce document',
@@ -351,6 +355,7 @@
 				'externalurl',
 				'openinnewwindow',
 				'project_visible_in_holon',
+				'history_enabled',
 				'storedfilepath',
 				'storedfilename',
 				'storedfilemime',
@@ -657,6 +662,9 @@
 				if ($startedTransaction) {
 					$pdo->beginTransaction();
 				}
+				if ((int)$this->getId() > 0) {
+					$this->lockStoredFileState();
+				}
 
 				if ($this->isEtherpadDocument() && $this->getEtherpadPadId() !== '') {
 					require_once dirname(__DIR__, 2) . '/common/etherpad.php';
@@ -698,6 +706,14 @@
 					$deleteResult = $organization->deleteDocumentFileFromStorage((string)$this->get('storedfilepath'));
 					if (!is_array($deleteResult) || empty($deleteResult['status'])) {
 						throw new \RuntimeException('uploaded_file_delete_failed');
+					}
+				}
+
+				$versions = $this->getArchivedVersions();
+				if (count($versions) > 0) {
+					$organization ??= new Organization();
+					if (!$organization->load((int)$this->get('IDorganization')) || !$this->deleteArchivedVersionFiles($organization)) {
+						throw new \RuntimeException('document_version_delete_failed');
 					}
 				}
 
@@ -1119,6 +1135,67 @@
 				],
 			]);
 			return $medias;
+		}
+
+		public function buildReaderUrl(): string
+		{
+			return '/omo/document.php?id=' . (int)$this->getId();
+		}
+
+		public function buildOmoDocumentUrl(): string
+		{
+			return '/omo/o/' . (int)$this->get('IDorganization') . '#documents-d' . (int)$this->getId();
+		}
+
+		public function isPubliclyReadable(): bool
+		{
+			$organizationId = (int)$this->get('IDorganization');
+			if ($organizationId <= 0 || $this->isArchived()) {
+				return false;
+			}
+			foreach (array_merge([$this], $this->getParentFolderChain()) as $document) {
+				$rule = $document->getPrimaryVisibilityRuleRow();
+				if ($document->isArchived()
+					|| (int)$document->get('IDorganization') !== $organizationId
+					|| ($document !== $this && !$document->isFolder())
+					|| ($rule['visibility_type'] ?? '') !== ObjectVisibility::TYPE_EVERYONE) {
+					return false;
+				}
+			}
+			return true;
+		}
+
+		public function canReadFromLink(int $userId): bool
+		{
+			$organizationId = (int)$this->get('IDorganization');
+			if ($this->isFolder() || $this->isNextcloudFolder() || $this->isArchived() || $organizationId <= 0
+				|| !$this->canUserPassPvMeetingVisibilityGate($userId, $organizationId)) {
+				return false;
+			}
+			return $this->isPubliclyReadable()
+				|| ($userId > 0 && $this->canViewDirectlyInOrganization($organizationId, $userId));
+		}
+
+		public function getReaderContent(): string
+		{
+			$options = ['readOnlyLink' => true, 'compactEmbeds' => true];
+			if ($this->isPvDocument()) {
+				return $this->renderPvForViewer($options);
+			}
+			if ($this->isEtherpadDocument()) {
+				return $this->renderEtherpadSnapshotForViewer();
+			}
+			if ($this->isEthercalcDocument()) {
+				return $this->renderEthercalcSnapshotForViewer();
+			}
+			if ($this->isWhiteboardDocument()) {
+				return '<p>' . self::uiMessage('copy.tableau_blanc_collaboratif_a_consulter_dans_omo') . '</p>';
+			}
+			if ($this->isExternalLink()) {
+				$url = htmlspecialchars($this->getExternalUrl(), ENT_QUOTES, 'UTF-8');
+				return $url !== '' ? '<p><a href="' . $url . '" target="_blank" rel="noopener noreferrer">' . $url . '</a></p>' : '';
+			}
+			return $this->renderResolvedHtmlForViewer((string)$this->get('content'), $this->get('IDorganization'), $options);
 		}
 
 		public function canView()
@@ -3240,7 +3317,7 @@
 			}
 
 			return self::fetchRow(
-				'select `id` from `document` where `IDorganization` = :organization_id and `documenttype` = :uploaded_type and `storedfilepath` is not null and `storedfilepath` <> :empty_path limit 1',
+				'select d.id from document d where d.IDorganization = :organization_id and ((d.documenttype = :uploaded_type and d.storedfilepath is not null and d.storedfilepath <> :empty_path) or exists (select v.id from document_version v where v.IDdocument = d.id)) limit 1',
 				array(
 					'organization_id' => $organizationId,
 					'uploaded_type' => self::TYPE_UPLOADED_FILE,
@@ -3265,6 +3342,9 @@
 
 			$deletedCount = 0;
 			foreach ($documents as $document) {
+				if (!$document->deleteArchivedVersionFiles($organization, $storageConfig)) {
+					return ['status' => false, 'text' => self::uiMessage('impossible_de_mettre_a_jour_un_document_apres_suppression_de_son_fichier')];
+				}
 				if (!$document instanceof self || $document->getDocumentType() !== self::TYPE_UPLOADED_FILE) {
 					continue;
 				}
@@ -3377,6 +3457,112 @@
 		{
 			$host = strtolower((string)parse_url($this->getExternalUrl(), PHP_URL_HOST));
 			return $this->isExternalLink() && ($host === 'framapad.org' || str_ends_with($host, '.framapad.org'));
+		}
+
+		public function supportsVersionHistory(): bool
+		{
+			// Extend this capability and the snapshot adapter when adding another document type.
+			return $this->isUploadedFile();
+		}
+
+		public function isVersionHistoryEnabled(): bool
+		{
+			return $this->supportsVersionHistory() && (bool)$this->get('history_enabled');
+		}
+
+		public function getArchivedVersions(): ArrayDocumentVersion
+		{
+			$versions = new ArrayDocumentVersion();
+			$versions->loadForDocument((int)$this->getId());
+			return $versions;
+		}
+
+		protected function deleteArchivedVersionFiles(Organization $organization, ?array $storageConfig = null): bool
+		{
+			foreach ($this->getArchivedVersions() as $version) {
+				$result = $organization->deleteDocumentFileFromStorage((string)$version->get('storedfilepath'), $storageConfig);
+				if (empty($result['status']) || !$version->delete()) return false;
+			}
+			return true;
+		}
+
+		protected function lockStoredFileState(): void
+		{
+			$row = self::fetchRow('SELECT storedfilepath, storedfilename, storedfilemime, storedfilesize, history_enabled FROM document WHERE id = :id FOR UPDATE', ['id' => (int)$this->getId()]);
+			if (!$row) {
+				throw new \RuntimeException('document_file_missing');
+			}
+			foreach ($row as $field => $value) {
+				$this->set($field, $value);
+			}
+		}
+
+		public function archiveCurrentVersion(int $userId): array
+		{
+			$organizationId = (int)$this->get('IDorganization');
+			if ($userId <= 0 || !$this->canEditInOrganizationContext($organizationId, $userId, false)) {
+				return ['status' => false, 'text' => self::uiMessage('acces_refuse')];
+			}
+			$pdo = self::getPdo();
+			$ownsTransaction = !$pdo->inTransaction();
+			$organization = new Organization();
+			$archivePath = '';
+			try {
+				if ($ownsTransaction) $pdo->beginTransaction();
+				$this->lockStoredFileState();
+				if (!$this->isVersionHistoryEnabled() || !$this->hasStoredFile()) {
+					if ($ownsTransaction) $pdo->rollBack();
+					return ['status' => false, 'text' => self::uiMessage('history_unavailable')];
+				}
+				if (!$organization->load($organizationId) || !$organization->hasDocumentStorage()) {
+					throw new \RuntimeException('document_storage_missing');
+				}
+				$result = DocumentVersion::createFileSnapshot($this, $organization, $userId, 'manual');
+				if (empty($result['status'])) {
+					throw new \RuntimeException('document_snapshot_failed');
+				}
+				$archivePath = (string)$result['version']->get('storedfilepath');
+				if ($ownsTransaction) $pdo->commit();
+				return $result;
+			} catch (\Throwable $exception) {
+				if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+				if ($archivePath !== '') $organization->deleteDocumentFileFromStorage($archivePath);
+				error_log('Document archive failed: ' . $exception->getMessage());
+				return ['status' => false, 'text' => self::uiMessage('history_archive_failed')];
+			}
+		}
+
+		public function saveCollaboraFileContents(Organization $organization, int $userId, string $contents, string $mimeType): array
+		{
+			if (!$this->canOpenWithCollabora() || (int)$organization->getId() !== (int)$this->get('IDorganization')
+				|| !$this->canEditInOrganizationContext((int)$organization->getId(), $userId, false)) {
+				return ['status' => false];
+			}
+			$pdo = self::getPdo();
+			$ownsTransaction = !$pdo->inTransaction();
+			$expectedPath = (string)$this->get('storedfilepath');
+			try {
+				if ($ownsTransaction) $pdo->beginTransaction();
+				$this->lockStoredFileState();
+				// Serialize saves with snapshots and reject a replacement made during this request.
+				if ((string)$this->get('storedfilepath') !== $expectedPath) {
+					throw new \RuntimeException('document_file_replaced');
+				}
+				$this->load($this->getId(), true);
+				$result = $organization->updateDocumentFileContentsOnStorage($expectedPath, $contents, $mimeType);
+				if (empty($result['status'])) throw new \RuntimeException('document_file_save_failed');
+				$this->set('storedfilesize', strlen($contents));
+				$this->set('IDusermodification', $userId);
+				$this->set('datemodification', new \DateTimeImmutable());
+				$result = $this->save();
+				if (empty($result['status'])) throw new \RuntimeException('document_file_metadata_failed');
+				if ($ownsTransaction) $pdo->commit();
+				return $result;
+			} catch (\Throwable $exception) {
+				if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+				error_log('Collabora document save failed: ' . $exception->getMessage());
+				return ['status' => false];
+			}
 		}
 
 		public function hasStoredFile(): bool
@@ -4491,7 +4677,9 @@
 
 			$targetOrganizationId = (int)$targetDocument->get('IDorganization');
 			$targetHolonId = (int)$targetDocument->get('IDholon');
-			if (isset($options['pvParticipationLink'])) {
+			if (!empty($options['readOnlyLink'])) {
+				$canViewTarget = $targetDocument->canReadFromLink((int)\commonGetCurrentUserId());
+			} elseif (isset($options['pvParticipationLink'])) {
 				$canViewTarget = $options['pvParticipationLink'] instanceof DocumentShareLink
 					&& $options['pvParticipationLink']->getReadablePvEmbeddedDocument($targetDocumentId) !== null;
 			} else {
@@ -5211,7 +5399,7 @@
 					continue;
 				}
 
-				$pointData = $point->buildViewerData($organizationId);
+				$pointData = $point->buildViewerData($organizationId, 0, '', $renderOptions);
 				$pointData['positionLabel'] = (string)($positionLabels[(int)$point->getId()] ?? '');
 				$pointTypeClass = preg_replace('/[^a-z0-9_-]+/i', '-', (string)($pointData['pointType'] ?? 'information'));
 				$pointTypeIconMap = array(
@@ -6023,13 +6211,17 @@
 
 		protected function applyUploadedFileToOrganizationStorage(\dbObject\Organization $organization, array $uploadedFile): array
 		{
+			// A new path prevents same-name replacements from destroying the current file before commit.
+			$originalName = trim((string)($uploadedFile['name'] ?? '')) ?: ('document-' . (int)$this->getId());
+			$extension = pathinfo($originalName, PATHINFO_EXTENSION);
+			$uploadedFile['name'] = 'file-' . bin2hex(random_bytes(16)) . ($extension !== '' ? '.' . $extension : '');
 			$uploadResult = $organization->uploadDocumentFileToStorage((int)$this->getId(), $uploadedFile);
 			if (!is_array($uploadResult) || empty($uploadResult['status'])) {
 				return $uploadResult;
 			}
 
 			$this->set('storedfilepath', (string)($uploadResult['relativePath'] ?? ''));
-			$this->set('storedfilename', (string)($uploadResult['originalName'] ?? ''));
+			$this->set('storedfilename', $originalName);
 			$this->set('storedfilemime', (string)($uploadResult['mimeType'] ?? 'application/octet-stream'));
 			$this->set('storedfilesize', (int)($uploadResult['size'] ?? 0));
 
@@ -6132,6 +6324,7 @@
 			$this->set('documenttype', $documentType);
 			$this->set('pvstage', $documentType === self::TYPE_PV ? self::normalizePvStage($values['pv_stage'] ?? null) : null);
 			$this->set('is_template', 0);
+			$this->set('history_enabled', $this->supportsVersionHistory() && !empty($values['history_enabled']) ? 1 : 0);
 			$this->set('externalurl', $externalUrl !== '' ? $externalUrl : null);
 			$this->set('openinnewwindow', $openInNewWindow ? 1 : 0);
 			$previousNextcloudFolderPath = $this->getNextcloudFolderPath();
@@ -7060,6 +7253,9 @@
 			$pdo = self::getPdo();
 			$startedTransaction = $pdo instanceof \PDO && !$pdo->inTransaction();
 			$organization = new \dbObject\Organization();
+			$createdFilePaths = [];
+			$previousStoredPath = '';
+			$updateSucceeded = false;
 
 			try {
 				if ($startedTransaction) {
@@ -7135,6 +7331,13 @@
 					$this->set('nextcloudfolderfileid', trim((string)($nextcloudFolderLocation['fileId'] ?? '')) ?: null);
 				}
 
+				if ($documentType === self::TYPE_UPLOADED_FILE) {
+					$this->lockStoredFileState();
+					if ($canEditContent && array_key_exists('history_enabled', $values)) {
+						$this->set('history_enabled', !empty($values['history_enabled']) ? 1 : 0);
+					}
+				}
+
 				if ($canManagePvDocument) {
 					// A concurrent cron/manual closure must not be undone by an older metadata form.
 					$currentPv = self::fetchRow('SELECT pvstage, pv_review_started_at FROM document WHERE id = :id FOR UPDATE', ['id' => (int)$this->getId()]);
@@ -7156,15 +7359,18 @@
 
 				if (!$isWithoutContext && $documentType === self::TYPE_UPLOADED_FILE) {
 					$previousStoredPath = trim((string)$this->get('storedfilepath'));
-					if ($removeUploadedFile) {
-						$deleteResult = $this->deleteStoredFileFromOrganizationStorage($organization);
-						if (!is_array($deleteResult) || empty($deleteResult['status'])) {
+					if (($uploadedFile !== null || $removeUploadedFile) && $this->hasStoredFile() && $this->isVersionHistoryEnabled()) {
+						$archiveResult = DocumentVersion::createFileSnapshot($this, $organization, $userId, $uploadedFile !== null ? 'replacement' : 'removal');
+						if (empty($archiveResult['status'])) {
 							if ($startedTransaction && $pdo->inTransaction()) {
 								$pdo->rollBack();
 							}
-
-							return $deleteResult;
+							return ['status' => false, 'text' => self::uiMessage('history_archive_failed')];
 						}
+						$createdFilePaths[] = (string)$archiveResult['version']->get('storedfilepath');
+					}
+					if ($removeUploadedFile) {
+						$this->clearStoredFileState();
 					}
 
 					if ($uploadedFile !== null) {
@@ -7178,9 +7384,7 @@
 						}
 
 						$newStoredPath = trim((string)($fileStorageResult['uploadedPath'] ?? ''));
-						if ($previousStoredPath !== '' && $previousStoredPath !== $newStoredPath) {
-						$organization->deleteDocumentFileFromStorage($previousStoredPath);
-						}
+						$createdFilePaths[] = $newStoredPath;
 					}
 
 					if ($removeUploadedFile || $uploadedFile !== null) {
@@ -7218,6 +7422,12 @@
 				if ($startedTransaction && $pdo->inTransaction()) {
 					$pdo->commit();
 				}
+				$updateSucceeded = true;
+				// With an outer transaction, keep the old remote file until its owner commits.
+				if ($startedTransaction && ($uploadedFile !== null || $removeUploadedFile) && $previousStoredPath !== '') {
+					$cleanup = $organization->deleteDocumentFileFromStorage($previousStoredPath);
+					if (empty($cleanup['status'])) error_log('Previous document file cleanup failed for document ' . (int)$this->getId());
+				}
 
 				if ((int)$this->get('IDdocument_parent') > 0) {
 					$this->refreshAncestorFolderActivity();
@@ -7237,6 +7447,12 @@
 					'status' => false,
 					'text' => self::uiMessage('impossible_de_mettre_a_jour_ce_document'),
 				);
+			} finally {
+				if (!$updateSucceeded) {
+					foreach ($createdFilePaths as $createdFilePath) {
+						$organization->deleteDocumentFileFromStorage($createdFilePath);
+					}
+				}
 			}
 		}
 

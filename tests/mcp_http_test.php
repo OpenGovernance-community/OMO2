@@ -236,7 +236,11 @@ try {
             mcpCheck($data['document_type'] === \dbObject\Document::TYPE_EXTERNAL_LINK && $data['external_url'] === $payload['external_url'], 'HTTP URL is a native link');
         } else {
             $savedContent = (string)$items['http_' . $kind]->get('content');
-            mcpCheck($data['document_type_label'] === 'Memo' && str_contains($savedContent, '<h2>HTTP Memo</h2>')
+            mcpCheck($data['document_type'] === \dbObject\Document::TYPE_HTML
+                && $items['http_' . $kind]->get('documenttype') === \dbObject\Document::TYPE_HTML,
+                'HTTP creation preserves the technical HTML type independently of the display label');
+            mcpCheck($data['document_type_label'] === $items['http_' . $kind]->getDocumentTypeLabel()
+                && str_contains($savedContent, '<h2>HTTP Memo</h2>')
                 && str_contains($savedContent, '<strong>Formatted</strong>') && !str_contains($savedContent, 'bad()'), 'HTTP Memo preserves formatting through the security filter');
         }
     }

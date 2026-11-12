@@ -214,21 +214,10 @@ if (!is_string($contents)) {
 
 $updateResult = $isRemoteFile
     ? $organization->updateDocumentFileContentsOnStorage($remotePath, $contents, $mimeType)
-    : $organization->updateDocumentFileContentsOnStorage((string)$document->get('storedfilepath'), $contents, $mimeType);
+    : $document->saveCollaboraFileContents($organization, $userId, $contents, $mimeType);
 if (!is_array($updateResult) || empty($updateResult['status'])) {
     http_response_code(502);
     exit;
-}
-
-if (!$isRemoteFile) {
-    $document->set('storedfilesize', strlen($contents));
-    $document->set('IDusermodification', $userId);
-    $document->set('datemodification', new DateTimeImmutable());
-    $saveResult = $document->save();
-    if (!is_array($saveResult) || empty($saveResult['status'])) {
-        http_response_code(500);
-        exit;
-    }
 }
 
 header('Content-Type: application/json; charset=UTF-8');

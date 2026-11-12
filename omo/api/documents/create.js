@@ -26,6 +26,8 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
     const pvSection = form.querySelector('[data-omo-document-pv-section]');
     const externalSection = form.querySelector('[data-omo-document-external-section]');
     const uploadSection = form.querySelector('[data-omo-document-upload-section]');
+    const historySection = form.querySelector('[data-omo-document-history-section]');
+    const historyCheckbox = form.querySelector('input[name="history_enabled"]');
     const nextcloudFolderSection = form.querySelector('[data-omo-document-nextcloud-folder-section]');
     const nextcloudFolderPathField = form.querySelector('[data-omo-document-nextcloud-folder-path]');
     const nextcloudBrowseButton = form.querySelector('[data-omo-document-nextcloud-browse]');
@@ -137,6 +139,9 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
 
         if (uploadSection) {
             uploadSection.hidden = !isUploadedFile;
+        }
+        if (historySection) {
+            historySection.hidden = !(isUploadedFile || isCollabora);
         }
 
         if (nextcloudFolderSection) {
@@ -883,7 +888,9 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
             && uploadInput
             && uploadInput.files
             && uploadInput.files.length > 0
-            && !window.confirm(String(uiText.uploadReplaceConfirm || 'Le fichier actuel sera remplacé. Continuer ?'))
+            && !window.confirm(String(historyCheckbox && historyCheckbox.checked
+                ? uiText.uploadArchiveConfirm
+                : (uiText.uploadReplaceConfirm || 'Le fichier actuel sera remplacé. Continuer ?')))
         ) {
             return;
         }

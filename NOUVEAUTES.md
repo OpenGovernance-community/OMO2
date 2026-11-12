@@ -6,6 +6,20 @@ Les dates déjà indiquées sont conservées. Les dates manquantes sont reconsti
 
 ## 2026-11-12
 
+- Documents / tests MCP : vérification du libellé traduit indépendamment du type technique `html`, qui reste inchangé en base. Les accents des textes affichés ne font plus échouer les tests de création.
+
+- Documents / partage : lien permanent de consultation en lecture seule, accessible depuis « Partager ». Les documents tout public s’ouvrent directement ; les autres demandent une connexion et conservent leurs droits d’accès. Bouton « Voir dans OMO » pour retrouver les fonctions habituelles. Les fichiers peuvent être téléchargés, avec aperçu des PDF, images et fichiers audio.
+
+- Documents / historisation : option pour les fichiers téléversés et Collabora, conservation d’une copie avant chaque remplacement ou retrait, et bouton « Archiver maintenant ». Les anciennes versions restent téléchargeables depuis la fiche, même après désactivation de l’option. Les sauvegardes automatiques de Collabora ne créent pas d’archives.
+
+- Scrutins / invitations : les dates du mail suivent les phases prévues. Une phase seule affiche son début et sa fin ; avec élaboration puis évaluation, le mail précise les étapes jusqu’aux résultats. Une transition à la même date apparaît uniquement comme « Début évaluation ».
+
+- Évaluation organisationnelle / invitations : chaque envoi apparaît dans la boîte d’envoi OMO de son expéditeur pour l’organisation choisie, avec la date, l’objet, le texte et les destinataires. Le statut de chaque destinataire permet de retrouver les envois réussis, échoués ou incertains, y compris en cas d’échec partiel.
+
+- Scrutins / questions : la description d’une question laissée vide ne reprend plus automatiquement la description du scrutin, à la création comme lors des enregistrements suivants.
+
+- Évaluation organisationnelle / invitations : choix explicite de l’organisation lorsque plusieurs sont disponibles, avec « Choisissez votre organisation... » en première ligne. Les onglets et les boutons d’envoi restent grisés jusqu’au choix ; une organisation unique est sélectionnée automatiquement.
+
 - Évaluation organisationnelle / invitations : sélection du cercle organisation pour inviter ses membres actifs, bouton Envoyer compact à droite et menu pour cibler les personnes sans participation ou sans questionnaire terminé. Chaque option affiche le nombre de destinataires, actualisé selon la sélection et dédupliqué par adresse. Le texte du message peut être personnalisé avec l’éditeur HTML partagé avant l’envoi, avec conservation du lien personnel de participation.
 
 - Éditeur HTML partagé : les fenêtres Summernote restent accessibles lorsqu’un champ est ouvert dans une boîte de dialogue native.

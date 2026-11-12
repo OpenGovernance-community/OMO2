@@ -807,7 +807,7 @@ foreach ($documents as $document) {
     );
     $isExternalLink = $document->isExternalLink();
     $isDocumentTemplate = $document->isDocumentTemplate();
-    $canShareDocument = !$isFolder && $document->supportsHtmlContent();
+    $canShareDocument = !$isFolder && !$document->isNextcloudFolder();
     $documentTitle = (string)$document->get('title');
     $listTitle = $documentTitle;
     if ($document->isPvDocument() && !$document->isPvValidated()) {

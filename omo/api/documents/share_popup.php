@@ -6,9 +6,13 @@ use dbObject\Document;
 use dbObject\DocumentShareLink;
 
 $sourceLang = [
+    'documents.share.reader.title' => ['text' => 'Lien de consultation', 'context' => 'Permanent read-only document link section.'],
+    'documents.share.reader.hint' => ['text' => 'Ce lien respecte la visibilité du document : accès immédiat s’il est tout public, sinon connexion et vérification des droits. Il ne permet pas de modifier le document.', 'context' => 'Explanation of visibility-based document reader access.'],
+    'documents.share.reader.copy' => ['text' => 'Copier le lien de consultation', 'context' => 'Copy permanent read-only document link.'],
+    'documents.share.reader.open' => ['text' => 'Ouvrir', 'context' => 'Preview permanent document reader.'],
     'documents.share.error.unavailable' => ['text' => 'Impossible de partager ce document.', 'context' => 'Error shown when the document cannot be shared.'],
     'documents.share.hero.title' => ['text' => 'Partager ce document', 'context' => 'Main title of the document share popup.'],
-    'documents.share.list.title' => ['text' => 'Liens existants', 'context' => 'Section title listing existing share links.'],
+    'documents.share.list.title' => ['text' => 'Accès spécifiques existants', 'context' => 'Section title listing existing share links.'],
     'documents.share.list.intro' => ['text' => 'Vous pouvez copier, modifier, supprimer ou ajouter un nouveau lien de partage pour ce document.', 'context' => 'Intro text shown above the list of existing share links.'],
     'documents.share.meta.created' => ['text' => 'Créé le {date}', 'context' => 'Metadata line showing when a share link was created.'],
     'documents.share.meta.expires' => ['text' => 'Expire le {date}', 'context' => 'Metadata line showing when a share link expires.'],
@@ -21,9 +25,9 @@ $sourceLang = [
     'documents.share.action.delete' => ['text' => 'Supprimer', 'context' => 'Button used to delete a share link.'],
     'documents.share.action.new' => ['text' => 'Nouveau lien', 'context' => 'Button used to create a new share link.'],
     'documents.share.form.title_new' => ['text' => 'Nouveau lien de partage', 'context' => 'Form title when creating an additional share link.'],
-    'documents.share.form.title_first' => ['text' => 'Créer un lien de partage', 'context' => 'Form title when creating the first share link.'],
+    'documents.share.form.title_first' => ['text' => 'Créer un accès spécifique (facultatif)', 'context' => 'Form title when creating the first share link.'],
     'documents.share.form.intro_new' => ['text' => 'Configurez un nouveau lien ou modifiez un lien existant.', 'context' => 'Form intro when existing share links already exist.'],
-    'documents.share.form.intro_first' => ['text' => 'Aucun lien n’existe encore pour ce document. Créons le premier.', 'context' => 'Form intro when no share link exists yet.'],
+    'documents.share.form.intro_first' => ['text' => 'Ces liens donnent accès au document sans compte, indépendamment de sa visibilité. Vous pouvez limiter leur durée ou les protéger par un mot de passe.', 'context' => 'Form intro explaining optional token-based access separately from the visibility-based reader link.'],
     'documents.share.form.label' => ['text' => 'Libellé interne', 'context' => 'Label of the internal share label field.'],
     'documents.share.form.label_hint' => ['text' => 'Ce libellé sert à retrouver le lien.', 'context' => 'Hint shown below the internal share label field.'],
     'documents.share.form.expiration' => ['text' => 'Expiration', 'context' => 'Label of the share link expiration field.'],
@@ -93,11 +97,7 @@ if (
     $documentId <= 0
     || !$document->load($documentId)
     || $document->isFolder()
-    || !$document->supportsHtmlContent()
-    || !$document->canViewInOrganizationContext(
-        (int)$document->get('IDorganization'),
-        (int)$document->get('IDholon') > 0 ? (int)$document->get('IDholon') : null
-    )
+    || !$document->canReadFromLink($currentUserId)
 ) {
     ?>
     <div class="omo-share-popup omo-share-popup--error generic-soft-panel"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.error.unavailable'), ENT_QUOTES, 'UTF-8') ?></div>
@@ -134,6 +134,17 @@ $popupUrl = '/omo/api/documents/share_popup.php?id=' . rawurlencode((string)$doc
 
     <div id="omoDocumentSharePopupFeedback" class="omo-share-popup__feedback generic-feedback"></div>
 
+    <section class="generic-section generic-section--stack" data-share-card="1" data-url="<?= htmlspecialchars(commonBuildUrl($document->buildReaderUrl()), ENT_QUOTES, 'UTF-8') ?>">
+        <label class="generic-card-title" for="omoDocumentReaderLink"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.reader.title'), ENT_QUOTES, 'UTF-8') ?></label>
+        <p class="generic-description"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.reader.hint'), ENT_QUOTES, 'UTF-8') ?></p>
+        <input class="generic-form-control" id="omoDocumentReaderLink" type="url" readonly value="<?= htmlspecialchars(commonBuildUrl($document->buildReaderUrl()), ENT_QUOTES, 'UTF-8') ?>">
+        <div class="generic-form-actions">
+            <button type="button" class="generic-action-button generic-action-button--main" data-share-copy="1"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.reader.copy'), ENT_QUOTES, 'UTF-8') ?></button>
+            <a class="generic-action-button generic-action-button--secondary" href="<?= htmlspecialchars($document->buildReaderUrl(), ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener noreferrer"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.reader.open'), ENT_QUOTES, 'UTF-8') ?></a>
+        </div>
+    </section>
+
+    <div class="generic-stack"<?= $document->supportsHtmlContent() ? '' : ' hidden' ?>>
     <div class="omo-share-popup__list generic-stack" id="omoDocumentSharePopupListSection"<?= $hasExistingLinks ? '' : ' hidden' ?>>
         <div class="omo-share-popup__section generic-stack">
             <h3 class="omo-share-popup__section-title generic-card-title generic-card-title--large"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.list.title'), ENT_QUOTES, 'UTF-8') ?></h3>
@@ -254,6 +265,7 @@ $popupUrl = '/omo/api/documents/share_popup.php?id=' . rawurlencode((string)$doc
                 <button type="submit" class="generic-action-button generic-action-button--main" id="omoDocumentSharePopupSubmit"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.form.submit_create'), ENT_QUOTES, 'UTF-8') ?></button>
             </div>
         </form>
+    </div>
     </div>
     </div>
 </div>

@@ -1889,7 +1889,7 @@ class DocumentPvPoint extends DbObject
         return ['status' => true, 'text' => self::uiMessage('verrou_d_edition_libere')];
     }
 
-    public function getRenderedContentForViewer(int $organizationId = 0): string
+    public function getRenderedContentForViewer(int $organizationId = 0, array $renderOptions = []): string
     {
         $content = trim((string)$this->get('content'));
         if ($this->isAbandoned()) {
@@ -1902,12 +1902,12 @@ class DocumentPvPoint extends DbObject
         $content = $this->resolveMovementNotice($content, $organizationId);
 
         $renderer = new \dbObject\Document();
-        return $renderer->renderResolvedHtmlForViewer($content, max(0, $organizationId), array(
+        return $renderer->renderResolvedHtmlForViewer($content, max(0, $organizationId), array_merge($renderOptions, array(
             'compactEmbeds' => true,
-        ));
+        )));
     }
 
-    public function buildViewerData(int $organizationId = 0, int $currentUserId = 0, string $currentLockToken = ''): array
+    public function buildViewerData(int $organizationId = 0, int $currentUserId = 0, string $currentLockToken = '', array $renderOptions = []): array
     {
         $position = (int)$this->get('position');
         $editingDate = $this->get('dateedition');
@@ -1921,7 +1921,7 @@ class DocumentPvPoint extends DbObject
             && $currentUserId > 0
             && $this->getEditingUserId() === $currentUserId;
         $takeoverData = $this->buildEditTakeoverData($currentUserId, $currentLockToken);
-        $contentHtml = $this->getRenderedContentForViewer($organizationId);
+        $contentHtml = $this->getRenderedContentForViewer($organizationId, $renderOptions);
         $syncVersion = hash('sha256', (string)json_encode([
             'item_type' => self::normalizeItemType($this->get('item_type')),
             'parent_id' => (int)$this->get('IDparent'),

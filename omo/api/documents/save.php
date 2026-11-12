@@ -105,6 +105,7 @@ $payload = array(
     'open_in_new_window' => $openInNewWindow,
     'uploaded_file' => $_FILES['uploaded_file'] ?? null,
     'remove_uploaded_file' => !empty($_POST['remove_uploaded_file']),
+    'history_enabled' => !empty($_POST['history_enabled']),
     'is_folder' => $isFolder,
     'parent_document_id' => $parentDocumentId,
     'pv_template_id' => $pvTemplateId,

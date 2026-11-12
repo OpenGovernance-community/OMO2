@@ -14,6 +14,8 @@ class OrganizationalMaturityInvitation extends DbObject
             'copy.votre_acces_a_l_evaluation_de_name' => ['text' => 'Votre accès à l’évaluation de {name}', 'context' => 'Interface text in class/dbobject/organizationalmaturityinvitation.class.php'],
             'invalid_message' => ['text' => 'Saisissez un texte d’invitation de 20 000 caractères maximum.', 'context' => 'Validation of the editable survey invitation body.'],
             'empty_selection' => ['text' => 'Choisissez au moins une personne ou une adresse e-mail.', 'context' => 'Validation when no survey invitation recipient is selected.'],
+            'invitation_subject' => ['text' => 'Votre perception de {name}', 'context' => 'Subject of the survey invitation email and its outbox entry.'],
+            'history_error' => ['text' => 'Impossible d’enregistrer les invitations dans la boîte d’envoi.', 'context' => 'Error before sending survey invitations when the outbox cannot be created.'],
         ];
     }
 
@@ -80,20 +82,62 @@ class OrganizationalMaturityInvitation extends DbObject
                 return ['status' => false, 'message' => self::uiMessage('invalid_message')];
             }
         }
-        $issued = [];
-        foreach (array_values(array_unique(array_filter(array_map([self::class, 'normalizeEmail'], $emails)))) as $email) {
-            $item = new self();
-            if (!$item->load([['IDorganization', $organizationId], ['email', $email]])) {
-                try { $token = bin2hex(random_bytes(16)); } catch (\Throwable $error) { return ['status' => false, 'message' => self::uiMessage('copy.generation_de_lien_impossible')]; }
-                $item->set('IDorganization', $organizationId); $item->set('email', $email); $item->set('token', $token); $item->set('created_at', new \DateTimeImmutable());
-            }
-            $user = new User();
-            if ($user->load(['email', $email])) $item->set('IDuser', (int)$user->getId());
-            $item->set('updated_at', new \DateTimeImmutable());
-            if (empty($item->save()['status']) || !$item->sendEmail($messageHtml)) return ['status' => false, 'message' => 'Envoi impossible pour ' . $email . '.'];
-            $item->set('last_sent_at', new \DateTimeImmutable()); $item->save(); $issued[] = $email;
+        $emails = array_values(array_unique(array_filter(array_map([self::class, 'normalizeEmail'], $emails))));
+        if ($emails === []) {
+            return ['status' => true, 'emails' => []];
         }
-        return ['status' => true, 'emails' => $issued];
+        $messageHtml ??= self::getDefaultMessageHtml();
+        $recipients = array_map(static fn(string $email): array => ['email' => $email], $emails);
+        try {
+            $historyMail = ObjectMail::beginSurveyInvitationDelivery($organization, self::getEmailSubject($organization), $messageHtml, $recipients);
+        } catch (\Throwable $error) {
+            error_log('Survey invitation history creation failed: ' . get_class($error));
+            return ['status' => false, 'message' => self::uiMessage('history_error')];
+        }
+        $issued = [];
+        $historyWarning = false;
+        foreach ($emails as $email) {
+            $deliveryStatus = 'failed';
+            try {
+                $item = new self();
+                if (!$item->load([['IDorganization', $organizationId], ['email', $email]])) {
+                    $item->set('IDorganization', $organizationId);
+                    $item->set('email', $email);
+                    $item->set('token', bin2hex(random_bytes(16)));
+                    $item->set('created_at', new \DateTimeImmutable());
+                }
+                $user = new User();
+                if ($user->load(['email', $email])) $item->set('IDuser', (int)$user->getId());
+                $item->set('updated_at', new \DateTimeImmutable());
+                if (!empty($item->save()['status'])) {
+                    $deliveryStatus = 'unknown';
+                    $deliveryStatus = $item->sendEmail($messageHtml) ? 'sent' : 'failed';
+                    if ($deliveryStatus === 'sent') {
+                        $issued[] = $email;
+                        $item->set('last_sent_at', new \DateTimeImmutable());
+                        $item->save();
+                    }
+                }
+            } catch (\Throwable $error) {
+                error_log('Survey invitation delivery interrupted for mail ' . (int)$historyMail->getId() . ': ' . get_class($error));
+            }
+            try {
+                $historyMail->recordRecipientDelivery($email, $deliveryStatus);
+            } catch (\Throwable $error) {
+                error_log('Survey invitation tracking failed for mail ' . (int)$historyMail->getId() . ': ' . get_class($error));
+                $historyWarning = true;
+            }
+        }
+        return [
+            'status' => count($issued) === count($emails), 'emails' => $issued,
+            'mail_id' => (int)$historyMail->getId(), 'historyWarning' => $historyWarning,
+        ];
+    }
+
+    private static function getEmailSubject(Organization $organization): string
+    {
+        $name = trim((string)$organization->get('name')) ?: 'votre organisation';
+        return mb_substr(self::uiMessage('invitation_subject', ['name' => $name]), 0, 250, 'UTF-8');
     }
 
     public static function findOrCreateForEmail($organizationId, $email)
@@ -294,7 +338,7 @@ class OrganizationalMaturityInvitation extends DbObject
             'button_url' => $url,
         ]);
         $from = trim((string)($GLOBALS['mailUser'] ?? '')); if ($from === '') $from = 'noreply@' . (preg_replace('/:\d+$/', '', \commonGetRootHost() ?: 'localhost'));
-        return \myHTMLMail([$from, $name], (string)$this->get('email'), 'Votre perception de ' . $name, $message, organizationId: (int)$organization->getId());
+        return \myHTMLMail([$from, $name], (string)$this->get('email'), self::getEmailSubject($organization), $message, organizationId: (int)$organization->getId());
     }
 
     public function sendPublicAccessCodeEmail($publicAccessUrl)

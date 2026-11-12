@@ -1,8 +1,10 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once dirname(__DIR__, 3) . '/common/spacedeck.php';
+require_once __DIR__ . '/history_helpers.php';
 
 $sourceLang = [
+    'documents.detail.action.share' => ['text' => 'Partager', 'context' => 'Open document sharing and copy its read-only link.'],
     'documents.detail.error.invalid' => ['text' => 'Document invalide.', 'context' => 'Error shown when the document id is invalid.'],
     'documents.detail.error.not_found' => ['text' => 'Document introuvable ou inaccessible.', 'context' => 'Error shown when the document cannot be loaded or viewed.'],
     'documents.detail.meta.updated' => ['text' => 'Mise à jour : {date}', 'context' => 'Metadata pill showing the last update date of the document.'],
@@ -190,6 +192,8 @@ $canEditDocumentContent = !$document->isPvDocument()
     && $document->canEditInOrganizationContext($organizationId, $currentUserId, false);
 $canEditDocument = !$document->isPvDocument()
     && ($canManageDocument || $canEditDocumentContent);
+$archivedVersions = $document->getArchivedVersions();
+$showVersionHistory = $document->isVersionHistoryEnabled() || count($archivedVersions) > 0;
 $canDeleteDocument = $document->canDeleteInOrganizationContext($organizationId, $currentUserId)
     && $document->canDeleteDocument(true);
 $editUrl = $canEditDocument
@@ -273,7 +277,7 @@ if ($associatedEvent instanceof \dbObject\Event) {
 
     <article class="omo-document-detail__article generic-stack generic-stack--roomy">
         <header class="omo-document-detail__intro generic-stack">
-            <?php if ($pdfExportUrl !== ''): ?>
+            <?php if (!$document->isFolder() && !$document->isNextcloudFolder()): ?>
                 <div class="omo-document-detail__actions">
                     <details class="omo-document-detail__more-actions">
                         <summary
@@ -281,6 +285,8 @@ if ($associatedEvent instanceof \dbObject\Event) {
                             title="<?= $escape(omoDocumentsDetailT('documents.detail.action.more')) ?>"
                         >...</summary>
                         <div class="omo-document-detail__more-actions-menu">
+                            <button type="button" class="generic-action-button" data-omo-detail-share-url="<?= $escape('/omo/api/documents/share_popup.php?id=' . (int)$document->getId()) ?>"><?= $escape(omoDocumentsDetailT('documents.detail.action.share')) ?></button>
+                            <?php if ($pdfExportUrl !== ''): ?>
                             <a
                                 class="generic-action-button omo-document-detail__pdf-export"
                                 href="<?= $escape($pdfExportUrl) ?>"
@@ -293,6 +299,7 @@ if ($associatedEvent instanceof \dbObject\Event) {
                             >
                                 <?= $escape(omoDocumentsDetailT('documents.detail.action.export_pdf')) ?>
                             </a>
+                            <?php endif; ?>
                         </div>
                     </details>
                 </div>
@@ -381,6 +388,27 @@ if ($associatedEvent instanceof \dbObject\Event) {
             </div>
         </section>
 
+        <?php if ($showVersionHistory): ?>
+            <section class="generic-section generic-section--stack" data-omo-document-history>
+                <h3 class="generic-card-title generic-card-title--medium"><?= $escape(omoDocumentHistoryT('title')) ?></h3>
+                <p class="generic-help-text"><?= $escape(omoDocumentHistoryT('hint')) ?></p>
+                <?php if ($document->isVersionHistoryEnabled() && $document->hasStoredFile() && $canEditDocumentContent): ?>
+                    <div class="generic-form-actions">
+                        <button type="button" class="generic-action-button generic-action-button--secondary"
+                            data-omo-document-archive-id="<?= (int)$document->getId() ?>"
+                            data-omo-document-archive-error="<?= $escape(omoDocumentHistoryT('error')) ?>"
+                        ><?= $escape(omoDocumentHistoryT('archive')) ?></button>
+                    </div>
+                <?php endif; ?>
+                <p class="generic-help-text" data-omo-document-history-empty<?= count($archivedVersions) > 0 ? ' hidden' : '' ?>><?= $escape(omoDocumentHistoryT('empty')) ?></p>
+                <ul class="generic-stack" data-omo-document-history-list>
+                    <?php foreach ($archivedVersions as $archivedVersion): ?>
+                        <?= omoDocumentHistoryVersionHtml($archivedVersion, $organizationId) ?>
+                    <?php endforeach; ?>
+                </ul>
+            </section>
+        <?php endif; ?>
+
         <?php if (count($altTexts) > 0): ?>
             <section class="omo-document-detail__section generic-stack">
                 <h3 class="omo-document-detail__section-title generic-card-title generic-card-title--medium"><?= $escape(omoDocumentsDetailT('documents.detail.alt_texts.title')) ?></h3>
@@ -467,9 +495,7 @@ if ($associatedEvent instanceof \dbObject\Event) {
 </div>
 
 <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/documents/detail.css') ?>">
-<?php if ($pdfExportUrl !== ''): ?>
 <script src="<?= commonAssetUrl('/omo/api/documents/detail.js') ?>"></script>
-<?php endif; ?>
 <?php if ($document->isPvDocument() || $showPvProposals): ?>
 <script src="/common/choice/word-diff.js?v=20260821-pv-review-access-2"></script>
 <script src="<?= commonAssetUrl('/common/choice/change-details.js') ?>"></script>

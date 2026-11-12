@@ -12,6 +12,7 @@ final class ObjectMail extends DbObject
             'copy.les_destinataires_ont_change_relisez_la_liste_avant_de_confirmer_l_env' => ['text' => 'Les destinataires ont change. Relisez la liste avant de confirmer l’envoi.', 'context' => 'Interface text in class/dbobject/objectmail.class.php'],
             'copy.invitation_pv_non_autorisee' => ['text' => 'Invitation PV non autorisée.', 'context' => 'Interface text in class/dbobject/objectmail.class.php'],
             'copy.invitation_au_scrutin_non_autorisee' => ['text' => 'Invitation au scrutin non autorisée.', 'context' => 'Interface text in class/dbobject/objectmail.class.php'],
+            'survey_invitation_denied' => ['text' => 'Invitation à l’évaluation non autorisée.', 'context' => 'Authorization error when archiving survey invitations in the sender outbox.'],
             'copy.impossible_de_conserver_l_invitation' => ['text' => 'Impossible de conserver l’invitation.', 'context' => 'Interface text in class/dbobject/objectmail.class.php'],
             'copy.impossible_de_conserver_le_resultat_de_l_envoi' => ['text' => 'Impossible de conserver le résultat de l’envoi.', 'context' => 'Interface text in class/dbobject/objectmail.class.php'],
             'copy.queued_attend_le_traitement_omo_sent_indique_l_acceptation_smtp_pas_la' => ['text' => 'queued attend le traitement OMO ; sent indique l’acceptation SMTP, pas la réception finale. failed et unknown ne sont jamais relances automatiquement pour éviter les doublons. skipped indique une invitation ou une autorisation devenue invalide. Réutilisez la même request_key pour toute nouvelle tentative du même envoi.', 'context' => 'Interface text in class/dbobject/objectmail.class.php'],
@@ -159,8 +160,20 @@ final class ObjectMail extends DbObject
         return self::beginNativeInvitationDelivery($uid, $oid, 'decision_invitation', (int)$decision->getId(), $subject, $message, $recipients);
     }
 
+    public static function beginSurveyInvitationDelivery(Organization $organization, string $subject, string $messageHtml, array $recipients): self
+    {
+        $uid = (int)\commonGetCurrentUserId();
+        $oid = (int)$organization->getId();
+        $user = new User();
+        if ($uid <= 0 || !$user->load($uid, true) || !$user->get('active')
+            || !\commonCurrentUserCanUseAdminMode($oid)) {
+            throw new \DomainException(self::uiMessage('survey_invitation_denied'));
+        }
+        return self::beginNativeInvitationDelivery($uid, $oid, 'survey_invitation', $oid, $subject, $messageHtml, $recipients, 'html');
+    }
+
     /** Native sends share tracking and retention, but never enter the generic SMTP queue. */
-    private static function beginNativeInvitationDelivery(int $uid, int $oid, string $type, int $objectId, string $subject, string $message, array $recipients): self
+    private static function beginNativeInvitationDelivery(int $uid, int $oid, string $type, int $objectId, string $subject, string $message, array $recipients, string $messageFormat = 'plain'): self
     {
         if (!$recipients || trim($subject) === '' || trim($message) === '') {
             throw new \InvalidArgumentException('Message et destinataires requis.');
@@ -175,7 +188,7 @@ final class ObjectMail extends DbObject
             foreach (['IDuser' => $uid, 'IDorganization' => $oid, 'object_type' => $type,
                 'object_id' => $objectId, 'request_hash' => hash('sha256', random_bytes(32)),
                 'payload_hash' => hash('sha256', json_encode([$subject, $message, $recipients], JSON_THROW_ON_ERROR)),
-                'subject' => $subject, 'message' => $message, 'message_format' => 'plain',
+                'subject' => $subject, 'message' => $message, 'message_format' => $messageFormat,
                 'recipient_count' => count($recipients), 'created_at' => time()] as $field => $value) {
                 $mail->set($field, $value);
             }

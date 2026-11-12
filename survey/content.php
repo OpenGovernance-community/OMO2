@@ -93,6 +93,10 @@ $sourceLang = [
         'text' => 'Organisation',
         'context' => 'Organization field label in the survey invitation dialog.',
     ],
+    'survey.invite.choose_organization' => [
+        'text' => 'Choisissez votre organisation...',
+        'context' => 'First option in the survey invitation organization selector. An explicit choice is required when several organizations are available.',
+    ],
     'survey.invite.holons' => [
             'text' => 'Espaces',
         'context' => 'Holon selector tab in the survey invitation dialog.',
@@ -264,6 +268,14 @@ $sourceLang = [
     'survey.invite.error' => [
         'text' => 'Les invitations n’ont pas pu être envoyées.',
         'context' => 'Generic error message in the survey invitation dialog.',
+    ],
+    'survey.invite.delivery_error' => [
+        'text' => 'L’envoi a rencontré une erreur. Consultez le détail dans la boîte d’envoi de l’organisation dans OMO.',
+        'context' => 'Survey invitation delivery failure after a tracking entry was created, including partial sends.',
+    ],
+    'survey.invite.history_warning' => [
+        'text' => 'Certaines informations de suivi n’ont pas pu être enregistrées dans la boîte d’envoi OMO.',
+        'context' => 'Warning when SMTP was attempted but saving some delivery statuses failed.',
     ],
     'survey.invite.empty' => [
         'text' => 'Aucune organisation active n’est associée à votre compte.',

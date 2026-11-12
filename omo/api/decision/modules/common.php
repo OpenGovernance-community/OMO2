@@ -2371,11 +2371,23 @@ if (!function_exists('omoDecisionInvitationGetSourceLang')) {
             ],
             'decisions.invitations.email.start' => [
                 'text' => 'Début',
-                'context' => 'Consultation start label in a decision invitation email.',
+                'context' => 'Start of participation in a decision invitation email.',
             ],
             'decisions.invitations.email.end' => [
                 'text' => 'Fin',
-                'context' => 'Consultation end label in a decision invitation email.',
+                'context' => 'End of the only participation phase in a decision invitation email.',
+            ],
+            'decisions.invitations.email.consultation_end' => [
+                'text' => 'Fin élaboration',
+                'context' => 'End of elaboration when the invitation includes both elaboration and evaluation.',
+            ],
+            'decisions.invitations.email.evaluation_start' => [
+                'text' => 'Début évaluation',
+                'context' => 'Start of evaluation when the invitation includes both elaboration and evaluation.',
+            ],
+            'decisions.invitations.email.results' => [
+                'text' => 'Fin (résultats)',
+                'context' => 'End of evaluation and availability of results in a two-phase decision invitation.',
             ],
             'decisions.invitations.email.default_title' => [
                 'text' => 'Prise de décision',
@@ -3143,13 +3155,27 @@ if (!function_exists('omoDecisionSendParticipantAccessEmail')) {
         }
 
         $consultationStart = DecisionProcess::normalizeDateTimeValue($decision->get('consultation_start_at'));
-        if ($consultationStart instanceof DateTimeInterface) {
-            $detailsItems[] = '<li><strong>' . commonMailEscape(omoDecisionInvitationT('decisions.invitations.email.start')) . '</strong> : ' . commonMailEscape($consultationStart->format('d.m.Y H:i')) . '</li>';
-        }
-
         $consultationEnd = DecisionProcess::normalizeDateTimeValue($decision->get('consultation_end_at'));
-        if ($consultationEnd instanceof DateTimeInterface) {
-            $detailsItems[] = '<li><strong>' . commonMailEscape(omoDecisionInvitationT('decisions.invitations.email.end')) . '</strong> : ' . commonMailEscape($consultationEnd->format('d.m.Y H:i')) . '</li>';
+        $evaluationStart = DecisionProcess::normalizeDateTimeValue($decision->get('evaluation_start_at'));
+        $evaluationEnd = DecisionProcess::normalizeDateTimeValue($decision->get('evaluation_end_at'));
+        $hasConsultation = $consultationStart !== null || $consultationEnd !== null;
+        $hasEvaluation = $evaluationStart !== null || $evaluationEnd !== null;
+        $scheduleItems = [];
+        if ($hasConsultation && $hasEvaluation) {
+            $scheduleItems[] = ['start', $consultationStart];
+            if ($consultationEnd != $evaluationStart) {
+                $scheduleItems[] = ['consultation_end', $consultationEnd];
+            }
+            $scheduleItems[] = ['evaluation_start', $evaluationStart];
+            $scheduleItems[] = ['results', $evaluationEnd];
+        } else {
+            $scheduleItems[] = ['start', $hasEvaluation ? $evaluationStart : $consultationStart];
+            $scheduleItems[] = ['end', $hasEvaluation ? $evaluationEnd : $consultationEnd];
+        }
+        foreach ($scheduleItems as [$label, $date]) {
+            if ($date instanceof DateTimeInterface) {
+                $detailsItems[] = '<li><strong>' . commonMailEscape(omoDecisionInvitationT('decisions.invitations.email.' . $label)) . '</strong> : ' . commonMailEscape($date->format('d.m.Y H:i')) . '</li>';
+            }
         }
 
         $detailsHtml = count($detailsItems) > 0

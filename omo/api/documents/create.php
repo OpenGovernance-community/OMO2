@@ -16,6 +16,9 @@ use dbObject\ObjectVisibility;
 use dbObject\Organization;
 
 $sourceLang = [
+    'documents.create.history.enabled' => ['text' => 'Activer l’historisation', 'context' => 'Checkbox enabling document version history.'],
+    'documents.create.history.hint' => ['text' => 'Chaque remplacement ou retrait du fichier conserve une copie de la version précédente. Pour Collabora, utilisez « Archiver maintenant » sur la fiche avant de commencer une nouvelle version. Les sauvegardes automatiques de Collabora ne créent pas d’archives.', 'context' => 'Help for file history and manual collaborative snapshots.'],
+    'documents.create.history.replace_confirm' => ['text' => 'La version actuelle sera archivée avant son remplacement. Continuer ?', 'context' => 'Confirmation when replacing a file with history enabled.'],
     'documents.create.error.edit' => ['text' => 'Impossible de modifier ce document.', 'context' => 'Error shown when the document editor cannot be opened in edit mode.'],
     'documents.create.error.pv_unsupported' => ['text' => 'Ce document PV se crée ici, mais son contenu se modifie via l’éditeur PV dédié.', 'context' => 'Error shown when trying to edit a PV document from the generic documents editor.'],
     'documents.create.error.create' => ['text' => 'Impossible de créer un document dans ce contexte.', 'context' => 'Error shown when the document editor cannot be opened in creation mode.'],
@@ -702,6 +705,14 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                     </label>
                 </div>
 
+                <div class="generic-form-field" data-omo-document-history-section<?= !$document->supportsVersionHistory() && !in_array($documentType, [Document::TYPE_UPLOADED_FILE, Document::TYPE_COLLABORA_DOCUMENT, Document::TYPE_COLLABORA_SPREADSHEET, Document::TYPE_COLLABORA_PRESENTATION, Document::TYPE_COLLABORA_DRAWING], true) ? ' hidden' : '' ?>>
+                    <label class="generic-checkbox">
+                        <input type="checkbox" name="history_enabled" value="1"<?= $document->isVersionHistoryEnabled() ? ' checked' : '' ?><?= $isEditing && !$canEditDocumentContent ? ' disabled' : '' ?>>
+                        <span><?= $escape(omoDocumentsCreateT('documents.create.history.enabled')) ?></span>
+                    </label>
+                    <span class="generic-help-text"><?= $escape(omoDocumentsCreateT('documents.create.history.hint')) ?></span>
+                </div>
+
                 <div class="omo-document-editor__upload-section" data-omo-document-upload-section<?= $documentType !== Document::TYPE_UPLOADED_FILE ? ' hidden' : '' ?>>
                     <label class="omo-document-editor__field generic-form-field">
                         <span class="omo-document-editor__label generic-form-label"><?= $escape(omoDocumentsCreateT('documents.create.field.upload')) ?></span>
@@ -787,6 +798,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         ],
         'tagRemove' => omoDocumentsCreateT('documents.create.field.tags_remove'),
         'uploadReplaceConfirm' => omoDocumentsCreateT('documents.create.upload.replace_confirm'),
+        'uploadArchiveConfirm' => omoDocumentsCreateT('documents.create.history.replace_confirm'),
     ],
     'editingDocumentId' => $isEditing && $canEditDocumentContent && $document->supportsHtmlContent() ? (int)$document->getId() : 0,
     'editLockHeartbeatIntervalMs' => (int)(\dbObject\Document::getDraftHeartbeatIntervalSeconds() * 1000),

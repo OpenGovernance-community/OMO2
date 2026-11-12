@@ -1,6 +1,48 @@
 (function () {
     'use strict';
 
+    document.querySelectorAll('[data-omo-detail-share-url]').forEach(function (button) {
+        if (button.dataset.omoShareBound === '1') return;
+        button.dataset.omoShareBound = '1';
+        button.addEventListener('click', function () {
+            if (typeof window.commonTopbarOpenModal !== 'function') return;
+            window.commonTopbarOpenModal(button.textContent.trim(), button.getAttribute('data-omo-detail-share-url'), 'fetch');
+            var menu = button.closest('details');
+            if (menu) menu.open = false;
+        });
+    });
+
+    document.querySelectorAll('[data-omo-document-archive-id]').forEach(function (button) {
+        if (button.dataset.omoArchiveBound === '1') return;
+        button.dataset.omoArchiveBound = '1';
+        button.addEventListener('click', async function () {
+            if (button.disabled) return;
+            button.disabled = true;
+            button.setAttribute('aria-busy', 'true');
+            var errorLabel = button.getAttribute('data-omo-document-archive-error');
+            try {
+                var response = await window.fetch('/omo/api/documents/history_action.php', {
+                    method: 'POST', credentials: 'same-origin',
+                    headers: {'Content-Type': 'application/json', Accept: 'application/json'},
+                    body: JSON.stringify({id: Number(button.getAttribute('data-omo-document-archive-id'))})
+                });
+                var result = await response.json();
+                if (!response.ok || !result || result.status !== true) {
+                    throw new Error(result && result.message || errorLabel);
+                }
+                var section = button.closest('[data-omo-document-history]');
+                section.querySelector('[data-omo-document-history-list]').insertAdjacentHTML('afterbegin', result.html);
+                section.querySelector('[data-omo-document-history-empty]').hidden = true;
+                if (typeof window.commonNotify === 'function') window.commonNotify(result.message, 'success');
+            } catch (error) {
+                if (typeof window.commonNotify === 'function') window.commonNotify(error.message || errorLabel, 'error');
+            } finally {
+                button.disabled = false;
+                button.removeAttribute('aria-busy');
+            }
+        });
+    });
+
     function extractFilename(response) {
         var disposition = response.headers.get('Content-Disposition') || '';
         var encodedMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);

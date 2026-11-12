@@ -2632,6 +2632,12 @@ input:focus-visible + label {
     color: #fff;
 }
 
+.survey-invite-dialog__tab:disabled {
+    opacity: 0.6;
+    filter: grayscale(1);
+    cursor: not-allowed;
+}
+
 .survey-invite-dialog__list {
     max-height: 260px;
     overflow: auto;
