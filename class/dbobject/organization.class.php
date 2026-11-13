@@ -11700,6 +11700,7 @@
 						'visible' => (bool)$template->get('visible'),
 						'mandatory' => (bool)$template->get('mandatory'),
 						'lockedName' => (bool)$template->get('lockedname'),
+						'inheritsFromId' => (int)$template->get('IDholon_template'),
 						'unique' => (bool)$template->get('unique'),
 						'link' => (bool)$template->get('link'),
 						'adminParent' => (bool)$template->get('adminparent'),
@@ -15026,7 +15027,7 @@
 			);
 		}
 
-		public function deleteHolonTemplateDefinition($templateId = 0, $userId = 0, $contextHolonId = 0, $scope = 'contextual')
+		public function deleteHolonTemplateDefinition($templateId = 0, $userId = 0, $contextHolonId = 0, $scope = 'contextual', ?array $confirmation = null, bool $preview = false)
 		{
 			if ($this->isDiscoveryMode()) {
 				return array(
@@ -15082,11 +15083,46 @@
 			}
 
 			$templateName = $template->getDisplayName();
-			if (!$template->delete()) {
-				return array(
-					'status' => false,
-					'message' => self::uiMessage('le_modele_n_a_pas_pu_etre_supprime'),
-				);
+			$pdo = self::getPdo();
+			$ownsTransaction = !$pdo->inTransaction();
+			$savepoint = 'template_delete_' . bin2hex(random_bytes(6));
+			try {
+				if ($ownsTransaction) $pdo->beginTransaction();
+				else $pdo->exec('SAVEPOINT ' . $savepoint);
+				// Lock the structure before counting, so new children or instances cannot enter during deletion.
+				$locked = self::fetchAll('SELECT id FROM holon WHERE id = :root OR IDholon_org = :org_root ORDER BY id FOR UPDATE',
+					['root' => (int)$rootHolon->getId(), 'org_root' => (int)$rootHolon->getId()]);
+				if (!is_array($locked)) throw new \RuntimeException('Unable to lock template structure');
+				$impact = $template->getTemplateDeletionImpact();
+				if (!$preview) {
+					if (!is_string($confirmation['count'] ?? null)) {
+						throw new \DomainException('confirmation_required');
+					}
+					if (!is_string($confirmation['signature'] ?? null)
+						|| !hash_equals($impact['signature'], $confirmation['signature'])) {
+						throw new \DomainException('impact_changed');
+					}
+					if ($confirmation['count'] !== (string)$impact['count']) {
+						throw new \DomainException('confirmation_required');
+					}
+					if (!$template->delete()) throw new \RuntimeException('Unable to delete template');
+				}
+				if ($ownsTransaction) $pdo->commit();
+				else $pdo->exec('RELEASE SAVEPOINT ' . $savepoint);
+			} catch (\Throwable $exception) {
+				if ($pdo->inTransaction()) {
+					if ($ownsTransaction) $pdo->rollBack();
+					else { $pdo->exec('ROLLBACK TO SAVEPOINT ' . $savepoint); $pdo->exec('RELEASE SAVEPOINT ' . $savepoint); }
+				}
+				if (!($exception instanceof \DomainException)) {
+					self::registerDbError('template_delete', ['template_id' => $templateId], $exception);
+				}
+				return ['status' => false,
+					'reason' => $exception instanceof \DomainException ? $exception->getMessage() : 'failed',
+					'message' => self::uiMessage('le_modele_n_a_pas_pu_etre_supprime')];
+			}
+			if ($preview) {
+				return ['status' => true, 'impact' => $impact, 'template' => ['id' => $templateId, 'name' => $templateName]];
 			}
 
 			return array(

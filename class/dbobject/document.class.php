@@ -1143,7 +1143,12 @@
 
 		public function buildReaderUrl(): string
 		{
-			return '/omo/document.php?code=' . rawurlencode((string)$this->get('readercode'));
+			return '/doc/' . (int)$this->getId() . '/' . $this->getReaderAccessCode();
+		}
+
+		public function getReaderAccessCode(): string
+		{
+			return str_pad(base_convert(substr((string)$this->get('readercode'), 0, 10), 16, 36), 8, '0', STR_PAD_LEFT);
 		}
 
 		public function save()
@@ -1154,13 +1159,19 @@
 			return parent::save();
 		}
 
-		public static function findByReaderCode(string $code): ?self
+		public static function findByReaderCode(string $code, int $documentId = 0): ?self
 		{
+			if ($documentId > 0 && preg_match('/^[a-z0-9]{8}$/iD', $code)) {
+				$document = new self();
+				return $document->load($documentId) && hash_equals($document->getReaderAccessCode(), strtolower($code))
+					? $document : null;
+			}
 			if (!preg_match('/^[a-f0-9]{48}$/D', $code)) {
 				return null;
 			}
 			$document = new self();
-			return $document->load(['readercode', $code]) ? $document : null;
+			return $document->load(['readercode', $code]) && ($documentId <= 0 || (int)$document->getId() === $documentId)
+				? $document : null;
 		}
 
 		public function getCollaboraSigningSecret(): string

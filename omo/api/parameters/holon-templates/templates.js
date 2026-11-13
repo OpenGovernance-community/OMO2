@@ -12,7 +12,8 @@ const omoHolonTemplateState = {
     removedPropertyIds: [],
     statusTimer: null,
     savedSnapshot: null,
-    formRevision: 0
+    formRevision: 0,
+    deleting: false
 };
 
 if (!omoHolonTemplatePageRoot) {
@@ -1211,82 +1212,12 @@ function omoHolonTemplateFillTypeOptions(selectedTypeId) {
 }
 
 function omoHolonTemplateBuildParentOptions(selectedParentId, currentTemplateId) {
-    const options = [{
-        id: Number(omoHolonTemplateState.data.rootHolonId || 0),
-        label: omoHolonTemplateTexts.treeRoot || ''
-    }];
-
-    function walk(nodes, prefix) {
-        (nodes || []).forEach(function (node) {
-            if (Number(node.id) !== Number(currentTemplateId || 0)) {
-                options.push({
-                    id: Number(node.id),
-                    label: prefix + node.name
-                });
-                walk(node.children || [], prefix + '> ');
-            }
-        });
-    }
-
-    walk(omoHolonTemplateState.data.templates || [], '');
-
-    omoHolonTemplateElements.parent.innerHTML = '';
-    options.forEach(function (item) {
-        const option = document.createElement('option');
-        option.value = item.id;
-        option.textContent = item.label;
-        option.selected = Number(selectedParentId || 0) === Number(item.id);
-        omoHolonTemplateElements.parent.appendChild(option);
+    window.omoHolonTemplateOptions(omoHolonTemplateElements.parent, omoHolonTemplateState.data.templateCatalog || [], {
+        selectedId: selectedParentId,
+        currentTemplateId: currentTemplateId,
+        contextHolonId: omoHolonTemplateState.data.contextHolonId,
+        emptyLabel: omoUiText("aucun_heritage_direct", "Aucun héritage direct")
     });
-
-    const parentTargetValue = String(Number(selectedParentId || omoHolonTemplateState.data.rootHolonId || 0));
-    const hasMatchingParentOption = Array.from(omoHolonTemplateElements.parent.options).some(function (option) {
-        return String(option.value) === parentTargetValue;
-    });
-    omoHolonTemplateElements.parent.value = hasMatchingParentOption
-        ? parentTargetValue
-        : String(Number(omoHolonTemplateState.data.rootHolonId || 0));
-}
-
-function omoHolonTemplateBuildParentOptions(selectedParentId, currentTemplateId) {
-    const options = [{
-        id: 0,
-        label: omoUiText("aucun_heritage_direct", "Aucun héritage direct")
-    }];
-
-    (omoHolonTemplateState.data.templateCatalog || []).forEach(function (template) {
-        if (Number(template.id) === Number(currentTemplateId || 0)) {
-            return;
-        }
-
-        const contextSuffix = Number(template.definedInId || 0) > 0
-            && Number(template.definedInId || 0) !== Number(omoHolonTemplateState.data.contextHolonId || 0)
-            && String(template.definedInName || '').trim() !== ''
-            ? ' > ' + template.definedInName
-            : '';
-
-        options.push({
-            id: Number(template.id),
-            label: String(template.name || '') + contextSuffix
-        });
-    });
-
-    omoHolonTemplateElements.parent.innerHTML = '';
-    options.forEach(function (item) {
-        const option = document.createElement('option');
-        option.value = item.id;
-        option.textContent = item.label;
-        option.selected = Number(selectedParentId || 0) === Number(item.id);
-        omoHolonTemplateElements.parent.appendChild(option);
-    });
-
-    const parentTargetValue = String(Number(selectedParentId || 0));
-    const hasMatchingParentOption = Array.from(omoHolonTemplateElements.parent.options).some(function (option) {
-        return String(option.value) === parentTargetValue;
-    });
-    omoHolonTemplateElements.parent.value = hasMatchingParentOption
-        ? parentTargetValue
-        : '0';
 }
 
 function omoHolonTemplateSetDefinitionHolonOptionLabels(showTree) {
@@ -2894,17 +2825,10 @@ omoHolonTemplateRoot.setAttribute('data-omo-unsaved-changes', '');
 omoHolonTemplateRoot.omoHasUnsavedChanges = omoHolonTemplateHasUnsavedChanges;
 omoHolonTemplateRoot.omoConfirmDiscardChanges = omoHolonTemplateConfirmDiscardChanges;
 
-function omoHolonTemplateDelete() {
+async function omoHolonTemplateDelete() {
     const templateId = Number(omoHolonTemplateElements.form.dataset.templateId || 0);
     const template = omoHolonTemplateFind(templateId);
-    if (templateId <= 0 || !template || omoHolonTemplateIsHolonDefinitionMode()) {
-        return;
-    }
-
-    const templateName = String(template.name || '').trim() || String(omoHolonTemplateTexts.formModelTitle || '');
-    const confirmation = String(omoHolonTemplateTexts.confirmDeleteModel || '')
-        .replace('{templateName}', templateName);
-    if (!window.confirm(confirmation)) {
+    if (templateId <= 0 || !template || omoHolonTemplateIsHolonDefinitionMode() || omoHolonTemplateState.deleting) {
         return;
     }
 
@@ -2916,6 +2840,8 @@ function omoHolonTemplateDelete() {
         return;
     }
 
+    omoHolonTemplateState.deleting = true;
+    const formRevision = omoHolonTemplateState.formRevision;
     omoHolonTemplateClearStatus();
     const query = [];
     if (Number(omoHolonTemplateState.data.contextHolonId || 0) > 0) {
@@ -2925,47 +2851,67 @@ function omoHolonTemplateDelete() {
         query.push('template_scope=' + encodeURIComponent(omoHolonTemplateGetScope()));
     }
 
-    const formData = new FormData();
-    formData.append('template_id', String(templateId));
+    const url = '/omo/api/parameters/holon-templates/delete.php' + (query.length ? ('?' + query.join('&')) : '');
+    try {
+        const previewData = new FormData();
+        previewData.append('template_id', String(templateId));
+        previewData.append('action', 'preview');
+        const previewResponse = await fetch(url, { method: 'POST', body: previewData });
+        const preview = await previewResponse.json();
+        if (!previewResponse.ok || !preview || preview.status !== 'ok'
+            || !preview.impact || !Number.isSafeInteger(preview.impact.count) || preview.impact.count < 0
+            || !Number.isSafeInteger(preview.impact.deletedCount) || preview.impact.deletedCount < 1
+            || !preview.impact.signature) {
+            throw new Error(preview && preview.message ? preview.message : (omoHolonTemplateTexts.deleteErrorModel || ''));
+        }
+        if (!omoHolonTemplateRoot.isConnected || omoHolonTemplateState.formRevision !== formRevision) {
+            return;
+        }
+        const templateName = String(preview.template && preview.template.name || template.name || '');
+        const confirmation = String(omoHolonTemplateTexts.confirmDeleteModel || '')
+            .replaceAll('{templateName}', templateName)
+            .replaceAll('{deletedCount}', String(preview.impact.deletedCount))
+            .replaceAll('{count}', String(preview.impact.count));
+        const enteredCount = window.prompt(confirmation, '');
+        if (enteredCount === null) {
+            return;
+        }
+        if (enteredCount !== String(preview.impact.count)) {
+            omoHolonTemplateShowStatus(omoHolonTemplateTexts.deleteConfirmationRequired || '', 'error');
+            return;
+        }
+        const formData = new FormData();
+        formData.append('template_id', String(templateId));
+        formData.append('confirmation_count', enteredCount);
+        formData.append('impact_signature', preview.impact.signature);
+        const response = await fetch(url, { method: 'POST', body: formData });
+        const result = await response.json();
+        if (!response.ok || !result || result.status !== 'ok') {
+            throw new Error(result && result.message ? result.message : (omoHolonTemplateTexts.deleteErrorModel || ''));
+        }
 
-    fetch('/omo/api/parameters/holon-templates/delete.php' + (query.length ? ('?' + query.join('&')) : ''), {
-        method: 'POST',
-        body: formData
-    })
-        .then(function (response) {
-            return response.json().then(function (data) {
-                return {
-                    ok: response.ok,
-                    data: data
-                };
-            });
-        })
-        .then(function (result) {
-            if (!result.ok || !result.data || result.data.status !== 'ok') {
-                throw new Error(result.data && result.data.message ? result.data.message : (omoHolonTemplateTexts.deleteErrorModel || ''));
-            }
-
-            omoHolonTemplateState.data = result.data.data || omoHolonTemplateState.data;
+        omoHolonTemplateState.data = result.data || omoHolonTemplateState.data;
+        if (omoHolonTemplateRoot.isConnected && omoHolonTemplateState.formRevision === formRevision) {
             omoHolonTemplateShowWelcome();
-            omoHolonTemplateShowStatus(result.data.message || (omoHolonTemplateTexts.deletedModel || ''), 'success');
+        }
+        omoHolonTemplateShowStatus(result.message || (omoHolonTemplateTexts.deletedModel || ''), 'success');
 
-            if (omoHolonTemplateState.compactMode) {
-                window.dispatchEvent(new CustomEvent('omo-structure-refresh', {
-                    detail: {
-                        cid: Number(omoHolonTemplateState.data.contextHolonId || 0) || null,
-                        quickZoom: false
-                    }
-                }));
-            }
-        })
-        .catch(function (error) {
-            omoHolonTemplateShowStatus(error && error.message ? error.message : (omoHolonTemplateTexts.deleteErrorModel || ''), 'error');
-        })
-        .finally(function () {
-            if (omoHolonTemplateElements.form && typeof window.omoEndPendingAction === 'function') {
-                window.omoEndPendingAction(omoHolonTemplateElements.form);
-            }
-        });
+        if (omoHolonTemplateState.compactMode) {
+            window.dispatchEvent(new CustomEvent('omo-structure-refresh', {
+                detail: {
+                    cid: Number(omoHolonTemplateState.data.contextHolonId || 0) || null,
+                    quickZoom: false
+                }
+            }));
+        }
+    } catch (error) {
+        omoHolonTemplateShowStatus(error && error.message ? error.message : (omoHolonTemplateTexts.deleteErrorModel || ''), 'error');
+    } finally {
+        omoHolonTemplateState.deleting = false;
+        if (omoHolonTemplateElements.form && typeof window.omoEndPendingAction === 'function') {
+            window.omoEndPendingAction(omoHolonTemplateElements.form);
+        }
+    }
 }
 
 function omoHolonTemplateSave(event) {

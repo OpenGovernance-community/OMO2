@@ -4,6 +4,14 @@ Ce fichier garde une vue d'ensemble courte des évolutions récentes, avec un an
 
 Les dates déjà indiquées sont conservées. Les dates manquantes sont reconstituées à partir de la première apparition des entrées dans l'historique GitHub, en heure Europe/Zurich ; elles correspondent à leur ajout au journal, pas nécessairement à leur mise en production.
 
+## 2026-11-13
+
+- Holons / modèles — avant un effacement, le serveur calcule les sous-modèles supprimés et les holons impactés par la perte d’héritage, archives comprises. Il faut recopier ce nombre pour confirmer. Un bilan devenu obsolète bloque la suppression et l’opération est transactionnelle.
+
+- Holons / éditeurs : les modèles sont répartis en quatre groupes triés alphabétiquement dans l’éditeur de holon et de holon template : « Modèles de base · nom libre », « Modèles dérivés · nom libre », « Modèles de base · nom fixe » et « Modèles dérivés · nom fixe ».
+
+- Documents / consultation : liens courts `/doc/identifiant/code` avec huit caractères alphanumériques, compatibles avec les anciens liens. Le document occupe directement la fenêtre sous la barre OMO, avec le logo de l’organisation, le titre du document et un menu Info regroupant les métadonnées, le téléchargement et l’accès à OMO. Le bouton Info reprend l’icône d’information et le séparateur vertical de la topbar OMO.
+
 ## 2026-11-12
 
 - Évaluation organisationnelle / dispersion : sous les pastilles d’aujourd’hui et de demain, un segment de la même couleur indique la note minimale et la note maximale réellement données. Le survol précise les deux extrêmes.

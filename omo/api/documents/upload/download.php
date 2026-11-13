@@ -16,7 +16,7 @@ if (isset($_GET['pv_document_id'])) {
 } elseif (isset($_GET['reader'])) {
     require_once dirname(__DIR__, 4) . '/shared_functions.php';
     require_once dirname(__DIR__, 4) . '/common/auth.php';
-    $readerDocument = \dbObject\Document::findByReaderCode(trim((string)($_GET['code'] ?? '')));
+    $readerDocument = \dbObject\Document::findByReaderCode(trim((string)($_GET['code'] ?? '')), (int)($_GET['id'] ?? 0));
     if (!$readerDocument
         || !$readerDocument->canReadFromLink((int)commonGetCurrentUserId())
         || array_key_exists('version_id', $_GET)) {

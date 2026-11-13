@@ -5,6 +5,10 @@ require_once dirname(__DIR__) . '/translation_bundles.php';
 function omoUiJsSourceLang(): array
 {
     static $sourceLang = [
+        'parameters.holon_templates.parent_group.base' => ['text' => 'Modèles de base · nom libre', 'context' => 'First group in both holon model selectors, for templates without inheritance and with an unlocked name.'],
+        'parameters.holon_templates.parent_group.inherited' => ['text' => 'Modèles dérivés · nom libre', 'context' => 'Second group in both holon model selectors, for templates with inheritance and an unlocked name.'],
+        'parameters.holon_templates.parent_group.base_locked' => ['text' => 'Modèles de base · nom fixe', 'context' => 'Third group in both holon model selectors, for templates without inheritance and with a locked name.'],
+        'parameters.holon_templates.parent_group.inherited_locked' => ['text' => 'Modèles dérivés · nom fixe', 'context' => 'Fourth group in both holon model selectors, for templates with inheritance and a locked name.'],
         'impossible_d_enregistrer_cet_evenement' => ['text' => 'Impossible d\'enregistrer cet événement.', 'context' => 'JavaScript interface text in omo/api/calendar/calendar.js'],
         'supprimer_cet_element_de_la_checklist' => ['text' => 'Supprimer cet élément de la checklist ?', 'context' => 'JavaScript interface text in omo/api/checklist/checklist.js'],
         'extraire_cet_element_dans_une_nouvelle_checklist_recurrente' => ['text' => 'Extraire cet élément dans une nouvelle checklist récurrente ?', 'context' => 'JavaScript interface text in omo/api/checklist/checklist.js'],

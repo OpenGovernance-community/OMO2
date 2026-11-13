@@ -29,7 +29,7 @@ async function main() {
     window.omoSizedImageField = { mount: (host, config) => ({ getValue: () => config.value, appendToFormData() {} }) };
     window.omoSimpleHtmlField = {};
     window.fetch = () => Promise.resolve({ ok: false });
-    for (const file of ['common/assets/property-types.js', 'common/assets/property-list-conversion.js', 'common/permissions/editor.js']) {
+    for (const file of ['common/assets/property-types.js', 'common/assets/property-list-conversion.js', 'common/permissions/editor.js', 'common/assets/holon-template-options.js']) {
         window.eval(fs.readFileSync(file, 'utf8'));
     }
     let accept = false;

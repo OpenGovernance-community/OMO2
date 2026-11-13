@@ -79,10 +79,10 @@ try {
     $content = 'READER_OFFICE_CONTENT';
     $storagePath = '/dav/Compte%20test/Documents%20partag%C3%A9s/reader.txt';
     file_put_contents($directory . '/' . hash('sha256', $storagePath) . '.bin', $content);
-    $code = (string)$doc->get('readercode');
-    $open = '/omo/api/documents/collabora/open.php?reader=1&code=' . $code;
+    $code = $doc->getReaderAccessCode();
+    $open = '/omo/api/documents/collabora/open.php?' . http_build_query(['reader' => 1, 'id' => (int)$doc->getId(), 'code' => $code]);
     $response = readerOfficeHttp($doc->buildReaderUrl());
-    mcpCheck($response['status'] === 200 && str_contains($response['body'], 'collabora/open.php?reader=1&amp;code=' . $code), 'Reader mounts Collabora using the opaque code');
+    mcpCheck($response['status'] === 200 && str_contains($response['body'], htmlspecialchars($open, ENT_QUOTES, 'UTF-8')), 'Reader mounts Collabora using the document id and short code');
     mcpCheck(!str_contains($response['body'], '/document.php?id='), 'Reader contains no numeric document URL');
     file_put_contents(dirname(__DIR__) . '/tmp/document-reader-office.html', $response['body']);
     $guestToken = readerOfficeToken(readerOfficeHttp($open));

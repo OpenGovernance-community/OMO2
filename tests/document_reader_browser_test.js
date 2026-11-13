@@ -6,78 +6,44 @@ const path = require('node:path');
 const {chromium} = require('playwright');
 const root = path.resolve(__dirname, '..');
 
-async function verifyWindowPreview(page, width, media = false) {
-    const openButton = page.locator('[data-common-panel-fullscreen-target]');
-    const button = page.locator('[data-common-panel-view] [data-common-panel-fullscreen]');
-    const view = page.locator('[data-common-panel-view]');
-    assert.equal(await view.locator('[data-common-panel-media-toolbar]').isVisible(), false, 'Normal preview has no extra toolbar row');
-    assert.equal(await openButton.locator('..').getByRole('link', {name: 'Voir dans OMO'}).count(), 1, 'Fullscreen is in the document header');
-    await page.evaluate(() => {
-        window.nativeCalls = 0;
-        Element.prototype.requestFullscreen = () => { window.nativeCalls++; throw new Error('Native fullscreen must not be requested'); };
-        if (document.querySelector('.omo-document-share__content')) {
-            document.querySelector('.omo-document-share__content').innerHTML += '<p>Lecture du document.</p>'.repeat(50);
-        } else {
-            const spacer = document.createElement('div');
-            spacer.style.height = '500px';
-            document.querySelector('main').appendChild(spacer);
-        }
-        window.scrollTo({top: 60, behavior: 'instant'});
-    });
-    const scrollTop = await page.evaluate(() => window.scrollY);
-    assert(scrollTop > 0, 'Standalone reading pages can scroll');
-    const framedInput = page.frameLocator('[data-common-panel-media-content] iframe').locator('[data-fixture-state]');
-    const hasFramedInput = await page.locator('[data-common-panel-media-content] iframe').count() > 0 && await framedInput.count() > 0;
-    if (hasFramedInput) await framedInput.fill('Preserved preview state');
-    await page.evaluate(() => window.addEventListener('click', event => {
-        const button = event.target.closest('[data-common-panel-fullscreen]');
-        const target = button.getAttribute('data-common-panel-fullscreen-target');
-        const rect = (target ? document.getElementById(target) : button.closest('[data-common-panel-view]')).getBoundingClientRect();
-        window.previewEntry = {scrollTop: window.scrollY, rect: {x: rect.x, y: rect.y, width: rect.width, height: rect.height}};
-    }, {capture: true, once: true}));
-    let frameNavigations = 0;
-    const onNavigation = frame => { if (frame !== page.mainFrame()) frameNavigations++; };
-    page.on('framenavigated', onNavigation);
-    await openButton.click();
-    const entry = await page.evaluate(() => window.previewEntry);
-    assert.equal(await button.getAttribute('aria-pressed'), 'true');
+async function verifyReaderLayout(page, width, media = false) {
+    const header = page.locator('header.common-topbar');
+    const view = page.locator('#omoDocumentReaderPreview');
+    const headerBounds = await header.boundingBox();
     const bounds = await view.boundingBox();
-    assert.deepEqual(bounds, {x: 0, y: 0, width, height: page.viewportSize().height}, 'Preview fills the browser window');
-    assert(await button.isVisible(), 'Return control stays visible');
-    assert(await button.evaluate(node => {
-        const rect = node.getBoundingClientRect();
-        return rect.top >= 0 && rect.right <= innerWidth && node.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
-    }), 'Return control remains inside the viewport and above the preview');
+    assert.equal(bounds.x, 0);
+    assert.equal(bounds.width, width);
+    assert.equal(bounds.y, headerBounds.height, 'Document starts immediately below the title bar');
+    assert.equal(bounds.height + headerBounds.height, page.viewportSize().height, 'Document fills the remaining window');
+    assert.equal(await page.locator('[data-common-panel-fullscreen]').count(), 0, 'Reader opens directly in its final layout');
+    assert(await header.locator('.common-topbar__brand-logo').isVisible());
+    assert(await header.locator('.common-topbar__brand-name').isVisible(), 'Document title remains visible on mobile');
     if (media) {
-        const content = page.locator('[data-common-panel-media-content]');
-        const rect = await content.boundingBox();
-        assert(rect.height > page.viewportSize().height - 100, 'Media fills the space below the toolbar');
-        const mediaBounds = await content.locator('iframe, img').boundingBox();
-        assert(mediaBounds.y >= rect.y && mediaBounds.y + mediaBounds.height <= page.viewportSize().height + 1, 'Visual preview stays within the window');
+        const previewBounds = await view.locator('iframe, img').boundingBox();
+        assert.deepEqual(previewBounds, bounds, 'Visual preview uses the whole document area');
     } else {
+        await view.locator('.prose').evaluate(node => { node.innerHTML += '<p>Lecture du document.</p>'.repeat(50); });
         await view.evaluate(node => { node.scrollTop = 600; });
-        const rect = await button.boundingBox();
-        assert(rect.y >= 0 && rect.y < 80, 'Text reading keeps the exit button at the top');
+        assert.equal((await header.boundingBox()).y, 0, 'Title bar stays visible while reading');
     }
-    await page.screenshot({path: path.join(root, `tmp/document-reader-fullscreen-${media ? 'media' : 'text'}-${width}.png`)});
-    await button.click();
-    assert.equal(await openButton.getAttribute('aria-pressed'), 'false');
-    assert.equal(await button.getAttribute('aria-pressed'), 'false');
-    assert.equal(await page.evaluate(() => window.scrollY), entry.scrollTop, 'Leaving fullscreen restores page scroll at ' + width);
-    const restored = await view.boundingBox();
-    for (const axis of ['x', 'y', 'width', 'height']) assert(Math.abs(restored[axis] - entry.rect[axis]) < 1, 'Original geometry returns: ' + axis);
-    await openButton.click();
-    await button.focus();
+    const menu = page.locator('[data-topbar-menu="context"]');
+    assert.equal(await menu.isVisible(), false);
+    await page.getByRole('button', {name: 'Info', exact: true}).click();
+    assert(await menu.isVisible(), 'Info menu opens');
+    assert(await menu.getByText('Contexte', {exact: true}).isVisible());
+    assert.equal(await menu.getByRole('link', {name: 'Voir dans OMO'}).getAttribute('target'), '_blank');
+    const menuBounds = await menu.boundingBox();
+    assert(menuBounds.x >= 0 && menuBounds.x + menuBounds.width <= width + 1, 'Info menu fits the screen');
+    await page.screenshot({path: path.join(root, `tmp/document-reader-info-${media ? 'media' : 'text'}-${width}.png`)});
     await page.keyboard.press('Escape');
-    assert.equal(await button.getAttribute('aria-pressed'), 'false', 'Escape exits window mode');
-    assert.equal(frameNavigations, 0, 'Changing preview size never reloads its iframe');
-    if (hasFramedInput) assert.equal(await framedInput.inputValue(), 'Preserved preview state', 'Iframe state survives resizing');
-    assert.equal(await page.evaluate(() => window.nativeCalls), 0, 'Browser tabs remain visible');
-    page.off('framenavigated', onNavigation);
+    assert.equal(await menu.isVisible(), false, 'Escape closes the Info menu');
+    assert.equal(await page.evaluate(() => document.fullscreenElement), null, 'Browser tabs remain visible');
+    await page.screenshot({path: path.join(root, `tmp/document-reader-fullscreen-${media ? 'media' : 'text'}-${width}.png`)});
 }
 
 (async () => {
-    const browser = await chromium.launch({headless: true, channel: 'msedge'});
+    const browser = await chromium.launch({headless: true, channel: 'msedge',
+        args: ['--host-resolver-rules=MAP localtest.me 127.0.0.1, MAP *.localtest.me 127.0.0.1']});
     try {
         if (process.argv.includes('--live')) {
             const fixture = path.join(root, 'tmp/document-reader-live.json');
@@ -86,9 +52,10 @@ async function verifyWindowPreview(page, width, media = false) {
                 const page = await browser.newPage({ignoreHTTPSErrors: true, viewport: {width: 1280, height: 1050}});
                 const errors = [];
                 page.on('pageerror', error => errors.push(error.message));
-                const ready = page.waitForEvent('framenavigated', {predicate: frame => frame.url().includes('document.localtest.me/browser/'), timeout: 30000});
+                await page.route('https://code.jquery.com/**', route => route.fulfill({contentType: 'text/javascript', body: ''}));
                 await page.goto(url, {waitUntil: 'domcontentloaded'});
-                const office = await ready;
+                await page.locator('#omoDocumentReaderPreview iframe').waitFor();
+                const office = await (await page.locator('#omoDocumentReaderPreview iframe').elementHandle()).contentFrame();
                 await office.waitForFunction(() => window.app?.file?.readOnly === true && window.app?.map?._permission === 'readonly', null, {timeout: 30000});
                 await office.locator('.status-readonly-mode').waitFor();
                 assert.equal(await office.locator('#viewModeDropdown').isVisible(), false, 'Strict reader offers no editing mode switch');
@@ -96,18 +63,19 @@ async function verifyWindowPreview(page, width, media = false) {
                 for (const width of [1280, 390]) {
                     await page.setViewportSize({width, height: 1050});
                     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Collabora reader fits ' + width);
-                    await verifyWindowPreview(page, width, true);
+                    await verifyReaderLayout(page, width, true);
                     await page.screenshot({path: path.join(root, `tmp/document-reader-collabora-live-${width}.png`), fullPage: true});
                 }
                 const ownerContext = await browser.newContext({ignoreHTTPSErrors: true});
+                await ownerContext.route('https://code.jquery.com/**', route => route.fulfill({contentType: 'text/javascript', body: ''}));
                 await ownerContext.addCookies([ownerCookie]);
                 const editor = await ownerContext.newPage();
                 await editor.goto(editorUrl, {waitUntil: 'domcontentloaded'});
                 await editor.waitForFunction(() => window.app?.map?.wopi?.UserCanWrite === true, null, {timeout: 30000});
                 const ownerPage = await ownerContext.newPage();
-                const ownerReady = ownerPage.waitForEvent('framenavigated', {predicate: frame => frame.url().includes('document.localtest.me/browser/'), timeout: 30000});
                 await ownerPage.goto(url, {waitUntil: 'domcontentloaded'});
-                const ownerOffice = await ownerReady;
+                await ownerPage.locator('#omoDocumentReaderPreview iframe').waitFor();
+                const ownerOffice = await (await ownerPage.locator('#omoDocumentReaderPreview iframe').elementHandle()).contentFrame();
                 await ownerOffice.waitForFunction(() => window.app?.file?.readOnly === true && window.app?.map?._permission === 'readonly', null, {timeout: 30000});
                 assert.equal(await ownerOffice.evaluate(() => app.map.wopi.UserCanWrite), false, 'An existing editable session does not grant writing to the reader');
                 assert.equal(await ownerOffice.locator('#viewModeDropdown').isVisible(), false, 'Author also has no editing mode switch in the reader');
@@ -145,19 +113,18 @@ async function verifyWindowPreview(page, width, media = false) {
             });
             for (const view of ['public', 'login', 'denied']) {
                 await page.goto('https://reader.test/fixture?view=' + view);
-                assert(await page.locator('h1').isVisible(), 'Reader state has a title');
+                assert(await page.locator('h1, .common-topbar__brand-name').first().isVisible(), 'Reader state has a title');
                 assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), view + ' fits the viewport');
                 assert.equal(await page.locator('[contenteditable="true"]').count(), 0);
                 if (view === 'public') {
-                    assert.equal(await page.getByRole('link', {name: 'Voir dans OMO'}).getAttribute('target'), '_blank');
                     assert(await page.getByText('READER_SAVED_CONTENT').isVisible());
                 }
                 await page.screenshot({path: path.join(root, `tmp/document-reader-${view}-${width}.png`), fullPage: true});
-                if (view === 'public') await verifyWindowPreview(page, width);
+                if (view === 'public') await verifyReaderLayout(page, width);
             }
             for (const media of ['pdf', 'image']) {
                 await page.goto('https://reader.test/fixture?view=' + media);
-                await verifyWindowPreview(page, width, true);
+                await verifyReaderLayout(page, width, true);
             }
             await page.goto('https://reader.test/fixture?view=public');
             await page.evaluate(() => {
@@ -172,8 +139,7 @@ async function verifyWindowPreview(page, width, media = false) {
             }
             await page.locator('#omoDocumentReaderLink').waitFor();
             const link = await page.locator('#omoDocumentReaderLink').inputValue();
-            assert.match(new URL(link).searchParams.get('code'), /^[a-f0-9]{48}$/);
-            assert.equal(new URL(link).searchParams.has('id'), false, 'Shared links hide the document id');
+            assert.match(new URL(link).pathname, /^\/doc\/\d+\/[a-z0-9]{8}$/);
             await page.getByRole('button', {name: 'Copier le lien de consultation'}).click();
             assert.deepEqual(await page.evaluate(() => window.copied), [link]);
             assert.equal(await page.evaluate(() => window.notifications[0].kind), 'success');

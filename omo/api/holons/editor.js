@@ -1884,34 +1884,10 @@ function buildPropertiesForTemplate(template, sourceProperties) {
 
 // Rend options modèles
 function renderTemplateOptions(preferredTemplateId) {
-    const templates = getTemplates();
-
-    elements.template.innerHTML = '';
-    let currentGroupId = null;
-    let currentGroup = null;
-    templates.forEach(function (template, index) {
-        const definedInId = Number(template.definedInId || 0);
-        const contextName = String(template.definedInName || template.definedInLabel || '').trim();
-        const groupId = definedInId > 0 ? String(definedInId) : 'unassigned';
-        if (groupId !== currentGroupId) {
-            currentGroupId = groupId;
-            currentGroup = document.createElement('optgroup');
-            currentGroup.label = contextName || 'Élément';
-            elements.template.appendChild(currentGroup);
-        }
-
-        const option = document.createElement('option');
-        const name = String(template.name || '').trim();
-        option.value = Number(template.id);
-        option.textContent = name;
-        option.selected = Number(preferredTemplateId || 0) === Number(template.id) || (!preferredTemplateId && index === 0);
-        currentGroup.appendChild(option);
+    window.omoHolonTemplateOptions(elements.template, getTemplates(), {
+        selectedId: preferredTemplateId,
+        contextHolonId: state.data.contextHolonId
     });
-
-    if (!elements.template.value && templates.length) {
-        elements.template.value = String(Number(templates[0].id));
-    }
-
     elements.template.required = true;
 }
 

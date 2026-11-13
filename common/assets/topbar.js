@@ -1759,6 +1759,14 @@
         }
     });
 
+    document.addEventListener('keydown', function (event) {
+        if (event.key !== 'Escape' || !document.querySelector('[data-topbar-menu="context"].is-open')) return;
+        closeMenus();
+        var trigger = document.querySelector('[data-topbar-menu-trigger="context"]');
+        if (trigger) trigger.focus();
+        event.preventDefault();
+    });
+
     window.commonTopbarOpenModal = openModal;
     window.commonTopbarCloseModal = closeModal;
     window.commonTopbarPushModal = pushModal;

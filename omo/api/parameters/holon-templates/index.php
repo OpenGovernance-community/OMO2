@@ -158,7 +158,8 @@ $omoHolonTemplateTexts = [
     'saveErrorModel' => omoHolonTemplateT('parameters.holon_templates.error.save_model'),
     'savedModel' => omoHolonTemplateT('parameters.holon_templates.status.saved_model'),
     'deleteModel' => omoHolonTemplateT('parameters.holon_templates.action.delete_model'),
-    'confirmDeleteModel' => omoHolonTemplateT('parameters.holon_templates.confirm.delete_model', ['templateName' => '{templateName}']),
+    'confirmDeleteModel' => omoHolonTemplateT('parameters.holon_templates.confirm.delete_model', ['templateName' => '{templateName}', 'count' => '{count}', 'deletedCount' => '{deletedCount}']),
+    'deleteConfirmationRequired' => omoHolonTemplateT('parameters.holon_templates.error.confirmation_required'),
     'deleteErrorModel' => omoHolonTemplateT('parameters.holon_templates.error.delete_model'),
     'deletedModel' => omoHolonTemplateT('parameters.holon_templates.status.deleted_model'),
 ];
@@ -435,6 +436,7 @@ $omoHolonTemplateTexts = [
 <script src="/common/assets/multiline-list-paste.js"></script>
 <script src="/common/assets/property-list-conversion.js"></script>
 <script src="/common/assets/property-types.js"></script>
+<script src="<?= commonAssetUrl('/common/assets/holon-template-options.js') ?>"></script>
 <script src="<?= commonAssetUrl('/common/assets/property-values.js') ?>"></script>
 <link rel="stylesheet" href="/common/permissions/editor.css?v=20260923-permission-align">
 <script src="/common/permissions/editor.js?v=20260930-member-admin"></script>

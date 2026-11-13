@@ -5102,6 +5102,33 @@
 			return array_values(array_unique(array_map('intval', $ids)));
 		}
 
+		/** Include archived nodes and indirect inheritance, with each affected holon counted once. */
+		public function getTemplateDeletionImpact(): array
+		{
+			$rows = self::fetchAll('WITH RECURSIVE deleted_nodes (id) AS (
+				SELECT id FROM holon WHERE id = :template_id
+				UNION DISTINCT
+				SELECT h.id FROM holon h JOIN deleted_nodes d ON h.IDholon_parent = d.id
+			), affected_nodes (id) AS (
+				SELECT id FROM deleted_nodes
+				UNION DISTINCT
+				SELECT h.id FROM holon h JOIN affected_nodes a ON h.IDholon_template = a.id
+			)
+			SELECT h.id, h.IDholon_parent, h.IDholon_template, (d.id IS NOT NULL) AS deleted
+			FROM affected_nodes a JOIN holon h ON h.id = a.id
+			LEFT JOIN deleted_nodes d ON d.id = h.id ORDER BY h.id',
+				['template_id' => (int)$this->getId()]);
+			if (!is_array($rows) || !$rows) {
+				throw new \RuntimeException('Unable to compute template deletion impact');
+			}
+			$deletedCount = count(array_filter($rows, static fn(array $row): bool => (bool)$row['deleted']));
+			return [
+				'count' => count($rows) - $deletedCount,
+				'deletedCount' => $deletedCount,
+				'signature' => hash('sha256', json_encode($rows, JSON_THROW_ON_ERROR)),
+			];
+		}
+
 		// Supprime holon r?cursif
 		public function delete()
 		{

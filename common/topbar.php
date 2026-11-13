@@ -406,6 +406,11 @@ function commonRenderTopbar(array $options = [])
             'data' => commonResolveTopbarProfileData($organizationContext, $options['profile'] ?? []),
         ],
         'helpLabel' => (string)($options['helpLabel'] ?? 'Aide'),
+        'helpEnabled' => (bool)($options['helpEnabled'] ?? true),
+        'contextMenu' => [
+            'label' => (string)($options['contextMenu']['label'] ?? ''),
+            'contentHtml' => (string)($options['contextMenu']['contentHtml'] ?? ''),
+        ],
         'helpItems' => $helpItems,
         'helpLinks' => array_values($options['helpLinks'] ?? []),
         'publicParticipant' => [
@@ -601,6 +606,21 @@ function commonRenderTopbar(array $options = [])
         </div>
         <?php endif; ?>
 
+        <?php if ($config['contextMenu']['contentHtml'] !== ''): ?>
+        <div class="common-topbar__menu-wrap common-topbar__menu-wrap--separated">
+            <button type="button" class="common-topbar__action common-topbar__action--square" data-topbar-menu-trigger="context" aria-label="<?= htmlspecialchars($config['contextMenu']['label'], ENT_QUOTES, 'UTF-8') ?>" aria-controls="commonTopbarContextMenu" aria-haspopup="true">
+                <span class="common-topbar__action-icon" aria-hidden="true">
+                    <img src="/omo/images/tools/info.png" alt="" class="common-topbar__icon-image black-icon">
+                </span>
+                <span class="common-topbar__action-label"><?= htmlspecialchars($config['contextMenu']['label'], ENT_QUOTES, 'UTF-8') ?></span>
+            </button>
+            <div id="commonTopbarContextMenu" class="common-topbar__menu common-topbar__menu--context" data-topbar-menu="context">
+                <?= $config['contextMenu']['contentHtml'] ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if ($config['helpEnabled']): ?>
         <div class="common-topbar__menu-wrap">
             <button type="button" class="common-topbar__action common-topbar__action--square" data-topbar-menu-trigger="help">
                 <span class="common-topbar__action-icon" aria-hidden="true">
@@ -670,6 +690,8 @@ function commonRenderTopbar(array $options = [])
                 <?php endif; ?>
             </div>
         </div>
+
+        <?php endif; ?>
 
         <?php if (!empty($config['publicParticipant']['enabled']) && $config['publicParticipant']['token'] !== ''): ?>
         <form method="post" action="<?= htmlspecialchars($config['publicParticipant']['logoutPath'], ENT_QUOTES, 'UTF-8') ?>" class="common-topbar__menu-wrap">

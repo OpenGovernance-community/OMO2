@@ -24,7 +24,7 @@ if (!$reader && ($documentId <= 0 || $userId <= 0)) {
     exit;
 }
 
-$document = $reader ? Document::findByReaderCode(trim((string)($_GET['code'] ?? ''))) : new Document();
+$document = $reader ? Document::findByReaderCode(trim((string)($_GET['code'] ?? '')), $documentId) : new Document();
 if (!$document || (!$reader && !$document->load($documentId))
     || ($reader && !$document->canReadFromLink($userId))
     || (!$document->canOpenWithCollabora() && !(!$reader && $document->isNextcloudFolder()))) {
