@@ -4,6 +4,7 @@ require_once BASE_PATH . '/shared_functions.php';
 require_once BASE_PATH . '/common/auth.php';
 require_once BASE_PATH . '/common/topbar.php';
 require_once BASE_PATH . '/common/choice/decision_cards.php';
+require_once BASE_PATH . '/common/choice/participation-summary.php';
 require_once BASE_PATH . '/omo/translations.php';
 require_once BASE_PATH . '/omo/topbar.php';
 require_once BASE_PATH . '/omo/api/decision/modules/context.php';
@@ -225,12 +226,12 @@ $sourceLang = [
         'context' => 'Stat label for proposal count on a decision card.',
     ],
     'choice.card.participants' => [
-        'text' => 'Participants',
+        'text' => 'Invités',
         'context' => 'Stat label for participant count on a decision card.',
     ],
     'choice.card.responses' => [
-        'text' => 'Réponses',
-        'context' => 'Stat label for submitted response count on a decision card.',
+        'text' => 'Répondants',
+        'context' => 'Stat label for distinct people with at least one submitted evaluation block.',
     ],
     'choice.card.fallback_title' => [
         'text' => 'Prise de décision',
@@ -543,7 +544,7 @@ foreach ($rows as $row) {
                 'label' => t('choice.card.participants', [], $lang, $sourceLang),
             ],
             [
-                'value' => (string)((int)($row['response_count'] ?? 0)),
+                'value' => commonChoiceParticipationSummary((int)($row['response_count'] ?? 0), (int)($row['incomplete_response_count'] ?? 0)),
                 'label' => t('choice.card.responses', [], $lang, $sourceLang),
             ],
         ],

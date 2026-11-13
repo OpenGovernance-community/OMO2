@@ -4,6 +4,7 @@ require_once dirname(__DIR__, 3) . '/common/object_visibility_selector.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/modules/context.php';
 require_once __DIR__ . '/params/shared.php';
+require_once dirname(__DIR__, 3) . '/common/choice/participation-summary.php';
 
 use dbObject\DecisionProcess;
 use dbObject\Holon;
@@ -502,12 +503,12 @@ $sourceLang = [
         'context' => 'Card stat label for proposal count.',
     ],
     'decisions.index.participants_label' => [
-        'text' => 'Participants',
+        'text' => 'Invités',
         'context' => 'Card stat label for participant count.',
     ],
     'decisions.index.responses_label' => [
-        'text' => 'Réponses',
-        'context' => 'Card stat label for submitted response count.',
+        'text' => 'Répondants',
+        'context' => 'Card stat label for distinct people with at least one submitted evaluation block.',
     ],
     'decisions.index.deadline_label' => [
         'text' => 'Échéance',
@@ -1268,6 +1269,8 @@ foreach ($decisionRows as $row) {
         'proposalCount' => (int)($row['proposal_count'] ?? 0),
         'participantCount' => (int)($row['participant_count'] ?? 0),
         'responseCount' => (int)($row['response_count'] ?? 0),
+        'incompleteResponseCount' => (int)($row['incomplete_response_count'] ?? 0),
+        'responseCountLabel' => commonChoiceParticipationSummary((int)($row['response_count'] ?? 0), (int)($row['incomplete_response_count'] ?? 0)),
         'deadlineLabel' => omoDecisionsIndexFormatDate($deadline, $dateFormatter),
         'deadlineTimestamp' => $deadline instanceof DateTimeInterface ? (int)$deadline->format('U') : 0,
         'lastActivityLabel' => omoDecisionsIndexFormatDateTime($lastActivity, $dateTimeFormatter),

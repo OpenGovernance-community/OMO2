@@ -6,6 +6,8 @@ Les dates déjà indiquées sont conservées. Les dates manquantes sont reconsti
 
 ## 2026-11-13
 
+- Scrutins / participation : les listes OMO et Choice comptent les répondants distincts et précisent les participations incomplètes (par exemple « 5, dont 1 incomplet »). Le total des invités reste affiché séparément ; seuls les blocs d’évaluation actifs et les réponses soumises sont pris en compte.
+
 - Holons / modèles — avant un effacement, le serveur calcule les sous-modèles supprimés et les holons impactés par la perte d’héritage, archives comprises. Il faut recopier ce nombre pour confirmer. Un bilan devenu obsolète bloque la suppression et l’opération est transactionnelle.
 
 - Holons / éditeurs : les modèles sont répartis en quatre groupes triés alphabétiquement dans l’éditeur de holon et de holon template : « Modèles de base · nom libre », « Modèles dérivés · nom libre », « Modèles de base · nom fixe » et « Modèles dérivés · nom fixe ».

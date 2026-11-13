@@ -40,6 +40,7 @@ function extract(start, end) {
             window.renderFixtures = function () {
                 ['', 'pending', 'elaboration', 'submitted'].forEach(function (state, id) {
                     const item = {id, title: state || 'Without invitation', statusLabel: state === 'elaboration' ? 'En elaboration' : 'En evaluation',
+                        participantCount: 10, responseCount: 5, responseCountLabel: '5, dont 1 incomplet',
                         participationIndicator: state, participationIndicatorLabel: 'Participation "' + state + '" <test>'};
                     document.querySelector('#cards').appendChild(renderCard(item));
                     document.querySelector('#compact').appendChild(renderCompactRow(item));
@@ -67,17 +68,30 @@ function extract(start, end) {
                 assert.equal(await dot.getAttribute('aria-label'), await dot.getAttribute('title'));
             }
         }
+        assert.equal(await page.locator('#cards .omo-decisions-card__stat').filter({hasText: '5, dont 1 incomplet'}).count(), 4,
+            'Cards must preserve the server-translated count of distinct and incomplete respondents.');
+        assert.equal(await page.locator('#cards .omo-decisions-card__stat').filter({hasText: 'Invités'}).count(), 4);
+        assert.equal(await page.locator('#cards .omo-decisions-card__stat').filter({hasText: 'Répondants'}).count(), 4);
         await page.emulateMedia({reducedMotion: 'reduce'});
         assert(await page.locator('.choice-participation-indicator').evaluateAll(dots => dots.every(dot => getComputedStyle(dot).animationName === 'none')));
         await page.emulateMedia({reducedMotion: 'no-preference'});
         await page.setViewportSize({width: 390, height: 844});
         assert(await page.locator('.choice-participation-indicator').evaluateAll(dots => dots.every(dot => dot.getBoundingClientRect().width > 0)));
+        await page.locator('#cards .omo-decisions-card').evaluateAll(cards => cards.forEach(card => card.classList.remove('is-collapsed')));
+        assert(await page.locator('#cards .omo-decisions-card__stat').evaluateAll(stats => stats.every(stat => {
+            const bounds = stat.getBoundingClientRect();
+            const card = stat.closest('.omo-decisions-card').getBoundingClientRect();
+            return bounds.width > 0 && bounds.left >= card.left && bounds.right <= card.right;
+        })), 'Participation summaries must fit inside expanded cards on mobile.');
         await page.evaluate(() => {
             window.commonChoiceDecisionCards = null;
-            const card = renderCard({id: 10, title: 'Fallback', statusLabel: 'En evaluation', participationIndicator: 'submitted', participationIndicatorLabel: 'Envoye'});
+            const card = renderCard({id: 10, title: 'Fallback', statusLabel: 'En evaluation', participationIndicator: 'submitted', participationIndicatorLabel: 'Envoye',
+                responseCount: 5, responseCountLabel: '5, dont 2 incomplets'});
             document.querySelector('#cards').appendChild(card);
         });
         assert.equal(await page.locator('#cards .choice-participation-indicator--submitted').count(), 2);
+        assert.equal(await page.locator('#cards .omo-decisions-card__stat').filter({hasText: '5, dont 2 incomplets'}).count(), 1,
+            'The fallback renderer must also preserve the participation summary.');
         assert.deepEqual(errors, []);
         console.log('decision_participation_indicator_browser_test: OK');
     } finally {

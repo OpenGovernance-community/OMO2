@@ -3620,6 +3620,61 @@ class DecisionProcess extends DbObject
         return $evaluationStart instanceof \DateTimeInterface && $evaluationStart <= $referenceDateTime;
     }
 
+    /** Count respondents once, and require a submitted ballot in every active evaluation block. */
+    private static function addListParticipationCounts(array $rows): array
+    {
+        if (!$rows) return [];
+
+        $parameters = [
+            'submitted' => DecisionResponse::STATUS_SUBMITTED,
+            'declined' => DecisionParticipant::STATUS_DECLINED,
+            'revoked' => DecisionParticipant::STATUS_REVOKED,
+            'consultation_only' => self::METHOD_CONSULTATION_ONLY,
+        ];
+        $placeholders = [];
+        $counts = [];
+        foreach ($rows as $row) {
+            $id = (int)$row['id'];
+            $parameters['decision_' . $id] = $id;
+            $placeholders[$id] = ':decision_' . $id;
+            $counts[$id] = ['response_count' => 0, 'incomplete_response_count' => 0];
+        }
+
+        // One query for the whole list, including blocks with no submitted responses yet.
+        $participations = self::fetchAll(
+            'SELECT grp.`IDdecision_process`, participant.`id` AS `participant_id`,
+                    COUNT(DISTINCT grp.`id`) AS `required_count`,
+                    COUNT(DISTINCT response.`IDdecision_group`) AS `submitted_count`
+             FROM `decision_group` grp
+             INNER JOIN `decision_participant` participant
+                ON participant.`IDdecision_process` = grp.`IDdecision_process`
+               AND participant.`active` = 1
+               AND participant.`status` NOT IN (:declined, :revoked)
+             LEFT JOIN `decision_response` response
+                ON response.`IDdecision_group` = grp.`id`
+               AND response.`IDdecision_participant` = participant.`id`
+               AND response.`status` = :submitted
+             WHERE grp.`IDdecision_process` IN (' . implode(', ', $placeholders) . ')
+               AND grp.`active` = 1
+               AND grp.`evaluation_method` <> :consultation_only
+             GROUP BY grp.`IDdecision_process`, participant.`id`
+             HAVING COUNT(response.`id`) > 0',
+            $parameters
+        );
+        foreach ($participations as $participation) {
+            $id = (int)$participation['IDdecision_process'];
+            $counts[$id]['response_count']++;
+            if ((int)$participation['submitted_count'] < (int)$participation['required_count']) {
+                $counts[$id]['incomplete_response_count']++;
+            }
+        }
+        foreach ($rows as &$row) {
+            $row = array_merge($row, $counts[(int)$row['id']]);
+        }
+        unset($row);
+        return $rows;
+    }
+
     public static function fetchListRowsForOrganization($organizationId, $userId = 0, $userEmail = '')
     {
         $organizationId = (int)$organizationId;
@@ -3661,16 +3716,8 @@ class DecisionProcess extends DbObject
                     FROM `decision_participant` participant_count
                     WHERE participant_count.`IDdecision_process` = dp.`id`
                       AND participant_count.`active` = 1
+                      AND participant_count.`status` NOT IN (:declined_status_count, :revoked_status_count)
                 ) AS `participant_count`,
-                (
-                    SELECT COUNT(*)
-                    FROM `decision_response` response_count
-                    WHERE response_count.`IDdecision_process` = dp.`id`
-                      AND (
-                            response_count.`status` = :submitted_status
-                            OR response_count.`submitted_at` IS NOT NULL
-                      )
-                ) AS `response_count`,
                 (
                     SELECT MAX(proposal_activity.`updated_at`)
                     FROM `decision_proposal` proposal_activity
@@ -3699,11 +3746,12 @@ class DecisionProcess extends DbObject
                 'organization_id' => $organizationId,
                 'user_id' => $userId,
                 'user_email' => $userEmail,
-                'submitted_status' => \dbObject\DecisionResponse::STATUS_SUBMITTED,
+                'declined_status_count' => DecisionParticipant::STATUS_DECLINED,
+                'revoked_status_count' => DecisionParticipant::STATUS_REVOKED,
             ]
         );
 
-        return is_array($rows) ? $rows : [];
+        return self::addListParticipationCounts(is_array($rows) ? $rows : []);
     }
 
     /** Invitations awaiting a submitted ballot, across every space in the organization. */
@@ -3831,15 +3879,6 @@ class DecisionProcess extends DbObject
                       AND participant_count.`status` NOT IN (:declined_status_count, :revoked_status_count)
                 ) AS `participant_count`,
                 (
-                    SELECT COUNT(*)
-                    FROM `decision_response` response_count
-                    WHERE response_count.`IDdecision_process` = dp.`id`
-                      AND (
-                            response_count.`status` = :submitted_status_count
-                            OR response_count.`submitted_at` IS NOT NULL
-                      )
-                ) AS `response_count`,
-                (
                     SELECT MAX(proposal_activity.`updated_at`)
                     FROM `decision_proposal` proposal_activity
                     WHERE proposal_activity.`IDdecision_process` = dp.`id`
@@ -3895,7 +3934,6 @@ class DecisionProcess extends DbObject
                 'revoked_status_has_email' => \dbObject\DecisionParticipant::STATUS_REVOKED,
                 'declined_status_count' => \dbObject\DecisionParticipant::STATUS_DECLINED,
                 'revoked_status_count' => \dbObject\DecisionParticipant::STATUS_REVOKED,
-                'submitted_status_count' => \dbObject\DecisionResponse::STATUS_SUBMITTED,
                 'user_id_owner' => $userId,
                 'user_id_access' => $userId,
                 'declined_status_access' => \dbObject\DecisionParticipant::STATUS_DECLINED,
@@ -3924,7 +3962,7 @@ class DecisionProcess extends DbObject
             $rows[$index]['archived_at'] = $decision->get('archived_at');
         }
 
-        return $rows;
+        return self::addListParticipationCounts($rows);
     }
 }
 

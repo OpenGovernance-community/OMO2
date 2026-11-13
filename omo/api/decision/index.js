@@ -1894,11 +1894,11 @@ function renderCard(item) {
             },
             {
                 value: String(Number(item.participantCount || 0)),
-                label: payload.text.participantsLabel || 'Participants'
+                label: payload.text.participantsLabel || 'Invités'
             },
             {
-                value: String(Number(item.responseCount || 0)),
-                label: payload.text.responsesLabel || "Réponses"
+                value: item.responseCountLabel || String(Number(item.responseCount || 0)),
+                label: payload.text.responsesLabel || 'Répondants'
             }
         ];
         const dateItems = [];
@@ -2023,8 +2023,8 @@ function renderCard(item) {
             + '<div class="omo-decisions-card__meta">' + metaBits.join('') + '</div>'
             + '<div class="omo-decisions-card__stats">'
                 + '<div class="omo-decisions-card__stat"><strong>' + String(Number(item.proposalCount || 0)) + '</strong><span>' + escapeHtml(payload.text.proposalsLabel || 'Propositions') + '</span></div>'
-                + '<div class="omo-decisions-card__stat"><strong>' + String(Number(item.participantCount || 0)) + '</strong><span>' + escapeHtml(payload.text.participantsLabel || 'Participants') + '</span></div>'
-                + '<div class="omo-decisions-card__stat"><strong>' + String(Number(item.responseCount || 0)) + '</strong><span>' + escapeHtml(payload.text.responsesLabel || 'Réponses') + '</span></div>'
+                + '<div class="omo-decisions-card__stat"><strong>' + String(Number(item.participantCount || 0)) + '</strong><span>' + escapeHtml(payload.text.participantsLabel || 'Invités') + '</span></div>'
+                + '<div class="omo-decisions-card__stat"><strong>' + escapeHtml(item.responseCountLabel || String(Number(item.responseCount || 0))) + '</strong><span>' + escapeHtml(payload.text.responsesLabel || 'Répondants') + '</span></div>'
             + '</div>'
             + '<div class="omo-decisions-card__dates">'
                 + (item.deadlineLabel ? '<div class="omo-decisions-card__date"><strong>' + escapeHtml(payload.text.deadlineLabel || 'Échéance') + '</strong><span>' + escapeHtml(item.deadlineLabel) + '</span></div>' : '')
