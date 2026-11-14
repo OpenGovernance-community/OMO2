@@ -6,6 +6,7 @@ Les dates déjà indiquées sont conservées. Les dates manquantes sont reconsti
 
 ## 2026-11-14
 
+- Documents / partage : les liens copiés incluent le nom du serveur. L’écran de saisie du mot de passe charge le thème partagé et affiche un bouton d’ouverture contrasté ; la couleur de secours des boutons d’authentification est également corrigée.
 - Documents / partage : liens externes multiples pour tous les formats, avec expiration, mot de passe et révocation, dans la même interface que le partage de structure. Option d’édition pour Collabora, Etherpad, EtherCalc et les tableaux blancs ; les PV et les autres formats restent en lecture seule. Le lien court conserve les droits OMO. Le lecteur commun affiche les formats compatibles et propose le téléchargement des fichiers sans aperçu.
 - Partage / technique : socle commun des liens et styles de gestion mutualisés. Les autorisations des outils collaboratifs sont limitées au document et à la durée du partage ; EtherCalc nécessite la mise à jour du service et de son URL de contrôle d’accès.
 

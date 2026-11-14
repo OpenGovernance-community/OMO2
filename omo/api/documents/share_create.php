@@ -109,5 +109,5 @@ if (!$isSuccess) {
 echo json_encode(array(
     'status' => true,
     'message' => omoDocumentsUiT($shareId > 0 ? 'share.link_updated' : 'share.link_created'),
-    'shareUrl' => $shareLink->buildShareUrl(),
+    'shareUrl' => commonBuildUrl($shareLink->buildShareUrl()),
 ));

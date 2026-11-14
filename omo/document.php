@@ -55,7 +55,10 @@ if ($shareLink && !commonDocumentSharePasswordVerified($shareLink)) {
     <!doctype html>
     <html lang="<?= $escape(omoGetTranslationLocale()) ?>"><head>
         <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-        <title><?= $escape($text('title')) ?></title><link rel="stylesheet" href="/common/assets/auth.css">
+        <title><?= $escape($text('title')) ?></title>
+        <script src="/shared_functions.js"></script><script>sharedApplyDocumentTheme();</script>
+        <link rel="stylesheet" href="<?= commonAssetUrl('/common/assets/theme.css') ?>">
+        <link rel="stylesheet" href="<?= commonAssetUrl('/common/assets/auth.css') ?>">
     </head><body class="auth-state-page"><main class="auth-state-layout"><div class="auth-state-card">
         <p><?= $escape($text('password_required')) ?></p>
         <form method="post" class="auth-state-form">
@@ -63,7 +66,7 @@ if ($shareLink && !commonDocumentSharePasswordVerified($shareLink)) {
             <label class="auth-state-label" for="sharePassword"><?= $escape($text('password')) ?></label>
             <input class="auth-state-input" type="password" id="sharePassword" name="share_password" required autofocus autocomplete="current-password">
             <?php if ($passwordError !== ''): ?><p class="auth-state-error"><?= $escape($passwordError) ?></p><?php endif; ?>
-            <button class="auth-state-btn auth-state-btn--primary" type="submit"><?= $escape($text('open')) ?></button>
+            <button class="auth-state-btn auth-state-btn--accent" type="submit"><?= $escape($text('open')) ?></button>
         </form>
     </div></main></body></html>
     <?php

@@ -435,7 +435,7 @@
 }
 
 .auth-state-btn--primary {
-    background: var(--auth-danger);
+    background: var(--auth-danger, var(--auth-danger-strong, #b91c1c));
     color: #fff;
 }
 

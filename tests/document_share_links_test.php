@@ -55,6 +55,7 @@ try {
         $doc->saveVisibilityRule('self');
         $result = shareHttp('/omo/api/documents/share_create.php', true, ['id' => $doc->getId(), 'label' => 'External test', 'allow_edit' => 1]);
         mcpCheck($result['status'] === 200 && !empty($result['json']['status']), 'Create external link for ' . $type . ': ' . $result['body']);
+        mcpCheck(str_starts_with($result['json']['shareUrl'], 'https://localtest.me/'), 'Created share URL includes the server origin');
         parse_str((string)parse_url($result['json']['shareUrl'], PHP_URL_QUERY), $query);
         $link = $items['link_' . $type] = DocumentShareLink::findByToken($query['token']);
         mcpCheck(strlen($link->get('token')) === 64, 'Long cryptographic share token');
@@ -63,6 +64,7 @@ try {
         mcpCheck($page['status'] === 200 && str_contains($page['body'], 'common-topbar'), 'Shared reader for ' . $type);
         $popup = shareHttp('/omo/api/documents/share_popup.php?id=' . $doc->getId(), true);
         mcpCheck(str_contains($popup['body'], 'omoDocumentSharePopupForm'), 'Share form available for ' . $type);
+        mcpCheck(str_contains($popup['body'], 'data-url="https://localtest.me' . $link->buildShareUrl()), 'Copied external share URL includes the server origin');
         mcpCheck(str_contains($popup['body'], 'id="omoDocumentSharePopupAllowEdit"') === $doc->supportsSharedEditing(), 'Editing option shown only when supported');
         if ($type === Document::TYPE_ETHERPAD) file_put_contents(dirname(__DIR__) . '/tmp/document-share-popup.html', $popup['body']);
     }
@@ -72,7 +74,9 @@ try {
     parse_str((string)parse_url($result['json']['shareUrl'], PHP_URL_QUERY), $query);
     $protected = $items['protected'] = DocumentShareLink::findByToken($query['token']);
     mcpCheck($protected->getId() !== $link->getId(), 'Independent links for one document');
-    mcpCheck(!str_contains(shareHttp($protected->buildShareUrl())['body'], 'SHARED_SAVED_CONTENT'), 'Password protects content');
+    $passwordPage = shareHttp($protected->buildShareUrl());
+    mcpCheck(!str_contains($passwordPage['body'], 'SHARED_SAVED_CONTENT'), 'Password protects content');
+    file_put_contents(dirname(__DIR__) . '/tmp/document-reader-password.html', $passwordPage['body']);
     $live = '/omo/api/documents/share_live.php?token=' . rawurlencode($protected->get('token'));
     mcpCheck(shareHttp($live)['status'] === 403, 'Password protects live endpoint');
     mcpCheck(shareHttp($protected->buildShareUrl(), false, ['share_password' => 'wrong'])['status'] === 200, 'Wrong password stays on gate');

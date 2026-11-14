@@ -122,6 +122,22 @@ async function verifyReaderLayout(page, width, media = false) {
                 await page.screenshot({path: path.join(root, `tmp/document-reader-${view}-${width}.png`), fullPage: true});
                 if (view === 'public') await verifyReaderLayout(page, width);
             }
+            await page.goto('https://reader.test/fixture?view=password');
+            for (const theme of ['light', 'dark']) {
+                await page.evaluate(theme => { document.documentElement.dataset.theme = theme; }, theme);
+                const submit = page.getByRole('button', {name: 'Ouvrir le document', exact: true});
+                assert(await submit.isVisible(), 'Password submit is visible');
+                const colors = await submit.evaluate(node => {
+                    const style = getComputedStyle(node);
+                    return {background: style.backgroundColor, color: style.color};
+                });
+                assert.notEqual(colors.background, 'rgba(0, 0, 0, 0)', 'Password submit has an opaque background');
+                assert.notEqual(colors.background, colors.color, 'Password submit text contrasts with its background');
+                assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Password gate fits the viewport');
+                const box = await submit.boundingBox();
+                assert(box.x >= 0 && box.x + box.width <= width, 'Password submit fits the viewport');
+                await page.screenshot({path: path.join(root, `tmp/document-share-password-${width}-${theme}.png`), fullPage: true});
+            }
             for (const media of ['pdf', 'image']) {
                 await page.goto('https://reader.test/fixture?view=' + media);
                 await verifyReaderLayout(page, width, true);
@@ -155,6 +171,9 @@ async function verifyReaderLayout(page, width, media = false) {
                     await page.addStyleTag({path: path.join(root, file)});
                 }
                 await page.evaluate(() => window.omoDocumentSharePopupInit());
+                await page.evaluate(() => {window.copied = []; navigator.clipboard.writeText = async text => window.copied.push(text);});
+                await page.locator('[data-share-id] [data-share-copy="1"]').first().click();
+                assert.match((await page.evaluate(() => window.copied))[0], /^https:\/\/localtest\.me\/omo\/document_share\.php\?token=/, 'Copied external link includes its server');
                 await page.locator('[data-share-edit="1"]').first().click();
                 assert(await page.locator('#omoDocumentSharePopupAllowEdit').isChecked(), 'Existing collaborative editing option restored');
                 assert(await page.locator('#omoDocumentSharePopupExpiration').isVisible());

@@ -160,7 +160,7 @@ $popupUrl = '/omo/api/documents/share_popup.php?id=' . rawurlencode((string)$doc
         <div class="omo-share-popup__cards generic-stack">
             <?php foreach ($shareLinks as $shareLink): ?>
                 <?php
-                $shareUrl = $shareLink->buildShareUrl();
+                $shareUrl = commonBuildUrl($shareLink->buildShareUrl());
                 $shareLabel = trim((string)$shareLink->get('label'));
                 if ($shareLabel === '') {
                     $shareLabel = $defaultLabel;
