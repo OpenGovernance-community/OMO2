@@ -148,6 +148,28 @@ async function verifyReaderLayout(page, width, media = false) {
             assert.equal(await page.evaluate(() => window.notifications[1].kind), 'error');
             const bounds = await page.locator('#omoDocumentReaderLink').boundingBox();
             assert(bounds.x >= 0 && bounds.x + bounds.width <= width, 'Reader link fits the share popup');
+            if (fs.existsSync(path.join(root, 'tmp/document-share-popup.html'))) {
+                await page.setContent(fs.readFileSync(path.join(root, 'tmp/document-share-popup.html'), 'utf8'));
+                await page.evaluate(() => {document.body.className = ''; document.body.style.margin = '0';});
+                for (const file of ['common/assets/theme.css', 'common/assets/components.css', 'omo/assets/css/styles.css', 'common/share/popup.css']) {
+                    await page.addStyleTag({path: path.join(root, file)});
+                }
+                await page.evaluate(() => window.omoDocumentSharePopupInit());
+                await page.locator('[data-share-edit="1"]').first().click();
+                assert(await page.locator('#omoDocumentSharePopupAllowEdit').isChecked(), 'Existing collaborative editing option restored');
+                assert(await page.locator('#omoDocumentSharePopupExpiration').isVisible());
+                assert(await page.locator('#omoDocumentSharePopupPassword').isVisible());
+                const submitted = [];
+                await page.route('https://reader.test/omo/api/documents/share_create.php', async route => {
+                    submitted.push(route.request().postData());
+                    await route.fulfill({contentType: 'application/json', body: JSON.stringify({status: false, message: 'Fixture validation'})});
+                });
+                await page.locator('#omoDocumentSharePopupSubmit').click();
+                await page.waitForFunction(() => !document.querySelector('#omoDocumentSharePopupSubmit').disabled);
+                assert(submitted[0].includes('name="allow_edit"'), 'Editing permission included in submitted form');
+                await page.screenshot({path: path.join(root, `tmp/document-share-form-${width}.png`), fullPage: true});
+                assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'External share form fits mobile and desktop');
+            }
             await page.evaluate(() => window.scrollTo({top: 0, behavior: 'instant'}));
             await page.evaluate(() => document.querySelectorAll('*').forEach(node => { if (node.scrollTop) node.scrollTop = 0; }));
             await page.screenshot({path: path.join(root, `tmp/document-reader-popup-${width}.png`), fullPage: true});

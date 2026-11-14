@@ -169,11 +169,11 @@ if (!function_exists('omoSpacedeckDeleteSpace')) {
 }
 
 if (!function_exists('omoSpacedeckBuildDocumentOpenUrl')) {
-    function omoSpacedeckBuildDocumentOpenUrl(\dbObject\Document $document, int $userId): string
+    function omoSpacedeckBuildDocumentOpenUrl(\dbObject\Document $document, int $userId, ?\dbObject\DocumentShareLink $shareLink = null, bool $reader = false): string
     {
         $spaceId = trim((string)$document->get('spacedeckspaceid'));
         $organizationId = (int)$document->get('IDorganization');
-        if ($spaceId === '' || $organizationId <= 0 || $userId <= 0) {
+        if ($spaceId === '' || $organizationId <= 0 || ($userId <= 0 && !$shareLink && !$reader)) {
             return '';
         }
 
@@ -183,21 +183,25 @@ if (!function_exists('omoSpacedeckBuildDocumentOpenUrl')) {
         }
 
         $user = new \dbObject\User();
-        $displayName = $user->load($userId)
+        $displayName = $userId > 0 && $user->load($userId)
             ? trim((string)$user->getScopedDisplayName($organizationId))
             : '';
         if ($displayName === '') {
-            $displayName = 'Utilisateur ' . $userId;
+            $displayName = $userId > 0 ? 'Utilisateur ' . $userId : commonDocumentServiceT('collabora.guest');
         }
 
-        $accessLevel = $document->canEditInOrganizationContext($organizationId, $userId, false) ? 2 : 1;
+        $accessLevel = ($shareLink ? $shareLink->allowsDocumentEditing($document)
+            : (!$reader && $document->canEditInOrganizationContext($organizationId, $userId, false))) ? 2 : 1;
+        $grant = $shareLink ? ['documentId' => (int)$document->getId(), 'shareId' => (int)$shareLink->getId(),
+            'shareFingerprint' => $shareLink->getAccessFingerprint()] : ($reader ? ['documentId' => (int)$document->getId(), 'reader' => true] : []);
         $token = omoSpacedeckBuildExternalAccessToken(
             $spaceId,
             $userId,
             $displayName,
             $accessLevel,
-            0,
-            omoSpacedeckGetCurrentLanguage()
+            $shareLink ? commonDocumentShareValidUntil($shareLink) : 0,
+            omoSpacedeckGetCurrentLanguage(),
+            $grant
         );
         if ($token === '') {
             return '';
@@ -250,14 +254,15 @@ if (!function_exists('omoSpacedeckBuildExternalAccessToken')) {
         string $displayName,
         int $accessLevel,
         int $validUntil = 0,
-        string $language = ''
+        string $language = '',
+        array $grant = []
     ): string {
         $secret = omoSpacedeckGetExternalAccessSecret();
         $spaceId = trim($spaceId);
         $displayName = trim($displayName);
         $validUntil = $validUntil > 0 ? $validUntil : time() + 900;
 
-        if ($secret === '' || $spaceId === '' || $userId <= 0 || $displayName === '' || $validUntil <= time()) {
+        if ($secret === '' || $spaceId === '' || ($userId <= 0 && empty($grant)) || $userId < 0 || $displayName === '' || $validUntil <= time()) {
             return '';
         }
 
@@ -270,6 +275,7 @@ if (!function_exists('omoSpacedeckBuildExternalAccessToken')) {
             'expiresAt' => $validUntil,
             'nonce' => bin2hex(random_bytes(12)),
         );
+        $payload = array_merge($payload, array_intersect_key($grant, array_flip(['documentId', 'shareId', 'shareFingerprint', 'reader'])));
         $payloadJson = json_encode($payload, JSON_UNESCAPED_SLASHES);
         if (!is_string($payloadJson)) {
             return '';
@@ -309,7 +315,7 @@ if (!function_exists('omoSpacedeckVerifyExternalAccessToken')) {
         $userId = (int)($payload['userId'] ?? 0);
         $displayName = trim((string)($payload['name'] ?? ''));
         $expiresAt = (int)($payload['expiresAt'] ?? 0);
-        if ($spaceId === '' || $userId <= 0 || $displayName === '' || $expiresAt < time()) {
+        if ($spaceId === '' || ($userId <= 0 && empty($payload['documentId'])) || $userId < 0 || $displayName === '' || $expiresAt < time()) {
             return false;
         }
 
@@ -318,6 +324,21 @@ if (!function_exists('omoSpacedeckVerifyExternalAccessToken')) {
         $payload['name'] = mb_substr($displayName, 0, 120, 'UTF-8');
         $payload['language'] = omoSpacedeckNormalizeLanguage((string)($payload['language'] ?? ''));
         $payload['accessLevel'] = omoSpacedeckNormalizeAccessLevel((int)($payload['accessLevel'] ?? 0));
+        if (isset($payload['documentId'])) {
+            require_once dirname(__DIR__) . '/shared_functions.php';
+            $document = new \dbObject\Document();
+            if (!$document->load((int)$payload['documentId']) || !$document->isWhiteboardDocument()
+                || !hash_equals((string)$document->get('spacedeckspaceid'), $spaceId)) return false;
+            if (isset($payload['shareId'])) {
+                $link = \dbObject\DocumentShareLink::resolveServiceGrant((int)$payload['shareId'], (string)($payload['shareFingerprint'] ?? ''), $document);
+                if (!$link) return false;
+                $payload['accessLevel'] = min($payload['accessLevel'], $link->allowsDocumentEditing($document) ? 2 : 1);
+            } elseif (($payload['reader'] ?? false) !== true || !$document->canReadFromLink($userId)) {
+                return false;
+            } else {
+                $payload['accessLevel'] = min(1, $payload['accessLevel']);
+            }
+        }
         return $payload;
     }
 }
@@ -355,7 +376,7 @@ if (!function_exists('omoSpacedeckBuildExternalAccessResponse')) {
         $response = array('access_level' => $accessLevel);
         if ($accessLevel > 0 && is_array($payload)) {
             $response['user'] = array(
-                'id' => 'omo-user-' . (int)$payload['userId'],
+                'id' => isset($payload['shareId']) ? 'omo-share-' . (int)$payload['shareId'] : 'omo-user-' . (int)$payload['userId'],
                 'name' => (string)$payload['name'],
                 'language' => (string)$payload['language'],
             );

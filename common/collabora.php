@@ -220,7 +220,7 @@ if (!function_exists('omoCollaboraBuildPostMessageOrigin')) {
 }
 
 if (!function_exists('omoCollaboraBuildWopiToken')) {
-    function omoCollaboraBuildWopiToken(\dbObject\Document $document, int $userId, int $validUntil = 0, string $remotePath = '', bool $reader = false): string
+    function omoCollaboraBuildWopiToken(\dbObject\Document $document, int $userId, int $validUntil = 0, string $remotePath = '', bool $reader = false, ?\dbObject\DocumentShareLink $shareLink = null): string
     {
         $documentId = (int)$document->getId();
         $userId = (int)$userId;
@@ -235,11 +235,16 @@ if (!function_exists('omoCollaboraBuildWopiToken')) {
         if ($reader) {
             $payload['reader'] = true;
         }
+        if ($shareLink !== null) {
+            $payload['shareId'] = (int)$shareLink->getId();
+            $payload['shareFingerprint'] = $shareLink->getAccessFingerprint();
+            $payload['shareEdit'] = $shareLink->allowsDocumentEditing($document);
+        }
         if ($remotePath !== '') {
             $payload['remotePath'] = $remotePath;
         }
         $encodedPayload = omoCollaboraBase64UrlEncode((string)json_encode($payload, JSON_UNESCAPED_SLASHES));
-        $secret = $reader ? $document->getCollaboraSigningSecret() : trim((string)$document->get('codeedit'));
+        $secret = ($reader || $shareLink !== null) ? $document->getCollaboraSigningSecret() : trim((string)$document->get('codeedit'));
         if ($secret === '') {
             if ($reader) return '';
             $secret = 'document-' . $documentId . '-collabora';
@@ -270,7 +275,7 @@ if (!function_exists('omoCollaboraVerifyWopiToken')) {
 
         $secret = trim((string)$document->get('codeedit'));
         if ($secret === '') {
-            if (($payload['reader'] ?? false) === true) return false;
+            if (($payload['reader'] ?? false) === true || isset($payload['shareId'])) return false;
             $secret = 'document-' . (int)$document->getId() . '-collabora';
         }
 
@@ -283,7 +288,7 @@ if (!function_exists('omoCollaboraVerifyWopiToken')) {
             return false;
         }
 
-        if (((int)($payload['userId'] ?? 0) <= 0 && ($payload['reader'] ?? false) !== true)
+        if (((int)($payload['userId'] ?? 0) <= 0 && ($payload['reader'] ?? false) !== true && (int)($payload['shareId'] ?? 0) <= 0)
             || (int)($payload['userId'] ?? 0) < 0 || (int)($payload['expiresAt'] ?? 0) < time()) {
             return false;
         }

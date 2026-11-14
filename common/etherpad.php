@@ -534,7 +534,7 @@ function omoEtherpadGetReadOnlyContent(\dbObject\Organization $organization, str
 }
 
 /** Caller must authorize editing this document before issuing an Etherpad session. */
-function omoEtherpadPrepareEditingAccess(\dbObject\Organization $organization, string $padId, string $authorMapper, string $authorName): array
+function omoEtherpadPrepareEditingAccess(\dbObject\Organization $organization, string $padId, string $authorMapper, string $authorName, int $validUntil = 0): array
 {
     $cookieDomain = omoEtherpadResolveCookieDomain($organization);
     if ($cookieDomain === null) {
@@ -551,7 +551,7 @@ function omoEtherpadPrepareEditingAccess(\dbObject\Organization $organization, s
     }
 
     $groupId = trim((string)strtok($padId, '$'));
-    $sessionResult = omoEtherpadGetOrCreateSession($organization, $groupId, $authorId);
+    $sessionResult = omoEtherpadGetOrCreateSession($organization, $groupId, $authorId, $validUntil);
     if (!($sessionResult['status'] ?? false)) {
         return ['status' => false, 'text' => 'Impossible de créer la session Etherpad.'];
     }

@@ -48,8 +48,39 @@ if (!function_exists('omoEthercalcGetConfig')) {
             'baseUrl' => omoEthercalcNormalizeBaseUrl((string)($GLOBALS['ethercalcBaseUrl'] ?? '')),
             'internalBaseUrl' => omoEthercalcNormalizeBaseUrl((string)($GLOBALS['ethercalcInternalBaseUrl'] ?? '')),
             'key' => trim((string)($GLOBALS['ethercalcKey'] ?? '')),
+            'shareAccessUrl' => trim((string)envValue('ETHERCALC_OMO_ACCESS_URL', '')),
         );
     }
+}
+
+/** Never disclose the permanent room HMAC to a shared editor. */
+function omoEthercalcBuildSharedSheetUrl(\dbObject\Document $document, \dbObject\DocumentShareLink $link): string
+{
+    $config = omoEthercalcGetConfig();
+    $room = $document->getEthercalcRoomId();
+    if (!$link->allowsDocumentEditing($document) || $config['key'] === '' || $config['shareAccessUrl'] === '') return '';
+    $payload = ['room' => $room, 'documentId' => (int)$document->getId(), 'shareId' => (int)$link->getId(),
+        'shareFingerprint' => $link->getAccessFingerprint(), 'expiresAt' => commonDocumentShareValidUntil($link),
+        'callback' => $config['shareAccessUrl']];
+    $encoded = rtrim(strtr(base64_encode(json_encode($payload, JSON_UNESCAPED_SLASHES)), '+/', '-_'), '=');
+    $token = 'omo.' . $encoded . '.' . hash_hmac('sha256', 'omo.' . $encoded, $config['key']);
+    return $config['baseUrl'] . '/' . rawurlencode($room) . '?' . http_build_query(['auth' => $token,
+        'user' => commonDocumentServiceT('collabora.guest')], '', '&', PHP_QUERY_RFC3986);
+}
+
+function omoEthercalcResolveShareToken(string $token, string $room): ?\dbObject\DocumentShareLink
+{
+    $parts = explode('.', $token);
+    $config = omoEthercalcGetConfig();
+    if (count($parts) !== 3 || $parts[0] !== 'omo' || $config['key'] === ''
+        || !hash_equals(hash_hmac('sha256', 'omo.' . $parts[1], $config['key']), $parts[2])) return null;
+    $payload = json_decode((string)base64_decode(strtr($parts[1], '-_', '+/'), true), true);
+    if (!is_array($payload) || ($payload['room'] ?? '') !== $room || (int)($payload['expiresAt'] ?? 0) <= time()) return null;
+    $document = new \dbObject\Document();
+    if (!$document->load((int)($payload['documentId'] ?? 0)) || !$document->isEthercalcDocument()
+        || !hash_equals($document->getEthercalcRoomId(), $room)) return null;
+    $link = \dbObject\DocumentShareLink::resolveServiceGrant((int)($payload['shareId'] ?? 0), (string)($payload['shareFingerprint'] ?? ''), $document);
+    return $link && $link->allowsDocumentEditing($document) ? $link : null;
 }
 
 if (!function_exists('omoEthercalcHasConfig')) {
@@ -125,6 +156,11 @@ if (!function_exists('omoEthercalcRequest')) {
             return array('status' => false, 'text' => 'Requête EtherCalc invalide.');
         }
 
+        if (preg_match('#^/_/([^/]+)#', $path, $roomMatch) && !isset($parameters['auth'])) {
+            $room = preg_replace('/\.(html|csv|json|xlsx|ods|fods|md)$/', '', rawurldecode($roomMatch[1]));
+            $parameters['auth'] = omoEthercalcBuildEditToken($room);
+        }
+
         $url = $baseUrl . $path;
         if (count($parameters) > 0) {
             $url .= '?' . http_build_query($parameters, '', '&', PHP_QUERY_RFC3986);
@@ -182,8 +218,7 @@ if (!function_exists('omoEthercalcCreateDocumentSheet')) {
             return array('status' => false, 'text' => 'Impossible de générer l’identifiant EtherCalc.');
         }
 
-        $result = omoEthercalcRequest('POST', '/_', array(), json_encode(array(
-            'room' => $roomId,
+        $result = omoEthercalcRequest('PUT', '/_/' . rawurlencode($roomId), array(), json_encode(array(
             'snapshot' => '',
         ), JSON_UNESCAPED_SLASHES));
         if (!($result['status'] ?? false)) {

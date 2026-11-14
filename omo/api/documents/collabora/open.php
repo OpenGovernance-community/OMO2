@@ -2,10 +2,12 @@
 require_once __DIR__ . '/../ui_translations.php';
 
 $reader = isset($_GET['reader']);
-if ($reader) {
+$shared = isset($_GET['share_token']);
+if ($reader || $shared) {
     require_once dirname(__DIR__, 4) . '/shared_functions.php';
     require_once dirname(__DIR__, 4) . '/common/auth.php';
     require_once dirname(__DIR__, 3) . '/translations.php';
+    require_once dirname(__DIR__, 4) . '/common/document/share.php';
 } else {
     require_once dirname(__DIR__, 2) . '/bootstrap.php';
 }
@@ -18,14 +20,16 @@ $documentId = (int)($_GET['id'] ?? $_GET['folder_id'] ?? 0);
 $remotePath = \dbObject\Document::normalizeNextcloudFolderPath($_GET['path'] ?? '');
 $userId = (int)commonGetCurrentUserId();
 
-if (!$reader && ($documentId <= 0 || $userId <= 0)) {
+if (!$reader && !$shared && ($documentId <= 0 || $userId <= 0)) {
     http_response_code(400);
     echo omoDocumentsUiT('demande_invalide');
     exit;
 }
 
-$document = $reader ? Document::findByReaderCode(trim((string)($_GET['code'] ?? '')), $documentId) : new Document();
-if (!$document || (!$reader && !$document->load($documentId))
+$shareLink = $shared ? commonResolveDocumentShare((string)$_GET['share_token'], $documentId) : null;
+$document = $shared ? ($shareLink ? $shareLink->getDocument() : null)
+    : ($reader ? Document::findByReaderCode(trim((string)($_GET['code'] ?? '')), $documentId) : new Document());
+if (!$document || (!$reader && !$shared && !$document->load($documentId))
     || ($reader && !$document->canReadFromLink($userId))
     || (!$document->canOpenWithCollabora() && !(!$reader && $document->isNextcloudFolder()))) {
     http_response_code(404);
@@ -36,7 +40,7 @@ $documentId = (int)$document->getId();
 
 $organizationId = (int)$document->get('IDorganization');
 $holonId = (int)$document->get('IDholon');
-if (!$reader && (
+if (!$reader && !$shared && (
     $organizationId <= 0
     || !commonUserHasOrganizationAccess($userId, $organizationId)
     || !$document->canViewInOrganizationContext($organizationId, $holonId > 0 ? $holonId : null, $userId)
@@ -76,8 +80,9 @@ if ($isRemoteFile && ($remotePath === '' || !$document->isRemoteFolderStoragePat
 
 $filename = $isRemoteFile ? basename($remotePath) : $document->getStoredFileDownloadName();
 $extension = strtolower((string)pathinfo($filename, PATHINFO_EXTENSION));
-$canEdit = !$reader && $document->canEditInOrganizationContext($organizationId, $userId, false);
-$permission = $reader ? 'readonly' : ($canEdit ? 'edit' : 'view');
+$canEdit = $shared ? $shareLink->allowsDocumentEditing($document)
+    : (!$reader && $document->canEditInOrganizationContext($organizationId, $userId, false));
+$permission = ($reader || $shared) && !$canEdit ? 'readonly' : ($canEdit ? 'edit' : 'view');
 $actionName = $canEdit ? 'edit' : 'view';
 $actionUrl = '';
 $discoveryDocument = new DOMDocument();
@@ -104,7 +109,8 @@ if ($actionUrl === '') {
 $publicUrl = rtrim((string)$config['baseUrl'], '/');
 $actionUrl = preg_replace('#^https?://[^/]+#i', $publicUrl, $actionUrl);
 $tokenExpiresAt = time() + omoCollaboraGetWopiTokenLifetimeSeconds();
-$accessToken = omoCollaboraBuildWopiToken($document, $userId, $tokenExpiresAt, $isRemoteFile ? $remotePath : '', $reader);
+if ($shareLink) $tokenExpiresAt = commonDocumentShareValidUntil($shareLink, omoCollaboraGetWopiTokenLifetimeSeconds());
+$accessToken = omoCollaboraBuildWopiToken($document, $userId, $tokenExpiresAt, $isRemoteFile ? $remotePath : '', $reader, $shareLink);
 if ($accessToken === '') {
     http_response_code(503);
     exit;

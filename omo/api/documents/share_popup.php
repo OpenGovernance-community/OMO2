@@ -12,7 +12,7 @@ $sourceLang = [
     'documents.share.reader.open' => ['text' => 'Ouvrir', 'context' => 'Preview permanent document reader.'],
     'documents.share.error.unavailable' => ['text' => 'Impossible de partager ce document.', 'context' => 'Error shown when the document cannot be shared.'],
     'documents.share.hero.title' => ['text' => 'Partager ce document', 'context' => 'Main title of the document share popup.'],
-    'documents.share.list.title' => ['text' => 'Accès spécifiques existants', 'context' => 'Section title listing existing share links.'],
+    'documents.share.list.title' => ['text' => 'Liens de partage existants', 'context' => 'Section title listing existing share links.'],
     'documents.share.list.intro' => ['text' => 'Vous pouvez copier, modifier, supprimer ou ajouter un nouveau lien de partage pour ce document.', 'context' => 'Intro text shown above the list of existing share links.'],
     'documents.share.meta.created' => ['text' => 'Créé le {date}', 'context' => 'Metadata line showing when a share link was created.'],
     'documents.share.meta.expires' => ['text' => 'Expire le {date}', 'context' => 'Metadata line showing when a share link expires.'],
@@ -20,12 +20,15 @@ $sourceLang = [
     'documents.share.badge.expired' => ['text' => 'Expiré', 'context' => 'Badge shown on an expired share link.'],
     'documents.share.badge.password' => ['text' => 'Mot de passe', 'context' => 'Badge shown when a share link requires a password.'],
     'documents.share.badge.live' => ['text' => 'Temps réel', 'context' => 'Badge shown when a share link allows live follow.'],
+    'documents.share.badge.edit' => ['text' => 'Édition', 'context' => 'Badge for a collaborative editing link.'],
+    'documents.share.form.edit_title' => ['text' => 'Autoriser l’édition', 'context' => 'Collaborative document editing share option.'],
+    'documents.share.form.edit_hint' => ['text' => 'Ce lien autorise uniquement la modification du contenu de ce document dans l’outil collaboratif, sans accès à ses paramètres.', 'context' => 'Scope of a collaborative editing share.'],
     'documents.share.action.copy' => ['text' => 'Copier', 'context' => 'Button used to copy a share link.'],
     'documents.share.action.edit' => ['text' => 'Modifier', 'context' => 'Button used to edit a share link.'],
     'documents.share.action.delete' => ['text' => 'Supprimer', 'context' => 'Button used to delete a share link.'],
     'documents.share.action.new' => ['text' => 'Nouveau lien', 'context' => 'Button used to create a new share link.'],
     'documents.share.form.title_new' => ['text' => 'Nouveau lien de partage', 'context' => 'Form title when creating an additional share link.'],
-    'documents.share.form.title_first' => ['text' => 'Créer un accès spécifique (facultatif)', 'context' => 'Form title when creating the first share link.'],
+    'documents.share.form.title_first' => ['text' => 'Créer un lien de partage', 'context' => 'Form title when creating the first share link.'],
     'documents.share.form.intro_new' => ['text' => 'Configurez un nouveau lien ou modifiez un lien existant.', 'context' => 'Form intro when existing share links already exist.'],
     'documents.share.form.intro_first' => ['text' => 'Ces liens donnent accès au document sans compte, indépendamment de sa visibilité. Vous pouvez limiter leur durée ou les protéger par un mot de passe.', 'context' => 'Form intro explaining optional token-based access separately from the visibility-based reader link.'],
     'documents.share.form.label' => ['text' => 'Libellé interne', 'context' => 'Label of the internal share label field.'],
@@ -43,7 +46,7 @@ $sourceLang = [
     'documents.share.form.submit_create' => ['text' => 'Créer le lien', 'context' => 'Submit button used to create a share link.'],
     'documents.share.form.submit_save' => ['text' => 'Enregistrer', 'context' => 'Submit button used to save an existing share link.'],
     'documents.share.form.title_edit' => ['text' => 'Modifier le lien de partage', 'context' => 'Form title when editing a share link.'],
-    'documents.share.form.intro_edit' => ['text' => 'Mettez à jour l’expiration, le mot de passe ou le suivi en temps réel.', 'context' => 'Form intro when editing a share link.'],
+    'documents.share.form.intro_edit' => ['text' => 'Mettez à jour l’expiration, le mot de passe ou les autorisations du lien.', 'context' => 'Form intro when editing a share link.'],
     'documents.share.confirm_delete' => ['text' => 'Supprimer le lien "{label}" ?', 'context' => 'Confirmation message shown before deleting a share link.'],
 ];
 
@@ -106,7 +109,9 @@ if (
 }
 
 $organizationId = (int)$document->get('IDorganization');
-$shareLinks = DocumentShareLink::findAllForContext($organizationId, $documentId, false);
+$canManageShares = $document->canManageShareLinks($currentUserId);
+$shareLinks = $canManageShares ? array_filter(DocumentShareLink::findAllForContext($organizationId, $documentId, false),
+    static fn(DocumentShareLink $link): bool => !$link->allowsPvContribution()) : [];
 $hasExistingLinks = count($shareLinks) > 0;
 $defaultLabel = trim((string)$document->get('title'));
 if ($defaultLabel === '') {
@@ -121,7 +126,7 @@ $popupUrl = '/omo/api/documents/share_popup.php?id=' . rawurlencode((string)$doc
     data-popup-url="<?= htmlspecialchars($popupUrl, ENT_QUOTES, 'UTF-8') ?>"
     data-has-links="<?= $hasExistingLinks ? '1' : '0' ?>"
 >
-    <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/documents/share.css') ?>">
+    <link rel="stylesheet" href="<?= commonAssetUrl('/common/share/popup.css') ?>">
 
     <div class="omo-share-popup__header generic-drawer-header generic-drawer-header--sticky">
         <div class="generic-drawer-header__copy omo-share-popup__header-copy">
@@ -144,7 +149,8 @@ $popupUrl = '/omo/api/documents/share_popup.php?id=' . rawurlencode((string)$doc
         </div>
     </section>
 
-    <div class="generic-stack"<?= $document->supportsHtmlContent() ? '' : ' hidden' ?>>
+    <?php if ($canManageShares): ?>
+    <div class="generic-stack">
     <div class="omo-share-popup__list generic-stack" id="omoDocumentSharePopupListSection"<?= $hasExistingLinks ? '' : ' hidden' ?>>
         <div class="omo-share-popup__section generic-stack">
             <h3 class="omo-share-popup__section-title generic-card-title generic-card-title--large"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.list.title'), ENT_QUOTES, 'UTF-8') ?></h3>
@@ -168,6 +174,7 @@ $popupUrl = '/omo/api/documents/share_popup.php?id=' . rawurlencode((string)$doc
                     data-label="<?= htmlspecialchars($shareLabel, ENT_QUOTES, 'UTF-8') ?>"
                     data-dateexpiration="<?= htmlspecialchars(omoDocumentShareFormatDateTimeInput($expiresAt), ENT_QUOTES, 'UTF-8') ?>"
                     data-allow-live-follow="<?= $shareLink->allowsLiveFollow() ? '1' : '0' ?>"
+                    data-allow-edit="<?= $shareLink->allowsDocumentEditing($document) ? '1' : '0' ?>"
                     data-has-password="<?= $shareLink->requiresPassword() ? '1' : '0' ?>"
                     data-url="<?= htmlspecialchars($shareUrl, ENT_QUOTES, 'UTF-8') ?>"
                 >
@@ -184,6 +191,9 @@ $popupUrl = '/omo/api/documents/share_popup.php?id=' . rawurlencode((string)$doc
                             </div>
                         </div>
                         <div class="omo-share-popup__badges">
+                            <?php if ($shareLink->allowsDocumentEditing($document)): ?>
+                                <span class="omo-share-popup__badge"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.badge.edit'), ENT_QUOTES, 'UTF-8') ?></span>
+                            <?php endif; ?>
                             <?php if ($shareLink->isExpired()): ?>
                                 <span class="omo-share-popup__badge omo-share-popup__badge--expired"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.badge.expired'), ENT_QUOTES, 'UTF-8') ?></span>
                             <?php endif; ?>
@@ -248,7 +258,18 @@ $popupUrl = '/omo/api/documents/share_popup.php?id=' . rawurlencode((string)$doc
                 </label>
             </div>
 
+            <?php if ($document->supportsSharedEditing() || $document->supportsHtmlContent()): ?>
             <div class="generic-soft-panel generic-soft-panel--stack">
+                <?php if ($document->supportsSharedEditing()): ?>
+                <label class="omo-share-popup__check generic-checkbox">
+                    <input type="checkbox" name="allow_edit" id="omoDocumentSharePopupAllowEdit">
+                    <span>
+                        <strong><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.form.edit_title'), ENT_QUOTES, 'UTF-8') ?></strong>
+                        <span><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.form.edit_hint'), ENT_QUOTES, 'UTF-8') ?></span>
+                    </span>
+                </label>
+                <?php endif; ?>
+                <div<?= $document->supportsHtmlContent() ? '' : ' hidden' ?>>
                 <label class="omo-share-popup__check generic-checkbox">
                     <input type="checkbox" name="allow_live_follow" id="omoDocumentSharePopupAllowLiveFollow">
                     <span>
@@ -256,7 +277,9 @@ $popupUrl = '/omo/api/documents/share_popup.php?id=' . rawurlencode((string)$doc
                         <span><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.form.live_hint'), ENT_QUOTES, 'UTF-8') ?></span>
                     </span>
                 </label>
+                </div>
             </div>
+            <?php endif; ?>
 
             <div class="omo-share-popup__actions">
                 <?php if ($hasExistingLinks): ?>
@@ -267,6 +290,7 @@ $popupUrl = '/omo/api/documents/share_popup.php?id=' . rawurlencode((string)$doc
         </form>
     </div>
     </div>
+    <?php endif; ?>
     </div>
 </div>
 

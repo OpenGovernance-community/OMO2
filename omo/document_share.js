@@ -1,111 +1,35 @@
-var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
-var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
-window.commonPageScripts = window.commonPageScripts || {};
-window.commonPageScripts["/omo/document_share.js"] = function (pageConfig, pageScript) {
-    (function () {
-        const token = pageConfig.token;
-        const titleNode = document.getElementById('omoDocumentShareTitle');
-        const descriptionNode = document.getElementById('omoDocumentShareDescription');
-        const updatedAtNode = document.getElementById('omoDocumentShareUpdatedAt');
-        const draftBadgeNode = document.getElementById('omoDocumentShareDraftBadge');
-        const statusNode = document.getElementById('omoDocumentShareStatus');
-        const contentNode = document.getElementById('omoDocumentShareContent');
-        const pollDelayMs = 2000;
-        let knownUpdatedAt = pageConfig.knownUpdatedAt || '';
-        let knownContentHash = pageConfig.knownContentHash || '';
-        let knownStateHash = pageConfig.knownStateHash || '';
-
-        function updateSnapshot(payload) {
-            if (!payload || payload.status !== true || !contentNode) {
+(() => {
+    'use strict';
+    const root = document.querySelector('[data-share-live-url]');
+    if (!root) return;
+    let state = '';
+    let stopped = false;
+    const refresh = async () => {
+        if (document.hidden) { window.setTimeout(refresh, 5000); return; }
+        try {
+            const url = new URL(root.dataset.shareLiveUrl, location.href);
+            if (state) url.searchParams.set('known_state_hash', state);
+            const response = await fetch(url, {credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(15000)});
+            if ([401, 403, 404].includes(response.status)) {
+                stopped = true;
+                root.replaceChildren();
+                location.reload();
                 return;
             }
-
-            if (payload.stateHash) {
-                knownStateHash = String(payload.stateHash);
+            if (!response.ok) return;
+            const payload = await response.json();
+            if (!payload.status) return;
+            state = payload.stateHash || state;
+            if (payload.changed === false) return;
+            const content = root.querySelector('.prose');
+            if (content && typeof payload.content === 'string' && content.innerHTML !== payload.content) content.innerHTML = payload.content;
+            if (payload.title) {
+                document.title = payload.title;
+                const title = document.querySelector('.common-topbar__brand-name');
+                if (title) title.textContent = payload.title;
             }
-
-            if (payload.contentHash) {
-                knownContentHash = String(payload.contentHash);
-            }
-
-            if (payload.updatedAt) {
-                knownUpdatedAt = String(payload.updatedAt);
-            }
-
-            if (payload.changed === false) {
-                return;
-            }
-
-            const nextTitle = String(payload.title || '').trim();
-            const nextDescription = String(payload.description || '').trim();
-
-            if (nextTitle !== '' && titleNode) {
-                titleNode.textContent = nextTitle;
-            }
-
-            if (descriptionNode) {
-                descriptionNode.textContent = nextDescription;
-                descriptionNode.hidden = nextDescription === '';
-            }
-
-            if (payload.contentChanged !== false && Object.prototype.hasOwnProperty.call(payload, 'content')) {
-                contentNode.innerHTML = String(payload.content || '');
-            }
-
-            if (updatedAtNode && payload.updatedAt) {
-                const date = new Date(payload.updatedAt);
-                if (!Number.isNaN(date.getTime())) {
-                    updatedAtNode.textContent = omoUiText("mise_a_jour", "Mise à jour ") + date.toLocaleString((window.omoConfig && window.omoConfig.translationLocale) || document.documentElement.lang || 'fr-CH');
-                }
-            }
-
-            if (draftBadgeNode) {
-                draftBadgeNode.hidden = !payload.isDraft;
-            }
-
-            if (statusNode) {
-                if (payload.isDraft && payload.editingUserName) {
-                    statusNode.textContent = omoUiText("editing_by_name", "Édition en cours par " + payload.editingUserName + ".", {name: payload.editingUserName});
-                } else if (payload.isDraft) {
-                    statusNode.textContent = omoUiText("edition_en_cours", "Édition en cours.");
-                } else {
-                    statusNode.textContent = omoUiText("lecture_partagee_du_document", "Lecture partagée du document.");
-                }
-            }
-        }
-
-        function poll() {
-            const params = new URLSearchParams();
-            params.set('token', token);
-            if (knownUpdatedAt) {
-                params.set('known_updated_at', knownUpdatedAt);
-            }
-            if (knownContentHash) {
-                params.set('known_content_hash', knownContentHash);
-            }
-            if (knownStateHash) {
-                params.set('known_state_hash', knownStateHash);
-            }
-
-            fetch('/omo/api/documents/share_live.php?' + params.toString(), {
-                method: 'GET',
-                credentials: 'same-origin',
-                cache: 'no-store'
-            })
-                .then(function (response) {
-                    if (!response.ok) {
-                        throw new Error('share_live_failed');
-                    }
-                    return response.json();
-                })
-                .then(updateSnapshot)
-                .catch(function () {
-                })
-                .finally(function () {
-                    window.setTimeout(poll, pollDelayMs);
-                });
-        }
-
-        window.setTimeout(poll, pollDelayMs);
-    })();
-};
+        } catch { /* Keep the last readable snapshot during a temporary network failure. */ }
+        finally { if (!stopped) window.setTimeout(refresh, 5000); }
+    };
+    window.setTimeout(refresh, 5000);
+})();

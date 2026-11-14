@@ -10,6 +10,8 @@ services:
       dockerfile: Dockerfile
     env_file:
       - ./docker/app/.env.private
+    environment:
+      ETHERCALC_OMO_ACCESS_URL: http://app/omo/api/documents/ethercalc/access.php
     depends_on:
       db:
         condition: service_healthy

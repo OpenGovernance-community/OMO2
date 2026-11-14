@@ -1,7 +1,7 @@
 <?php
 	namespace dbObject;
 
-	class DocumentShareLink extends DbObject
+	class DocumentShareLink extends ShareLink
 	{
 		public static function tableName()
 		{
@@ -16,7 +16,7 @@
 				[['recipient_user_id'], 'fk'],
 				[['label', 'token', 'password_hash', 'recipient_email'], 'string'],
 				[['datecreation', 'dateexpiration'], 'datetime'],
-				[['allow_live_follow', 'allow_pv_contribution', 'active'], 'boolean'],
+				[['allow_live_follow', 'allow_pv_contribution', 'allow_edit', 'active'], 'boolean'],
 				[['id'], 'safe'],
 			];
 		}
@@ -32,6 +32,7 @@
 				'token' => 'Token',
 				'password_hash' => 'Mot de passe',
 				'allow_live_follow' => 'Suivi temps reel',
+				'allow_edit' => 'Autoriser l’édition',
 				'allow_pv_contribution' => 'Contribution au PV',
 				'recipient_email' => 'E-mail du participant',
 				'recipient_user_id' => 'Utilisateur participant',
@@ -51,6 +52,7 @@
 				'token' => 'Token unique partageable.',
 				'password_hash' => 'Hash du mot de passe optionnel.',
 				'allow_live_follow' => 'Autorise l’affichage du brouillon temporaire pendant l’édition.',
+				'allow_edit' => 'Autorise l’édition du contenu dans les outils collaboratifs compatibles, hors PV.',
 				'allow_pv_contribution' => 'Autorise le participant invité à ajouter et modifier ses propres points avant la validation.',
 				'recipient_email' => 'Adresse e-mail à laquelle est attribué le lien de participation.',
 				'recipient_user_id' => 'Utilisateur déjà connu correspondant au participant invité.',
@@ -73,24 +75,7 @@
 			return 'datecreation DESC, id DESC';
 		}
 
-		protected static function generateToken($length = 48)
-		{
-			$length = max(24, (int)$length);
-			$raw = rtrim(strtr(base64_encode(random_bytes($length)), '+/', '-_'), '=');
-			return substr($raw, 0, 80);
-		}
 
-		public static function generateUniqueToken()
-		{
-			for ($attempt = 0; $attempt < 10; $attempt++) {
-				$token = self::generateToken();
-				if (!self::findByToken($token)) {
-					return $token;
-				}
-			}
-
-			return self::generateToken(64);
-		}
 
 		public static function findByToken($token)
 		{
@@ -357,6 +342,7 @@
 			$item->set('recipient_email', trim(mb_strtolower((string)($options['recipient_email'] ?? ''), 'UTF-8')) ?: null);
 			$item->set('recipient_user_id', (int)($options['recipient_user_id'] ?? 0) ?: null);
 			$item->set('allow_live_follow', !empty($options['allow_live_follow']) ? 1 : 0);
+			$item->set('allow_edit', $document->supportsSharedEditing() && !empty($options['allow_edit']) ? 1 : 0);
 			$item->set('allow_pv_contribution', !empty($options['allow_pv_contribution']) ? 1 : 0);
 			$item->set('datecreation', new \DateTime());
 			$item->set('dateexpiration', $options['dateexpiration'] ?? null);
@@ -366,43 +352,43 @@
 			return !empty($result['status']) ? $item : false;
 		}
 
-		public function requiresPassword()
+
+		/** Bind password approvals and service credentials to the current link settings. */
+		public function getAccessFingerprint(): string
 		{
-			return trim((string)$this->get('password_hash')) !== '';
+			$expiration = $this->get('dateexpiration');
+			return hash('sha256', implode('|', [(string)$this->get('token'), (string)$this->get('password_hash'),
+				(string)$this->get('active'), (string)$this->get('allow_edit'), (string)$this->get('allow_live_follow'),
+				$expiration instanceof \DateTimeInterface ? $expiration->format('c') : (string)$expiration]));
 		}
 
-		public function isExpired()
+		public function allowsDocumentAccess(Document $document): bool
 		{
-			$dateExpiration = $this->get('dateexpiration');
-			if (!$dateExpiration) {
-				return false;
+			if (!(bool)$this->get('active') || $this->isExpired() || $document->isArchived()
+				|| $document->isFolder() || $document->isNextcloudFolder()
+				|| (int)$document->getId() !== (int)$this->get('IDdocument')
+				|| (int)$document->get('IDorganization') !== (int)$this->get('IDorganization')) return false;
+			foreach ($document->getParentFolderChain() as $parent) {
+				if ($parent->isArchived()) return false;
 			}
-
-			try {
-				$expiration = $dateExpiration instanceof \DateTimeInterface
-					? $dateExpiration
-					: new \DateTime((string)$dateExpiration);
-			} catch (\Exception $exception) {
-				return false;
-			}
-
-			$now = new \DateTime();
-			return $expiration <= $now;
+			return true;
 		}
 
-		public function verifyPassword($password)
+		public function allowsDocumentEditing(Document $document): bool
 		{
-			if (!$this->requiresPassword()) {
-				return true;
-			}
-
-			$password = (string)$password;
-			if ($password === '') {
-				return false;
-			}
-
-			return password_verify($password, (string)$this->get('password_hash'));
+			return $this->allowsDocumentAccess($document) && !$this->allowsPvContribution()
+				&& (bool)$this->get('allow_edit') && $document->supportsSharedEditing();
 		}
+
+		/** Service callbacks have no browser session; the signed fingerprint proves approval. */
+		public static function resolveServiceGrant(int $id, string $fingerprint, Document $document): ?self
+		{
+			$link = new self();
+			return $id > 0 && $link->load($id) && $link->allowsDocumentAccess($document)
+				&& hash_equals($link->getAccessFingerprint(), $fingerprint) ? $link : null;
+		}
+
+
 
 		public function allowsLiveFollow()
 		{

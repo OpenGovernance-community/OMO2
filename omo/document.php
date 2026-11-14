@@ -4,6 +4,7 @@ require_once dirname(__DIR__) . '/common/auth.php';
 require_once __DIR__ . '/translations.php';
 require_once dirname(__DIR__) . '/common/topbar.php';
 require_once dirname(__DIR__) . '/common/omo_public_pages.php';
+require_once dirname(__DIR__) . '/common/document/share.php';
 
 $sourceLang = [
     'title' => ['text' => 'Document', 'context' => 'Standalone document reader title.'],
@@ -22,6 +23,10 @@ $sourceLang = [
     'filename' => ['text' => 'Fichier', 'context' => 'Original filename.'],
     'format' => ['text' => 'Type de fichier', 'context' => 'Document MIME type.'],
     'download_only' => ['text' => 'Ce fichier peut être téléchargé depuis le menu Info.', 'context' => 'File without an inline preview.'],
+    'password' => ['text' => 'Mot de passe', 'context' => 'Shared document password field.'],
+    'password_required' => ['text' => 'Un mot de passe est requis pour ouvrir ce document partagé.', 'context' => 'Shared document password introduction.'],
+    'password_invalid' => ['text' => 'Mot de passe invalide.', 'context' => 'Shared document password error.'],
+    'open' => ['text' => 'Ouvrir le document', 'context' => 'Unlock shared document.'],
 ];
 $lang = omoLoadTranslationBundle('omo_document_reader', $sourceLang);
 $text = static fn(string $key): string => t($key, [], $lang, $sourceLang);
@@ -31,13 +36,45 @@ header('Referrer-Policy: no-referrer');
 header('X-Content-Type-Options: nosniff');
 header('X-Robots-Tag: noindex, nofollow');
 
-$document = \dbObject\Document::findByReaderCode(trim((string)($_GET['code'] ?? '')), (int)($_GET['id'] ?? 0));
+$shareToken = trim((string)($_GET['share_token'] ?? ''));
+$shareLink = $shareToken !== '' ? commonResolveDocumentShare($shareToken, (int)($_GET['id'] ?? 0), false) : null;
+$document = $shareToken !== '' ? ($shareLink ? $shareLink->getDocument() : null)
+    : \dbObject\Document::findByReaderCode(trim((string)($_GET['code'] ?? '')), (int)($_GET['id'] ?? 0));
+$readerUrl = $shareLink ? $shareLink->buildShareUrl() : ($document ? $document->buildReaderUrl() : '/omo/');
+if ($shareLink && !commonDocumentSharePasswordVerified($shareLink)) {
+    $passwordError = '';
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        if ($shareLink->verifyPassword((string)($_POST['share_password'] ?? ''))) {
+            commonDocumentShareRememberPassword($shareLink);
+            header('Location: ' . $readerUrl);
+            exit;
+        }
+        $passwordError = $text('password_invalid');
+    }
+    ?>
+    <!doctype html>
+    <html lang="<?= $escape(omoGetTranslationLocale()) ?>"><head>
+        <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+        <title><?= $escape($text('title')) ?></title><link rel="stylesheet" href="/common/assets/auth.css">
+    </head><body class="auth-state-page"><main class="auth-state-layout"><div class="auth-state-card">
+        <p><?= $escape($text('password_required')) ?></p>
+        <form method="post" class="auth-state-form">
+            <input type="hidden" name="_csrf" value="<?= $escape(commonCsrfToken()) ?>">
+            <label class="auth-state-label" for="sharePassword"><?= $escape($text('password')) ?></label>
+            <input class="auth-state-input" type="password" id="sharePassword" name="share_password" required autofocus autocomplete="current-password">
+            <?php if ($passwordError !== ''): ?><p class="auth-state-error"><?= $escape($passwordError) ?></p><?php endif; ?>
+            <button class="auth-state-btn auth-state-btn--primary" type="submit"><?= $escape($text('open')) ?></button>
+        </form>
+    </div></main></body></html>
+    <?php
+    exit;
+}
 $userId = (int)commonGetCurrentUserId();
 $loaded = $document instanceof \dbObject\Document
     && !$document->isFolder() && !$document->isNextcloudFolder() && !$document->isArchived()
     && (int)$document->get('IDorganization') > 0;
 
-if ($loaded && !$document->canReadFromLink($userId) && $userId <= 0) {
+if ($loaded && !$shareLink && !$document->canReadFromLink($userId) && $userId <= 0) {
     commonRenderMagicLoginPage([
         'title' => $text('title'), 'appName' => 'OMO', 'intro' => $text('login'),
         'returnTo' => $document->buildReaderUrl(), 'layout' => 'public',
@@ -46,7 +83,10 @@ if ($loaded && !$document->canReadFromLink($userId) && $userId <= 0) {
     exit;
 }
 
-$allowed = $loaded && $document->canReadFromLink($userId);
+$allowed = $loaded && ($shareLink || $document->canReadFromLink($userId));
+$readerQuery = $allowed ? http_build_query($shareLink
+    ? ['share_token' => $shareToken, 'id' => (int)$document->getId()]
+    : ['reader' => 1, 'id' => (int)$document->getId(), 'code' => $document->getReaderAccessCode()]) : '';
 $title = $allowed ? (string)$document->get('title') : $text('title');
 $description = $allowed ? trim((string)$document->get('description')) : '';
 $content = '';
@@ -58,7 +98,6 @@ if (!$allowed) {
     http_response_code(404);
 } elseif ($document->isUploadedFile()) {
     if ($document->hasStoredFile()) {
-        $readerQuery = http_build_query(['reader' => 1, 'id' => (int)$document->getId(), 'code' => $document->getReaderAccessCode()]);
         $fileUrl = '/omo/api/documents/upload/download.php?' . $readerQuery;
         if ($document->canOpenWithCollabora()) {
             require_once dirname(__DIR__) . '/common/collabora.php';
@@ -69,10 +108,14 @@ if (!$allowed) {
     } else {
         $content = '<p>' . $escape($text('no_file')) . '</p>';
     }
+} elseif ($document->isEtherpadDocument() || $document->isEthercalcDocument() || $document->isWhiteboardDocument()) {
+    $service = $document->isEtherpadDocument() ? 'etherpad' : ($document->isEthercalcDocument() ? 'ethercalc' : 'spacedeck');
+    $collaboraUrl = '/omo/api/documents/' . $service . '/open.php?' . $readerQuery;
 } else {
-    $content = $document->getReaderContent();
+    $content = $document->getReaderContent($shareLink ? 0 : null, $shareLink && $shareLink->allowsLiveFollow());
 }
-$hasMediaPreview = $collaboraUrl !== '' || ($fileUrl !== '' && ($document->isStoredPdfFile() || $document->getStoredFileKind() === 'image'));
+$hasMediaPreview = $collaboraUrl !== '' || ($fileUrl !== '' && ($document->isStoredPdfFile()
+    || $document->getStoredFileKind() === 'image' || str_starts_with($document->getStoredFileMimeType(), 'video/')));
 $metadata = [];
 if ($allowed) {
     $createdAt = $document->get('datecreation');
@@ -133,7 +176,7 @@ $infoHtml = (string)ob_get_clean();
         'organization' => $organizationContext,
         'brandLogo' => $organizationContext['logo'] ?: '/img/omo2/logo-omo-dark.png',
         'brandLabel' => $title,
-        'brandHref' => $allowed ? $document->buildReaderUrl() : '/omo/',
+        'brandHref' => $allowed ? $readerUrl : '/omo/',
         'showBrandLabelOnMobile' => true,
         'profile' => ['enabled' => false],
         'search' => ['enabled' => false],
@@ -141,11 +184,11 @@ $infoHtml = (string)ob_get_clean();
         'contextMenu' => ['label' => $text('info'), 'contentHtml' => $infoHtml],
     ]);
     ?>
-    <main id="omoDocumentReaderPreview" class="omo-document-reader__viewport<?= $hasMediaPreview ? ' omo-document-reader__viewport--media' : '' ?>" aria-label="<?= $escape($title) ?>">
+    <main id="omoDocumentReaderPreview" class="omo-document-reader__viewport<?= $hasMediaPreview ? ' omo-document-reader__viewport--media' : '' ?>" aria-label="<?= $escape($title) ?>"<?php if ($allowed && $shareLink && ($document->supportsHtmlContent() || $document->isPvDocument())): ?> data-share-live-url="<?= $escape('/omo/api/documents/share_live.php?token=' . rawurlencode($shareToken)) ?>"<?php endif; ?>>
         <?php if (!$allowed): ?>
             <div class="generic-page-shell"><p><?= $escape($text('unavailable')) ?></p></div>
         <?php else: ?>
-            <?php if ($fileUrl !== ''): ?>
+            <?php if ($fileUrl !== '' || $collaboraUrl !== ''): ?>
                 <?php if ($collaboraUrl !== ''): ?>
                 <iframe class="omo-document-reader__frame" src="<?= $escape($collaboraUrl) ?>" title="<?= $escape($title) ?>" referrerpolicy="same-origin"></iframe>
                 <?php elseif ($document->isStoredPdfFile()): ?>
@@ -154,14 +197,21 @@ $infoHtml = (string)ob_get_clean();
                 <img class="omo-document-reader__image" src="<?= $escape($fileUrl . '&inline=1') ?>" alt="<?= $escape($title) ?>">
                 <?php elseif ($document->getStoredFileKind() === 'audio'): ?>
                 <audio controls preload="metadata" src="<?= $escape($fileUrl . '&inline=1') ?>"></audio>
+                <?php elseif (str_starts_with($document->getStoredFileMimeType(), 'video/')): ?>
+                <video class="omo-document-reader__image" controls preload="metadata" src="<?= $escape($fileUrl . '&inline=1') ?>"></video>
                 <?php endif; ?>
             <?php endif; ?>
             <?php if ($content !== ''): ?>
             <div class="generic-page-shell omo-document-share__content prose"><?= $content ?></div>
             <?php elseif (!$hasMediaPreview && $fileUrl !== '' && $document->getStoredFileKind() !== 'audio'): ?>
-            <div class="generic-page-shell"><p><?= $escape($text('download_only')) ?></p></div>
+            <div class="generic-page-shell generic-stack"><p><?= $escape($text('download_only')) ?></p>
+                <a class="generic-action-button generic-action-button--main" href="<?= $escape($fileUrl) ?>"><?= $escape($text('download')) ?></a>
+            </div>
             <?php endif; ?>
         <?php endif; ?>
     </main>
+    <?php if ($allowed && $shareLink && ($document->supportsHtmlContent() || $document->isPvDocument())): ?>
+    <script src="<?= commonAssetUrl('/omo/document_share.js') ?>" defer></script>
+    <?php endif; ?>
 </body>
 </html>

@@ -1,7 +1,7 @@
 <?php
 	namespace dbObject;
 
-	class HolonShareLink extends DbObject
+	class HolonShareLink extends ShareLink
 	{
 		protected $_scopeHolon = null;
 		protected $_scopeUserIds = null;
@@ -72,24 +72,7 @@
 			return "datecreation DESC, id DESC";
 		}
 
-		protected static function generateToken($length = 48)
-		{
-			$length = max(24, (int)$length);
-			$raw = rtrim(strtr(base64_encode(random_bytes($length)), '+/', '-_'), '=');
-			return substr($raw, 0, 80);
-		}
 
-		public static function generateUniqueToken()
-		{
-			for ($attempt = 0; $attempt < 10; $attempt++) {
-				$token = self::generateToken();
-				if (!self::findByToken($token)) {
-					return $token;
-				}
-			}
-
-			return self::generateToken(64);
-		}
 
 		public static function findByToken($token)
 		{
@@ -280,43 +263,8 @@
 			return !empty($result['status']) ? $item : false;
 		}
 
-		public function requiresPassword()
-		{
-			return trim((string)$this->get('password_hash')) !== '';
-		}
 
-		public function isExpired()
-		{
-			$dateExpiration = $this->get('dateexpiration');
-			if (!$dateExpiration) {
-				return false;
-			}
 
-			try {
-				$expiration = $dateExpiration instanceof \DateTimeInterface
-					? $dateExpiration
-					: new \DateTime((string)$dateExpiration);
-			} catch (\Exception $exception) {
-				return false;
-			}
-
-			$now = new \DateTime();
-			return $expiration <= $now;
-		}
-
-		public function verifyPassword($password)
-		{
-			if (!$this->requiresPassword()) {
-				return true;
-			}
-
-			$password = (string)$password;
-			if ($password === '') {
-				return false;
-			}
-
-			return password_verify($password, (string)$this->get('password_hash'));
-		}
 
 		public function allowsStructure()
 		{

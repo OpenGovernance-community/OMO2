@@ -2,6 +2,7 @@
 require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__, 3) . '/shared_functions.php';
 require_once dirname(__DIR__, 3) . '/common/auth.php';
+require_once dirname(__DIR__, 3) . '/common/document/share.php';
 
 use dbObject\DocumentShareLink;
 
@@ -11,7 +12,7 @@ $token = trim((string)($_GET['token'] ?? $_POST['token'] ?? ''));
 $knownUpdatedAt = trim((string)($_GET['known_updated_at'] ?? $_POST['known_updated_at'] ?? ''));
 $knownContentHash = trim((string)($_GET['known_content_hash'] ?? $_POST['known_content_hash'] ?? ''));
 $knownStateHash = trim((string)($_GET['known_state_hash'] ?? $_POST['known_state_hash'] ?? ''));
-$shareLink = DocumentShareLink::findValidByToken($token);
+$shareLink = commonResolveDocumentShare($token, 0, false);
 
 if (!$shareLink) {
     http_response_code(404);
@@ -22,7 +23,7 @@ if (!$shareLink) {
     exit;
 }
 
-if ($shareLink->requiresPassword() && !commonIsSharePasswordVerified($token)) {
+if (!commonDocumentSharePasswordVerified($shareLink)) {
     http_response_code(403);
     echo json_encode(array(
         'status' => false,
@@ -41,7 +42,9 @@ if (!($document instanceof \dbObject\Document) || $document->isFolder()) {
     exit;
 }
 
-$payload = $document->buildLiveSharePayload($shareLink->allowsLiveFollow());
+if (!$document->supportsHtmlContent() && !$document->isPvDocument()) { http_response_code(404); exit; }
+$payload = $document->buildLiveSharePayload($shareLink->allowsLiveFollow(),
+    ['readOnlyLink' => true, 'compactEmbeds' => true, 'viewerUserId' => 0]);
 $stateHash = trim((string)($payload['stateHash'] ?? ''));
 $contentHash = trim((string)($payload['contentHash'] ?? ''));
 $updatedAt = trim((string)($payload['updatedAt'] ?? ''));

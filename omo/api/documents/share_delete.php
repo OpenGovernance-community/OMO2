@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
+require_once dirname(__DIR__, 3) . '/common/document/share.php';
 
 use dbObject\Document;
 use dbObject\DocumentShareLink;
@@ -18,11 +19,7 @@ if (
     || $currentUserId <= 0
     || !$document->load($documentId)
     || $document->isFolder()
-    || !$document->supportsHtmlContent()
-    || !$document->canViewInOrganizationContext(
-        (int)$document->get('IDorganization'),
-        (int)$document->get('IDholon') > 0 ? (int)$document->get('IDholon') : null
-    )
+    || !$document->canManageShareLinks($currentUserId)
 ) {
     http_response_code(403);
     echo json_encode(array(
@@ -42,6 +39,11 @@ if (!$shareLink) {
     exit;
 }
 
+if (!commonDocumentShareRevokeEditingAccess($shareLink, $document)) {
+    http_response_code(503);
+    echo json_encode(['status' => false, 'message' => omoDocumentsUiT('suppression_impossible')]);
+    exit;
+}
 $shareLink->set('active', 0);
 $result = $shareLink->save();
 

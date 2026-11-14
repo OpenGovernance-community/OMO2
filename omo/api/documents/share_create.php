@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
+require_once dirname(__DIR__, 3) . '/common/document/share.php';
 
 use dbObject\Document;
 use dbObject\DocumentShareLink;
@@ -22,11 +23,7 @@ if (
     || $currentUserId <= 0
     || !$document->load($documentId)
     || $document->isFolder()
-    || !$document->supportsHtmlContent()
-    || !$document->canViewInOrganizationContext(
-        (int)$document->get('IDorganization'),
-        (int)$document->get('IDholon') > 0 ? (int)$document->get('IDholon') : null
-    )
+    || !$document->canManageShareLinks($currentUserId)
 ) {
     http_response_code(403);
     echo json_encode(array(
@@ -51,6 +48,7 @@ if ($dateExpirationRaw !== '') {
 }
 
 $organizationId = (int)$document->get('IDorganization');
+$allowLiveFollow = $document->supportsHtmlContent() && $allowLiveFollow;
 
 if ($shareId > 0) {
     $shareLink = DocumentShareLink::findByIdForContext($shareId, $organizationId, $documentId, true);
@@ -63,9 +61,20 @@ if ($shareId > 0) {
         exit;
     }
 
+    if ($shareLink->allowsPvContribution()) {
+        http_response_code(403);
+        exit;
+    }
+    if (!commonDocumentShareRevokeEditingAccess($shareLink, $document)) {
+        http_response_code(503);
+        echo json_encode(['status' => false, 'message' => omoDocumentsUiT('impossible_d_enregistrer_ce_lien')]);
+        exit;
+    }
+
     $shareLink->set('label', $label);
     $shareLink->set('dateexpiration', $dateExpiration);
     $shareLink->set('allow_live_follow', $allowLiveFollow ? 1 : 0);
+    $shareLink->set('allow_edit', $document->supportsSharedEditing() && !empty($_POST['allow_edit']) ? 1 : 0);
     $shareLink->set('active', 1);
 
     if ($clearPassword) {
@@ -82,6 +91,7 @@ if ($shareId > 0) {
         'label' => $label,
         'password_hash' => $passwordHash,
         'allow_live_follow' => $allowLiveFollow,
+        'allow_edit' => !empty($_POST['allow_edit']),
         'dateexpiration' => $dateExpiration,
     ));
     $isSuccess = $shareLink instanceof DocumentShareLink;
@@ -98,6 +108,6 @@ if (!$isSuccess) {
 
 echo json_encode(array(
     'status' => true,
-    'message' => $shareId > 0 ? 'Lien mis à jour.' : 'Lien créé.',
+    'message' => omoDocumentsUiT($shareId > 0 ? 'share.link_updated' : 'share.link_created'),
     'shareUrl' => $shareLink->buildShareUrl(),
 ));

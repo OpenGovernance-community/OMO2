@@ -128,6 +128,27 @@ try {
     mcpCheck(readerOfficeHttp($ownerWopi)['status'] === 200, 'Private owner token remains readable');
     mcpCheck(readerOfficeHttp($contentsUrl)['status'] === 403, 'Revoked anonymous token cannot download contents');
     mcpCheck(file_get_contents($directory . '/' . hash('sha256', $storagePath) . '.bin') === $content, 'Read-only attempts leave the file unchanged');
+    $items['share'] = $share = \dbObject\DocumentShareLink::createForDocument($doc, $uid, ['label' => 'External Office']);
+    $shareOpen = '/omo/api/documents/collabora/open.php?' . http_build_query(['id' => $doc->getId(), 'share_token' => $share->get('token')]);
+    $sharedReadToken = readerOfficeToken(readerOfficeHttp($shareOpen, true));
+    $sharedWopi = '/omo/api/documents/collabora/wopi.php/' . $doc->getId() . '?access_token=' . rawurlencode($sharedReadToken);
+    mcpCheck(readerOfficeHttp($sharedWopi)['json']['UserCanWrite'] === false, 'External reader never inherits owner editing rights');
+    mcpCheck(readerOfficeHttp(str_replace('?access_token=', '/contents?access_token=', $sharedWopi), false, 'BLOCKED', ['X-WOPI-Override: PUT'])['status'] === 403, 'External read-only grant blocks writes');
+    $share->set('allow_edit', 1); $share->save();
+    mcpCheck(readerOfficeHttp($sharedWopi)['status'] === 403, 'Permission changes invalidate existing WOPI credentials');
+    $launch = readerOfficeHttp($shareOpen);
+    mcpCheck($launch['status'] === 200, 'External editable Office launcher');
+    $dom = new DOMDocument(); @$dom->loadHTML($launch['body']); $xpath = new DOMXPath($dom);
+    mcpCheck($xpath->query('//input[@name="permission"]')->item(0)?->getAttribute('value') === 'edit', 'Explicit edit permission passed to Collabora');
+    $writeToken = $xpath->query('//input[@name="access_token"]')->item(0)->getAttribute('value');
+    $writeWopi = '/omo/api/documents/collabora/wopi.php/' . $doc->getId() . '?access_token=' . rawurlencode($writeToken);
+    mcpCheck(readerOfficeHttp($writeWopi)['json']['UserCanWrite'] === true, 'Anonymous scoped editor can write');
+    $writeContents = str_replace('?access_token=', '/contents?access_token=', $writeWopi);
+    mcpCheck(readerOfficeHttp($writeContents, false, 'EXTERNAL_OFFICE_EDIT', ['X-WOPI-Override: PUT'])['status'] === 200, 'Actual external edit saved through WOPI');
+    mcpCheck(readerOfficeHttp($writeContents)['body'] === 'EXTERNAL_OFFICE_EDIT', 'External Office edit persisted to storage');
+    $share->set('password_hash', password_hash('changed', PASSWORD_DEFAULT)); $share->save();
+    mcpCheck(readerOfficeHttp($writeWopi)['status'] === 403, 'Password change revokes existing Office credentials');
+    mcpCheck(readerOfficeHttp($shareOpen)['status'] === 404, 'Protected Office launcher requires browser approval');
     echo "document_reader_collabora_test: OK\n";
 } finally {
     mcpCleanup($items);

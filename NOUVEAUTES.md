@@ -4,6 +4,11 @@ Ce fichier garde une vue d'ensemble courte des évolutions récentes, avec un an
 
 Les dates déjà indiquées sont conservées. Les dates manquantes sont reconstituées à partir de la première apparition des entrées dans l'historique GitHub, en heure Europe/Zurich ; elles correspondent à leur ajout au journal, pas nécessairement à leur mise en production.
 
+## 2026-11-14
+
+- Documents / partage : liens externes multiples pour tous les formats, avec expiration, mot de passe et révocation, dans la même interface que le partage de structure. Option d’édition pour Collabora, Etherpad, EtherCalc et les tableaux blancs ; les PV et les autres formats restent en lecture seule. Le lien court conserve les droits OMO. Le lecteur commun affiche les formats compatibles et propose le téléchargement des fichiers sans aperçu.
+- Partage / technique : socle commun des liens et styles de gestion mutualisés. Les autorisations des outils collaboratifs sont limitées au document et à la durée du partage ; EtherCalc nécessite la mise à jour du service et de son URL de contrôle d’accès.
+
 ## 2026-11-13
 
 - Scrutins / participation : les listes OMO et Choice comptent les répondants distincts et précisent les participations incomplètes (par exemple « 5, dont 1 incomplet »). Le total des invités reste affiché séparément ; seuls les blocs d’évaluation actifs et les réponses soumises sont pris en compte.

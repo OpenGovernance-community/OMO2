@@ -26,6 +26,7 @@ window.commonPageScripts["/omo/api/documents/share_popup.js"] = function (pageCo
         const labelInput = document.getElementById('omoDocumentSharePopupLabel');
         const expirationInput = document.getElementById('omoDocumentSharePopupExpiration');
         const allowLiveFollow = document.getElementById('omoDocumentSharePopupAllowLiveFollow');
+        const allowEdit = document.getElementById('omoDocumentSharePopupAllowEdit');
         const passwordHint = document.getElementById('omoDocumentSharePopupPasswordHint');
         const clearPasswordWrap = document.getElementById('omoDocumentSharePopupClearPasswordWrap');
         const clearPasswordInput = document.getElementById('omoDocumentSharePopupClearPassword');
@@ -49,7 +50,8 @@ window.commonPageScripts["/omo/api/documents/share_popup.js"] = function (pageCo
             form.reset();
             shareIdInput.value = '';
             labelInput.value = defaultLabel;
-            allowLiveFollow.checked = false;
+            if (allowLiveFollow) allowLiveFollow.checked = false;
+            if (allowEdit) allowEdit.checked = false;
             clearPasswordInput.checked = false;
             clearPasswordWrap.hidden = true;
             passwordHint.textContent = text.passwordHint || '';
@@ -80,7 +82,8 @@ window.commonPageScripts["/omo/api/documents/share_popup.js"] = function (pageCo
             shareIdInput.value = card.dataset.shareId || '';
             labelInput.value = card.dataset.label || defaultLabel;
             expirationInput.value = card.dataset.dateexpiration || '';
-            allowLiveFollow.checked = card.dataset.allowLiveFollow === '1';
+            if (allowLiveFollow) allowLiveFollow.checked = card.dataset.allowLiveFollow === '1';
+            if (allowEdit) allowEdit.checked = card.dataset.allowEdit === '1';
             clearPasswordWrap.hidden = card.dataset.hasPassword !== '1';
             passwordHint.textContent = text.passwordHintEdit || '';
             submitButton.textContent = text.submitSave || '';
@@ -215,7 +218,7 @@ window.commonPageScripts["/omo/api/documents/share_popup.js"] = function (pageCo
             refreshPopup(omoUiText("lien_supprime", "Lien supprimé."), true);
         });
 
-        form.addEventListener('submit', async function (event) {
+        form?.addEventListener('submit', async function (event) {
             event.preventDefault();
             setFeedback('', false);
 

@@ -5,6 +5,8 @@ require_once __DIR__ . '/../../translations.php';
 function omoDocumentsUiSourceLang(): array
 {
     static $sourceLang = [
+        'share.link_created' => ['text' => 'Lien créé.', 'context' => 'Document external share creation confirmation.'],
+        'share.link_updated' => ['text' => 'Lien mis à jour.', 'context' => 'Document external share update confirmation.'],
         'dossier_distant_introuvable' => ['text' => 'Dossier distant introuvable.', 'context' => 'Missing remote folder on any configured document storage provider.'],
         'stockage_documents_indisponible' => ['text' => 'Le stockage de documents est indisponible.', 'context' => 'Unavailable remote document storage.'],
         'mise_a_jour_chemin_distant_impossible' => ['text' => 'Impossible de mettre à jour le chemin du dossier distant.', 'context' => 'Failure saving a resolved remote folder path.'],

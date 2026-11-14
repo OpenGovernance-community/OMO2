@@ -49,7 +49,7 @@ try {
     mcpCheck(!str_contains($response['body'], 'HIDDEN_ATTACHMENT_MARKER'), 'Nested documents do not inherit meeting access.');
     mcpCheck(!str_contains($response['body'], 'contenteditable') && !str_contains($response['body'], 'collabora'), 'Reader exposes no editing controls.');
     $response = pvDocumentRequest(array_replace($query, ['id' => $items['hidden_doc']->getId()]));
-    mcpCheck($response['status'] === 404 && str_contains($response['body'], 'acces est indisponible'), 'Denied reader shows an explanation.');
+    mcpCheck($response['status'] === 404 && str_contains($response['body'], 'accès est indisponible'), 'Denied reader shows an explanation.');
     mcpCheck(pvDocumentRequest(array_replace($query, ['pv_document_id' => $items['target']->getId()]))['status'] === 404, 'Wrong source meeting is rejected.');
     mcpCheck(pvDocumentRequest(array_replace($query, ['pv_token' => 'invalid']), '/omo/api/documents/upload/download.php')['status'] === 404, 'File download also checks the meeting token.');
     $items['file'] = mcpFixture(Document::class, array_replace($docFields, ['documenttype' => Document::TYPE_UPLOADED_FILE,

@@ -1221,9 +1221,10 @@
 				|| ($userId > 0 && $this->canViewDirectlyInOrganization($organizationId, $userId));
 		}
 
-		public function getReaderContent(): string
+		public function getReaderContent(?int $viewerUserId = null, bool $allowDraft = false): string
 		{
 			$options = ['readOnlyLink' => true, 'compactEmbeds' => true];
+			if ($viewerUserId !== null) $options['viewerUserId'] = $viewerUserId;
 			if ($this->isPvDocument()) {
 				return $this->renderPvForViewer($options);
 			}
@@ -1240,7 +1241,23 @@
 				$url = htmlspecialchars($this->getExternalUrl(), ENT_QUOTES, 'UTF-8');
 				return $url !== '' ? '<p><a href="' . $url . '" target="_blank" rel="noopener noreferrer">' . $url . '</a></p>' : '';
 			}
-			return $this->renderResolvedHtmlForViewer((string)$this->get('content'), $this->get('IDorganization'), $options);
+			$snapshot = $this->getLiveContentSnapshot($allowDraft && $this->supportsHtmlContent());
+			return $this->renderResolvedHtmlForViewer((string)($snapshot['content'] ?? ''), $this->get('IDorganization'), $options);
+		}
+
+		public function supportsSharedEditing(): bool
+		{
+			return !$this->isPvDocument() && ($this->canOpenWithCollabora() || $this->isEtherpadDocument()
+				|| $this->isEthercalcDocument() || $this->isWhiteboardDocument());
+		}
+
+		public function canManageShareLinks(int $userId): bool
+		{
+			$organizationId = (int)$this->get('IDorganization');
+			return $userId > 0 && !$this->isArchived() && !$this->isFolder() && !$this->isNextcloudFolder()
+				&& $this->canReadFromLink($userId) && ($this->isPvDocument()
+					? $this->canUserManagePvStructure($organizationId, $userId)
+					: $this->canManageInOrganizationContext($organizationId, $userId, false));
 		}
 
 		public function canView()
@@ -3577,10 +3594,11 @@
 			}
 		}
 
-		public function saveCollaboraFileContents(Organization $organization, int $userId, string $contents, string $mimeType): array
+		public function saveCollaboraFileContents(Organization $organization, int $userId, string $contents, string $mimeType, ?DocumentShareLink $shareLink = null): array
 		{
 			if (!$this->canOpenWithCollabora() || (int)$organization->getId() !== (int)$this->get('IDorganization')
-				|| !$this->canEditInOrganizationContext((int)$organization->getId(), $userId, false)) {
+				|| ($shareLink !== null ? !self::resolveSharedFileEditingGrant($shareLink, $this)
+					: !$this->canEditInOrganizationContext((int)$organization->getId(), $userId, false))) {
 				return ['status' => false];
 			}
 			$pdo = self::getPdo();
@@ -3597,7 +3615,7 @@
 				$result = $organization->updateDocumentFileContentsOnStorage($expectedPath, $contents, $mimeType);
 				if (empty($result['status'])) throw new \RuntimeException('document_file_save_failed');
 				$this->set('storedfilesize', strlen($contents));
-				$this->set('IDusermodification', $userId);
+				$this->set('IDusermodification', $userId > 0 ? $userId : null);
 				$this->set('datemodification', new \DateTimeImmutable());
 				$result = $this->save();
 				if (empty($result['status'])) throw new \RuntimeException('document_file_metadata_failed');
@@ -3608,6 +3626,12 @@
 				error_log('Collabora document save failed: ' . $exception->getMessage());
 				return ['status' => false];
 			}
+		}
+
+		private static function resolveSharedFileEditingGrant(DocumentShareLink $link, Document $document): bool
+		{
+			$current = DocumentShareLink::resolveServiceGrant((int)$link->getId(), $link->getAccessFingerprint(), $document);
+			return $current !== null && $current->allowsDocumentEditing($document);
 		}
 
 		public function hasStoredFile(): bool
@@ -4723,7 +4747,7 @@
 			$targetOrganizationId = (int)$targetDocument->get('IDorganization');
 			$targetHolonId = (int)$targetDocument->get('IDholon');
 			if (!empty($options['readOnlyLink'])) {
-				$canViewTarget = $targetDocument->canReadFromLink((int)\commonGetCurrentUserId());
+				$canViewTarget = $targetDocument->canReadFromLink((int)($options['viewerUserId'] ?? \commonGetCurrentUserId()));
 			} elseif (isset($options['pvParticipationLink'])) {
 				$canViewTarget = $options['pvParticipationLink'] instanceof DocumentShareLink
 					&& $options['pvParticipationLink']->getReadablePvEmbeddedDocument($targetDocumentId) !== null;
@@ -4882,7 +4906,7 @@
 			return sha1($encoded === false ? serialize($hashSource) : $encoded);
 		}
 
-		public function buildLiveSharePayload(bool $allowDraft = false): array
+		public function buildLiveSharePayload(bool $allowDraft = false, array $renderOptions = []): array
 		{
 			$snapshot = $this->getLiveContentSnapshot($allowDraft);
 			$dateValue = $snapshot['date'] ?? null;
@@ -4894,7 +4918,7 @@
 			$contentHashSource = '';
 
 			if ($this->isPvDocument()) {
-				$renderedContent = $this->renderPvForViewer();
+				$renderedContent = $this->renderPvForViewer($renderOptions);
 				$contentHashSource = $renderedContent;
 			} elseif ($this->isExternalLink()) {
 				$renderedContent = $this->renderExternalLinkForViewer();
@@ -4920,7 +4944,7 @@
 					$renderedContent = ('<div class="omo-document-spacedeck-snapshot">' . self::uiMessage('copy.tableau_blanc_collaboratif_a_consulter_dans_omo') . '</div>');
 				$contentHashSource = $renderedContent;
 			} else {
-				$renderedContent = $this->renderResolvedHtmlForViewer($content, (int)$this->get('IDorganization'));
+				$renderedContent = $this->renderResolvedHtmlForViewer($content, (int)$this->get('IDorganization'), $renderOptions);
 				$contentHashSource = $content;
 			}
 
@@ -5254,10 +5278,10 @@
 			return max(0, (int)$minutes) . ' min ' . trim($suffix);
 		}
 
-		public function getPvReportUnhandledItems(): array
+		public function getPvReportUnhandledItems(?int $viewerUserId = null): array
 		{
 			if (!in_array($this->getPvStage(), [self::PV_STAGE_REVIEW, self::PV_STAGE_VALIDATED], true)) return [];
-			$userId = function_exists('commonGetCurrentUserId') ? (int)\commonGetCurrentUserId() : (int)($_SESSION['currentUser'] ?? 0);
+			$userId = $viewerUserId ?? (function_exists('commonGetCurrentUserId') ? (int)\commonGetCurrentUserId() : (int)($_SESSION['currentUser'] ?? 0));
 			$points = $this->getVisiblePvPointsForUser($userId, true);
 			$byId = [];
 			foreach ($points as $point) {
@@ -5283,9 +5307,9 @@
 			return $items;
 		}
 
-		public function renderPvUnhandledPointsForViewer(): string
+		public function renderPvUnhandledPointsForViewer(?int $viewerUserId = null): string
 		{
-			$items = $this->getPvReportUnhandledItems();
+			$items = $this->getPvReportUnhandledItems($viewerUserId);
 			if (!$items) return '';
 			require_once dirname(__DIR__, 2) . '/common/document/pv-report.php';
 			return \commonPvReportRenderUnhandledPoints($items);
@@ -5298,13 +5322,13 @@
 			}
 
 			$organizationId = (int)$this->get('IDorganization');
-			$currentUserId = function_exists('commonGetCurrentUserId')
+			$currentUserId = $renderOptions['viewerUserId'] ?? (function_exists('commonGetCurrentUserId')
 				? (int)\commonGetCurrentUserId()
-				: (int)($_SESSION['currentUser'] ?? 0);
+				: (int)($_SESSION['currentUser'] ?? 0));
 			$points = $this->getVisiblePvPointsForUser($currentUserId, true);
 			$isReport = in_array($this->getPvStage(), [self::PV_STAGE_REVIEW, self::PV_STAGE_VALIDATED], true);
 			$reportPositions = $isReport ? DocumentPvPoint::buildReportPositionMap($points) : [];
-			$unhandledHtml = $isReport ? $this->renderPvUnhandledPointsForViewer() : '';
+			$unhandledHtml = $isReport ? $this->renderPvUnhandledPointsForViewer($currentUserId) : '';
 			$includeDiscussionLinks = !empty($renderOptions['includePvDiscussionLinks']);
 			$discussionLabels = is_array($renderOptions['pvDiscussionLabels'] ?? null)
 				? $renderOptions['pvDiscussionLabels']

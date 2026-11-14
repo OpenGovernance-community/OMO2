@@ -21,6 +21,7 @@ mkdir -p "$data_dir/do"
 export ETHERCALC_DISABLE_ROOM_INDEX="${ETHERCALC_DISABLE_ROOM_INDEX:-1}"
 node "$app_root/bin/patch-room-assets.js"
 node "$app_root/bin/patch-public-entry.js"
+node "$app_root/bin/patch-share-access.cjs" "$app_root/workerd/worker/index.js" "$app_root/workerd/config.capnp"
 
 exec "$app_root/bin/workerd" serve \
     "$app_root/workerd/config.capnp" \

@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../ui_translations.php';
-require_once dirname(__DIR__, 2) . '/bootstrap.php';
+$linkRequest = isset($_GET['reader']) || isset($_GET['share_token']);
+require_once $linkRequest ? dirname(__DIR__, 4) . '/common/document/link_bootstrap.php' : dirname(__DIR__, 2) . '/bootstrap.php';
 require_once dirname(__DIR__, 4) . '/common/etherpad.php';
 
 use dbObject\Document;
@@ -9,14 +10,14 @@ use dbObject\User;
 $documentId = (int)($_GET['id'] ?? 0);
 $userId = (int)commonGetCurrentUserId();
 
-if ($documentId <= 0 || $userId <= 0) {
+if (!$linkRequest && ($documentId <= 0 || $userId <= 0)) {
     http_response_code(400);
     echo omoDocumentsUiT('demande_invalide');
     exit;
 }
 
-$document = new Document();
-if (!$document->load($documentId) || !$document->isEtherpadDocument()) {
+$document = $linkRequest ? $documentLinkAccess['document'] : new Document();
+if ((!$linkRequest && !$document->load($documentId)) || !$document->isEtherpadDocument()) {
     http_response_code(404);
     echo omoDocumentsUiT('document_introuvable');
     exit;
@@ -25,11 +26,11 @@ if (!$document->load($documentId) || !$document->isEtherpadDocument()) {
 $documentOrganizationId = (int)$document->get('IDorganization');
 $documentHolonId = (int)$document->get('IDholon');
 $organizationId = $documentOrganizationId;
-if (
+if (!$linkRequest && (
     $organizationId <= 0
     || !commonCurrentUserHasOrganizationAccess($organizationId)
     || !$document->canViewInOrganizationContext($organizationId, $documentHolonId > 0 ? $documentHolonId : null)
-) {
+)) {
     http_response_code(403);
     echo omoDocumentsUiT('acces_refuse');
     exit;
@@ -49,7 +50,7 @@ if ($padId === '' || !omoEtherpadHasConfig($organization)) {
     exit;
 }
 
-$canEdit = $document->canEditInOrganizationContext($organizationId, $userId, false);
+$canEdit = $linkRequest ? $documentLinkAccess['canEdit'] : $document->canEditInOrganizationContext($organizationId, $userId, false);
 if (!$canEdit || isset($_GET['content'])) {
     // Private group pads reject even their read-only ID without an API session.
     // Such a session also grants editing: serve the sanitized content through OMO.
@@ -64,18 +65,21 @@ if (!$canEdit || isset($_GET['content'])) {
     exit;
 }
 
+$shareLink = $linkRequest ? $documentLinkAccess['shareLink'] : null;
 $user = new User();
-if (!$user->load($userId)) {
+if (!$shareLink && !$user->load($userId)) {
     http_response_code(503);
     echo omoDocumentsUiT('identite_omo_introuvable');
     exit;
 }
-$userName = trim((string)$user->getScopedDisplayName($organizationId));
+$userName = $shareLink ? commonDocumentServiceT('collabora.guest') : trim((string)$user->getScopedDisplayName($organizationId));
 $access = omoEtherpadPrepareEditingAccess(
     $organization,
     $padId,
-    'omo-organization-' . $organizationId . '-user-' . $userId,
-    $userName !== '' ? $userName : ('Utilisateur ' . $userId)
+    $shareLink ? 'omo-share-' . $shareLink->getId() . '-' . $shareLink->getAccessFingerprint()
+        : 'omo-organization-' . $organizationId . '-user-' . $userId,
+    $userName !== '' ? $userName : ('Utilisateur ' . $userId),
+    $shareLink ? commonDocumentShareValidUntil($shareLink, 3600) : 0
 );
 if (empty($access['status'])) {
     http_response_code(503);

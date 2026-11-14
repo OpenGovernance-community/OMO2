@@ -8,6 +8,13 @@ use dbObject\DocumentShareLink;
 $token = trim((string)($_GET['token'] ?? ''));
 $shareLink = DocumentShareLink::findValidByToken($token);
 
+// Keep participation links and live HTML links compatible; all other shares use the common reader.
+if ($shareLink && !$shareLink->allowsPvContribution()) {
+    $_GET['share_token'] = $token;
+    require __DIR__ . '/document.php';
+    exit;
+}
+
 if (!$shareLink) {
     http_response_code(404);
     ?>

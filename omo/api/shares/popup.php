@@ -62,7 +62,7 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
     data-popup-url="<?= htmlspecialchars($popupUrl, ENT_QUOTES, 'UTF-8') ?>"
     data-has-links="<?= $hasExistingLinks ? '1' : '0' ?>"
 >
-    <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/shares/shares.css') ?>">
+    <link rel="stylesheet" href="<?= commonAssetUrl('/common/share/popup.css') ?>">
 
     <div class="omo-share-popup__header generic-drawer-header generic-drawer-header--sticky">
         <div class="generic-drawer-header__copy omo-share-popup__header-copy">

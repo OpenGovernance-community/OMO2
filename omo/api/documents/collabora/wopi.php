@@ -62,14 +62,15 @@ if (!is_array($tokenPayload)) {
 
 $userId = (int)($tokenPayload['userId'] ?? 0);
 $reader = ($tokenPayload['reader'] ?? false) === true;
+$shared = isset($tokenPayload['shareId']);
+$shareLink = $shared ? \dbObject\DocumentShareLink::resolveServiceGrant((int)$tokenPayload['shareId'],
+    (string)($tokenPayload['shareFingerprint'] ?? ''), $document) : null;
 $organizationId = (int)$document->get('IDorganization');
 $holonId = (int)$document->get('IDholon');
-if (($reader && !$document->canReadFromLink($userId)) || (!$reader && (
-    $userId <= 0
-    || $organizationId <= 0
-    || !commonUserHasOrganizationAccess($userId, $organizationId)
-    || !$document->canViewInOrganizationContext($organizationId, $holonId > 0 ? $holonId : null, $userId)
-))) {
+$allowed = $shared ? $shareLink !== null : ($reader ? $document->canReadFromLink($userId)
+    : $userId > 0 && $organizationId > 0 && commonUserHasOrganizationAccess($userId, $organizationId)
+        && $document->canViewInOrganizationContext($organizationId, $holonId > 0 ? $holonId : null, $userId));
+if (!$allowed) {
     http_response_code(403);
     exit;
 }
@@ -81,7 +82,8 @@ if (!$organization->load($organizationId) || !$organization->hasDocumentStorage(
 }
 
 $collaboraConfig = omoCollaboraGetConfig($organization);
-$canEdit = !$reader && $document->canEditInOrganizationContext($organizationId, $userId, false);
+$canEdit = $shared ? $shareLink->allowsDocumentEditing($document) && ($tokenPayload['shareEdit'] ?? false) === true
+    : (!$reader && $document->canEditInOrganizationContext($organizationId, $userId, false));
 $remotePath = $document->isNextcloudFolder()
     ? Document::normalizeNextcloudFolderPath($tokenPayload['remotePath'] ?? '')
     : '';
@@ -192,7 +194,7 @@ if ($method === 'GET') {
         'LastModifiedTime' => $lastModifiedTime,
         'SupportsLocks' => false,
         'SupportsGetLock' => false,
-        'SupportsUpdate' => !$reader,
+        'SupportsUpdate' => $shared ? $canEdit : !$reader,
         'SupportsRename' => false,
         'SupportsDeleteFile' => false,
         'UserSettings' => array('uri' => $userSettingsUrl),
@@ -216,7 +218,7 @@ if (!is_string($contents)) {
 
 $updateResult = $isRemoteFile
     ? $organization->updateDocumentFileContentsOnStorage($remotePath, $contents, $mimeType)
-    : $document->saveCollaboraFileContents($organization, $userId, $contents, $mimeType);
+    : $document->saveCollaboraFileContents($organization, $userId, $contents, $mimeType, $shareLink);
 if (!is_array($updateResult) || empty($updateResult['status'])) {
     http_response_code(502);
     exit;

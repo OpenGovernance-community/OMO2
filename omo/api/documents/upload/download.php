@@ -13,6 +13,16 @@ if (isset($_GET['pv_document_id'])) {
         echo omoDocumentsUiT('document_introuvable_ou_inaccessible_avec_ce_lien_de_reunion');
         exit;
     }
+} elseif (isset($_GET['share_token'])) {
+    require_once dirname(__DIR__, 4) . '/shared_functions.php';
+    require_once dirname(__DIR__, 4) . '/common/auth.php';
+    require_once dirname(__DIR__, 4) . '/common/document/share.php';
+    $shareLink = commonResolveDocumentShare((string)$_GET['share_token'], (int)($_GET['id'] ?? 0));
+    $readerDocument = $shareLink ? $shareLink->getDocument() : null;
+    if (!$readerDocument || array_key_exists('version_id', $_GET)) {
+        http_response_code(404);
+        exit;
+    }
 } elseif (isset($_GET['reader'])) {
     require_once dirname(__DIR__, 4) . '/shared_functions.php';
     require_once dirname(__DIR__, 4) . '/common/auth.php';
@@ -118,7 +128,8 @@ $contentLength = max(0, (int)($downloadResult['contentLength'] ?? 0));
 $body = (string)($downloadResult['body'] ?? '');
 $inline = !$isVersionRequest && !empty($_GET['inline'])
     && ((!isset($pvDocument) && !isset($readerDocument)) || $document->isStoredPdfFile()
-        || (isset($readerDocument) && in_array($document->getStoredFileKind(), ['image', 'audio'], true)));
+        || (isset($readerDocument) && (in_array($document->getStoredFileKind(), ['image', 'audio'], true)
+            || str_starts_with($document->getStoredFileMimeType(), 'video/'))));
 
 header('Cache-Control: private, no-store');
 header('X-Content-Type-Options: nosniff');
