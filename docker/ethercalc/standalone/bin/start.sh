@@ -5,6 +5,11 @@ set -euo pipefail
 app_root="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 environment_file="${ETHERCALC_ENV_FILE:-$app_root/../.ethercalc.env}"
 
+# Infomaniak puts the site in customer/sites/<domain> and the config in customer/.
+if [[ -z "${ETHERCALC_ENV_FILE:-}" && -z "${ETHERCALC_KEY:-}" && ! -f "$environment_file" && -f "$app_root/../../.ethercalc.env" ]]; then
+    environment_file="$app_root/../../.ethercalc.env"
+fi
+
 if [[ -f "$environment_file" ]]; then
     set -a
     # shellcheck disable=SC1090

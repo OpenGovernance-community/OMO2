@@ -13,7 +13,8 @@ if (configFile) {
         fs.writeFileSync(configFile, config);
     }
 }
-let source = fs.readFileSync(file, 'utf8');
+const originalSource = fs.readFileSync(file, 'utf8');
+let source = originalSource;
 if (!source.includes('async function omoVerifyShareAccess(')) {
     const original = 'async function verifyAuth(key, room, supplied) {\n  if (supplied === "0") return false;';
     if (!source.includes(original)) throw new Error('Unsupported EtherCalc verifyAuth implementation');
@@ -40,13 +41,6 @@ async function verifyAuth(key, room, supplied, allowShared = false) {
     const wsGate = 'verifyAuth(env2.ETHERCALC_KEY, messageRoom, messageAuth)';
     if (!source.includes(wsGate)) throw new Error('Unsupported EtherCalc WebSocket gate');
     source = source.replace(wsGate, 'verifyAuth(env2.ETHERCALC_KEY, messageRoom, messageAuth, true)');
-    const dispatch = 'const ctx = this.#buildWsContext(ws, attachment, parsed.room, perMessageAuth);';
-    if (!source.includes(dispatch)) throw new Error('Unsupported EtherCalc WebSocket dispatch');
-    source = source.replace(dispatch, `if (attachment.room !== parsed.room || (this.#env.ETHERCALC_KEY && !await verifyAuth(this.#env.ETHERCALC_KEY, parsed.room, perMessageAuth || attachment.auth || '0', true))) {
-      ws.close(1008, 'Access denied'); return;
-    }
-    if ((perMessageAuth || attachment.auth || '').startsWith('omo.') && parsed.type === 'execute' && /^submitform\\b/i.test(parsed.cmdstr || '')) return;
-    ${dispatch}`);
     const apply = 'await this.#applyCommandAndMirror(nameToMirror, cmdstr);';
     if (!source.includes(apply)) throw new Error('Unsupported EtherCalc command application');
     source = source.replace(apply, `if (messageAuth.startsWith('omo.')) {
@@ -89,5 +83,46 @@ async function verifyAuth(key, room, supplied, allowShared = false) {
     }
     return next();
   });`);
-    fs.writeFileSync(file, source);
 }
+
+// The browser loads the companion form viewer before asking for the main sheet.
+// Reply to its bootstrap request without opening access to a second room.
+const clientDispatch = 'const ctx = this.#buildWsContext(ws, attachment, parsed.room, perMessageAuth);';
+const previousClientGate = `if (attachment.room !== parsed.room || (this.#env.ETHERCALC_KEY && !await verifyAuth(this.#env.ETHERCALC_KEY, parsed.room, perMessageAuth || attachment.auth || '0', true))) {
+      ws.close(1008, 'Access denied'); return;
+    }
+    if ((perMessageAuth || attachment.auth || '').startsWith('omo.') && parsed.type === 'execute' && /^submitform\\b/i.test(parsed.cmdstr || '')) return;
+    ${clientDispatch}`;
+if (!source.includes('const omoSocketAuth =')) {
+    const originalDispatch = originalSource.includes('async function omoVerifyShareAccess(') ? previousClientGate : clientDispatch;
+    if (!source.includes(originalDispatch)) throw new Error('Unsupported EtherCalc WebSocket dispatch');
+    const gate = `const omoSocketAuth = attachment.auth || perMessageAuth;
+    const key = this.#env.ETHERCALC_KEY;
+    if (key && !await verifyAuth(key, attachment.room, omoSocketAuth || '0', true)) {
+      ws.close(1008, 'Access denied'); return;
+    }
+    if (attachment.room !== parsed.room) {
+      if (parsed.type === 'ask.log' && parsed.room === attachment.room + '_formdata') {
+        this.#sendTo(ws, buildLogReply(parsed, [], [], ''));
+      }
+      return;
+    }
+    if (omoSocketAuth.startsWith('omo.') && (parsed.type === 'stopHuddle' ||
+        (parsed.type === 'execute' && isSubmitForm(parsed.cmdstr)))) return;
+    const ctx = this.#buildWsContext(ws, attachment, parsed.room, omoSocketAuth);`;
+    source = source.replace(originalDispatch, gate);
+}
+
+// Deployed OMO versions used /_/<room>.html. Keep that authenticated URL
+// working while PHP moves to the upstream /_/<room>/html export route.
+if (!source.includes('const omoLegacyHtmlSuffix =')) {
+    const roomRoutes = 'registerRoomRoutes(app);\n  registerExports(app);';
+    if (!source.includes(roomRoutes)) throw new Error('Unsupported EtherCalc export routes');
+    source = source.replace(roomRoutes, `const omoLegacyHtmlSuffix = '.html';
+  app.get('/_/:room{.+\\\\.html}', async (c) => {
+    const room = c.req.param('room').slice(0, -omoLegacyHtmlSuffix.length);
+    return dispatchExport(c.env, room, FORMATS.html);
+  });
+  ${roomRoutes}`);
+}
+if (source !== originalSource) fs.writeFileSync(file, source);

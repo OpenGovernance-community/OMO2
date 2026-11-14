@@ -44,7 +44,7 @@ if ($roomId === '' || !omoEthercalcHasConfig()) {
 
 $canEdit = $linkRequest ? $documentLinkAccess['canEdit'] : $document->canEditInOrganizationContext($organizationId, $userId, false);
 if (!$canEdit) {
-    $result = omoEthercalcRequest('GET', '/_/' . rawurlencode($roomId) . '.html');
+    $result = omoEthercalcRequest('GET', '/_/' . rawurlencode($roomId) . '/html');
     $content = ['status' => !empty($result['status']), 'html' => \dbObject\PropertyFormat::sanitizeHtml((string)($result['body'] ?? ''))];
     if (isset($_GET['content'])) {
         header('Content-Type: application/json; charset=UTF-8');

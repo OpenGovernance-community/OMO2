@@ -137,9 +137,17 @@ try {
     $service = '/omo/api/documents/ethercalc/access.php?' . http_build_query(['room' => $roomId, 'auth' => $query['auth']]);
     mcpCheck(shareHttp($service)['json']['canEdit'] === true, 'Real callback accepts sheet grant');
     $items['sheet_read_link'] = $sheetReadLink = DocumentShareLink::createForDocument($sheetDoc, $uid);
-    $sheetReadonly = shareHttp('/omo/api/documents/ethercalc/open.php?' . http_build_query(['id' => $sheetDoc->getId(), 'share_token' => $sheetReadLink->get('token')]));
-    mcpCheck($sheetReadonly['status'] === 200 && str_contains($sheetReadonly['body'], 'data-pad-reader'), 'Read-only sheet rendered through the authenticated OMO snapshot');
+    $seed = omoEthercalcRequest('POST', '/_/' . rawurlencode($roomId), [], json_encode([
+        'command' => 'set A1 text t SHARED_READONLY_CELL',
+    ], JSON_THROW_ON_ERROR));
+    mcpCheck(!empty($seed['status']), 'Seed a cell for the read-only EtherCalc preview');
+    $sheetReadUrl = '/omo/api/documents/ethercalc/open.php?' . http_build_query(['id' => $sheetDoc->getId(), 'share_token' => $sheetReadLink->get('token')]);
+    $sheetReadonly = shareHttp($sheetReadUrl);
+    mcpCheck($sheetReadonly['status'] === 200 && str_contains($sheetReadonly['body'], 'SHARED_READONLY_CELL'), 'Read-only sheet renders the saved cell');
     mcpCheck(!str_contains($sheetReadonly['body'], omoEthercalcBuildEditToken($roomId)), 'Read-only sheet never exposes native editing credentials');
+    $sheetRefresh = shareHttp($sheetReadUrl . '&content=1');
+    mcpCheck($sheetRefresh['status'] === 200 && ($sheetRefresh['json']['status'] ?? false) === true
+        && str_contains($sheetRefresh['json']['html'] ?? '', 'SHARED_READONLY_CELL'), 'Read-only refresh returns the saved cell');
     $board = $items['doc_' . Document::TYPE_WHITEBOARD]; $boardLink = $items['link_' . Document::TYPE_WHITEBOARD];
     $space = omoSpacedeckProvisionSpace('Document share regression');
     mcpCheck(!empty($space['status']), 'Create isolated board'); $spaceId = (string)$space['data']['id'];

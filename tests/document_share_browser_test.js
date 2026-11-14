@@ -18,7 +18,7 @@ const file = path.join(root, 'tmp/document-share-live.json');
         const frameElement = page.locator('#omoDocumentReaderPreview iframe');
         await frameElement.waitFor();
         const frame = await (await frameElement.elementHandle()).contentFrame();
-        await frame.waitForFunction(() => typeof window.SocialCalc !== 'undefined', null, {timeout: 30000});
+        await frame.waitForFunction(() => window.SocialCalc?.hadSnapshot === true, null, {timeout: 30000});
         for (const width of [1280, 390]) {
             await page.setViewportSize({width, height: 950});
             assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
