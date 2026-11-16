@@ -30,6 +30,7 @@ $roleTerm = $lexicon['role'];
 $groupTerm = $lexicon['group'];
 $tensionTerm = $lexicon['tension'];
 $adminTerm = $lexicon['admin'];
+$governanceTerm = $lexicon['governance'];
 ?>
 <div class="omo-lexicon-editor generic-drawer-content" data-omo-lexicon-editor>
     <div class="omo-lexicon-editor__intro generic-stack generic-stack--compact">
@@ -111,6 +112,27 @@ $adminTerm = $lexicon['admin'];
                         class="generic-form-control"
                         name="admin_label"
                         value="<?= omoLexiconEscape($adminTerm['label']) ?>"
+                        maxlength="80"
+                        required
+                    >
+                </div>
+            </div>
+        </section>
+
+        <section class="generic-section generic-section--stack generic-form-section">
+            <div class="generic-form-section__copy">
+                <h3 class="generic-card-title"><?= omoLexiconEscape(omoLexiconT('parameters.lexicon.term.governance.label')) ?></h3>
+                <p class="generic-help-text"><?= omoLexiconEscape(omoLexiconT('parameters.lexicon.term.governance.help')) ?></p>
+            </div>
+            <div class="generic-form-grid generic-form-grid--pair">
+                <div class="generic-form-field">
+                    <label class="generic-form-label" for="omo-lexicon-governance"><?= omoLexiconEscape(omoLexiconT('parameters.lexicon.term.governance.label')) ?></label>
+                    <input
+                        id="omo-lexicon-governance"
+                        type="text"
+                        class="generic-form-control"
+                        name="governance_label"
+                        value="<?= omoLexiconEscape($governanceTerm['label']) ?>"
                         maxlength="80"
                         required
                     >

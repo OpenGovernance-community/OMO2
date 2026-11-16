@@ -74,6 +74,14 @@ function omoLexiconSourceLang(): array
 			'text' => 'Ce terme est utilisé dans les libellés de gestion de l’organisation et des éléments.',
 			'context' => 'Help text for the organization lexicon admin term field.',
         ),
+        'parameters.lexicon.term.governance.label' => array(
+            'text' => 'Hors Réorg',
+            'context' => 'Label of the organization lexicon term for decisions outside a reorganization.',
+        ),
+        'parameters.lexicon.term.governance.help' => array(
+            'text' => 'Ce terme est utilisé dans les titres, boutons, aides et paramètres des décisions prises en dehors d’une réorganisation.',
+            'context' => 'Help text for the customizable governance decision term.',
+        ),
         'parameters.lexicon.action.save' => array(
             'text' => 'Enregistrer',
             'context' => 'Save button label in the organization lexicon editor.',

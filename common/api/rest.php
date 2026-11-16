@@ -180,7 +180,7 @@ function omoRestOpenApi(): array
             'x-registration-url' => omoMcpIssuer() . '/mcp/register.php',
             'x-revocation-url' => omoMcpIssuer() . '/mcp/revoke.php',
             'flows' => ['authorizationCode' => [
-                'authorizationUrl' => omoMcpIssuer() . '/mcp/authorize.php', 'tokenUrl' => omoMcpIssuer() . '/mcp/token.php',
+                'authorizationUrl' => omoMcpIssuer() . '/mcp/authorize.php?transport=api', 'tokenUrl' => omoMcpIssuer() . '/mcp/token.php',
                 'refreshUrl' => omoMcpIssuer() . '/mcp/token.php', 'scopes' => [
                     OMO_MCP_SCOPE => 'Read accessible organization data', OMO_MCP_CREATE_SCOPE => 'Create documents',
                     OMO_MCP_MAIL_SCOPE => 'Send email to existing object audiences', OMO_MCP_EVENT_SCOPE => 'Create events', OMO_MCP_DECISION_SCOPE => 'Create ballots and tentative proposal events',

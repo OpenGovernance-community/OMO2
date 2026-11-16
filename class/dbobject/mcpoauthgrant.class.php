@@ -7,7 +7,7 @@ class McpOauthGrant extends DbObject
     protected static function uiMessageSourceLang(): array
     {
         return parent::uiMessageSourceLang() + [
-            'copy.les_connexions_api_et_mcp_sont_bloquees_par_cette_organisation' => ['text' => 'Les connexions API et MCP sont bloquées par cette organisation.', 'context' => 'Interface text in class/dbobject/mcpoauthgrant.class.php'],
+            'copy.les_connexions_api_et_mcp_sont_bloquees_par_cette_organisation' => ['text' => 'Cette organisation n’autorise pas la connexion demandée. Vérifiez les autorisations API et MCP dans ses paramètres de sécurité.', 'context' => 'OAuth consent is blocked by the organization policy for the requested transport.'],
         ];
     }
 
@@ -43,7 +43,7 @@ class McpOauthGrant extends DbObject
 
     public static function issueCode(McpOauthClient $client, int $userId, int $organizationId, array $request): string
     {
-        if (!Organization::allowsExternalIntegration($organizationId)) {
+        if (!Organization::allowsExternalIntegration($organizationId, $request['transport'] ?? null)) {
             throw new \DomainException(self::uiMessage('copy.les_connexions_api_et_mcp_sont_bloquees_par_cette_organisation'));
         }
         if (!UserOrganization::hasActiveMembership($userId, $organizationId) || !\patreonUserCanUseAi($userId, $organizationId)) {

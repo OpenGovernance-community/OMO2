@@ -7,10 +7,16 @@ const OMO_MCP_EVENT_SCOPE = 'events:create';
 const OMO_MCP_DECISION_SCOPE = 'decisions:create';
 const OMO_MCP_PROJECT_SCOPE = 'projects:write';
 
+function omoMcpSupportedScopes(): array
+{
+    return [OMO_MCP_SCOPE, OMO_MCP_CREATE_SCOPE, OMO_MCP_MAIL_SCOPE, OMO_MCP_EVENT_SCOPE,
+        OMO_MCP_DECISION_SCOPE, OMO_MCP_PROJECT_SCOPE];
+}
+
 function omoMcpNormalizeScope(string $scope): ?string
 {
     $scopes = preg_split('/ +/', trim($scope), -1, PREG_SPLIT_NO_EMPTY);
-    $supported = [OMO_MCP_SCOPE, OMO_MCP_CREATE_SCOPE, OMO_MCP_MAIL_SCOPE, OMO_MCP_EVENT_SCOPE, OMO_MCP_DECISION_SCOPE, OMO_MCP_PROJECT_SCOPE];
+    $supported = omoMcpSupportedScopes();
     if (!in_array(OMO_MCP_SCOPE, $scopes, true) || array_diff($scopes, $supported)) return null;
     return implode(' ', array_values(array_intersect($supported, $scopes)));
 }
@@ -82,24 +88,24 @@ function omoMcpResourceMetadataUrl(): string
 }
 function omoMcpChallenge(string $error = ''): string
 {
-    return 'Bearer resource_metadata="' . omoMcpResourceMetadataUrl() . '", scope="' . OMO_MCP_SCOPE . '"'
+    return 'Bearer resource_metadata="' . omoMcpResourceMetadataUrl() . '", scope="' . implode(' ', omoMcpSupportedScopes()) . '"'
         . ($error !== '' ? ', error="' . $error . '"' : '');
 }
 function omoMcpResourceMetadata(): array
 {
     return ['resource' => omoMcpPublicUrl(), 'authorization_servers' => [omoMcpIssuer()],
-        'scopes_supported' => [OMO_MCP_SCOPE, OMO_MCP_CREATE_SCOPE, OMO_MCP_MAIL_SCOPE, OMO_MCP_EVENT_SCOPE, OMO_MCP_DECISION_SCOPE, OMO_MCP_PROJECT_SCOPE], 'bearer_methods_supported' => ['header'],
+        'scopes_supported' => omoMcpSupportedScopes(), 'bearer_methods_supported' => ['header'],
         'resource_name' => omoMcpServerInfo()['title']];
 }
 function omoMcpAuthorizationMetadata(): array
 {
     $issuer = omoMcpIssuer();
-    return ['issuer' => $issuer, 'authorization_endpoint' => $issuer . '/mcp/authorize.php',
+    return ['issuer' => $issuer, 'authorization_endpoint' => $issuer . '/mcp/authorize.php?transport=mcp',
         'token_endpoint' => $issuer . '/mcp/token.php', 'registration_endpoint' => $issuer . '/mcp/register.php',
         'revocation_endpoint' => $issuer . '/mcp/revoke.php', 'response_types_supported' => ['code'],
         'grant_types_supported' => ['authorization_code', 'refresh_token'],
         'token_endpoint_auth_methods_supported' => ['none'], 'revocation_endpoint_auth_methods_supported' => ['none'],
-        'code_challenge_methods_supported' => ['S256'], 'scopes_supported' => [OMO_MCP_SCOPE, OMO_MCP_CREATE_SCOPE, OMO_MCP_MAIL_SCOPE, OMO_MCP_EVENT_SCOPE, OMO_MCP_DECISION_SCOPE, OMO_MCP_PROJECT_SCOPE],
+        'code_challenge_methods_supported' => ['S256'], 'scopes_supported' => omoMcpSupportedScopes(),
         'authorization_response_iss_parameter_supported' => true];
 }
 function omoMcpJson(array $body, int $status = 200): never
@@ -157,19 +163,22 @@ function omoMcpValidRedirect(string $uri, bool $allowLoopback = false): bool
 }
 function omoMcpValidateAuthorization(array $input, \dbObject\McpOauthClient $client): array
 {
-    foreach (['client_id', 'redirect_uri', 'response_type', 'code_challenge', 'code_challenge_method', 'resource', 'scope', 'state'] as $field) {
+    foreach (['client_id', 'redirect_uri', 'response_type', 'code_challenge', 'code_challenge_method', 'resource', 'scope', 'state', 'transport'] as $field) {
         if (isset($input[$field]) && !is_string($input[$field])) throw new InvalidArgumentException('Invalid authorization parameter.');
     }
     if (($input['client_id'] ?? '') !== $client->get('client_id') || !$client->allowsRedirect($input['redirect_uri'] ?? '')) {
         throw new InvalidArgumentException('Invalid client or redirect URI.');
     }
+    $scope = omoMcpNormalizeScope($input['scope'] ?? implode(' ', omoMcpSupportedScopes()));
+    $transport = $input['transport'] ?? null;
+    if (!in_array($transport, [null, 'mcp', 'api'], true)) throw new InvalidArgumentException('Invalid integration transport.');
     if (($input['response_type'] ?? '') !== 'code' || ($input['code_challenge_method'] ?? '') !== 'S256'
         || !preg_match('/^[A-Za-z0-9_-]{43}$/D', $input['code_challenge'] ?? '')
-        || omoMcpNormalizeResource($input['resource'] ?? '') === null || omoMcpNormalizeScope($input['scope'] ?? OMO_MCP_SCOPE) === null
+        || omoMcpNormalizeResource($input['resource'] ?? '') === null || $scope === null
         || strlen($input['state'] ?? '') > 2048) throw new InvalidArgumentException('Expected code + PKCE S256, the MCP resource and supported scopes including organization:read.');
     return ['client_id' => $input['client_id'], 'redirect_uri' => $input['redirect_uri'],
         'code_challenge' => $input['code_challenge'], 'resource' => omoMcpNormalizeResource($input['resource']),
-        'scope' => omoMcpNormalizeScope($input['scope'] ?? OMO_MCP_SCOPE), 'state' => $input['state'] ?? ''];
+        'scope' => $scope, 'state' => $input['state'] ?? '', 'transport' => $transport];
 }
 function omoMcpRedirect(array $request, array $result): never
 {

@@ -9,6 +9,10 @@ try {
     $input = omoMcpInput();
     $uris = $input['redirect_uris'] ?? null;
     $name = $input['client_name'] ?? 'MCP client';
+    $scope = $input['scope'] ?? implode(' ', omoMcpSupportedScopes());
+    if (!is_string($scope) || ($scope = omoMcpNormalizeScope($scope)) === null) {
+        throw new InvalidArgumentException('Provide supported scopes including organization:read.');
+    }
     if (!is_array($uris) || count($uris) < 1 || count($uris) > 5 || !is_string($name)
         || trim($name) === '' || mb_strlen($name, 'UTF-8') > 150 || preg_match('/[\x00-\x1f\x7f]/', $name)) {
         throw new InvalidArgumentException('Provide a client_name and 1 to 5 redirect_uris.');
@@ -28,7 +32,7 @@ try {
     $client = \dbObject\McpOauthClient::register(trim($name), array_values(array_unique($uris)));
     omoMcpJson(['client_id' => $client->get('client_id'), 'client_id_issued_at' => (int)$client->get('created_at'),
         'client_name' => $client->get('name'), 'redirect_uris' => $uris, 'token_endpoint_auth_method' => 'none',
-        'grant_types' => ['authorization_code', 'refresh_token'], 'response_types' => ['code'], 'scope' => OMO_MCP_SCOPE], 201);
+        'grant_types' => ['authorization_code', 'refresh_token'], 'response_types' => ['code'], 'scope' => $scope], 201);
 } catch (InvalidArgumentException | JsonException $error) {
     omoMcpOauthError('invalid_client_metadata', $error->getMessage());
 }

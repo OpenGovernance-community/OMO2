@@ -31,6 +31,7 @@ omoMcpPageStart(omoMcpUiT('connections'));
         <p><?= omoMcpEscape(omoMcpUiT('expires', ['date' => date('Y-m-d H:i', (int)$item['refresh_expires_at'])])) ?></p>
         <form method="post" action="/mcp/connections.php">
             <input type="hidden" name="csrf" value="<?= omoMcpEscape($_SESSION['mcpConnectionsCsrf']) ?>">
+            <input type="hidden" name="_csrf" value="<?= omoMcpEscape(commonCsrfToken()) ?>">
             <input type="hidden" name="grant_id" value="<?= (int)$item['id'] ?>">
             <button class="generic-action-button generic-action-button--secondary"><?= omoMcpEscape(omoMcpUiT('revoke')) ?></button>
         </form>

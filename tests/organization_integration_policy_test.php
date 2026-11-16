@@ -65,6 +65,14 @@ try {
         mcpCheck($http('mcp') === ($mcp ? 200 : 401), 'MCP endpoint enforces the MCP switch');
         $eligible = array_map(static fn ($organization) => (int)$organization->getId(), omoMcpEligibleOrganizations($uid));
         mcpCheck(in_array($oid, $eligible, true) === ($api || $mcp), 'OAuth selection requires at least one permitted transport');
+        foreach (['api' => $api, 'mcp' => $mcp] as $transport => $enabled) {
+            $eligible = array_map(static fn ($organization) => (int)$organization->getId(), omoMcpEligibleOrganizations($uid, $transport));
+            mcpCheck(in_array($oid, $eligible, true) === $enabled, 'Consent offers only organizations permitting the requested transport');
+            $issued = true;
+            try { McpOauthGrant::issueCode($items['client'], $uid, $oid, $request + ['transport' => $transport]); }
+            catch (DomainException) { $issued = false; }
+            mcpCheck($issued === $enabled, 'Consent cannot issue a code for a disabled transport');
+        }
     }
     mcpCheck(commonAssistantGrant($oid)['IDorganization'] === $oid, 'Built-in organization assistant remains available when external integrations are blocked');
     mcpCheck(McpOauthGrant::exchange($items['client'], ['grant_type' => 'refresh_token', 'resource' => omoMcpPublicUrl(), 'refresh_token' => $tokens['refresh_token']]) === null, 'Both blocked prevents token renewal');
@@ -76,6 +84,22 @@ try {
     $org->setApiEnabled(false); $org->save();
     mcpCheck(McpOauthGrant::exchange($items['client'], mcpExchangeRequest($items['client'], $pending)) === null, 'An unused authorization code cannot bypass a later block');
     mcpCheck(McpOauthGrant::authenticate($tokens['access_token'], omoMcpPublicUrl(), 'unknown') === null, 'Unknown transports fail closed');
+    $org->setMcpEnabled(true); $org->save();
+    $personal = $items['patreon_subscription'];
+    $personal->set('currently_entitled_amount_cents', 0); $personal->save();
+    mcpCheck($http('mcp') === 401, 'Discovery is denied when both individual and organization contributions are unavailable');
+    $organizationSubscription = \dbObject\OrganizationPatreon::loadOrCreateByOrganizationId($oid);
+    $organizationSubscription->set('is_connected', 1);
+    $organizationSubscription->set('refresh_token', 'fixture-only');
+    $organizationSubscription->set('patron_status', 'active_patron');
+    $organizationSubscription->set('currently_entitled_amount_cents', patreonOrganizationMinimumCents());
+    $organizationSubscription->set('campaign_id', patreonGetCreatorCampaignId());
+    mcpCheck(!empty($organizationSubscription->save()['status']), 'Save organization-only contribution fixture');
+    $items['organization_subscription'] = $organizationSubscription;
+    mcpCheck($http('mcp') === 200, 'An organization contribution authorizes real HTTP MCP discovery for an ordinary member');
+    mcpCheck(count(omoMcpEligibleOrganizations($uid, 'mcp')) === 1, 'Consent uses the same organization contribution as discovery');
+    $org->setMcpEnabled(false); $org->save();
+    mcpCheck($http('mcp') === 401 && omoMcpEligibleOrganizations($uid, 'mcp') === [], 'Organization contribution never bypasses the MCP security switch');
     echo "PASS organization API/MCP defaults, independent switches, HTTP read/write authorization, OAuth and unaffected built-in assistant\n";
 } finally {
     if (is_resource($server)) { proc_terminate($server); proc_close($server); }

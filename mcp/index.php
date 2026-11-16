@@ -24,5 +24,9 @@ $GLOBALS['omoExternalUsageInput'] = $message;
 $feature = ($message['method'] ?? '') === 'tools/call' ? ($message['params']->name ?? 'tools/call') : ($message['method'] ?? 'request');
 $GLOBALS['commonAiUsageContext']['feature'] = is_string($feature) ? mb_substr($feature, 0, 190) : 'request';
 $result = omoMcpDispatch($message, $grant);
+if (in_array($message['method'] ?? '', ['initialize', 'tools/list'], true)) {
+    error_log(sprintf('OMO MCP method=%s grant=%d user=%d organization=%d rpc_error=%d',
+        $message['method'], $grant['id'], $grant['IDuser'], $grant['IDorganization'], $result['error']['code'] ?? 0));
+}
 if ($result === null) { commonAiRecordUsage('exchange', '', '', $message, '', [], 202); http_response_code(202); exit; }
 omoMcpJson($result);

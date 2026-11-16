@@ -1,7 +1,7 @@
 Options -ExecCGI -Indexes -MultiViews
 
 # Apply after directory settings, including hosts that enable DirectorySlash.
-<If "%{REQUEST_URI} == '/mcp'">
+<If "%{REQUEST_URI} =~ m#^/mcp(?:/|$)#">
     DirectorySlash Off
 </If>
 
@@ -35,6 +35,7 @@ Options -ExecCGI -Indexes -MultiViews
 ErrorDocument  404  /404.php
 
 RewriteEngine On
+RewriteOptions AllowNoSlash
 
 RewriteRule (^|/)\.(?!well-known(?:/|$)) - [F,L]
 RewriteRule ^(?:docker|sql|tests|test|vendor|class|db|includes|scripts)(?:/|$) - [F,L]

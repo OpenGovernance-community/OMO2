@@ -17,7 +17,10 @@ jobs:
           username: ${{ secrets.DEV_USER }}
           password: ${{ secrets.DEV_PASSWORD }}
           script: |
+            set -e
             cd ~/sites/beta.opengov.tools
             git fetch origin Beta
             git reset --hard origin/Beta
+            composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
             php scripts/run-migrations.php
+            php tests/mcp_deployed_discovery_test.php

@@ -8,6 +8,16 @@ $items = mcpFixtures();
 try {
     $_SESSION = ['currentUser' => (int)$items['user']->getId(), 'currentOrganization' => (int)$items['org']->getId()];
     $request = mcpAuthorizationRequest($items['client']);
+    $authorization = $request + ['response_type' => 'code', 'code_challenge_method' => 'S256', 'transport' => 'mcp'];
+    $readOnly = omoMcpValidateAuthorization($authorization, $items['client']);
+    mcpCheck($readOnly['scope'] === OMO_MCP_SCOPE && $readOnly['transport'] === 'mcp', 'Explicit read-only authorization remains read-only and freezes its transport');
+    unset($authorization['scope']);
+    $defaultRequest = omoMcpValidateAuthorization($authorization, $items['client']);
+    mcpCheck($defaultRequest['scope'] === implode(' ', omoMcpSupportedScopes()), 'A new connection without explicit scopes presents all available actions');
+    $rejected = false;
+    try { omoMcpValidateAuthorization(array_replace($authorization, ['transport' => 'unknown']), $items['client']); }
+    catch (InvalidArgumentException) { $rejected = true; }
+    mcpCheck($rejected, 'Unknown OAuth transport rejected');
     $code = McpOauthGrant::issueCode($items['client'], (int)$items['user']->getId(), (int)$items['org']->getId(), $request);
     $exchange = mcpExchangeRequest($items['client'], $code);
     mcpCheck(McpOauthGrant::exchange($items['client'], array_replace($exchange, ['code_verifier' => str_repeat('b', 64)])) === null, 'Wrong PKCE rejected');

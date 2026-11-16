@@ -10,10 +10,13 @@ $items = mcpFixtures();
 try {
     $items['client']->set('redirect_uris', json_encode([$callback], JSON_THROW_ON_ERROR));
     mcpCheck(!empty($items['client']->save()['status']), 'Register browser test callback');
-    $request = mcpAuthorizationRequest($items['client']) + ['response_type' => 'code', 'code_challenge_method' => 'S256'];
+    $items['org']->setApiEnabled(false);
+    mcpCheck(!empty($items['org']->save()['status']), 'Browser consent uses an MCP-only organization');
+    $request = mcpAuthorizationRequest($items['client']) + ['response_type' => 'code', 'code_challenge_method' => 'S256', 'transport' => 'mcp'];
+    unset($request['scope']);
     $request['redirect_uri'] = $callback;
     echo json_encode(['origin' => omoMcpIssuer(), 'authorization' => '/mcp/authorize.php?' . http_build_query($request),
-        'email' => $items['user']->get('email'), 'password' => $items['password']], JSON_THROW_ON_ERROR) . "\n";
+        'email' => $items['user']->get('email'), 'password' => $items['password'], 'code_verifier' => str_repeat('a', 64)], JSON_THROW_ON_ERROR) . "\n";
     fflush(STDOUT);
     fgets(STDIN);
 } finally { mcpCleanup($items); }

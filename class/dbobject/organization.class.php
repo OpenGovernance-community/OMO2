@@ -1112,6 +1112,9 @@
 				'admin' => array(
 					'label' => 'Admin',
 				),
+				'governance' => array(
+					'label' => 'Hors réorg',
+				),
 			);
 		}
 
@@ -1246,10 +1249,16 @@
 		/** Adapt application copy only, before interpolation and HTML escaping. */
 		public static function formatLexiconText(string $text, ?array $lexicon = null): string
 		{
-			$pattern = '~(?<![\pL\pN_/{.\\\\|-])(?:(le|du|au|ce|de)\s+)?(holons?)(?![\pL\pN_}/\\\\|-]|\.[\pL\pN_])~iu';
+			$pattern = '~(?<![\pL\pN_/{.\\\\|-])(?:(?:(le|du|au|ce|de)\s+)?(holons?)|(hors\s+r[ée]org(?:anisation)?))(?![\pL\pN_}/\\\\|-]|\.[\pL\pN_])~iu';
 			if (!preg_match($pattern, $text)) return $text;
 			$lexicon ??= self::getLexiconForOrganizationId((int)($_SESSION['currentOrganization'] ?? 0));
 			return preg_replace_callback($pattern, static function (array $match) use ($lexicon): string {
+				if (!empty($match[3])) {
+					$label = self::getLexiconLabel($lexicon, 'governance');
+					if ($label === self::getDefaultLexicon()['governance']['label']) return $match[0];
+					$upper = $match[3][0] === 'H';
+					return ($upper ? mb_strtoupper(mb_substr($label, 0, 1)) : mb_strtolower(mb_substr($label, 0, 1))) . mb_substr($label, 1);
+				}
 				$plural = strtolower($match[2]) === 'holons';
 				$label = self::getLexiconLabel($lexicon, 'space', $plural);
 				$upper = $match[2][0] === 'H';

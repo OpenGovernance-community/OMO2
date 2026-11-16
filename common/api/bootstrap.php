@@ -12,7 +12,7 @@ try {
 }
 // Never expose stack traces, SQL, payloads or tokens through either transport.
 set_exception_handler(static function (Throwable $error): void {
-    error_log('OMO API failure: ' . get_class($error));
+    error_log(sprintf('OMO API failure: %s at %s:%d', get_class($error), $error->getFile(), $error->getLine()));
     omoMcpJson(['error' => 'server_error', 'error_description' => 'Integration unavailable. Check dependencies, migrations and server logs.'], 503);
 });
 

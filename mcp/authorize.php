@@ -31,8 +31,8 @@ if (!$pending) {
 }
 omoMcpLoginIfNeeded('/mcp/authorize.php?request=' . $requestId);
 $userId = commonGetCurrentUserId();
-$organizations = omoMcpEligibleOrganizations($userId);
 $request = $pending['request'];
+$organizations = omoMcpEligibleOrganizations($userId, $request['transport'] ?? null);
 $allowCreate = omoMcpCanCreateDocuments($request);
 $allowMail = omoMcpCanSendMail($request);
 $allowEvent = omoMcpCanCreateEvents($request);
@@ -111,6 +111,7 @@ omoMcpPageStart(omoMcpUiT('title'), $request['redirect_uri']);
         <h2 class="generic-card-title generic-card-title--section" id="mcp-organization-title"><?= omoMcpEscape(omoMcpUiT('choose_heading')) ?></h2>
         <p><?= omoMcpEscape(omoMcpUiT('choose_hint')) ?></p>
         <input type="hidden" name="csrf" value="<?= omoMcpEscape($pending['csrf']) ?>">
+        <input type="hidden" name="_csrf" value="<?= omoMcpEscape(commonCsrfToken()) ?>">
         <?php if ($organizations): ?>
         <div class="generic-form-field">
             <label class="generic-form-label" for="organization_id"><?= omoMcpEscape(omoMcpUiT('organization')) ?></label>
@@ -120,7 +121,9 @@ omoMcpPageStart(omoMcpUiT('title'), $request['redirect_uri']);
                 <?php endforeach; ?>
             </select>
         </div>
-        <?php else: ?><p class="generic-soft-panel generic-soft-panel--tinted"><?= omoMcpEscape(omoMcpUiT('empty')) ?></p><?php endif; ?>
+        <?php else: ?><p class="generic-soft-panel generic-soft-panel--tinted"><?= omoMcpEscape(omoMcpUiT(match ($request['transport'] ?? null) {
+            'mcp' => 'empty_mcp', 'api' => 'empty_api', default => 'empty',
+        })) ?></p><?php endif; ?>
         <div class="generic-stack">
             <?php if ($organizations): ?>
             <button type="submit" class="generic-action-button generic-action-button--main generic-action-button--wide" name="decision" value="allow"><?= omoMcpEscape(omoMcpUiT($allowMail || $allowEvent || $allowDecision || $allowProject ? 'allow_scopes' : ($allowCreate ? 'allow_create' : 'allow'))) ?></button>

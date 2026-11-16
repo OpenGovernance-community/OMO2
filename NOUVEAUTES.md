@@ -6,6 +6,10 @@ Les dates déjà indiquées sont conservées. Les dates manquantes sont reconsti
 
 ## 2026-11-16
 
+- MCP / reconnexion : les nouveaux clients demandent par défaut les accès de lecture et d’action disponibles, présentés au consentement. Le choix d’organisation respecte le transport demandé et les contributions Patreon individuelles ou organisationnelles. Les formulaires de consentement et de révocation sont compatibles avec la protection CSRF commune. Routage sans barre finale renforcé et journalisation de l’initialisation et de la découverte. Le déploiement Beta vérifie désormais l’échange OAuth et la découverte sur les deux formes de l’adresse MCP.
+
+- Lexique / décisions : le terme « Hors Réorg » peut être personnalisé par organisation depuis les paramètres du lexique. Le libellé choisi est repris dans les titres, boutons, aides et paramètres des décisions.
+
 - Décisions / paramètres : le décochage de « Consultation seule » est conservé après enregistrement et réouverture des paramètres du module.
 
 - MCP / connexion : les adresses `/mcp` et `/mcp/` acceptent directement les requêtes et les autorisations OAuth, y compris lorsque l’assistant retire la barre oblique finale. Les réponses `ping` ne provoquent plus d’erreur serveur lors de l’enregistrement des statistiques.

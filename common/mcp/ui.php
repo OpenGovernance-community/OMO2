@@ -19,7 +19,7 @@ function omoMcpUiBundle(): array
         'decision_heading' => ['text' => 'Créer des scrutins', 'context' => 'Decision creation permission heading.'],
         'scope_decision' => ['text' => 'L’assistant pourra créer les scrutins que vous demandez dans les espaces autorisés, avec des propositions et des invitations. Les propositions datées réservent des événements provisoires dans les agendas des participants. Les droits sont vérifiés à chaque création. L’envoi d’e-mails exige une autorisation distincte.', 'context' => 'Additional decisions:create OAuth consent, including native calendar reservations.'],
         'scope_event' => ['text' => 'L’assistant pourra créer les événements que vous demandez dans les espaces où votre compte en a le droit, avec les invités habituels ou ceux que vous choisissez. Les droits sont vérifiés à chaque création. Cette autorisation ne permet pas de modifier ou supprimer des événements existants.', 'context' => 'Additional events:create OAuth consent.'],
-        'scope_mail' => ['text' => 'L’assistant pourra envoyer les messages que vous lui demandez aux membres ou invités références dans un holon, une réunion, un projet ou une décision. Il doit disposer de vos droits de participation ou de gestion. Les décisions exigent un droit de gestion. Aucune adresse libre ne peut être fournie. Les destinataires et droits sont vérifiés avant chaque envoi, avec des limites de fréquence.', 'context' => 'Additional mail:send OAuth consent.'],
+        'scope_mail' => ['text' => 'L’assistant pourra envoyer les messages que vous lui demandez aux membres ou invités référencés dans un holon, une réunion, un projet ou une décision. Il doit disposer de vos droits de participation ou de gestion. Les décisions exigent un droit de gestion. Aucune adresse libre ne peut être fournie. Les destinataires et droits sont vérifiés avant chaque envoi, avec des limites de fréquence.', 'context' => 'Additional mail:send OAuth consent.'],
         'request_write' => ['text' => '{client} demande les accès présentés ci-dessous à votre compte OMO.', 'context' => 'Consent with optional writing scopes.'],
         'allow_scopes' => ['text' => 'Autoriser ces accès', 'context' => 'Approve the displayed OAuth scopes.'],
         'choose_heading' => ['text' => 'Choisir une organisation', 'context' => 'OAuth organization selection heading.'],
@@ -36,7 +36,9 @@ function omoMcpUiBundle(): array
         'scope_create' => ['text' => 'L’assistant pourra aussi enregistrer des textes et fichiers dans les espaces où votre compte a le droit de créer des documents. Les droits OMO sont vérifiés à chaque création. Cette autorisation ne permet pas de modifier ou supprimer des documents existants.', 'context' => 'Additional document creation scope on OAuth consent.'],
         'allow_create' => ['text' => 'Autoriser la lecture et la création de documents', 'context' => 'Approve read and document creation OAuth access.'],
         'deny' => ['text' => 'Refuser', 'context' => 'Deny OAuth consent.'],
-        'empty' => ['text' => "Aucune organisation éligible. Une adhésion active, un accès IA éligible et au moins une autorisation API ou MCP de l'organisation sont requis. Ces deux accès sont bloques par défaut dans ses paramètres de sécurité.", 'context' => 'No eligible organization; separate API and MCP opt-in policies.'],
+        'empty' => ['text' => 'Aucune organisation éligible. Une adhésion active, un accès couvert par votre contribution Patreon individuelle ou celle de l’organisation et une autorisation API ou MCP sont requis. Ces accès sont bloqués par défaut dans ses paramètres de sécurité.', 'context' => 'No eligible organization for a shared OAuth request without a specified transport.'],
+        'empty_mcp' => ['text' => 'Aucune organisation éligible pour le MCP. Une adhésion active et un accès couvert par votre contribution Patreon individuelle ou celle de l’organisation sont requis. L’organisation doit aussi autoriser le serveur MCP dans Paramètres > Sécurité.', 'context' => 'MCP OAuth consent cannot offer an organization that only permits REST API access.'],
+        'empty_api' => ['text' => 'Aucune organisation éligible pour l’API REST. Une adhésion active et un accès couvert par votre contribution Patreon individuelle ou celle de l’organisation sont requis. L’organisation doit aussi autoriser l’API REST dans Paramètres > Sécurité.', 'context' => 'REST OAuth consent requires the independent API security switch.'],
         'invalid' => ['text' => 'Demande invalide ou expirée. Relancez la connexion depuis votre assistant.', 'context' => 'Persistent OAuth request validation error.'],
         'connections' => ['text' => 'Mes connexions aux assistants', 'context' => 'MCP grant management page title and link.'],
         'connections_intro' => ['text' => 'Chaque connexion autorise les opérations acceptées lors du consentement, dans une organisation. Vous pouvez retirer cet accès ici.', 'context' => 'MCP grant management page introduction.'],
@@ -44,7 +46,7 @@ function omoMcpUiBundle(): array
         'revoke' => ['text' => 'Révoquer', 'context' => 'Revoke a personal MCP grant.'],
         'revoked' => ['text' => 'Accès révoqué.', 'context' => 'Topbar notification after personal grant revocation.'],
         'revoke_error' => ['text' => 'Impossible de révoquer cet accès. Rechargez la page.', 'context' => 'Topbar notification for invalid revocation form.'],
-        'expires' => ['text' => 'Autorisation valable jusqu au {date}', 'context' => 'Display the refresh grant expiration.'],
+        'expires' => ['text' => 'Autorisation valable jusqu’au {date}', 'context' => 'Display the refresh grant expiration.'],
     ];
     $lang = loadTranslationBundle('common_mcp_ui', commonAuthGetTranslationLocale(), $sourceLang);
     return $bundle = [$lang, $sourceLang];
@@ -57,6 +59,8 @@ function omoMcpUiT(string $key, array $variables = []): string
 function omoMcpEscape(string $text): string { return htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
 function omoMcpPageStart(string $title, ?string $redirectUri = null): void
 {
+    // Native same-origin forms must retain their Origin for the shared CSRF guard.
+    header('Referrer-Policy: same-origin');
     $formAction = "'self'";
     if ($redirectUri !== null) {
         // Only pass the callback from the validated, session-stored OAuth request.
@@ -95,14 +99,14 @@ function omoMcpLoginIfNeeded(string $returnTo): void
         'appName' => omoMcpUiT('brand'), 'returnTo' => $returnTo, 'layout' => 'public']);
     exit;
 }
-function omoMcpEligibleOrganizations(int $userId): array
+function omoMcpEligibleOrganizations(int $userId, ?string $transport = null): array
 {
     require_once dirname(__DIR__) . '/patreon.php';
     $user = new \dbObject\User();
     if (!$user->load($userId)) return [];
     $items = [];
     foreach ($user->getAccessibleOrganizations() as $organization) {
-        if (($organization->isMcpEnabled() || $organization->isApiEnabled()) && \dbObject\UserOrganization::hasActiveMembership($userId, (int)$organization->getId())
+        if (\dbObject\Organization::allowsExternalIntegration((int)$organization->getId(), $transport) && \dbObject\UserOrganization::hasActiveMembership($userId, (int)$organization->getId())
             && patreonUserCanUseAi($userId, (int)$organization->getId()) && $organization->canViewDetail()) $items[] = $organization;
     }
     return $items;

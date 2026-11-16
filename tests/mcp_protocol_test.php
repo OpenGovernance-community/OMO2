@@ -13,6 +13,10 @@ $_ENV['MCP_ALLOW_LOCAL_HTTP'] = '0';
 mcpProtocolCheck(omoMcpPublicUrl() === 'https://mcp.example.invalid/mcp', 'Canonical resource URL');
 mcpProtocolCheck(omoMcpNormalizeResource('https://mcp.example.invalid/mcp/') === omoMcpPublicUrl(), 'Trailing slash maps to configured resource');
 mcpProtocolCheck(omoMcpAuthorizationMetadata()['issuer'] === 'https://mcp.example.invalid', 'OAuth issuer');
+mcpProtocolCheck(omoMcpAuthorizationMetadata()['authorization_endpoint'] === 'https://mcp.example.invalid/mcp/authorize.php?transport=mcp', 'MCP discovery selects the MCP security policy at consent');
+mcpProtocolCheck(omoMcpResourceMetadata()['scopes_supported'] === omoMcpSupportedScopes()
+    && omoMcpAuthorizationMetadata()['scopes_supported'] === omoMcpSupportedScopes(), 'Both discovery documents announce all supported scopes');
+mcpProtocolCheck(str_contains(omoMcpChallenge(), 'scope="' . implode(' ', omoMcpSupportedScopes()) . '"'), 'Initial authorization challenge includes writing scopes');
 $_ENV['MCP_PUBLIC_URL'] = 'https://mcp.example.invalid/mcp/';
 mcpProtocolCheck(omoMcpPublicUrl() === 'https://mcp.example.invalid/mcp/', 'Canonical trailing slash is preserved');
 mcpProtocolCheck(omoMcpNormalizeResource('https://mcp.example.invalid/mcp') === omoMcpPublicUrl(), 'Missing trailing slash maps to configured resource');

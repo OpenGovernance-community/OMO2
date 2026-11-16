@@ -455,7 +455,7 @@ function omoUiJsSourceLang(): array
         'copy_la_requete_a_echoue' => ['text' => 'La requête a échoué.', 'context' => 'JavaScript interface text in common/chat/thread.js'],
         'copy_la_fenetre_de_discussion_ne_peut_pas_etre_ouverte' => ['text' => 'La fenêtre de discussion ne peut pas être ouverte.', 'context' => 'JavaScript interface text in common/chat/thread.js'],
         'copy_decision' => ['text' => 'Décision', 'context' => 'JavaScript interface text in common/choice/decision_cards.js'],
-        'copy_modifier_la_decision_hors_reorg' => ['text' => 'Modifier la décision hors reorg', 'context' => 'JavaScript interface text in common/choice/proposal-discussion.js'],
+        'copy_modifier_la_decision_hors_reorg' => ['text' => 'Modifier la décision hors réorg', 'context' => 'JavaScript interface text in common/choice/proposal-discussion.js'],
         'copy_reponse_serveur_invalide' => ['text' => 'Réponse serveur invalide.', 'context' => 'JavaScript interface text in common/team/user-actions.js'],
         'copy_validation_enregistree' => ['text' => 'Validation enregistrée.', 'context' => 'JavaScript interface text in common/team/user-actions.js'],
         'copy_trop_de_propositions_selectionnees' => ['text' => 'Trop de propositions sélectionnées.', 'context' => 'JavaScript interface text in omo/api/decision/modules/vote/module.js'],

@@ -860,9 +860,9 @@
                         window.commonTopbarCloseModal();
                     }
                     if (typeof window.omoDecisionOpenNestedDrawer === 'function') {
-                        window.omoDecisionOpenNestedDrawer((window.omoUiText || function (key, fallback) { return fallback; })("copy_modifier_la_decision_hors_reorg", "Modifier la décision hors reorg"), payload.governanceEditorUrl, '');
+                        window.omoDecisionOpenNestedDrawer((window.omoUiText || function (key, fallback) { return fallback; })("copy_modifier_la_decision_hors_reorg", "Modifier la décision hors réorg"), payload.governanceEditorUrl, '');
                     } else if (typeof window.commonTopbarOpenDrawer === 'function') {
-                        window.commonTopbarOpenDrawer((window.omoUiText || function (key, fallback) { return fallback; })("copy_modifier_la_decision_hors_reorg", "Modifier la décision hors reorg"), payload.governanceEditorUrl, 'fetch');
+                        window.commonTopbarOpenDrawer((window.omoUiText || function (key, fallback) { return fallback; })("copy_modifier_la_decision_hors_reorg", "Modifier la décision hors réorg"), payload.governanceEditorUrl, 'fetch');
                     } else {
                         window.location.href = payload.governanceEditorUrl;
                     }

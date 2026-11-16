@@ -3,7 +3,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/mcp_test_helpers.php';
 $endpoint = omoMcpPublicUrl();
 $host = parse_url($endpoint, PHP_URL_HOST);
-mcpCheck(in_array($host, ['localtest.me', 'dev.opengov.tools'], true), 'Discovery smoke test is restricted to local Docker and Dev');
+mcpCheck(in_array($host, ['localtest.me', 'dev.opengov.tools', 'beta.opengov.tools'], true), 'Discovery smoke test is restricted to local Docker, Dev and Beta');
 if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
 
 function mcpDeployedRequest(string $path, array $body, ?string $token = null, bool $form = false): array
@@ -34,20 +34,27 @@ function mcpDeployedRequest(string $path, array $body, ?string $token = null, bo
 $items = mcpFixtures();
 try {
     mcpEnableDocumentCreation($items);
-    $request = mcpAuthorizationRequest($items['client']);
-    $request['scope'] = OMO_MCP_SCOPE . ' ' . OMO_MCP_CREATE_SCOPE;
+    $registration = mcpDeployedRequest('/mcp/register.php', ['client_name' => 'MCP discovery fixture',
+        'redirect_uris' => ['https://client.example.invalid/callback'], 'token_endpoint_auth_method' => 'none']);
+    mcpCheck($registration['status'] === 201 && ($registration['json']['scope'] ?? '') === implode(' ', omoMcpSupportedScopes()), 'Fresh client registration includes all available action scopes');
+    $client = \dbObject\McpOauthClient::findByClientId($registration['json']['client_id']);
+    mcpCheck($client !== null, 'Fresh OAuth client persisted');
+    $items['registered_client'] = $client;
+    $request = mcpAuthorizationRequest($client);
+    unset($request['scope']);
     $alternateResource = str_ends_with($endpoint, '/') ? substr($endpoint, 0, -1) : $endpoint . '/';
     $request = omoMcpValidateAuthorization(array_replace($request, ['resource' => $alternateResource,
-        'response_type' => 'code', 'code_challenge_method' => 'S256']), $items['client']);
+        'response_type' => 'code', 'code_challenge_method' => 'S256', 'transport' => 'mcp']), $client);
     mcpCheck($request['resource'] === $endpoint, 'OAuth consent normalizes the alternate endpoint spelling');
-    $code = \dbObject\McpOauthGrant::issueCode($items['client'], (int)$items['user']->getId(), (int)$items['org']->getId(), $request);
-    $exchange = array_replace(mcpExchangeRequest($items['client'], $code), ['resource' => $alternateResource]);
+    $code = \dbObject\McpOauthGrant::issueCode($client, (int)$items['user']->getId(), (int)$items['org']->getId(), $request);
+    $exchange = array_replace(mcpExchangeRequest($client, $code), ['resource' => $alternateResource]);
     $foreignResource = mcpDeployedRequest('/mcp/token.php', array_replace($exchange, ['resource' => 'https://evil.invalid/mcp/']), null, true);
     mcpCheck($foreignResource['status'] === 400 && ($foreignResource['json']['error'] ?? '') === 'invalid_target', 'OAuth token exchange rejects foreign resources');
     $tokens = mcpDeployedRequest('/mcp/token.php', $exchange, null, true);
     mcpCheck($tokens['status'] === 200 && isset($tokens['json']['access_token']), 'Deployed OAuth token exchange failed');
+    mcpCheck($tokens['json']['scope'] === implode(' ', omoMcpSupportedScopes()), 'Default writing consent survives the token exchange');
     $tokens = mcpDeployedRequest('/mcp/token.php', ['grant_type' => 'refresh_token',
-        'client_id' => $items['client']->get('client_id'), 'refresh_token' => $tokens['json']['refresh_token'],
+        'client_id' => $client->get('client_id'), 'refresh_token' => $tokens['json']['refresh_token'],
         'resource' => $alternateResource], null, true);
     mcpCheck($tokens['status'] === 200 && isset($tokens['json']['access_token']), 'OAuth refresh accepts the alternate endpoint spelling');
     $token = $tokens['json']['access_token'];

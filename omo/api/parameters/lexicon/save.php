@@ -52,6 +52,9 @@ $submittedLexicon = array(
     'admin' => array(
         'label' => (string)($_POST['admin_label'] ?? ''),
     ),
+    'governance' => array(
+        'label' => (string)($_POST['governance_label'] ?? ''),
+    ),
 );
 foreach (\dbObject\Property::TYPES as $type) {
     $submittedLexicon[$type] = ['label' => (string)($_POST[$type . '_label'] ?? ''), 'enabled' => !empty($_POST[$type . '_enabled'])];

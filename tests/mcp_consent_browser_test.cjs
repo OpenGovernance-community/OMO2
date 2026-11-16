@@ -33,9 +33,20 @@ const {chromium} = require(process.argv[2] || 'playwright');
         assert.equal((await login.json()).status, 'ok');
         const page = await context.newPage();
         const violations = [];
+        let consentStatus;
+        let consentError;
+        page.on('response', async response => {
+            if (response.request().method() === 'POST' && new URL(response.url()).pathname === '/mcp/authorize.php') {
+                consentStatus = response.status();
+                if (response.headers()['content-type']?.includes('application/json')) consentError = (await response.json()).error_description;
+            }
+        });
         page.on('console', message => { if (message.text().includes('form-action')) violations.push(message.text()); });
         for (const decision of ['allow', 'deny']) {
             await page.goto(config.origin + config.authorization);
+            for (const heading of ['Créer des documents', 'Envoyer des e-mails', 'Créer des événements', 'Créer des scrutins', 'Créer et modifier des projets']) {
+                assert.equal(await page.getByRole('heading', {name: heading, exact: true}).count(), 1, 'Fresh consent displays each action scope');
+            }
             const callback = page.waitForURL(callbackUrl + '?**', {timeout: 5000});
             // Attach a rejection handler immediately while Chromium processes the form submission.
             callback.catch(() => {});
@@ -47,12 +58,41 @@ const {chromium} = require(process.argv[2] || 'playwright');
                 console.log('mcp_consent_browser_test: original CSP failure reproduced');
                 return;
             }
-            await callback;
+            await callback.catch(error => {
+                throw new Error('OAuth callback failed, consent HTTP ' + consentStatus + ', error ' + consentError + ', CSP violations ' + violations.length, {cause: error});
+            });
             const result = new URL(page.url()).searchParams;
             assert.equal(result.get('state'), 'test-state');
             assert.equal(result.get('iss'), config.origin);
-            if (decision === 'allow') assert(result.get('code'));
-            else assert.equal(result.get('error'), 'access_denied');
+            if (decision === 'allow') {
+                assert(result.get('code'));
+                const authorization = new URL(config.authorization, config.origin).searchParams;
+                const tokenResponse = await context.request.post(config.origin + '/mcp/token.php', {form: {
+                    grant_type: 'authorization_code', client_id: authorization.get('client_id'),
+                    code: result.get('code'), redirect_uri: callbackUrl,
+                    resource: authorization.get('resource').replace(/\/$/, ''), code_verifier: config.code_verifier
+                }});
+                assert.equal(tokenResponse.status(), 200, 'Browser consent exchanges a code for the endpoint without a trailing slash');
+                const tokens = await tokenResponse.json();
+                assert.deepEqual(tokens.scope.split(' '), ['organization:read', 'documents:create', 'mail:send', 'events:create', 'decisions:create', 'projects:write']);
+                for (const path of ['/mcp', '/mcp/']) {
+                    const headers = {Authorization: 'Bearer ' + tokens.access_token, 'MCP-Protocol-Version': '2025-11-25'};
+                    const initialized = await context.request.post(config.origin + path, {headers, maxRedirects: 0, data: {
+                        jsonrpc: '2.0', id: 1, method: 'initialize', params: {
+                            protocolVersion: '2025-11-25', capabilities: {}, clientInfo: {name: 'browser-reconnection-test', version: '1'}
+                        }
+                    }});
+                    assert.equal(initialized.status(), 200, 'MCP-only organization initializes without redirect');
+                    assert((await initialized.json()).result.capabilities.tools);
+                    const listed = await context.request.post(config.origin + path, {headers, maxRedirects: 0,
+                        data: {jsonrpc: '2.0', id: 2, method: 'tools/list'}});
+                    assert.equal(listed.status(), 200, 'Fresh browser consent discovers tools without redirect');
+                    const names = (await listed.json()).result.tools.map(tool => tool.name);
+                    for (const name of ['omo_send_object_email', 'omo_create_event', 'omo_create_document', 'omo_create_decision', 'omo_create_project']) {
+                        assert(names.includes(name), 'Discovery includes each authorized action');
+                    }
+                }
+            } else assert.equal(result.get('error'), 'access_denied');
         }
         assert.equal(violations.length, 0, 'Registered OAuth callback must not trigger CSP');
         assert(callbackMethods.length >= 2 && callbackMethods.every(method => method === 'GET'), 'Callback redirects use GET');
