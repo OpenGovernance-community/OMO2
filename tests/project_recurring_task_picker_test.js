@@ -46,6 +46,11 @@ const root = path.join(__dirname, '..');
                     data-activity-schedule-options='{"weekly":[{"value":"1","label":"Monday"}],"daily":[{"value":"0","label":"Every day"}]}'>
                     <input name="project_id" value="42" type="hidden"><input name="title" value="Project task">
                     <input name="activity_action" value="save_activity" type="hidden">
+                    <span class="generic-form-control-group">
+                        <input type="text" readonly data-holon-target-label value="Team">
+                        <input type="hidden" name="IDholon" data-holon-target-id value="10">
+                        <button type="button" data-holon-target-selector='{"organizationId":7,"selectableHolonIds":[10,20],"allowOrganization":false,"labels":{"title":"Choose space","hint":"Choose a permitted circle or role","confirm":"Choose this space","cancel":"Cancel"}}'>Choose space</button>
+                    </span>
                     <select name="frequency" data-activity-frequency><option value="weekly">Weekly</option><option value="daily">Daily</option></select>
                     <select name="schedule" data-activity-schedule data-selected-value="1"></select>
                     <div data-activity-html-editor-container><div data-activity-html-editor></div><textarea name="description" hidden data-activity-html-value>Initial description</textarea></div>
@@ -74,6 +79,14 @@ const root = path.join(__dirname, '..');
             'common/holon_scope_picker.js', 'common/document/embed-picker.js', 'omo/assets/js/simple-html-field.js', 'common/recurring-task/editor.js', 'omo/api/projects/projects.js']) {
             await page.addScriptTag({path: path.join(root, file)});
         }
+        await page.evaluate(() => {
+            const mountPicker = window.omoMountHolonScopePicker;
+            window.omoMountHolonScopePicker = settings => {
+                const picker = mountPicker(settings);
+                if (settings.host.matches('[data-holon-target-map]')) window.taskSpacePicker = picker;
+                return picker;
+            };
+        });
         const openEditor = async () => {
             await page.locator('[data-omo-project-recurring-task-editor-url]').click();
             await page.waitForFunction(() => document.getElementById('omo-project-activity-editor-form')?.dataset.activityEditorReady === '1');
@@ -92,6 +105,15 @@ const root = path.join(__dirname, '..');
         await page.locator('[data-omo-projects-document-drawer]').waitFor({state: 'hidden'});
         assert.equal(await page.evaluate(() => window.posts.length), 0, 'Cancel creates nothing.');
         await openEditor();
+        await page.locator('[data-holon-target-selector]').click();
+        await page.locator('[data-holon-target-map] canvas').waitFor();
+        await page.locator('[data-holon-target-apply]').waitFor();
+        assert.equal(await page.locator('[data-omo-projects-document-drawer]').isVisible(), true, 'Space selection must preserve the task editor.');
+        await page.evaluate(() => window.taskSpacePicker.setSelectedHolonId(20));
+        await page.locator('[data-holon-target-apply]').click();
+        await page.waitForFunction(() => document.getElementById('commonTopbarModal').hidden);
+        assert.equal(await page.locator('[name="IDholon"]').inputValue(), '20');
+        assert.equal(await page.locator('[data-holon-target-label]').inputValue(), 'Peer');
         await page.locator('[data-activity-frequency]').selectOption('daily');
         assert.equal(await page.locator('[data-activity-schedule]').inputValue(), '0');
         await page.locator('[data-activity-html-editor]').evaluate(el => el.__omoSimpleHtmlField.setValue('<p>Task description</p>'));
@@ -100,6 +122,7 @@ const root = path.join(__dirname, '..');
         await page.locator('[data-omo-projects-document-drawer]').waitFor({state: 'hidden'});
         assert.deepEqual(await page.evaluate(() => window.saved[0]), {projectId: 42, resourceType: 'recurring_task', resourceId: 9});
         assert.equal(await page.evaluate(() => window.posts[0].project_id), '42');
+        assert.equal(await page.evaluate(() => window.posts[0].IDholon), '20', 'Saving must submit the selected space.');
         assert.equal(await page.evaluate(() => window.posts[0].description), '<p>Task description</p>');
         assert.equal(await page.evaluate(() => window.posts[0].frequency), 'daily');
         assert.equal(await page.evaluate(() => window.posts[0].display_lead_value), '3');

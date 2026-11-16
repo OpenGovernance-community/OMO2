@@ -13,9 +13,19 @@ if ($action === 'save_activity') {
         if (!$project) { omoActivityRespond(false, omoActivityT('activity.error.forbidden')); }
     }
     $id = (int)($_POST['id'] ?? 0); $activity = new ControlActivity(); if ($id > 0 && (!$activity->load($id) || (int)$activity->get('IDorganization') !== $oid || (int)$activity->get('active') !== 1)) { omoActivityRespond(false, omoActivityT('activity.error.not_found')); }
-    if ($id > 0 ? !omoActivityCanEdit($activity) : !omoActivityCanUsePermission($context['currentHolon'], 'CAN_CREATE_RECURRING_TASK', $oid)) { omoActivityRespond(false, omoActivityT('activity.error.forbidden')); }
+    if ($id > 0 && !omoActivityCanEdit($activity)) { omoActivityRespond(false, omoActivityT('activity.error.forbidden')); }
+    $sourceHolonId = $id > 0 ? (int)$activity->get('IDholon') : (int)($context['currentHolon']?->getId() ?? 0);
+    $targetHolonId = array_key_exists('IDholon', $_POST) ? filter_var($_POST['IDholon'], FILTER_VALIDATE_INT) : $sourceHolonId;
+    if ($targetHolonId === false || $targetHolonId < 0) { omoActivityRespond(false, omoActivityT('activity.error.forbidden')); }
+    if ($id === 0 || $targetHolonId !== $sourceHolonId) {
+        $allowedHolonIds = omoActivityCreationHolonIds($context);
+        $canAssign = $targetHolonId > 0 ? in_array($targetHolonId, $allowedHolonIds, true)
+            : !($context['rootHolon'] instanceof \dbObject\Holon) && omoActivityCanUsePermission(null, 'CAN_CREATE_RECURRING_TASK', $oid);
+        if (!$canAssign) { omoActivityRespond(false, omoActivityT('activity.error.forbidden')); }
+    }
     $title = trim((string)($_POST['title'] ?? '')); $frequency = RecurrenceSchedule::normalizeFrequency($_POST['frequency'] ?? ''); $schedule = RecurrenceSchedule::normalizeSchedule($frequency, $_POST['schedule'] ?? ''); if ($title === '') { omoActivityRespond(false, omoActivityT('activity.error.title')); } if (!$frequency || !$schedule) { omoActivityRespond(false, omoActivityT('activity.error.schedule')); } $responsibleUserId = isset($_POST['IDuser_responsible']) && is_numeric($_POST['IDuser_responsible']) ? (int)$_POST['IDuser_responsible'] : 0; if ($responsibleUserId > 0 && !UserOrganization::hasActiveMembership($responsibleUserId, $oid)) { $responsibleUserId = 0; }
-    if ($id === 0) { $activity->set('IDorganization', $oid); $activity->set('IDholon', $context['currentHolon'] instanceof \dbObject\Holon ? (int)$context['currentHolon']->getId() : null); $activity->set('position', 0); $activity->set('active', 1); }
+    if ($id === 0) { $activity->set('IDorganization', $oid); $activity->set('position', 0); $activity->set('active', 1); }
+    $activity->set('IDholon', $targetHolonId > 0 ? $targetHolonId : null);
     $activity->set('title', $title); $activity->set('description', trim((string)($_POST['description'] ?? ''))); $activity->set('frequency', $frequency); $activity->set('schedule', $schedule); $activity->set('IDuser_responsible', $responsibleUserId > 0 ? $responsibleUserId : null); $activity->set('display_lead_value', max(0, (int)($_POST['display_lead_value'] ?? 0))); $activity->set('display_lead_unit', $_POST['display_lead_unit'] ?? 'day'); $activity->set('execution_duration_value', max(1, (int)($_POST['execution_duration_value'] ?? 1))); $activity->set('execution_duration_unit', $_POST['execution_duration_unit'] ?? 'day');
     $pdo = DbObject::getPdo();
     if (($project || $activity->hasProjectAssociation())

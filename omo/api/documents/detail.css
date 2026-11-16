@@ -19,9 +19,10 @@
     margin-right: var(--omo-document-detail-article-margin-inline);
 }
 
-.omo-document-detail__actions {
-    display: flex;
-    justify-content: flex-end;
+.omo-document-detail__section,
+.omo-document-detail__content,
+.omo-document-detail__keyword-actions {
+    min-width: 0;
 }
 
 .omo-document-detail__more-actions {
@@ -75,6 +76,7 @@
 
 .omo-document-detail__keyword-actions {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
@@ -93,7 +95,8 @@
 }
 
 .omo-document-detail__fullscreen-button {
-    flex: 0 0 auto;
+    flex: 0 1 auto;
+    min-width: 0;
     min-height: 30px;
     padding: 5px 10px;
     font-size: 0.76rem;
@@ -101,8 +104,11 @@
 
 .omo-document-detail__preview-actions {
     display: flex;
-    flex: 0 0 auto;
-    flex-wrap: wrap;
+    flex: 0 1 auto;
+    min-width: 0;
+    flex-wrap: nowrap;
+    align-items: center;
+    margin-left: auto;
     justify-content: flex-end;
     gap: 8px;
 }

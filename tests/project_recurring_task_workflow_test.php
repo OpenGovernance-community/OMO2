@@ -60,6 +60,83 @@ try {
     $items['edit_permission'] = mcpFixture(\dbObject\HolonPermission::class, ['IDholon' => $hid, 'IDpermission' => \dbObject\Permission::findByKey('CAN_EDIT_RECURRING_TASK')->getId(), 'member_type' => 'member', 'range' => 'self']);
     $savedAgain = json_decode(projectRecurringTaskRequest($request), true, 512, JSON_THROW_ON_ERROR);
     mcpCheck(!empty($savedAgain['status']), 'Saving again must retain the existing link.');
+    foreach (['circle' => 2, 'role' => 1] as $kind => $typeId) {
+        $items['target_' . $kind] = $target = mcpFixture(McpTestHolon::class, [
+            'IDorganization' => $oid, 'IDholon_org' => $items['root']->getId(),
+            'IDholon_parent' => $items['root']->getId(), 'IDtypeholon' => $typeId,
+            'name' => 'Task target ' . $kind, 'active' => 1, 'visible' => 1,
+        ]);
+        $items['target_member_' . $kind] = mcpFixture(\dbObject\UserHolon::class,
+            ['IDholon' => $target->getId(), 'IDuser' => $uid, 'active' => 1, 'is_membership' => 1]);
+        $items['target_permission_' . $kind] = mcpFixture(\dbObject\HolonPermission::class, [
+            'IDholon' => $target->getId(), 'IDpermission' => \dbObject\Permission::findByKey('CAN_CREATE_RECURRING_TASK')->getId(),
+            'member_type' => 'member', 'range' => 'self',
+        ]);
+    }
+    $selectorRequest = $request;
+    $selectorRequest['endpoint'] = 'activities/edit.php'; $selectorRequest['post'] = [];
+    $selectorRequest['get'] = ['oid' => $oid, 'cid' => $hid];
+    $readSelector = static function (string $html): array {
+        $document = new DOMDocument();
+        @$document->loadHTML('<?xml encoding="UTF-8">' . $html);
+        $xpath = new DOMXPath($document);
+        $button = $xpath->query('//*[@data-holon-target-selector]')->item(0);
+        mcpCheck($button instanceof DOMElement, 'The task editor must offer the shared circle and role selector.');
+        $field = $xpath->query('//input[@name="IDholon"]')->item(0);
+        return ['id' => (int)$field->getAttribute('value'),
+            'config' => json_decode($button->getAttribute('data-holon-target-selector'), true, 512, JSON_THROW_ON_ERROR)];
+    };
+    $selector = $readSelector(projectRecurringTaskRequest($selectorRequest));
+    mcpCheck($selector['id'] === $hid, 'Creation must default to the context holon.');
+    $allowedIds = $selector['config']['selectableHolonIds'];
+    foreach ([$hid, $items['target_circle']->getId(), $items['target_role']->getId()] as $allowedId) {
+        mcpCheck(in_array($allowedId, $allowedIds, true), 'Permitted circles and roles must be selectable.');
+    }
+    foreach (['root', 'hidden', 'inactive', 'other_root'] as $key) {
+        mcpCheck(!in_array($items[$key]->getId(), $allowedIds, true), 'Forbidden destinations must be excluded: ' . $key);
+    }
+    foreach ([$items['root']->getId(), $items['hidden']->getId(), $items['inactive']->getId(), $items['other_root']->getId(), 0, -1, 'invalid'] as $forbiddenId) {
+        $rejectedMove = $request; $rejectedMove['post']['IDholon'] = $forbiddenId;
+        $moveResult = json_decode(projectRecurringTaskRequest($rejectedMove), true, 512, JSON_THROW_ON_ERROR);
+        mcpCheck(empty($moveResult['status']), 'The endpoint must reject a forbidden or invalid destination.');
+        $task->load((int)$task->getId(), true);
+        mcpCheck((int)$task->get('IDholon') === $hid, 'A rejected move must preserve the task space.');
+    }
+    $movedRequest = $request; $movedRequest['post']['IDholon'] = $items['target_role']->getId();
+    $items['edit_permission']->set('range', \dbObject\HolonPermission::RANGE_DIRECT_CHILDREN); $items['edit_permission']->save();
+    $withoutSourceEdit = json_decode(projectRecurringTaskRequest($movedRequest), true, 512, JSON_THROW_ON_ERROR);
+    mcpCheck(empty($withoutSourceEdit['status']), 'Creating in the destination must not bypass source editing rights.');
+    $items['edit_permission']->set('range', 'self'); $items['edit_permission']->save();
+    $moved = json_decode(projectRecurringTaskRequest($movedRequest), true, 512, JSON_THROW_ON_ERROR);
+    mcpCheck(!empty($moved['status']), 'Editing the source and creating in the destination must allow a move.');
+    $task->load((int)$task->getId(), true);
+    mcpCheck((int)$task->get('IDholon') === $items['target_role']->getId(), 'Moving must persist the selected role.');
+    $selectorRequest['get']['id'] = $task->getId();
+    $items['target_edit_permission'] = mcpFixture(\dbObject\HolonPermission::class, [
+        'IDholon' => $items['target_role']->getId(), 'IDpermission' => \dbObject\Permission::findByKey('CAN_EDIT_RECURRING_TASK')->getId(),
+        'member_type' => 'member', 'range' => 'self',
+    ]);
+    $selector = $readSelector(projectRecurringTaskRequest($selectorRequest));
+    mcpCheck($selector['id'] === $items['target_role']->getId(), 'Editing from another context must show the associated holon.');
+    $items['target_permission_role']->delete(); unset($items['target_permission_role']);
+    $sameSpace = json_decode(projectRecurringTaskRequest($movedRequest), true, 512, JSON_THROW_ON_ERROR);
+    mcpCheck(!empty($sameSpace['status']), 'Keeping the current space only requires editing rights.');
+    unset($movedRequest['post']['IDholon']);
+    $legacySave = json_decode(projectRecurringTaskRequest($movedRequest), true, 512, JSON_THROW_ON_ERROR);
+    mcpCheck(!empty($legacySave['status']), 'Older callers without IDholon must preserve the associated space.');
+    $task->load((int)$task->getId(), true);
+    mcpCheck((int)$task->get('IDholon') === $items['target_role']->getId(), 'Legacy saves must not move back to the context.');
+    $movedRequest['post']['IDholon'] = $hid;
+    mcpCheck(!empty(json_decode(projectRecurringTaskRequest($movedRequest), true, 512, JSON_THROW_ON_ERROR)['status']), 'Moving back to an authorized space must succeed.');
+    $movedRequest['post']['IDholon'] = $items['target_role']->getId();
+    $revokedMove = json_decode(projectRecurringTaskRequest($movedRequest), true, 512, JSON_THROW_ON_ERROR);
+    mcpCheck(empty($revokedMove['status']), 'The endpoint must recheck destination permissions after revocation.');
+    $creationRequest = $request; unset($creationRequest['post']['id'], $creationRequest['post']['project_id']);
+    $creationRequest['post']['IDholon'] = $items['target_circle']->getId();
+    $creation = json_decode(projectRecurringTaskRequest($creationRequest), true, 512, JSON_THROW_ON_ERROR);
+    mcpCheck(!empty($creation['status']), 'Creation must accept a selected permitted circle.');
+    $items['selected_space_task'] = new ControlActivity(); $items['selected_space_task']->load((int)$creation['id']);
+    mcpCheck((int)$items['selected_space_task']->get('IDholon') === $items['target_circle']->getId(), 'Creation must persist the selected circle.');
     $catalogRequest = $request; $catalogRequest['endpoint'] = 'projects/resources.php'; $catalogRequest['post'] = [];
     $catalogRequest['get'] = ['oid' => $oid, 'cid' => $hid, 'id' => $project->getId(), 'type' => 'recurring_task', 'picker' => 1];
     $catalog = json_decode(projectRecurringTaskRequest($catalogRequest), true, 512, JSON_THROW_ON_ERROR);

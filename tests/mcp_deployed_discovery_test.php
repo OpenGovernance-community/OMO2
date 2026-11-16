@@ -25,6 +25,7 @@ function mcpDeployedRequest(string $path, array $body, ?string $token = null, bo
     // Never log tokens, callback codes, bodies or organization/user data.
     echo '[MCP smoke] ' . json_encode(['path' => $path, 'method' => $body['method'] ?? 'token',
         'status' => $status, 'json' => is_array($json), 'curl_error' => curl_errno($curl),
+        'oauth_error' => is_string($json['error'] ?? null) ? $json['error'] : null,
         'rpc_error' => $json['error']['code'] ?? null], JSON_THROW_ON_ERROR) . "\n";
     unset($curl);
     return ['status' => $status, 'json' => $json];
@@ -35,21 +36,36 @@ try {
     mcpEnableDocumentCreation($items);
     $request = mcpAuthorizationRequest($items['client']);
     $request['scope'] = OMO_MCP_SCOPE . ' ' . OMO_MCP_CREATE_SCOPE;
+    $alternateResource = str_ends_with($endpoint, '/') ? substr($endpoint, 0, -1) : $endpoint . '/';
+    $request = omoMcpValidateAuthorization(array_replace($request, ['resource' => $alternateResource,
+        'response_type' => 'code', 'code_challenge_method' => 'S256']), $items['client']);
+    mcpCheck($request['resource'] === $endpoint, 'OAuth consent normalizes the alternate endpoint spelling');
     $code = \dbObject\McpOauthGrant::issueCode($items['client'], (int)$items['user']->getId(), (int)$items['org']->getId(), $request);
-    $tokens = mcpDeployedRequest('/mcp/token.php', mcpExchangeRequest($items['client'], $code), null, true);
+    $exchange = array_replace(mcpExchangeRequest($items['client'], $code), ['resource' => $alternateResource]);
+    $foreignResource = mcpDeployedRequest('/mcp/token.php', array_replace($exchange, ['resource' => 'https://evil.invalid/mcp/']), null, true);
+    mcpCheck($foreignResource['status'] === 400 && ($foreignResource['json']['error'] ?? '') === 'invalid_target', 'OAuth token exchange rejects foreign resources');
+    $tokens = mcpDeployedRequest('/mcp/token.php', $exchange, null, true);
     mcpCheck($tokens['status'] === 200 && isset($tokens['json']['access_token']), 'Deployed OAuth token exchange failed');
+    $tokens = mcpDeployedRequest('/mcp/token.php', ['grant_type' => 'refresh_token',
+        'client_id' => $items['client']->get('client_id'), 'refresh_token' => $tokens['json']['refresh_token'],
+        'resource' => $alternateResource], null, true);
+    mcpCheck($tokens['status'] === 200 && isset($tokens['json']['access_token']), 'OAuth refresh accepts the alternate endpoint spelling');
     $token = $tokens['json']['access_token'];
+    foreach (['/mcp', '/mcp/'] as $path) {
+        $unauthorized = mcpDeployedRequest($path, ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'ping']);
+        mcpCheck($unauthorized['status'] === 401, 'Both MCP URLs require bearer authentication without redirect');
+        $ping = mcpDeployedRequest($path, ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'ping'], $token);
+        mcpCheck($ping['status'] === 200 && isset($ping['json']['result']), 'Both MCP URLs accept authenticated POST without redirect');
+        $initialized = mcpDeployedRequest($path, ['jsonrpc' => '2.0', 'id' => 2, 'method' => 'initialize',
+            'params' => ['protocolVersion' => '2025-03-26', 'capabilities' => new stdClass(),
+                'clientInfo' => ['name' => 'omo-deployment-check', 'version' => '1']]], $token);
+        mcpCheck($initialized['status'] === 200 && isset($initialized['json']['result']['capabilities']['tools']), 'Both MCP URLs initialize without redirect');
+        $listed = mcpDeployedRequest($path, ['jsonrpc' => '2.0', 'id' => 3, 'method' => 'tools/list', 'params' => new stdClass()], $token);
+        $expectedTools = array_column(omoMcpTools(), 'name'); $discoveredTools = array_column($listed['json']['result']['tools'] ?? [], 'name');
+        sort($expectedTools); sort($discoveredTools);
+        mcpCheck($listed['status'] === 200 && $discoveredTools === $expectedTools, 'Deployed tool discovery must match the current operation registry');
+    }
     $path = parse_url($endpoint, PHP_URL_PATH);
-    $ping = mcpDeployedRequest($path, ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'ping'], $token);
-    mcpCheck($ping['status'] === 200 && isset($ping['json']['result']), 'Canonical MCP URL must accept authenticated POST without redirect');
-    $initialized = mcpDeployedRequest($path, ['jsonrpc' => '2.0', 'id' => 2, 'method' => 'initialize',
-        'params' => ['protocolVersion' => '2025-03-26', 'capabilities' => new stdClass(),
-            'clientInfo' => ['name' => 'omo-deployment-check', 'version' => '1']]], $token);
-    mcpCheck($initialized['status'] === 200 && isset($initialized['json']['result']['capabilities']['tools']), 'Deployed initialization failed');
-    $listed = mcpDeployedRequest($path, ['jsonrpc' => '2.0', 'id' => 3, 'method' => 'tools/list', 'params' => new stdClass()], $token);
-    $expectedTools = array_column(omoMcpTools(), 'name'); $discoveredTools = array_column($listed['json']['result']['tools'] ?? [], 'name');
-    sort($expectedTools); sort($discoveredTools);
-    mcpCheck($listed['status'] === 200 && $discoveredTools === $expectedTools, 'Deployed tool discovery must match the current operation registry');
     $info = mcpDeployedRequest($path, ['jsonrpc' => '2.0', 'id' => 4, 'method' => 'tools/call',
         'params' => ['name' => 'omo_connection_info', 'arguments' => new stdClass()]], $token);
     mcpCheck($info['status'] === 200 && ($info['json']['result']['structuredContent']['connected'] ?? false), 'Deployed tool call failed');

@@ -2,6 +2,7 @@
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/shared.php';
 require_once dirname(__DIR__) . '/projects/shared.php';
+require_once dirname(__DIR__, 3) . '/common/holon_scope_helper.php';
 
 use dbObject\ControlActivity;
 use dbObject\ArrayUserOrganization;
@@ -38,6 +39,21 @@ if ($deferredEditor) {
     foreach (['title', 'description', 'IDuser_responsible', 'frequency', 'schedule', 'display_lead_value', 'display_lead_unit', 'execution_duration_value', 'execution_duration_unit'] as $field) {
         if (array_key_exists($field, $deferredEditor['state'])) $activity->set($field, $deferredEditor['state'][$field]);
     }
+}
+
+if (!$deferredEditor) {
+    $selectedHolon = $activityId > 0 ? $activity->getHolon() : $context['currentHolon'];
+    $selectedHolonId = $activityId > 0 ? (int)$activity->get('IDholon') : (int)($selectedHolon?->getId() ?? 0);
+    $selectorLabels = commonHolonScopeTargetLabels(omoActivityT('activity.editor.holon_hint'));
+    $selectedHolonLabel = $selectedHolon ? trim((string)$selectedHolon->getDisplayName()) : $selectorLabels['none'];
+    $holonSelectorConfig = [
+        'organizationId' => $organizationId,
+        'selectableHolonIds' => omoActivityCreationHolonIds($context),
+        'allowOrganization' => !($context['rootHolon'] instanceof \dbObject\Holon)
+            && omoActivityCanUsePermission(null, 'CAN_CREATE_RECURRING_TASK', $organizationId),
+        'organizationLabel' => $selectorLabels['none'],
+        'labels' => $selectorLabels,
+    ];
 }
 
 $frequency = RecurrenceSchedule::normalizeFrequency($activity->get('frequency')) ?: RecurrenceSchedule::FREQUENCY_WEEKLY;
@@ -120,10 +136,16 @@ $activityHelp = static function ($label, $text) {
                 <?= $activityHelp(omoActivityT('activity.editor.identity'), omoActivityT('activity.editor.identity_help')) ?>
             </div>
             <div class="generic-form-grid generic-form-grid--pair">
-                <div class="generic-form-field">
+                <div class="generic-form-field generic-form-field--full">
                     <label class="generic-form-label" for="activity-editor-title"><?= omoApiEscape(omoActivityT('activity.title_field')) ?></label>
                     <input id="activity-editor-title" class="generic-form-control generic-form-control--compact" type="text" name="title" maxlength="255" required autofocus value="<?= omoApiEscape((string)$activity->get('title')) ?>">
                 </div>
+                <?php if (!$deferredEditor): ?>
+                <div class="generic-form-field">
+                    <label class="generic-form-label" for="activity-editor-holonLabel"><?= omoApiEscape(omoActivityT('activity.editor.holon')) ?></label>
+                    <?php commonHolonScopeRenderTargetField('IDholon', $selectedHolonId, $selectedHolonLabel, $holonSelectorConfig, ['id' => 'activity-editor-holon']); ?>
+                </div>
+                <?php endif; ?>
                 <div class="generic-form-field">
                     <div class="generic-inline-help">
                         <label class="generic-form-label" for="activity-editor-responsible"><?= omoApiEscape(omoActivityT('activity.editor.responsible')) ?></label>

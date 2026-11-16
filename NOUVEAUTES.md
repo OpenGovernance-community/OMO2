@@ -4,6 +4,20 @@ Ce fichier garde une vue d'ensemble courte des évolutions récentes, avec un an
 
 Les dates déjà indiquées sont conservées. Les dates manquantes sont reconstituées à partir de la première apparition des entrées dans l'historique GitHub, en heure Europe/Zurich ; elles correspondent à leur ajout au journal, pas nécessairement à leur mise en production.
 
+## 2026-11-16
+
+- Décisions / paramètres : le décochage de « Consultation seule » est conservé après enregistrement et réouverture des paramètres du module.
+
+- MCP / connexion : les adresses `/mcp` et `/mcp/` acceptent directement les requêtes et les autorisations OAuth, y compris lorsque l’assistant retire la barre oblique finale. Les réponses `ping` ne provoquent plus d’erreur serveur lors de l’enregistrement des statistiques.
+
+- Tâches récurrentes / édition : sélection de l’espace associé dans la vue en cercles et rôles, avec le contexte comme valeur initiale à la création. Le déplacement exige le droit de modifier la tâche et de créer des tâches récurrentes dans l’espace de destination. Le titre occupe une ligne complète, puis l’espace et la personne en charge se partagent la ligne suivante, dans cet ordre.
+- Partage / boutons : les actions de modification et de suppression des liens adoptent le format carré à coins arrondis des boutons standards, dans les popups des documents et de la structure.
+- Documents / présentation : la popup de partage identifie le document avec son icône, son titre et sa description sur une ligne tronquée. Le menu d’actions est regroupé avec le téléchargement et le plein écran sur la fiche du document.
+
+## 2026-11-15
+
+- Partage / ergonomie : popups des documents et de la structure allégées, titre unique, formulaires compacts et actions regroupées. Chaque lien indique la protection par mot de passe, la date d’expiration ou son absence, la lecture seule ou l’édition et les autorisations spécifiques.
+
 ## 2026-11-14
 
 - Documents / EtherCalc : les liens en lecture seule affichent la feuille et actualisent son contenu.

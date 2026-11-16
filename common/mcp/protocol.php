@@ -53,6 +53,14 @@ function omoMcpPublicUrl(): string
     return $url;
 }
 
+/** Both endpoint spellings identify the configured OAuth resource. */
+function omoMcpNormalizeResource(string $resource): ?string
+{
+    $canonical = omoMcpPublicUrl();
+    $endpoint = rtrim($canonical, '/');
+    return in_array($resource, [$endpoint, $endpoint . '/'], true) ? $canonical : null;
+}
+
 function omoMcpIssuer(): string { return substr(rtrim(omoMcpPublicUrl(), '/'), 0, -4); }
 
 /** Browser tools reuse the read models without needing a public OAuth/MCP deployment. */
@@ -97,8 +105,9 @@ function omoMcpAuthorizationMetadata(): array
 function omoMcpJson(array $body, int $status = 200): never
 {
     if (isset($GLOBALS['omoExternalUsageInput'])) {
+        $result = (array)($body['result'] ?? []);
         commonAiRecordUsage('exchange', '', '', $GLOBALS['omoExternalUsageInput'], $body,
-            ['error' => $body['error'] ?? ($body['result']['isError'] ?? false)], $status);
+            ['error' => $body['error'] ?? ($result['isError'] ?? false)], $status);
         unset($GLOBALS['omoExternalUsageInput']);
     }
     http_response_code($status);
@@ -156,10 +165,10 @@ function omoMcpValidateAuthorization(array $input, \dbObject\McpOauthClient $cli
     }
     if (($input['response_type'] ?? '') !== 'code' || ($input['code_challenge_method'] ?? '') !== 'S256'
         || !preg_match('/^[A-Za-z0-9_-]{43}$/D', $input['code_challenge'] ?? '')
-        || ($input['resource'] ?? '') !== omoMcpPublicUrl() || omoMcpNormalizeScope($input['scope'] ?? OMO_MCP_SCOPE) === null
+        || omoMcpNormalizeResource($input['resource'] ?? '') === null || omoMcpNormalizeScope($input['scope'] ?? OMO_MCP_SCOPE) === null
         || strlen($input['state'] ?? '') > 2048) throw new InvalidArgumentException('Expected code + PKCE S256, the MCP resource and supported scopes including organization:read.');
     return ['client_id' => $input['client_id'], 'redirect_uri' => $input['redirect_uri'],
-        'code_challenge' => $input['code_challenge'], 'resource' => $input['resource'],
+        'code_challenge' => $input['code_challenge'], 'resource' => omoMcpNormalizeResource($input['resource']),
         'scope' => omoMcpNormalizeScope($input['scope'] ?? OMO_MCP_SCOPE), 'state' => $input['state'] ?? ''];
 }
 function omoMcpRedirect(array $request, array $result): never

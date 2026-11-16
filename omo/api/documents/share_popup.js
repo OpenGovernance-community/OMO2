@@ -20,6 +20,7 @@ window.commonPageScripts["/omo/api/documents/share_popup.js"] = function (pageCo
         const listSection = document.getElementById('omoDocumentSharePopupListSection');
         const formSection = document.getElementById('omoDocumentSharePopupFormSection');
         const form = document.getElementById('omoDocumentSharePopupForm');
+        const readerSection = root.querySelector('.omo-share-popup__reader');
         const title = document.getElementById('omoDocumentSharePopupFormTitle');
         const intro = document.getElementById('omoDocumentSharePopupFormIntro');
         const shareIdInput = document.getElementById('omoDocumentSharePopupShareId');
@@ -64,6 +65,7 @@ window.commonPageScripts["/omo/api/documents/share_popup.js"] = function (pageCo
 
         const openFormForCreate = function () {
             resetForm();
+            if (readerSection && hasExistingLinks) readerSection.hidden = true;
             if (listSection) {
                 listSection.hidden = true;
             }
@@ -71,6 +73,7 @@ window.commonPageScripts["/omo/api/documents/share_popup.js"] = function (pageCo
                 formSection.hidden = false;
             }
             setFeedback('', false);
+            labelInput.focus({preventScroll: true});
         };
 
         const openFormForEdit = function (card) {
@@ -79,6 +82,7 @@ window.commonPageScripts["/omo/api/documents/share_popup.js"] = function (pageCo
             }
 
             resetForm();
+            if (readerSection && hasExistingLinks) readerSection.hidden = true;
             shareIdInput.value = card.dataset.shareId || '';
             labelInput.value = card.dataset.label || defaultLabel;
             expirationInput.value = card.dataset.dateexpiration || '';
@@ -97,6 +101,7 @@ window.commonPageScripts["/omo/api/documents/share_popup.js"] = function (pageCo
                 formSection.hidden = false;
             }
             setFeedback('', false);
+            labelInput.focus({preventScroll: true});
         };
 
         const showList = function () {
@@ -110,6 +115,7 @@ window.commonPageScripts["/omo/api/documents/share_popup.js"] = function (pageCo
             if (formSection) {
                 formSection.hidden = true;
             }
+            if (readerSection) readerSection.hidden = false;
             setFeedback('', false);
         };
 

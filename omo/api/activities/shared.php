@@ -30,6 +30,8 @@ function omoActivitySourceLang()
         'activity.editor.edit_title' => ['text' => 'Modifier la tâche récurrente', 'context' => 'Edit recurring task drawer title.'],
         'activity.editor.identity' => ['text' => 'La tâche récurrente', 'context' => 'Recurring task identity form section.'],
         'activity.editor.identity_help' => ['text' => 'Donnez un titre clair, une description utile et, si besoin, une personne responsable.', 'context' => 'Help for the recurring task identity section.'],
+        'activity.editor.holon' => ['text' => 'Espace associé', 'context' => 'Space carrying the recurring task.'],
+        'activity.editor.holon_hint' => ['text' => 'Choisissez un cercle ou un rôle dans lequel vous avez le droit de créer des tâches récurrentes.', 'context' => 'Permission boundary for recurring task assignment and movement.'],
         'activity.editor.recurrence_help' => ['text' => 'Choisissez la fréquence, puis le jour, la date ou le mois auquel la tâche doit revenir.', 'context' => 'Help for the recurring task schedule section.'],
         'activity.editor.window' => ['text' => 'Fenêtre de réalisation', 'context' => 'Activity execution window form section.'],
         'activity.editor.window_help' => ['text' => 'Définissez quand la tâche devient visible et après quel délai elle est considérée en retard.', 'context' => 'Help for the recurring task execution window.'],
@@ -193,6 +195,31 @@ function omoActivityCanUsePermission(?Holon $holon, $permissionKey, $organizatio
 function omoActivityPvMeetingQuery(int $organizationId): string
 {
     return commonPvMeetingQuery($organizationId);
+}
+
+function omoActivityCreationHolonIds(array $context): array
+{
+    $root = $context['rootHolon'] ?? null;
+    if (!($root instanceof Holon)) {
+        return [];
+    }
+
+    $organizationId = (int)$context['organization']->getId();
+    $holons = new \dbObject\ArrayHolon();
+    $holons->loadSubtreeHydrated((int)$root->getId());
+    $ids = [];
+    foreach ($holons as $holon) {
+        $id = (int)$holon->getId();
+        if (($id === (int)$root->getId() || in_array((int)$holon->get('IDtypeholon'), [1, 2], true))
+            && $holon->resolveOrganizationId() === $organizationId
+            && (bool)$holon->get('active') && (bool)$holon->get('visible')
+            && !$holon->isTemplateNode((int)$root->getId())
+            && $holon->canViewDetail()
+            && omoActivityCanUsePermission($holon, 'CAN_CREATE_RECURRING_TASK', $organizationId)) {
+            $ids[] = $id;
+        }
+    }
+    return $ids;
 }
 
 function omoActivityCanView(ControlActivity $activity)

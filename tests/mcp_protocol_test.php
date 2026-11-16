@@ -11,9 +11,17 @@ commonLoadRuntimeEnvIfAvailable();
 $_ENV['MCP_PUBLIC_URL'] = 'https://mcp.example.invalid/mcp';
 $_ENV['MCP_ALLOW_LOCAL_HTTP'] = '0';
 mcpProtocolCheck(omoMcpPublicUrl() === 'https://mcp.example.invalid/mcp', 'Canonical resource URL');
+mcpProtocolCheck(omoMcpNormalizeResource('https://mcp.example.invalid/mcp/') === omoMcpPublicUrl(), 'Trailing slash maps to configured resource');
 mcpProtocolCheck(omoMcpAuthorizationMetadata()['issuer'] === 'https://mcp.example.invalid', 'OAuth issuer');
 $_ENV['MCP_PUBLIC_URL'] = 'https://mcp.example.invalid/mcp/';
 mcpProtocolCheck(omoMcpPublicUrl() === 'https://mcp.example.invalid/mcp/', 'Canonical trailing slash is preserved');
+mcpProtocolCheck(omoMcpNormalizeResource('https://mcp.example.invalid/mcp') === omoMcpPublicUrl(), 'Missing trailing slash maps to configured resource');
+mcpProtocolCheck(omoMcpNormalizeResource(omoMcpPublicUrl()) === omoMcpPublicUrl(), 'Exact configured resource is accepted');
+foreach (['https://evil.invalid/mcp/', 'http://mcp.example.invalid/mcp/', 'https://mcp.example.invalid:8443/mcp/',
+    'https://mcp.example.invalid/mcp//', 'https://mcp.example.invalid/mcp/?q=1', 'https://mcp.example.invalid/mcp/#fragment',
+    'https://user:pass@mcp.example.invalid/mcp/', 'https://mcp.example.invalid/other', ''] as $resource) {
+    mcpProtocolCheck(omoMcpNormalizeResource($resource) === null, 'Only the configured endpoint and its slash variant are accepted');
+}
 mcpProtocolCheck(omoMcpIssuer() === 'https://mcp.example.invalid', 'Issuer excludes endpoint and trailing slash');
 mcpProtocolCheck(omoMcpResourceMetadata()['resource'] === 'https://mcp.example.invalid/mcp/', 'Resource matches exact MCP URL');
 mcpProtocolCheck(omoMcpResourceMetadataUrl() === 'https://mcp.example.invalid/.well-known/oauth-protected-resource/mcp/', 'Discovery preserves the canonical resource path');

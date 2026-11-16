@@ -26,7 +26,7 @@ $sourceLang = [
     'base' => ['text' => 'URL de base', 'context' => 'API server URL label.'],
     'auth' => ['text' => 'Connexion OAuth', 'context' => 'Authentication guide heading.'],
     'mcp' => ['text' => 'Connexion MCP', 'context' => 'Public MCP connection guide heading and navigation.'],
-    'mcp_intro' => ['text' => "Dans votre assistant, ajoutez un serveur MCP distant avec le transport Streamable HTTP et cette URL exacte, barre oblique finale comprise :", 'context' => 'Remote MCP connector setup instruction.'],
+    'mcp_intro' => ['text' => "Dans votre assistant, ajoutez un serveur MCP distant avec le transport Streamable HTTP et cette URL. Les adresses avec ou sans barre oblique finale sont acceptées.", 'context' => 'Remote MCP connector setup instruction.'],
     'mcp_consent' => ['text' => "Connectez votre compte OMO, puis choisissez une organisation et les autorisations souhaitées. L'organisation doit autoriser le MCP dans Paramètres > Sécurité ; cet accès est bloqué par défaut, même avec un abonnement personnel. Les droits OMO et les conditions habituelles d'accès restent applicables.", 'context' => 'MCP organization authorization and consent requirements.'],
     'auth_intro' => ['text' => 'Utilisez Authorization Code avec PKCE S256. La personne choisit une organisation et autorise les scopes ; les permissions OMO continuent de limiter chaque opération. Demandez toujours organization:read, puis ajoutez les scopes des opérations d’écriture souhaitées.', 'context' => 'OAuth guide introduction.'],
     'register' => ['text' => 'Enregistrez votre client avec client_name, redirect_uris et token_endpoint_auth_method: none. Conservez le client_id retourné.', 'context' => 'OAuth dynamic registration instruction.'],

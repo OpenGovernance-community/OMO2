@@ -118,6 +118,7 @@ $document->markConsulted();
 $altTexts = $document->getAltText();
 $medias = $document->getMedias();
 $description = trim((string)$document->get('description'));
+$showDocumentActions = !$document->isFolder() && !$document->isNextcloudFolder();
 $keywords = trim((string)$document->get('keywords'));
 $createdAt = $document->get('datecreation');
 $updatedAt = $document->get('datemodification');
@@ -276,34 +277,8 @@ if ($associatedEvent instanceof \dbObject\Event) {
     </div>
 
     <article class="omo-document-detail__article generic-stack generic-stack--roomy">
+        <?php if ($description !== '' || $associatedEvent instanceof \dbObject\Event): ?>
         <header class="omo-document-detail__intro generic-stack">
-            <?php if (!$document->isFolder() && !$document->isNextcloudFolder()): ?>
-                <div class="omo-document-detail__actions">
-                    <details class="omo-document-detail__more-actions">
-                        <summary
-                            aria-label="<?= $escape(omoDocumentsDetailT('documents.detail.action.more')) ?>"
-                            title="<?= $escape(omoDocumentsDetailT('documents.detail.action.more')) ?>"
-                        >...</summary>
-                        <div class="omo-document-detail__more-actions-menu">
-                            <button type="button" class="generic-action-button" data-omo-detail-share-url="<?= $escape('/omo/api/documents/share_popup.php?id=' . (int)$document->getId()) ?>"><?= $escape(omoDocumentsDetailT('documents.detail.action.share')) ?></button>
-                            <?php if ($pdfExportUrl !== ''): ?>
-                            <a
-                                class="generic-action-button omo-document-detail__pdf-export"
-                                href="<?= $escape($pdfExportUrl) ?>"
-                                download
-                                data-omo-pv-pdf-export
-                                data-omo-pv-pdf-label="<?= $escape(omoDocumentsDetailT('documents.detail.action.export_pdf')) ?>"
-                                data-omo-pv-pdf-waiting-label="<?= $escape(omoDocumentsDetailT('documents.detail.action.export_pdf_waiting')) ?>"
-                                data-omo-pv-pdf-notice="<?= $escape(omoDocumentsDetailT('documents.detail.action.export_pdf_notice')) ?>"
-                                data-omo-pv-pdf-error="<?= $escape(omoDocumentsDetailT('documents.detail.action.export_pdf_error')) ?>"
-                            >
-                                <?= $escape(omoDocumentsDetailT('documents.detail.action.export_pdf')) ?>
-                            </a>
-                            <?php endif; ?>
-                        </div>
-                    </details>
-                </div>
-            <?php endif; ?>
             <?php if ($description !== ''): ?>
                 <div class="omo-document-detail__summary omo-card">
                     <?= nl2br($escape($description)) ?>
@@ -339,6 +314,7 @@ if ($associatedEvent instanceof \dbObject\Event) {
                 </section>
             <?php endif; ?>
         </header>
+        <?php endif; ?>
 
         <section
             class="omo-document-detail__section generic-stack generic-panel-fullscreen-content--media"
@@ -347,7 +323,7 @@ if ($associatedEvent instanceof \dbObject\Event) {
             data-common-panel-fullscreen-mode="window"
             data-common-panel-fullscreen-owner="[data-omo-document-detail-drawer]"
         >
-            <?php if ($keywords !== '' || $hasCollaborativeFrame || $previewDownloadUrl !== ''): ?>
+            <?php if ($keywords !== '' || $hasCollaborativeFrame || $previewDownloadUrl !== '' || $showDocumentActions): ?>
                 <div class="omo-document-detail__keyword-actions" data-common-panel-media-toolbar>
                     <div class="omo-document-detail__keywords">
                         <?php if ($keywords !== ''): ?>
@@ -358,7 +334,7 @@ if ($associatedEvent instanceof \dbObject\Event) {
                     <?php endforeach; ?>
                         <?php endif; ?>
                     </div>
-                    <?php if ($previewDownloadUrl !== '' || $hasCollaborativeFrame): ?>
+                    <?php if ($previewDownloadUrl !== '' || $hasCollaborativeFrame || $showDocumentActions): ?>
                         <div class="omo-document-detail__preview-actions">
                     <?php if ($previewDownloadUrl !== ''): ?>
                         <a
@@ -377,6 +353,31 @@ if ($associatedEvent instanceof \dbObject\Event) {
                             data-omo-document-exit-fullscreen-label="<?= $escape(omoDocumentsDetailT('documents.detail.action.exit_fullscreen')) ?>"
                             aria-pressed="false"
                         ><?= $escape(omoDocumentsDetailT('documents.detail.action.fullscreen')) ?></button>
+                    <?php endif; ?>
+                    <?php if ($showDocumentActions): ?>
+                    <details class="omo-document-detail__more-actions">
+                        <summary
+                            aria-label="<?= $escape(omoDocumentsDetailT('documents.detail.action.more')) ?>"
+                            title="<?= $escape(omoDocumentsDetailT('documents.detail.action.more')) ?>"
+                        >...</summary>
+                        <div class="omo-document-detail__more-actions-menu">
+                            <button type="button" class="generic-action-button" data-omo-detail-share-url="<?= $escape('/omo/api/documents/share_popup.php?id=' . (int)$document->getId()) ?>"><?= $escape(omoDocumentsDetailT('documents.detail.action.share')) ?></button>
+                            <?php if ($pdfExportUrl !== ''): ?>
+                            <a
+                                class="generic-action-button omo-document-detail__pdf-export"
+                                href="<?= $escape($pdfExportUrl) ?>"
+                                download
+                                data-omo-pv-pdf-export
+                                data-omo-pv-pdf-label="<?= $escape(omoDocumentsDetailT('documents.detail.action.export_pdf')) ?>"
+                                data-omo-pv-pdf-waiting-label="<?= $escape(omoDocumentsDetailT('documents.detail.action.export_pdf_waiting')) ?>"
+                                data-omo-pv-pdf-notice="<?= $escape(omoDocumentsDetailT('documents.detail.action.export_pdf_notice')) ?>"
+                                data-omo-pv-pdf-error="<?= $escape(omoDocumentsDetailT('documents.detail.action.export_pdf_error')) ?>"
+                            >
+                                <?= $escape(omoDocumentsDetailT('documents.detail.action.export_pdf')) ?>
+                            </a>
+                            <?php endif; ?>
+                        </div>
+                    </details>
                     <?php endif; ?>
                         </div>
                     <?php endif; ?>

@@ -73,6 +73,21 @@ try {
     $result = shareHttp('/omo/api/documents/share_create.php', true, ['id' => $doc->getId(), 'label' => 'Second', 'password' => 'secret', 'dateexpiration' => (new DateTimeImmutable('+1 day'))->format('Y-m-d\TH:i')]);
     parse_str((string)parse_url($result['json']['shareUrl'], PHP_URL_QUERY), $query);
     $protected = $items['protected'] = DocumentShareLink::findByToken($query['token']);
+    $previewDoc = $items['doc_' . Document::TYPE_ETHERPAD];
+    $previewDoc->set('description', 'Compte rendu des échanges, décisions prises et prochaines étapes pour préparer la réunion de suivi de toute l’équipe.');
+    $previewDoc->save();
+    $items['preview_protected'] = DocumentShareLink::createForDocument($previewDoc, $uid, ['label' => 'Équipe projet',
+        'password_hash' => password_hash('fixture', PASSWORD_DEFAULT), 'allow_edit' => true, 'dateexpiration' => new DateTimeImmutable('+7 days')]);
+    $items['preview_expired'] = DocumentShareLink::createForDocument($previewDoc, $uid, ['label' => 'Ancien accès', 'dateexpiration' => new DateTimeImmutable('-1 day')]);
+    file_put_contents(dirname(__DIR__) . '/tmp/document-share-popup.html', shareHttp('/omo/api/documents/share_popup.php?id=' . $previewDoc->getId(), true)['body']);
+    foreach (['Public' => [], 'Équipe projet' => ['password_hash' => password_hash('fixture', PASSWORD_DEFAULT),
+        'allow_people' => true, 'allow_people_detail' => true, 'dateexpiration' => new DateTimeImmutable('+7 days')],
+        'Ancien accès' => ['dateexpiration' => new DateTimeImmutable('-1 day')]] as $label => $options) {
+        $items['structure_' . $label] = \dbObject\HolonShareLink::createForHolon($items['root'], $uid, $options + ['label' => $label, 'allow_structure' => true]);
+    }
+    $structurePopup = shareHttp('/omo/api/shares/popup.php?' . http_build_query(['oid' => $oid, 'cid' => $items['root']->getId()]), true);
+    mcpCheck($structurePopup['status'] === 200 && str_contains($structurePopup['body'], 'omoSharePopupRoot'), 'Structure share popup renders');
+    file_put_contents(dirname(__DIR__) . '/tmp/structure-share-popup.html', $structurePopup['body']);
     mcpCheck($protected->getId() !== $link->getId(), 'Independent links for one document');
     $passwordPage = shareHttp($protected->buildShareUrl());
     mcpCheck(!str_contains($passwordPage['body'], 'SHARED_SAVED_CONTENT'), 'Password protects content');

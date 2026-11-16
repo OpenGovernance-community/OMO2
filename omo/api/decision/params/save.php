@@ -27,7 +27,11 @@ if (!omoDecisionParamsCanManage($organizationId, $currentUserId)) {
     $respond(403, ['status' => false, 'message' => omoDecisionParamsT('decisions.params.error.forbidden')]);
 }
 $result = omoDecisionParamsStoreConfig($organization, [
-    'methods' => is_array($_POST['methods'] ?? null) ? $_POST['methods'] : [],
+    // Unchecked checkboxes must override defaults reserved for older stored settings.
+    'methods' => array_replace(
+        array_fill_keys(array_keys(omoDecisionParamsGetDefaultConfig()['methods']), false),
+        is_array($_POST['methods'] ?? null) ? $_POST['methods'] : []
+    ),
     'governance' => is_array($_POST['governance'] ?? null) ? $_POST['governance'] : [],
 ]);
 if (empty($result['status'])) {

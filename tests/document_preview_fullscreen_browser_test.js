@@ -21,7 +21,7 @@ function previewMarkup(remote, pdf) {
         html = html.replace('<?= $renderedContent ?>', `<div class="${pdf ? 'omo-document-file__media--pdf' : 'omo-document-collabora'}">${frame}</div>`);
     }
     return html
-        .replace(/<\?= \$escape\((?:omoDocumentsDetailT|\$t)\('([^']+)'\)\) \?>/g, (_, key) => key.endsWith('.download') ? 'Télécharger' : key.endsWith('.exit_fullscreen') ? 'Quitter le plein écran' : 'Plein écran')
+        .replace(/<\?= \$escape\((?:omoDocumentsDetailT|\$t)\('([^']+)'\)\) \?>/g, (_, key) => key.endsWith('.download') ? 'Télécharger le fichier' : key.endsWith('.exit_fullscreen') ? 'Quitter le plein écran' : 'Plein écran')
         .replace(/<\?= \$escape\(\$(?:previewDownloadUrl|downloadUrl)\) \?>/g, '/download')
         .replace(/<\?= \$escape\(\$(?:previewDownloadName|filename)\) \?>/g, 'Document.docx')
         .replace(/<\?[\s\S]*?\?>/g, '');
@@ -48,7 +48,7 @@ function previewMarkup(remote, pdf) {
             for (const file of ['common/assets/theme.css', 'common/assets/components.css', 'omo/assets/css/styles.css', 'omo/api/documents/detail.css']) {
                 await page.addStyleTag({content: read(file).replace(/@import[^;]+;/g, '')});
             }
-            await page.addStyleTag({content: '.panel-right {display:block!important;position:fixed;inset:40px 0 0 30px;width:calc(100% - 30px);height:calc(100% - 40px);transform:translateX(0)} .drawer {display:block;position:absolute;inset:0;transform:translateX(0)}'});
+            await page.addStyleTag({content: '.panel-right {display:block!important;position:fixed;inset:40px 0 0 0;width:100%;height:calc(100% - 40px);transform:translateX(0)} .drawer {display:block;position:absolute;inset:0;width:100%;transform:translateX(0)}'});
             await page.evaluate(() => {
                 window.fetch = undefined;
                 window.nativeCalls = 0;
@@ -60,10 +60,20 @@ function previewMarkup(remote, pdf) {
             const frame = page.frameLocator('iframe');
             await frame.locator('input').fill('Working draft');
             const button = page.locator('[data-common-panel-fullscreen]');
+            const verifyToolbar = async () => {
+                if (remote) return;
+                const menu = page.locator('.omo-document-detail__more-actions > summary');
+                const menuBox = await menu.boundingBox();
+                const fullscreenBox = await button.boundingBox();
+                assert(Math.abs(menuBox.y + menuBox.height / 2 - fullscreenBox.y - fullscreenBox.height / 2) < 1, 'More actions and fullscreen share the same row');
+                assert(menuBox.x >= 0 && menuBox.x + menuBox.width <= width, 'More actions stays within the viewport');
+            };
+            await verifyToolbar();
             const original = await page.locator('iframe').boundingBox();
             await button.click();
             assert.equal(await button.getAttribute('aria-pressed'), 'true');
             assert.equal(await button.textContent(), 'Quitter le plein écran');
+            await verifyToolbar();
             assert.equal(await page.locator('#app-header').isVisible(), false);
             const view = await page.locator('.generic-panel-fullscreen-content').boundingBox();
             assert.deepEqual(view, {x: 0, y: 0, width, height: 900}, 'Preview fills the browser viewport');
@@ -71,7 +81,7 @@ function previewMarkup(remote, pdf) {
             const toolbar = await page.locator('[data-common-panel-media-toolbar]').boundingBox();
             assert(bounds.y >= toolbar.y + toolbar.height - 1 && bounds.height > 700, 'Frame fills the area below the visible toolbar');
             assert(bounds.x >= 0 && bounds.x + bounds.width <= width + 1 && bounds.y + bounds.height <= 901, 'Frame fits without viewport overflow');
-            const download = page.locator('a[download]');
+            const download = page.locator('a[download]:not([data-omo-pv-pdf-export])');
             const linkBounds = await download.boundingBox();
             const buttonBounds = await button.boundingBox();
             assert(linkBounds.x >= 0 && buttonBounds.x + buttonBounds.width <= width + 1, 'Download and exit controls remain inside narrow screens');

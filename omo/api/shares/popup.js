@@ -4,6 +4,7 @@ window.commonPageScripts = window.commonPageScripts || {};
 window.commonPageScripts["/omo/api/shares/popup.js"] = function (pageConfig, pageScript) {
 (function () {
     const defaultLabel = pageConfig.defaultLabel;
+    const text = pageConfig.text;
 
     window.omoSharePopupInit = function (popupRoot) {
         const root = popupRoot || document.getElementById('omoSharePopupRoot');
@@ -78,12 +79,10 @@ window.commonPageScripts["/omo/api/shares/popup.js"] = function (pageConfig, pag
             allowStructure.checked = true;
             allowPeople.checked = false;
             allowPeopleDetail.checked = false;
-            passwordHint.textContent = omoUiText("si_un_mot_de_passe_est_defini_il_sera_demande_a_l_ouverture_du_lien", "Si un mot de passe est défini, il sera demandé à l’ouverture du lien.");
+            passwordHint.textContent = text.passwordHint;
             submitButton.textContent = omoUiText("creer_le_lien", "Créer le lien");
-            title.textContent = hasExistingLinks ? omoUiText("nouveau_lien_de_partage", "Nouveau lien de partage") : omoUiText("creer_un_lien_de_partage", "Créer un lien de partage");
-            intro.textContent = hasExistingLinks
-                ? omoUiText("configure_un_nouveau_lien_ou_modifie_un_lien_existant", "Configurez un nouveau lien ou modifiez un lien existant.")
-                : omoUiText("aucun_lien_n_existe_encore_pour_ce_holon_creons_le_premier", "Aucun lien n’existe encore pour ce holon. Créons le premier.");
+            title.textContent = text.titleNew;
+            intro.textContent = text.intro;
             syncPermissionDependencies();
         };
 
@@ -96,6 +95,7 @@ window.commonPageScripts["/omo/api/shares/popup.js"] = function (pageConfig, pag
                 formSection.hidden = false;
             }
             setFeedback('', false);
+            labelInput.focus({preventScroll: true});
         };
 
         const openFormForEdit = function (card) {
@@ -111,10 +111,10 @@ window.commonPageScripts["/omo/api/shares/popup.js"] = function (pageConfig, pag
             allowPeople.checked = card.dataset.allowPeople === '1';
             allowPeopleDetail.checked = card.dataset.allowPeopleDetail === '1';
             clearPasswordWrap.hidden = card.dataset.hasPassword !== '1';
-            passwordHint.textContent = omoUiText("laisse_vide_pour_conserver_le_mot_de_passe_actuel_ou_saisis_en_un_nouveau", "Laissez vide pour conserver le mot de passe actuel, ou saisis-en un nouveau.");
+            passwordHint.textContent = text.passwordHintEdit;
             submitButton.textContent = omoUiText("enregistrer", "Enregistrer");
-            title.textContent = omoUiText("modifier_le_lien_de_partage", "Modifier le lien de partage");
-            intro.textContent = omoUiText("mets_a_jour_les_droits_l_expiration_ou_le_mot_de_passe_de_ce_lien", "Mettez à jour les droits, l’expiration ou le mot de passe de ce lien.");
+            title.textContent = text.titleEdit;
+            intro.textContent = text.intro;
             syncPermissionDependencies();
 
             if (listSection) {
@@ -124,6 +124,7 @@ window.commonPageScripts["/omo/api/shares/popup.js"] = function (pageConfig, pag
                 formSection.hidden = false;
             }
             setFeedback('', false);
+            labelInput.focus({preventScroll: true});
         };
 
         const showList = function () {

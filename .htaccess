@@ -1,5 +1,10 @@
 Options -ExecCGI -Indexes -MultiViews
 
+# Apply after directory settings, including hosts that enable DirectorySlash.
+<If "%{REQUEST_URI} == '/mcp'">
+    DirectorySlash Off
+</If>
+
 # Never serve configuration, keys or database exports from the checkout.
 <FilesMatch "(?i)(^\.(?!well-known)|\.(?:sql|bak|key|pem|env)(?:\..*)?$|^APIKEY\.txt$|^SECURITY-)">
     Require all denied
@@ -58,7 +63,8 @@ RewriteRule ^(.*)$ https://%1/$1 [R=301,L,NE]
 # MCP uses a stateless Streamable HTTP endpoint and public OAuth discovery.
 RewriteRule ^api/v1(?:/.*)?$ /api/v1/index.php [QSA,END]
 RewriteRule ^developer/?$ /developer/index.php [QSA,END]
-RewriteRule ^mcp/?$ /mcp/index.php [QSA,L]
+# Finish the internal rewrite before mod_dir can redirect a POST to /mcp/.
+RewriteRule ^mcp/?$ /mcp/index.php [QSA,END]
 RewriteRule ^\.well-known/oauth-protected-resource(?:/mcp)?/?$ /mcp/metadata.php [L]
 RewriteRule ^\.well-known/oauth-authorization-server/?$ /mcp/metadata.php [L]
 

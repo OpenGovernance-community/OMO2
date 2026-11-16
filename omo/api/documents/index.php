@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
+require_once dirname(__DIR__, 3) . '/common/document/display.php';
 
 use dbObject\Document;
 use dbObject\Holon;
@@ -503,29 +504,6 @@ $canCreateDocument = $organization->getId() > 0
 $canDirectUploadToCurrentContext = $canCreateDocument && $organization->hasDocumentStorage();
 $canMoveToCurrentContext = $canCreateDocument;
 $newDocumentUrl = '/omo/api/documents/create.php?oid=' . $currentOrganizationId . ($effectiveCurrentHolonId > 0 ? '&cid=' . $effectiveCurrentHolonId : '');
-$resolveDocumentTemplateIconUrl = static function (Document $document): string {
-    if ($document->isFolder()) {
-        return '/omo/assets/images/documents/folder.png';
-    }
-
-    return match ($document->getDocumentType()) {
-        Document::TYPE_EXTERNAL_LINK => '/omo/assets/images/documents/link.png',
-        Document::TYPE_UPLOADED_FILE => match ($document->getStoredFileKind()) {
-            'image' => '/omo/assets/images/documents/image.png',
-            'video' => '/omo/assets/images/documents/video.png',
-            'audio' => '/omo/assets/images/documents/audio.png',
-            'text' => '/omo/assets/images/documents/text.png',
-            'spreadsheet' => '/omo/assets/images/documents/spreadsheet-kind.png',
-            'presentation' => '/omo/assets/images/documents/presentation.png',
-            'drawing' => '/omo/assets/images/documents/drawing.png',
-            default => '/omo/assets/images/documents/download.png',
-        },
-        Document::TYPE_PV => '/omo/assets/images/documents/pv.png',
-        Document::TYPE_ETHERPAD => '/omo/assets/images/documents/collaborative.png',
-        Document::TYPE_ETHERCALC => '/omo/assets/images/documents/spreadsheet.png',
-        default => '/omo/assets/images/documents/file.png',
-    };
-};
 $documentTemplateGroups = [];
 if ($canCreateDocument) {
     $documentTemplates = new \dbObject\ArrayDocument();
@@ -552,7 +530,7 @@ if ($canCreateDocument) {
         $documentTemplateGroups[$templateGroupKey]['templates'][] = [
             'id' => (int)$documentTemplate->getId(),
             'label' => $templateTitle !== '' ? $templateTitle : ('Document #' . (int)$documentTemplate->getId()),
-            'iconUrl' => $resolveDocumentTemplateIconUrl($documentTemplate),
+            'iconUrl' => commonDocumentIconUrl($documentTemplate),
         ];
     }
 }
