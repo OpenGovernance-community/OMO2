@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/bootstrap.php';
-require_once dirname(__DIR__) . '/common/mcp/ui.php';
+require_once dirname(__DIR__) . '/ui.php';
 if (!in_array($_SERVER['REQUEST_METHOD'], ['GET', 'POST'], true)) {
     header('Allow: GET, POST');
     omoMcpOauthError('invalid_request', 'Use GET or POST.', 405);

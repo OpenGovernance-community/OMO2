@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/bootstrap.php';
-require_once dirname(__DIR__) . '/common/mcp/ui.php';
+require_once dirname(__DIR__) . '/ui.php';
 omoMcpLoginIfNeeded('/mcp/connections.php');
 $userId = commonGetCurrentUserId();
 $_SESSION['mcpConnectionsCsrf'] ??= bin2hex(random_bytes(32));

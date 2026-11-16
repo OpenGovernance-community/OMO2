@@ -1,10 +1,5 @@
 Options -ExecCGI -Indexes -MultiViews
 
-# Apply after directory settings, including hosts that enable DirectorySlash.
-<If "%{REQUEST_URI} =~ m#^/mcp(?:/|$)#">
-    DirectorySlash Off
-</If>
-
 # Never serve configuration, keys or database exports from the checkout.
 <FilesMatch "(?i)(^\.(?!well-known)|\.(?:sql|bak|key|pem|env)(?:\..*)?$|^APIKEY\.txt$|^SECURITY-)">
     Require all denied
@@ -35,7 +30,6 @@ Options -ExecCGI -Indexes -MultiViews
 ErrorDocument  404  /404.php
 
 RewriteEngine On
-RewriteOptions AllowNoSlash
 
 RewriteRule (^|/)\.(?!well-known(?:/|$)) - [F,L]
 RewriteRule ^(?:docker|sql|tests|test|vendor|class|db|includes|scripts)(?:/|$) - [F,L]
@@ -64,10 +58,12 @@ RewriteRule ^(.*)$ https://%1/$1 [R=301,L,NE]
 # MCP uses a stateless Streamable HTTP endpoint and public OAuth discovery.
 RewriteRule ^api/v1(?:/.*)?$ /api/v1/index.php [QSA,END]
 RewriteRule ^developer/?$ /developer/index.php [QSA,END]
-# Both endpoint spellings reach the same handler through an internal rewrite.
-RewriteRule ^mcp/?$ /mcp/index.php [QSA,END]
-RewriteRule ^\.well-known/oauth-protected-resource(?:/mcp)?/?$ /mcp/metadata.php [L]
-RewriteRule ^\.well-known/oauth-authorization-server/?$ /mcp/metadata.php [L]
+# Keep /mcp virtual so directory redirects cannot change its POST requests.
+RewriteRule ^mcp/?$ /common/mcp/http/index.php [QSA,END]
+RewriteRule ^mcp/(authorize|bootstrap|connections|index|metadata|register|revoke|token)\.php$ /common/mcp/http/$1.php [QSA,END]
+RewriteRule ^mcp/assets/omo-icon-256\.jpg$ /common/mcp/assets/omo-icon-256.jpg [END]
+RewriteRule ^\.well-known/oauth-protected-resource(?:/mcp)?/?$ /common/mcp/http/metadata.php [END]
+RewriteRule ^\.well-known/oauth-authorization-server/?$ /common/mcp/http/metadata.php [END]
 
 # Serve the alternate homepage at the omo2.org root without changing the URL.
 RewriteCond %{HTTP_HOST} ^(?:www\.)?omo2\.org(?::\d+)?$ [NC]

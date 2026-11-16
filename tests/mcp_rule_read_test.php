@@ -63,7 +63,7 @@ try {
     file_put_contents($router, '<?php $_SERVER["HTTPS"]="on"; require ' . var_export($root . '/shared_functions.php', true)
         . '; define("OMO_API_LOCAL_LINKS", true); $GLOBALS["patreonClientId"]="fixture-client"; $GLOBALS["patreonClientSecret"]="fixture-secret"; '
         . 'require str_starts_with($_SERVER["REQUEST_URI"],"/api/v1/") ? ' . var_export($root . '/api/v1/index.php', true)
-        . ' : ' . var_export($root . '/mcp/index.php', true) . ';');
+        . ' : ' . var_export($root . '/common/mcp/http/index.php', true) . ';');
     $port = random_int(20000, 45000);
     $server = proc_open([PHP_BINARY, '-S', '127.0.0.1:' . $port, $router],
         [0 => ['pipe', 'r'], 1 => ['file', $serverLog, 'a'], 2 => ['file', $serverLog, 'a']], $pipes, $root);

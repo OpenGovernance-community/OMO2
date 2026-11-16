@@ -57,6 +57,18 @@ try {
         'client_id' => $client->get('client_id'), 'refresh_token' => $tokens['json']['refresh_token'],
         'resource' => $alternateResource], null, true);
     mcpCheck($tokens['status'] === 200 && isset($tokens['json']['access_token']), 'OAuth refresh accepts the alternate endpoint spelling');
+    $missingResourceCode = \dbObject\McpOauthGrant::issueCode($client, (int)$items['user']->getId(), (int)$items['org']->getId(), $request);
+    $withoutResource = mcpExchangeRequest($client, $missingResourceCode);
+    unset($withoutResource['resource']);
+    $wrongPkce = mcpDeployedRequest('/mcp/token.php', array_replace($withoutResource, ['code_verifier' => str_repeat('b', 64)]), null, true);
+    mcpCheck($wrongPkce['status'] === 400 && ($wrongPkce['json']['error'] ?? '') === 'invalid_grant', 'Omitting resource still requires the correct PKCE verifier');
+    $emptyResource = mcpDeployedRequest('/mcp/token.php', array_replace($withoutResource, ['resource' => '']), null, true);
+    mcpCheck($emptyResource['status'] === 400 && ($emptyResource['json']['error'] ?? '') === 'invalid_target', 'An explicit empty resource is rejected');
+    $tokens = mcpDeployedRequest('/mcp/token.php', $withoutResource, null, true);
+    mcpCheck($tokens['status'] === 200 && isset($tokens['json']['access_token']), 'OAuth code exchange can use the single default resource');
+    $tokens = mcpDeployedRequest('/mcp/token.php', ['grant_type' => 'refresh_token',
+        'client_id' => $client->get('client_id'), 'refresh_token' => $tokens['json']['refresh_token']], null, true);
+    mcpCheck($tokens['status'] === 200 && isset($tokens['json']['access_token']), 'OAuth refresh can use the single default resource');
     $token = $tokens['json']['access_token'];
     foreach (['/mcp', '/mcp/'] as $path) {
         $unauthorized = mcpDeployedRequest($path, ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'ping']);

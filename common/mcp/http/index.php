@@ -2,7 +2,7 @@
 // MCP arguments come exclusively from JSON-RPC. Ignore legacy share or meeting query/form context.
 $_GET = $_POST = $_REQUEST = [];
 require_once __DIR__ . '/bootstrap.php';
-require_once dirname(__DIR__) . '/common/mcp/server.php';
+require_once dirname(__DIR__) . '/server.php';
 omoMcpCheckOrigin();
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 $grant = omoApiAuthenticate();

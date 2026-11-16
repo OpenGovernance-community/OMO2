@@ -8,7 +8,8 @@ $input = omoMcpFormInput();
 if (!in_array($input['grant_type'] ?? '', ['authorization_code', 'refresh_token'], true)) {
     omoMcpOauthError('unsupported_grant_type', 'Use authorization_code or refresh_token.');
 }
-$input['resource'] = omoMcpNormalizeResource($input['resource'] ?? '');
+// This authorization server has one resource, already bound to the stored grant.
+$input['resource'] = omoMcpNormalizeResource($input['resource'] ?? omoMcpPublicUrl());
 if ($input['resource'] === null) omoMcpOauthError('invalid_target', 'Invalid MCP resource.');
 $client = \dbObject\McpOauthClient::findByClientId($input['client_id'] ?? '');
 if (!$client) omoMcpOauthError('invalid_client', 'Unknown OAuth client.');
