@@ -33,9 +33,16 @@ const {chromium} = require(process.argv[2] || 'playwright');
             }}};
             const arc = CanvasRenderingContext2D.prototype.arc;
             const clear = CanvasRenderingContext2D.prototype.clearRect;
-            CanvasRenderingContext2D.prototype.clearRect = function (...args) { window.drawnArcs = []; return clear.apply(this, args); };
+            const fillText = CanvasRenderingContext2D.prototype.fillText;
+            CanvasRenderingContext2D.prototype.clearRect = function (...args) {
+                window.drawnArcs = []; window.drawnLabels = [];
+                return clear.apply(this, args);
+            };
             CanvasRenderingContext2D.prototype.arc = function (x, y, radius, ...args) {
                 window.drawnArcs.push({x, y, radius}); return arc.call(this, x, y, radius, ...args);
+            };
+            CanvasRenderingContext2D.prototype.fillText = function (text, ...args) {
+                window.drawnLabels.push(text); return fillText.call(this, text, ...args);
             };
         });
         await page.addScriptTag({content: fs.readFileSync(path.join(__dirname, '../common/holon_scope_picker.js'), 'utf8')});
@@ -70,6 +77,46 @@ const {chromium} = require(process.argv[2] || 'playwright');
         assert(await page.evaluate(() => window.drawnArcs[0].radius) > rootRadius, 'Selecting an allowed destination zooms into it.');
         assert.deepEqual(errors, []);
         await page.evaluate(() => window.picker.destroy());
+        await page.evaluate(() => { window.originalLabelTestPack = window.d3.layout.pack; });
+        for (const width of [1000, 390]) {
+            await page.setViewportSize({width, height: 800});
+            for (const labelMode of ['context', 'children']) {
+                for (const parentType of ['2', '3']) {
+                    await page.evaluate(async ({labelMode, parentType}) => {
+                        const data = {ID: 1, name: 'Organization', type: '2', children: [
+                            {ID: 2, name: 'Parent', type: parentType, children: [
+                                {ID: 10, name: 'Allowed', type: '1'},
+                                {ID: 20, name: 'Other', type: '1'},
+                                {ID: 99, name: 'Forbidden', type: '1'}]}]};
+                        window.omoFetchStructureData = () => Promise.resolve(data);
+                        const createPack = window.originalLabelTestPack;
+                        window.d3.layout.pack = () => {
+                            const pack = createPack();
+                            const nodes = pack.nodes;
+                            pack.nodes = root => nodes(root).map(node => {
+                                if (node.type === '1') node.r = 12;
+                                return node;
+                            });
+                            return pack;
+                        };
+                        await new Promise(resolve => {
+                            window.picker = window.omoMountHolonScopePicker({host: document.getElementById('host'),
+                                organizationId: 1, initialHolonId: 10, selectableHolonIds: [10, 20],
+                                showModes: false, labelMode, onReady: resolve});
+                        });
+                    }, {labelMode, parentType});
+                    await clickContainer(0.35);
+                    const labels = await page.evaluate(() => window.drawnLabels);
+                    for (const label of ['Allowed', 'Other', 'Forbidden']) {
+                        assert(labels.includes(label), `The focused parent must label its direct roles (${parentType}, ${labelMode}, ${width}): ${label}`);
+                    }
+                    assert.equal(await page.evaluate(() => window.picker.getSelectedHolonId()), 10, 'Viewing a forbidden parent must preserve the authorized selection.');
+                    await page.evaluate(() => window.picker.destroy());
+                }
+            }
+        }
+        await page.evaluate(() => { window.d3.layout.pack = window.originalLabelTestPack; });
+        assert.deepEqual(errors, []);
         console.log('holon_scope_picker_navigation_test: OK');
     } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

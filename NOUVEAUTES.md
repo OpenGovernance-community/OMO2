@@ -6,6 +6,14 @@ Les dates déjà indiquées sont conservées. Les dates manquantes sont reconsti
 
 ## 2026-11-16
 
+- Sélecteurs d’espaces / lisibilité : les rôles directs du cercle ou du groupe affiché portent leur libellé dès la navigation dans leur parent, y compris dans les sélecteurs de destination limités par les droits.
+
+- Tâches récurrentes / menus : les menus d’actions des lignes restent au-dessus des en-têtes de récurrence, y compris entre deux groupes.
+
+- Profil / connexion : changement de l’adresse principale depuis le profil général, avec un bouton directement sous l’adresse e-mail et un formulaire qui se déplie en dessous. Deux codes distincts sont envoyés à l’ancienne et à la nouvelle adresse. Le changement est effectué après validation des deux codes, valables 10 minutes, avec limitation des tentatives et des renvois.
+
+- Profil / position : rétablissement de la carte et de la sélection des coordonnées par clic. Le changement de position est pris en compte dans les modifications à enregistrer.
+
 - MCP / compatibilité : les URL publiques sont servies par des scripts internes pour éviter la redirection automatique du dossier `/mcp` sur les hébergements mutualisés. L’échange et le renouvellement des jetons acceptent l’absence de `resource` en utilisant l’unique ressource configurée, toujours vérifiée contre l’autorisation enregistrée.
 
 - MCP / reconnexion : les nouveaux clients demandent par défaut les accès de lecture et d’action disponibles, présentés au consentement. Le choix d’organisation respecte le transport demandé et les contributions Patreon individuelles ou organisationnelles. Les formulaires de consentement et de révocation sont compatibles avec la protection CSRF commune. Routage sans barre finale renforcé et journalisation de l’initialisation et de la découverte. Le déploiement Beta vérifie désormais l’échange OAuth et la découverte sur les deux formes de l’adresse MCP.

@@ -633,6 +633,8 @@
         groups = toArray(root.querySelectorAll('.generic-file-list__group'));
         groupCount = groups.length;
 
+        root.style.setProperty('--generic-file-list-menu-z', String(Math.max(6, groupCount * 10 + 4)));
+
         groups.forEach(function (group, index) {
             var layerBase = Math.max(0, (groupCount - index) * 10);
             group.style.setProperty('--generic-file-list-group-title-z', String(layerBase + 3));

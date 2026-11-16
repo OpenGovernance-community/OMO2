@@ -221,7 +221,7 @@
     }
 
     function drawMapNodeLabel(context, node, textColor, strokeColor) {
-        if (!node || !node.name || node.r < 22) {
+        if (!node || !node.name || node.r < 9) {
             return;
         }
         var maximumWidth = node.r * 1.45;
@@ -470,9 +470,14 @@
                     context.strokeStyle = isActive ? 'rgba(255, 255, 255, 0.92)' : 'rgba(255, 255, 255, 0.72)';
                     context.stroke();
                 }
-                var shouldLabel = false;
+                var isDirectRole = String(node.type || '') === '1'
+                    && currentNode
+                    && (String(currentNode.type) === '2' || String(currentNode.type) === '3')
+                    && node.parent
+                    && String(node.parent.ID) === String(currentNode.ID);
+                var shouldLabel = isDirectRole && node.r >= 9;
                 if (labelMode === 'children') {
-                    shouldLabel = shouldDrawContentNodeLabel(node, currentNode, isHovered, node.r);
+                    shouldLabel = shouldLabel || shouldDrawContentNodeLabel(node, currentNode, isHovered, node.r);
                 } else {
                     var selectedType = String(currentNode && currentNode.type || '');
                     var selectedCircle = selectedType === '2' ? currentNode : getCircleAncestor(currentNode);
@@ -488,7 +493,7 @@
                         && (String(node.type || '') === '1' || String(node.type || '') === '2')
                         && nodeParentCircle
                         && String(nodeParentCircle.ID) === String(currentNode.ID);
-                    shouldLabel = node.r >= 22 && (isHovered || isRoleNeighbor || isCircleContent);
+                    shouldLabel = shouldLabel || (node.r >= 22 && (isHovered || isRoleNeighbor || isCircleContent));
                 }
 
                 if (shouldLabel) {

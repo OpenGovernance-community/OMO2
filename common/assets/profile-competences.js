@@ -65,7 +65,8 @@ window.commonPageScripts["/common/assets/profile-competences.js"] = function (pa
         initPasswordToggle();
         var profileForm = fragment.querySelector('#formulaire-edit');
         if (profileForm) {
-            var markProfileDirty = function () {
+            var markProfileDirty = function (event) {
+                if (event.target.form && event.target.form !== profileForm) return;
                 if (typeof window.profileMarkDirty === 'function') {
                     window.profileMarkDirty(profileDirtyKey);
                 }

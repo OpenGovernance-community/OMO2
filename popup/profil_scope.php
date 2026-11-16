@@ -224,9 +224,49 @@ function profilBuildTotpSectionHtml($totpEnabled)
     ';
 }
 
+function profilBuildEmailChangeSectionHtml()
+{
+    ob_start();
+    ?>
+    <div class="generic-form-stack" data-profile-email-change>
+        <button type="button" class="generic-action-button generic-action-button--secondary" data-email-change-toggle aria-expanded="false">
+            <?= htmlspecialchars(profilPopupT('profile.email_change.button'), ENT_QUOTES, 'UTF-8') ?>
+        </button>
+        <div class="generic-form-stack" data-email-change-content hidden>
+            <p class="profile-panel__scope-help"><?= htmlspecialchars(profilPopupT('profile.email_change.help'), ENT_QUOTES, 'UTF-8') ?></p>
+            <div class="generic-form-stack" data-email-change-start>
+                <label class="generic-form-field">
+                    <span><?= htmlspecialchars(profilPopupT('profile.email_change.new_email'), ENT_QUOTES, 'UTF-8') ?></span>
+                    <input type="email" class="generic-form-control" name="new_email" form="profile-email-change-start-form" autocomplete="email" maxlength="150" required>
+                </label>
+                <button type="submit" form="profile-email-change-start-form" class="generic-action-button generic-action-button--main"><?= htmlspecialchars(profilPopupT('profile.email_change.send'), ENT_QUOTES, 'UTF-8') ?></button>
+            </div>
+            <div class="generic-form-stack" data-email-change-confirm hidden>
+                <label class="generic-form-field">
+                    <span><?= htmlspecialchars(profilPopupT('profile.email_change.old_code'), ENT_QUOTES, 'UTF-8') ?></span>
+                    <span data-email-change-old-address></span>
+                    <input type="text" class="generic-form-control" name="old_code" form="profile-email-change-confirm-form" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required>
+                </label>
+                <label class="generic-form-field">
+                    <span><?= htmlspecialchars(profilPopupT('profile.email_change.new_code'), ENT_QUOTES, 'UTF-8') ?></span>
+                    <span data-email-change-new-address></span>
+                    <input type="text" class="generic-form-control" name="new_code" form="profile-email-change-confirm-form" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required>
+                </label>
+                <button type="submit" form="profile-email-change-confirm-form" class="generic-action-button generic-action-button--main"><?= htmlspecialchars(profilPopupT('profile.email_change.confirm'), ENT_QUOTES, 'UTF-8') ?></button>
+                <button type="button" class="generic-action-button generic-action-button--secondary" data-email-change-restart><?= htmlspecialchars(profilPopupT('profile.email_change.restart'), ENT_QUOTES, 'UTF-8') ?></button>
+            </div>
+            <p class="profile-panel__scope-help" data-email-change-progress role="status" hidden></p>
+            <button type="button" class="generic-action-button generic-action-button--secondary" data-email-change-close><?= htmlspecialchars(profilPopupT('profile.email_change.cancel'), ENT_QUOTES, 'UTF-8') ?></button>
+        </div>
+    </div>
+    <?php
+    return ob_get_clean();
+}
+
 function profilRenderProfileFragment($scope, \dbObject\User $user, $organizationMembership, $userHasPassword, $userAllowsPasswordLogin, $leafletMapsEnabled)
 {
     $fragmentUrl = '/popup/profil_scope.php?section=profile&scope=' . rawurlencode($scope);
+    $canChangeEmail = $scope === 'general' && !$user->isRoleplayCharacter() && !$user->isHistoricalPlaceholder();
     ob_start();
     ?>
 <div
@@ -295,6 +335,7 @@ function profilRenderProfileFragment($scope, \dbObject\User $user, $organization
             array(
                 "title" => profilPopupT('profile.popup.form.contact.general'),
                 "fields" => array("birthdate", "latlong", "email", "phone"),
+                "afterFieldHtml" => ['email' => $canChangeEmail ? profilBuildEmailChangeSectionHtml() : ''],
             ),
         ),
         "fields" => array(
@@ -320,6 +361,17 @@ function profilRenderProfileFragment($scope, \dbObject\User $user, $organization
             data-profile-submit-button="1"
         ><?= htmlspecialchars(profilPopupT('profile.popup.scope.general_submit')) ?></button>
     </div>
+    <?php endif; ?>
+
+    <?php if ($canChangeEmail): ?>
+    <form id="profile-email-change-start-form" hidden></form>
+    <form id="profile-email-change-confirm-form" hidden></form>
+    <?= commonPageScriptTags('/common/assets/profile-email-change.js', [
+        'csrf' => commonCsrfToken(),
+        'sending' => profilPopupT('profile.email_change.sending'),
+        'verifying' => profilPopupT('profile.email_change.verifying'),
+        'error' => profilPopupT('profile.email_change.error.unavailable'),
+    ]) ?>
     <?php endif; ?>
 
     <?= commonPageScriptTags('/common/assets/profile-competences.js', [

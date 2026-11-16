@@ -674,6 +674,9 @@ if (!empty($params['sections']) && is_array($params['sections'])) {
                 $labelFor = $fieldType === 'sizedimage' ? 'imageFileInput_' . $fieldId : ($fieldType === 'image' ? $fieldId . '_file' : $fieldId);
                 echo "<label class='generic-form-label' for='" . $labelFor . "'>" . $heading . "</label><div class='admin-edit__field-content'>" . $widget . "</div>";
             }
+            if (is_string($section['afterFieldHtml'][$field] ?? null)) {
+                echo $section['afterFieldHtml'][$field];
+            }
             echo "</div>";
         }
         echo $collapsible ? "</div></details>" : "</div></fieldset>";

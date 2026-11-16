@@ -136,10 +136,6 @@
     transform: translateY(-50%);
 }
 
-.omo-activity-row-shell.is-menu-open {
-    z-index: 5;
-}
-
 .omo-activity-badge {
     display: inline-flex;
     align-items: center;
