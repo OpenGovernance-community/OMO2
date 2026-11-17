@@ -26,6 +26,7 @@
         const buttons = Array.from(controls.querySelectorAll('button'));
         let state = options.state;
         let rights = false;
+        let pvStage = root.getAttribute('data-common-pv-reference-stage') || '';
         let pending = false;
         let draft = null;
         let editing = false;
@@ -73,7 +74,8 @@
             if (!root.isConnected) { destroy(); return; }
             const countdown = draft ? draft.mode === 'countdown' : state.mode === 'countdown';
             const milliseconds = draft ? draft.seconds * 1000 : millisecondsAt(state, Date.now() + offset);
-            host.hidden = !rights && state.status === 'stopped';
+            const isReview = pvStage === 'review';
+            host.hidden = isReview || (!rights && state.status === 'stopped');
             controls.hidden = !rights;
             input.readOnly = !rights;
             input.disabled = pending;
@@ -85,22 +87,24 @@
                     || (command === 'pause' && state.status !== 'playing');
             });
             const tabs = root.querySelector('[data-omo-pv-application-tabs]');
-            topbar.hidden = host.hidden && (!tabs || tabs.hidden);
+            const references = root.querySelector('[data-common-pv-references-host]');
+            topbar.hidden = host.hidden && (!tabs || tabs.hidden) && (!references || references.hidden);
             root.classList.toggle('omo-pv-editor--has-toolbar', !topbar.hidden);
-            if (state.status === 'playing' && state.mode === 'countdown'
+            if (!isReview && state.status === 'playing' && state.mode === 'countdown'
                 && milliseconds === 0 && !soundedRuns.has(state.runId)) {
                 soundedRuns.add(state.runId);
                 ring();
             }
-            if (state.status === 'playing' && interval === null) interval = window.setInterval(render, 100);
-            if (state.status !== 'playing' && interval !== null) {
+            if (!isReview && state.status === 'playing' && interval === null) interval = window.setInterval(render, 100);
+            if ((isReview || state.status !== 'playing') && interval !== null) {
                 window.clearInterval(interval);
                 interval = null;
             }
         }
 
         function sync(documentPayload, timer, serverNow) {
-            const nextRights = documentPayload.canControlTimer === true;
+            if (typeof documentPayload.pvStage === 'string') pvStage = documentPayload.pvStage;
+            const nextRights = pvStage !== 'review' && documentPayload.canControlTimer === true;
             if (!nextRights) { draft = null; editing = false; input.setCustomValidity(''); }
             rights = nextRights;
             if (timer && Number(timer.anchor) >= Number(state.anchor)) {
@@ -187,6 +191,7 @@
             document.removeEventListener('pointerdown', unlockAudio);
             document.removeEventListener('keydown', unlockAudio);
             host.removeEventListener('click', onClick);
+            root.removeEventListener('common:pv-references-updated', render);
         }
 
         input.addEventListener('input', function () { editing = true; input.setCustomValidity(''); });
@@ -206,12 +211,13 @@
         // committed it, so clicking Pause/Play only needs a single click.
         controls.addEventListener('pointerdown', function (event) { event.preventDefault(); });
         host.addEventListener('click', onClick);
+        root.addEventListener('common:pv-references-updated', render);
         if (options.poll) {
             // Visible projection windows also need commands and handovers while
             // unfocused. Avoid the much heavier full-editor background poll.
             pollInterval = window.setInterval(function () {
                 if (!root.isConnected) { destroy(); return; }
-                if (document.hidden || root.getClientRects().length === 0 || polling || pending) return;
+                if (pvStage === 'review' || document.hidden || root.getClientRects().length === 0 || polling || pending) return;
                 polling = true;
                 options.poll().then(function (payload) {
                     sync(payload.timerPermissions, payload.timer, payload.serverNow);

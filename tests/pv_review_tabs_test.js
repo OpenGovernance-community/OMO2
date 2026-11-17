@@ -23,7 +23,7 @@ class Element {
 }
 const context = {Element, HTMLElement: Element, HTMLButtonElement: Element, HTMLDetailsElement: Element,
     HTMLInputElement: Element, HTMLTextAreaElement: Element,
-    currentUserId: 7, pageConfig: {}, syncEventExtensionUi() {}, syncDocumentMetadataUi() {}, invitationsSendButtons: [],
+    currentUserId: 7, pageConfig: {}, pvTimer: null, syncEventExtensionUi() {}, syncDocumentMetadataUi() {}, invitationsSendButtons: [],
     documentMetadataIsDirty: () => true, closeAddMenu() {}, canManageApplicationTabs: true,
     activeApplicationTabId: 5, applicationTabsById: new Map([[5, {tabId: 5}]]),
     currentDocumentPayload: {pvStage: 'meeting', canManagePvStructure: true}};
@@ -65,6 +65,7 @@ assert.equal(context.activeApplicationTabId, 0, 'A late application callback can
 for (const stage of ['preparation', 'meeting', 'review', 'validated', 'preparation']) {
     context.currentDocumentPayload = {pvStage: stage, canManagePvStructure: stage !== 'validated', canSendPvInvitations: stage !== 'validated'};
     context.syncPvEditorUi(context.currentDocumentPayload);
+    assert.equal(context.root.getAttribute('data-common-pv-reference-stage'), stage, 'Reference navigation follows stage transitions.');
     assert.equal(invitationsMenu.hidden, stage !== 'preparation', 'Editing invitees stays restricted to preparation.');
     assert.equal(directSend.hidden, !['meeting', 'review'].includes(stage), 'Direct email access follows stage transitions without a reload.');
     assert.equal(directSend.disabled, directSend.hidden);

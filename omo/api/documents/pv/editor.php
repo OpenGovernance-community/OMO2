@@ -5,6 +5,7 @@ require_once __DIR__ . '/helpers.php';
 require_once dirname(__DIR__, 4) . '/common/patreon.php';
 require_once dirname(__DIR__, 4) . '/common/openai_text.php';
 require_once dirname(__DIR__, 4) . '/common/object_visibility_selector.php';
+require_once dirname(__DIR__, 4) . '/common/document/pv-references.php';
 require_once dirname(__DIR__, 2) . '/stats/shared.php';
 require_once dirname(__DIR__, 2) . '/projects/shared.php';
 
@@ -322,7 +323,7 @@ foreach ($points as $point) {
 }
 $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
 $pvTimer = $document->getPvTimerState();
-$showPvToolbar = $showPvApplicationTabs || $isParticipationPvEditor || $pvTimer['status'] !== 'stopped';
+$showPvToolbar = $isPvReview || $showPvApplicationTabs || $isParticipationPvEditor || $pvTimer['status'] !== 'stopped';
 ?>
 <link rel="stylesheet" href="<?= commonAssetUrl('/common/choice/change-details.css') ?>">
 <?php if ($isPvReviewDiscussion): ?>
@@ -345,7 +346,8 @@ $showPvToolbar = $showPvApplicationTabs || $isParticipationPvEditor || $pvTimer[
     <link rel="stylesheet" href="<?= commonAssetUrl('/common/document/pv-report.css') ?>">
 
     <div class="omo-pv-editor__topbar" data-omo-pv-topbar<?= $showPvToolbar ? '' : ' hidden' ?>>
-        <div class="omo-pv-editor__timer" data-omo-pv-timer role="group" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.timer.label')) ?>"<?= $isParticipationPvEditor || $pvTimer['status'] !== 'stopped' ? '' : ' hidden' ?>>
+        <div data-common-pv-references-host hidden></div>
+        <div class="omo-pv-editor__timer" data-omo-pv-timer role="group" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.timer.label')) ?>"<?= !$isPvReview && ($isParticipationPvEditor || $pvTimer['status'] !== 'stopped') ? '' : ' hidden' ?>>
             <input type="text" class="generic-form-control generic-form-control--compact omo-pv-editor__timer-time" data-omo-pv-timer-time value="00:00:00" maxlength="8" autocomplete="off" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.timer.time')) ?>"<?= $isParticipationPvEditor && !$isPvValidated ? '' : ' readonly' ?>>
             <span data-omo-pv-timer-controls<?= $isParticipationPvEditor && !$isPvValidated ? '' : ' hidden' ?>>
                 <?php foreach (['play' => '<path d="M8 5v14l11-7z"/>', 'pause' => '<path d="M6 5h4v14H6zm8 0h4v14h-4z"/>', 'stop' => '<path d="M5 5h14v14H5z"/>'] as $timerCommand => $timerIcon): ?>
@@ -669,6 +671,7 @@ $showPvToolbar = $showPvApplicationTabs || $isParticipationPvEditor || $pvTimer[
     <?php if ($showPvApplicationTabs): ?>
         <section class="omo-pv-editor__application-workspace" data-omo-pv-application-workspace hidden></section>
     <?php endif; ?>
+    <?php commonPvReferencesAssets($document, $currentUserId, '.omo-pv-editor'); ?>
 </div>
 
 <script src="/common/choice/word-diff.js?v=20260922-deferred-proposals"></script>
@@ -752,6 +755,7 @@ $showPvToolbar = $showPvApplicationTabs || $isParticipationPvEditor || $pvTimer[
     'deletePointMessage' => omoDocumentsPvEditorT('documents.pv_editor.warning.delete_point'),
     'deleteItemMessage' => (string)$uiText['deleteItemMessage'],
     'reviewIrreversibleMessage' => omoDocumentsPvEditorT('documents.pv_editor.warning.review_irreversible'),
+    'reviewUnfinishedContentMessage' => omoDocumentsPvEditorT('documents.pv_editor.warning.review_unfinished_content'),
     'validateIrreversibleMessage' => omoDocumentsPvEditorT('documents.pv_editor.warning.validate_irreversible'),
     'unsavedHandoverMessage' => (string)$uiText['unsavedHandover'],
     'notStartedValue' => (string)$uiText['notStartedValue'],

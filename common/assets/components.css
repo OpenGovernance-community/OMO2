@@ -1752,11 +1752,24 @@ html[data-theme="dark"] .black-icon,
     position: fixed;
     right: max(20px, env(safe-area-inset-right));
     bottom: calc(max(20px, env(safe-area-inset-bottom)) + 66px);
-    z-index: 1331;
+    /* Consumers can keep assistance above a full-screen drawer. */
+    z-index: var(--param-floating-panel-z-index, 1331);
     width: min(var(--param-floating-panel-width, 440px), calc(100vw - 40px));
     max-height: calc(100dvh - var(--topbar-height, 48px) - 110px);
     overflow: hidden;
     box-shadow: 0 16px 48px #00000030;
+}
+
+/* Movable panels retain a right-hand anchor when their content is collapsed. */
+.generic-floating-panel--positioned {
+    right: var(--param-floating-panel-right, 20px);
+    top: var(--param-floating-panel-top, 20px);
+    bottom: auto;
+}
+
+.generic-floating-panel--compact {
+    width: max-content;
+    max-width: calc(100vw - 40px);
 }
 
 /* Keyboard and pointer resize grip inside a floating panel. */
@@ -1799,6 +1812,9 @@ html[data-theme="dark"] .black-icon,
     cursor: ew-resize;
     touch-action: none;
     user-select: none;
+}
+.generic-resize-shield--move {
+    cursor: grabbing;
 }
 
 /* Conversation bubbles keep outgoing messages distinct in both themes. */

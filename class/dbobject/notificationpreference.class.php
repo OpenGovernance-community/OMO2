@@ -3,6 +3,11 @@ namespace dbObject;
 
 class NotificationPreference extends DbObject
 {
+    public const PV_REFERENCE_EVENT_BASES = [
+        'document_pv_review_started_referenced' => 'document_pv_review_started',
+        'document_pv_closed_referenced' => 'document_pv_closed',
+    ];
+
     public static function tableName()
     {
         return 'notification_preference';
@@ -49,6 +54,9 @@ class NotificationPreference extends DbObject
         }
 
         $item = self::findForScope($userId, $organizationId, $eventKey);
+        if (!$item && isset(self::PV_REFERENCE_EVENT_BASES[$eventKey])) {
+            $item = self::findForScope($userId, $organizationId, self::PV_REFERENCE_EVENT_BASES[$eventKey]);
+        }
         if (!$item) {
             return $defaults;
         }

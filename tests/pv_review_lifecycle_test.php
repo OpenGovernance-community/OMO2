@@ -3,11 +3,19 @@ declare(strict_types=1);
 if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 require_once dirname(__DIR__) . '/shared_functions.php';
 require_once dirname(__DIR__) . '/common/auth.php';
-if (($argv[1] ?? '') === '--page') {
+if (in_array($argv[1] ?? '', ['--page', '--preferences'], true)) {
     $_SESSION = ['currentUser' => (int)$argv[2], 'currentOrganization' => (int)$argv[3], 'isSiteAdminModeEnabled' => true];
     $_SERVER['HTTP_HOST'] = 'localtest.me';
     $_SERVER['REQUEST_METHOD'] = 'GET';
     $_GET['oid'] = (int)$argv[3];
+    if ($argv[1] === '--preferences') {
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $_SESSION['omo_notification_push_csrf'] = 'pv-reference-preferences-fixture';
+        $_POST = ['csrf_token' => $_SESSION['omo_notification_push_csrf'],
+            'preferences' => json_decode(stream_get_contents(STDIN), true, 512, JSON_THROW_ON_ERROR)];
+        require dirname(__DIR__) . '/omo/api/parameters/notifications/preferences.php';
+        exit;
+    }
     require dirname(__DIR__) . (($argv[4] ?? '') === 'documents'
         ? '/omo/api/documents/params/index.php' : '/omo/api/parameters/notifications/index.php');
     exit;
@@ -25,7 +33,7 @@ function notificationCenterSendEmail($user, $organization, $title, $body, $url):
 require_once dirname(__DIR__) . '/common/notification_center.php';
 require_once dirname(__DIR__) . '/omo/api/documents/params/shared.php';
 
-use dbObject\{DbObject, Document, DocumentInvitation, DocumentAttendance, DocumentPvNotification, Event,
+use dbObject\{DbObject, Document, DocumentInvitation, DocumentAttendance, DocumentPvNotification, DocumentPvPoint, Event,
     EventInvitation, EventAttendance, Notification, NotificationPreference, Organization, User, UserOrganization};
 
 class PvLifecycleTestOrganization extends Organization { public function delete() { return DbObject::delete(); } }
@@ -58,6 +66,18 @@ function pvLifecycleNotification(DocumentPvNotification $transition, int $uid): 
 {
     $item = new Notification();
     return $item->load([['IDuser', $uid], ['source_key', 'document-pv-stage-' . $transition->getId()]], true) ? $item : null;
+}
+
+function pvLifecycleSavePreferences(int $userId, int $organizationId, array $preferences): void
+{
+    $process = proc_open([PHP_BINARY, __FILE__, '--preferences', (string)$userId, (string)$organizationId],
+        [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+    pvLifecycleCheck(is_resource($process), 'Start preference save endpoint');
+    fwrite($pipes[0], json_encode($preferences, JSON_THROW_ON_ERROR)); fclose($pipes[0]);
+    $response = stream_get_contents($pipes[1]); fclose($pipes[1]);
+    $errors = stream_get_contents($pipes[2]); fclose($pipes[2]);
+    pvLifecycleCheck(proc_close($process) === 0 && $errors === '' && !empty(json_decode($response, true)['status']),
+        'Save notification preferences through the normal endpoint: ' . $errors . $response);
 }
 
 $pdo = DbObject::getPdo();
@@ -174,6 +194,117 @@ try {
     pvLifecycleFixture(DocumentAttendance::class, ['IDdocument' => $standalone->getId(), 'IDuser' => $users['present']->getId(), 'is_present' => 1, 'active' => 1]);
     pvLifecycleCheck(!empty($standalone->updatePvStageInOrganizationContext($oid, $owner, Document::PV_STAGE_REVIEW)['status']), 'PV without meeting uses document attendance');
     pvLifecycleCheck(pvLifecycleNotification(pvLifecycleQueued($standalone, Document::PV_STAGE_REVIEW), (int)$users['present']->getId()) !== null, 'Standalone attendee notified');
+    $referencedId = (int)$users['present']->getId();
+    $otherId = (int)$users['muted']->getId();
+    $users['present']->set('firstname', 'David');
+    $users['present']->set('lastname', 'Dräyer');
+    $users['present']->set('username', 'dd');
+    pvLifecycleSave($users['present']);
+    $users['muted']->set('firstname', 'Claire');
+    $users['muted']->set('username', 'claire');
+    pvLifecycleSave($users['muted']);
+    pvLifecycleCheck(NotificationPreference::getChannelsFor($referencedId, $oid, 'document_pv_review_started_referenced')['email'],
+        'New reference preferences inherit the existing stage channels.');
+    foreach (['document_pv_review_started', 'document_pv_closed'] as $eventKey) {
+        pvLifecycleCheck(NotificationPreference::saveChannels($referencedId, $oid, $eventKey, ['in_app' => 1]), 'Configure unreferenced channels.');
+        pvLifecycleCheck(NotificationPreference::saveChannels($otherId, $oid, $eventKey, ['in_app' => 1]), 'Configure other unreferenced channels.');
+    }
+    pvLifecycleCheck(NotificationPreference::saveChannels($referencedId, $oid, 'document_pv_review_started_referenced', ['email' => 1]), 'Email when referenced in review.');
+    pvLifecycleCheck(NotificationPreference::saveChannels($referencedId, $oid, 'document_pv_closed_referenced', []), 'Mute referenced validation independently.');
+    pvLifecycleCheck(NotificationPreference::saveChannels($otherId, $oid, 'document_pv_review_started_referenced', []), 'Mute referenced review independently.');
+    pvLifecycleCheck(NotificationPreference::saveChannels($otherId, $oid, 'document_pv_closed_referenced', ['email' => 1]), 'Email when referenced in validation.');
+    pvLifecycleCheck(!NotificationPreference::getChannelsFor($referencedId, $oid, 'document_pv_closed_referenced')['in_app'],
+        'An explicitly disabled reference preference overrides inherited channels.');
+    $referencePv = $makePv();
+    $referencePoint = pvLifecycleFixture(DocumentPvPoint::class, ['IDdocument' => $referencePv->getId(), 'IDuser_author' => $owner,
+        'title' => 'Reference routing fixture', 'content' => '<p>@David <strong>Dräyer</strong></p>',
+        'pointtype' => 'information', 'is_handled' => 1, 'active' => 1]);
+    $emailStart = count($pvTestEmails);
+    $pdo->beginTransaction();
+    pvLifecycleCheck(!empty($referencePv->updatePvStageInOrganizationContext($oid, $owner, Document::PV_STAGE_REVIEW)['status']), 'Enter review with a reference.');
+    $referenceReview = pvLifecycleQueued($referencePv, Document::PV_STAGE_REVIEW);
+    pvLifecycleCheck($referenceReview->getPayload()['referencedUserIds'] === [$referencedId], 'Reference routing is captured at the transition.');
+    $pdo->commit();
+    $referencePoint->set('content', '<p>@claire</p>');
+    pvLifecycleSave($referencePoint);
+    DocumentPvNotification::processPending(20, (int)$referencePv->getId());
+    $referencedReviewNotification = pvLifecycleNotification($referenceReview, $referencedId);
+    $otherReviewNotification = pvLifecycleNotification($referenceReview, $otherId);
+    pvLifecycleCheck($referencedReviewNotification?->get('event_key') === 'document_pv_review_started_referenced'
+        && $referencedReviewNotification->get('read_at') instanceof DateTimeInterface, 'Referenced review follows its email-only channel.');
+    pvLifecycleCheck($otherReviewNotification?->get('event_key') === 'document_pv_review_started'
+        && !$otherReviewNotification->get('read_at'), 'Unreferenced review follows its in-app channel.');
+    $emails = array_column(array_slice($pvTestEmails, $emailStart), 'email');
+    pvLifecycleCheck(count(array_keys($emails, $users['present']->get('email'), true)) === 1
+        && !in_array($users['muted']->get('email'), $emails, true), 'Only the referenced member receives a review email.');
+    $emailStart = count($pvTestEmails);
+    pvLifecycleCheck(!empty($referencePv->updatePvStageInOrganizationContext($oid, $owner, Document::PV_STAGE_VALIDATED)['status']), 'Validate with the corrected references.');
+    $referenceClosed = pvLifecycleQueued($referencePv, Document::PV_STAGE_VALIDATED);
+    pvLifecycleCheck(pvLifecycleNotification($referenceClosed, $referencedId)?->get('event_key') === 'document_pv_closed'
+        && pvLifecycleNotification($referenceClosed, $otherId)?->get('event_key') === 'document_pv_closed_referenced', 'Validation classifies the current references separately.');
+    $emails = array_column(array_slice($pvTestEmails, $emailStart), 'email');
+    pvLifecycleCheck(!in_array($users['present']->get('email'), $emails, true)
+        && count(array_keys($emails, $users['muted']->get('email'), true)) === 1, 'Validation uses its own reference email preferences.');
+    $sentCount = count($pvTestEmails);
+    DocumentPvNotification::processPending(20, (int)$referencePv->getId());
+    pvLifecycleCheck(count($pvTestEmails) === $sentCount, 'Retrying a processed transition sends no duplicate email.');
+    $autoReferencePv = $makePv(['pvstage' => Document::PV_STAGE_REVIEW, 'pv_review_started_at' => $now->modify('-7 days')]);
+    pvLifecycleFixture(DocumentPvPoint::class, ['IDdocument' => $autoReferencePv->getId(), 'IDuser_author' => $owner,
+        'title' => 'Automatic validation reference', 'content' => '<p>@dd</p>', 'pointtype' => 'information', 'is_handled' => 1, 'active' => 1]);
+    pvLifecycleCheck(Document::closeDuePvReviewsBatch(20, $now, $oid) === 1, 'Automatically validate the referenced PV.');
+    DocumentPvNotification::processPending(20, (int)$autoReferencePv->getId());
+    $autoReferenceClosed = pvLifecycleQueued($autoReferencePv, Document::PV_STAGE_VALIDATED);
+    pvLifecycleCheck($autoReferenceClosed->getPayload()['referencedUserIds'] === [$referencedId]
+        && pvLifecycleNotification($autoReferenceClosed, $referencedId) === null,
+        'Automatic validation also respects the disabled reference-specific channels.');
+    $absentId = (int)$users['absent']->getId();
+    $users['absent']->set('username', 'absentcite'); pvLifecycleSave($users['absent']);
+    $users['revoked']->set('username', 'revokedcite'); pvLifecycleSave($users['revoked']);
+    $uninvited = pvLifecycleFixture(User::class, ['email' => "$nonce-uninvited@example.invalid", 'username' => 'noninvite', 'active' => 1]);
+    pvLifecycleFixture(UserOrganization::class, ['IDorganization' => $oid, 'IDuser' => $uninvited->getId(), 'active' => 1]);
+    pvLifecycleCheck(NotificationPreference::saveChannels($absentId, $oid, 'document_pv_review_started_referenced', ['email' => 1]), 'Configure referenced absent invitee.');
+    $absencePv = $makePv();
+    pvLifecycleFixture(DocumentPvPoint::class, ['IDdocument' => $absencePv->getId(), 'IDuser_author' => $owner,
+        'title' => 'Absent referenced invitee', 'content' => '<p>@absentcite @revokedcite @noninvite</p>',
+        'pointtype' => 'information', 'is_handled' => 1, 'active' => 1]);
+    $emailStart = count($pvTestEmails);
+    pvLifecycleCheck(!empty($absencePv->updatePvStageInOrganizationContext($oid, $owner, Document::PV_STAGE_REVIEW)['status']), 'Enter review with an absent referenced invitee.');
+    $absenceReview = pvLifecycleQueued($absencePv, Document::PV_STAGE_REVIEW);
+    pvLifecycleCheck(pvLifecycleNotification($absenceReview, $absentId)?->get('event_key') === 'document_pv_review_started_referenced',
+        'An invited and referenced member receives the review notification while absent.');
+    pvLifecycleCheck(pvLifecycleNotification($absenceReview, (int)$users['revoked']->getId()) === null
+        && pvLifecycleNotification($absenceReview, (int)$uninvited->getId()) === null, 'A reference alone does not notify revoked or uninvited members.');
+    pvLifecycleCheck(in_array($users['absent']->get('email'), array_column(array_slice($pvTestEmails, $emailStart), 'email'), true),
+        'The absent invitee receives the configured reference email.');
+    $confidentialPv = $makePv();
+    pvLifecycleFixture(DocumentPvPoint::class, ['IDdocument' => $confidentialPv->getId(), 'IDuser_author' => $owner,
+        'title' => 'Confidential reference', 'content' => '<p>@absentcite</p>', 'is_confidential' => 1,
+        'pointtype' => 'information', 'is_handled' => 1, 'active' => 1]);
+    pvLifecycleCheck(!empty($confidentialPv->updatePvStageInOrganizationContext($oid, $owner, Document::PV_STAGE_REVIEW)['status']), 'Enter review with a confidential reference.');
+    pvLifecycleCheck(pvLifecycleNotification(pvLifecycleQueued($confidentialPv, Document::PV_STAGE_REVIEW), $absentId) === null,
+        'An inaccessible confidential reference does not notify the absent invitee.');
+    $emailInvitee = pvLifecycleFixture(User::class, ['email' => "$nonce-member-invited@example.invalid", 'username' => 'emailinvite', 'active' => 1]);
+    $emailInviteeId = (int)$emailInvitee->getId();
+    pvLifecycleFixture(UserOrganization::class, ['IDorganization' => $oid, 'IDuser' => $emailInviteeId, 'active' => 1]);
+    pvLifecycleCheck(NotificationPreference::saveChannels($emailInviteeId, $oid, 'document_pv_review_started_referenced', ['in_app' => 1]), 'Configure a member invited by email.');
+    $emailInvitationPv = $makePv(['IDevent' => null]);
+    pvLifecycleFixture(DocumentInvitation::class, ['IDdocument' => $emailInvitationPv->getId(), 'email' => $emailInvitee->get('email'),
+        'invitation_type' => DocumentInvitation::TYPE_EMAIL, 'status' => DocumentInvitation::STATUS_INVITED, 'active' => 1]);
+    pvLifecycleFixture(DocumentPvPoint::class, ['IDdocument' => $emailInvitationPv->getId(), 'IDuser_author' => $owner,
+        'title' => 'Email invitation reference', 'content' => '<p>@emailinvite</p>', 'pointtype' => 'information', 'is_handled' => 1, 'active' => 1]);
+    pvLifecycleCheck(!empty($emailInvitationPv->updatePvStageInOrganizationContext($oid, $owner, Document::PV_STAGE_REVIEW)['status']), 'Enter review with a referenced email invitee.');
+    pvLifecycleCheck(pvLifecycleNotification(pvLifecycleQueued($emailInvitationPv, Document::PV_STAGE_REVIEW), $emailInviteeId)?->get('event_key') === 'document_pv_review_started_referenced',
+        'An absent registered member invited by email also receives the reference notification.');
+    pvLifecycleCheck(NotificationPreference::saveChannels($owner, $oid, 'document_pv_review_started', ['in_app' => 1, 'email' => 1]), 'Prepare legacy notification preferences.');
+    pvLifecycleSavePreferences($owner, $oid, ['document_pv_review_started' => ['configured' => 1, 'in_app' => 1]]);
+    $legacyReferenceChannels = NotificationPreference::getChannelsFor($owner, $oid, 'document_pv_review_started_referenced');
+    pvLifecycleCheck($legacyReferenceChannels['in_app'] && !$legacyReferenceChannels['email'], 'An old open form retains inherited reference preferences.');
+    pvLifecycleSavePreferences($owner, $oid, [
+        'document_pv_review_started' => ['configured' => 1, 'in_app' => 1],
+        'document_pv_review_started_referenced' => ['configured' => 1],
+    ]);
+    pvLifecycleCheck(!NotificationPreference::getChannelsFor($owner, $oid, 'document_pv_review_started_referenced')['in_app'],
+        'The new form can disable every channel of a reference row.');
     pvLifecycleCheck(isset(notificationCenterGetActiveEventGroups($oid, $owner)['documents']), 'Both PV notification settings are exposed for enabled Documents app');
     foreach (['documents', 'notifications'] as $page) {
         $process = proc_open([PHP_BINARY, __FILE__, '--page', (string)$owner, (string)$oid, $page],
@@ -189,7 +320,10 @@ try {
             $input = $xpath->query('//input[@name="pv_review_days"]')->item(0);
             pvLifecycleCheck($input instanceof DOMElement && $input->getAttribute('value') === '7', 'Document settings show saved review duration');
         } else {
-            foreach (['document_pv_review_started', 'document_pv_closed'] as $key) {
+            pvLifecycleCheck(str_contains($html, 'Passage en relecture des PV auxquels je suis invité, avec des références à mon compte'),
+                'Reference review settings describe invitations rather than attendance.');
+            pvLifecycleCheck(!str_contains($html, '(manuelle ou automatique)'), 'Validation labels omit the parenthetical qualifier.');
+            foreach (['document_pv_review_started', 'document_pv_review_started_referenced', 'document_pv_closed', 'document_pv_closed_referenced'] as $key) {
                 foreach (['in_app', 'email'] as $channel) {
                     pvLifecycleCheck($xpath->query('//input[@name="preferences[' . $key . '][' . $channel . ']"]')->length === 1,
                         'Notification channel is configurable: ' . $key . ' / ' . $channel);

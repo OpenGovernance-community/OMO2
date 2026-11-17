@@ -32,6 +32,8 @@ foreach (notificationCenterGetActiveEventGroups($organizationId, $userId) as $ev
     $eventKeys = array_merge($eventKeys, $eventGroup['eventKeys'] ?? []);
 }
 foreach (array_values(array_unique($eventKeys)) as $eventKey) {
+    // Older open forms do not contain the new reference-specific rows.
+    if (isset(\dbObject\NotificationPreference::PV_REFERENCE_EVENT_BASES[$eventKey]) && !isset($preferences[$eventKey])) continue;
     $values = isset($preferences[$eventKey]) && is_array($preferences[$eventKey]) ? $preferences[$eventKey] : [];
     $channels = \dbObject\NotificationPreference::getChannelsFor($userId, $organizationId, $eventKey);
     $channels['in_app'] = !empty($values['in_app']);

@@ -13,7 +13,7 @@ const toolbar = execFileSync(php, ['-r', `
     $start = strpos($source, '<div class="omo-pv-editor__topbar"');
     $end = strpos($source, '<aside class="omo-pv-editor__sidebar">', $start);
     $showPvToolbar = $isParticipationPvEditor = $showPvApplicationTabs = $canManagePvStructure = true;
-    $isPvValidated = false;
+    $isPvValidated = $isPvReview = false;
     $pvTimer = ['status' => 'stopped'];
     $pvApplicationTabsPayload = [];
     $uiText = ['applicationPickerTitle' => 'Applications', 'applicationEditorTab' => 'PV', 'applicationAdd' => '+'];
@@ -162,6 +162,67 @@ const toolbar = execFileSync(php, ['-r', `
         await page.evaluate(() => window.pollRoot.remove());
         await page.clock.runFor(2100);
         assert.equal(await page.evaluate(() => window.pollCount), 1, 'Detached editors release their polling interval.');
+        const reviewErrors = [];
+        page.on('pageerror', error => reviewErrors.push(error.message));
+        await page.addStyleTag({path: path.join(base, 'common/document/pv-references.css')});
+        await page.addScriptTag({path: path.join(base, 'omo/assets/js/simple-html-field.js')});
+        await page.addScriptTag({path: path.join(base, 'common/document/pv-references.js')});
+        await page.evaluate(toolbar => {
+            const review = document.createElement('main');
+            review.id = 'review';
+            review.className = 'omo-pv-editor';
+            review.style.height = '550px';
+            review.style.minHeight = '0';
+            review.innerHTML = toolbar + '<aside class="omo-pv-editor__sidebar">Agenda</aside>'
+                + '<div class="omo-pv-editor__resizer"></div><section class="omo-pv-editor__main">'
+                + '<article data-omo-pv-point-card="1"><div data-omo-pv-point-editor-host="1"></div></article>'
+                + '<script type="application/json" data-reference-script>{}</script></section>';
+            document.body.append(review);
+            review.querySelector('[data-omo-pv-application-tabs]').hidden = true;
+            window.reviewTimerPolls = 0;
+            window.reviewTimer = window.omoPvTimer.mount({
+                root: review, state: {...window.stopped}, serverNow: Date.now(), ui: {},
+                poll: () => { window.reviewTimerPolls++; return Promise.resolve({}); }
+            });
+            window.reviewTimer.sync({pvStage: 'review', canControlTimer: true});
+            window.commonPageScripts['/common/document/pv-references.js']({
+                rootSelector: '#review', stage: 'review', viewerKey: 'user:1',
+                identities: [{key: 'user:1', firstname: 'David', fullName: 'David Dräyer', username: 'dd'}]
+            }, review.querySelector('[data-reference-script]'));
+            const editorHost = review.querySelector('[data-omo-pv-point-editor-host]');
+            window.reviewField = window.omoSimpleHtmlField.mount(editorHost, {
+                value: '<p>Pour @David <strong>Dräyer</strong>, puis pour @dd.</p>'
+            });
+        }, toolbar);
+        await page.clock.runFor(150);
+        const review = page.locator('#review');
+        const references = review.locator('[data-common-pv-references-host] .common-pv-references');
+        await references.getByText('Référence 1 sur 2', {exact: true}).waitFor();
+        assert.equal(await review.locator('[data-omo-pv-timer]').isVisible(), false, 'Review replaces the timer.');
+        assert.equal(await review.locator('[data-omo-pv-topbar]').isVisible(), true, 'References keep the review topbar visible.');
+        assert.equal(await references.locator('.common-pv-references__handle').count(), 0, 'The integrated navigator has no movement handle.');
+        assert.equal(await references.evaluate(element => getComputedStyle(element).position), 'static', 'The navigator stays in the toolbar.');
+        const reviewContent = await page.evaluate(() => window.reviewField.getValue());
+        await references.getByRole('button', {name: 'Référence suivante'}).click();
+        await references.getByText('Référence 2 sur 2', {exact: true}).waitFor();
+        assert.equal(await page.evaluate(() => window.reviewField.getValue()), reviewContent, 'Navigation preserves the editable field content.');
+        await page.evaluate(() => {
+            document.querySelector('#review [data-omo-pv-point-editor-host]').innerHTML = '<div class="note-editor">'
+                + '<div class="note-toolbar">Toolbar @dd</div><div class="note-editable" contenteditable="true"><p>@dd</p></div></div>';
+        });
+        await page.clock.runFor(150);
+        await references.getByText('Référence 1 sur 1', {exact: true}).waitFor();
+        await page.evaluate(() => document.querySelector('#review .note-editable').textContent = 'Aucune mention');
+        await page.clock.runFor(150);
+        assert.equal(await references.isVisible(), false);
+        assert.equal(await review.locator('[data-omo-pv-topbar]').isVisible(), false, 'An empty navigator does not leave an empty toolbar.');
+        await page.evaluate(() => document.querySelector('#review .note-editable').textContent = '@David');
+        await page.clock.runFor(150);
+        await references.getByText('Référence 1 sur 1', {exact: true}).waitFor();
+        assert.equal(await review.locator('[data-omo-pv-topbar]').isVisible(), true, 'Adding a reference restores the integrated toolbar.');
+        await page.clock.runFor(2100);
+        assert.equal(await page.evaluate(() => window.reviewTimerPolls), 0, 'Review no longer polls the unused timer.');
+        assert.deepEqual(reviewErrors, []);
         assert.deepEqual(await page.evaluate(() => window.errors), []);
         console.log('pv_timer_browser_test: OK');
     } finally { await browser.close(); }

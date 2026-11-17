@@ -37,19 +37,19 @@ class AiUsage extends DbObject
         $params = ['start' => $start, 'end' => $end];
         if ($organizationId > 0) { $where .= ' AND a.IDorganization = :organization'; $params['organization'] = $organizationId; }
         if (in_array($origin, ['site', 'api', 'mcp', 'telegram', 'background'], true)) { $where .= ' AND a.origin = :origin'; $params['origin'] = $origin; }
-        $totals = self::fetchRow("SELECT COUNT(*) AS requests, SUM(a.kind = 'model') AS model_requests,
+        $totals = self::fetchRow("SELECT COUNT(*) AS requests, COUNT(DISTINCT a.IDuser) AS users, SUM(a.kind = 'model') AS model_requests,
             SUM(a.kind = 'exchange') AS exchange_requests, SUM(a.total_tokens) AS tokens,
             COUNT(a.total_tokens) AS measured_requests, SUM(a.success = 0) AS errors,
             SUM(a.input_chars) AS input_chars, SUM(a.output_chars) AS output_chars FROM ai_usage a WHERE " . $where, $params);
         if ($totals === false) return ['available' => false, 'totals' => [], 'rows' => []];
-        $rows = self::fetchAll("SELECT a.IDuser, a.IDorganization, a.origin, a.kind, a.feature, a.provider, a.model,
-            CONCAT_WS(' ', u.firstname, u.lastname) AS name, u.email, o.name AS organization_name,
-            COUNT(*) AS requests, SUM(a.success = 0) AS errors, COUNT(a.total_tokens) AS measured_requests,
+        $rows = self::fetchAll("SELECT a.IDuser, CONCAT_WS(' ', u.firstname, u.lastname) AS name, u.email,
+            COUNT(*) AS requests, SUM(a.kind = 'model') AS model_requests,
+            SUM(a.success = 0) AS errors, COUNT(a.total_tokens) AS measured_requests,
             SUM(a.input_tokens) AS input_tokens, SUM(a.output_tokens) AS output_tokens, SUM(a.total_tokens) AS total_tokens,
             SUM(a.input_chars) AS input_chars, SUM(a.output_chars) AS output_chars, SUM(a.audio_bytes) AS audio_bytes
-            FROM ai_usage a LEFT JOIN user u ON u.id = a.IDuser LEFT JOIN organization o ON o.id = a.IDorganization
-            WHERE " . $where . ' GROUP BY a.IDuser, a.IDorganization, a.origin, a.kind, a.feature, a.provider, a.model,
-            u.firstname, u.lastname, u.email, o.name ORDER BY total_tokens DESC, requests DESC LIMIT 200', $params) ?: [];
+            FROM ai_usage a LEFT JOIN user u ON u.id = a.IDuser
+            WHERE " . $where . ' GROUP BY a.IDuser, u.firstname, u.lastname, u.email
+            ORDER BY total_tokens DESC, requests DESC, a.IDuser', $params) ?: [];
         return ['available' => true, 'totals' => $totals, 'rows' => $rows];
     }
 }

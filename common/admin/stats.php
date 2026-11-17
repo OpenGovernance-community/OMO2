@@ -47,12 +47,14 @@ function siteStatsSourceLang(): array
         'monitor.growth' => 'Croissance globale du site', 'monitor.unavailable' => 'Indisponible',
         'monitor.days' => '{count} jours', 'monitor.error_rate' => 'Taux d’erreurs serveur',
         'monitor.sql_queries' => 'Requêtes SQL', 'monitor.client_errors' => 'Erreurs HTTP 4xx',
-        'ai.title' => 'Consommation IA, API et MCP', 'ai.origin' => 'Origine des appels IA / intégrations',
+        'ai.title' => 'Utilisation de l’IA et des intégrations par personne', 'ai.origin' => 'Origine des appels IA / intégrations',
+        'ai.person' => 'Personne', 'ai.users' => 'Personnes', 'ai.unassigned' => 'Sans personne associée',
+        'ai.summary' => 'Une ligne par personne, toutes fonctions et tous modèles confondus. Classement par jetons consommés, puis par nombre d’appels.',
         'ai.source' => 'Origine', 'ai.errors' => 'Appels en échec', 'ai.site' => 'Site', 'ai.api' => 'API', 'ai.mcp' => 'MCP', 'ai.telegram' => 'Telegram', 'ai.background' => 'Traitements automatiques',
         'ai.model_requests' => 'Appels aux modèles', 'ai.exchange_requests' => 'Requêtes API / MCP', 'ai.tokens' => 'Jetons des modèles',
         'ai.feature' => 'Fonction / fournisseur / modèle', 'ai.input_tokens' => 'Jetons entrants', 'ai.output_tokens' => 'Jetons sortants',
         'ai.characters' => 'Caractères entrée / sortie', 'ai.audio_bytes' => 'Octets audio entrants', 'ai.coverage' => 'Appels avec jetons fournis',
-        'ai.help' => 'Les jetons sont ceux renvoyés par les modèles appelés par le site, y compris les tours internes de l’assistant. API et MCP comptent uniquement leurs requêtes et caractères échangés, indépendamment des jetons du modèle externe. Les caractères couvrent les données JSON échangées ; les fichiers audio entrants sont comptés en octets. Aucun contenu de question ou réponse n’est conservé dans ces mesures. Totaux complets ; tableau limité aux 200 combinaisons les plus consommatrices sur la période choisie (UTC). Les filtres Mesures, Cron et CalDAV ne concernent pas ce suivi.',
+        'ai.help' => 'Les appels sont regroupés par compte, quels que soient la fonction, le fournisseur, le modèle ou l’organisation. Les filtres de période (UTC), d’organisation et d’origine restent appliqués. Les appels sans personne associée sont réunis sur une ligne distincte. Le total inclut les appels aux modèles et les requêtes API / MCP ; un même usage peut produire plusieurs appels. Les jetons sont ceux renvoyés par les modèles appelés par le site, y compris les tours internes de l’assistant ; les jetons des modèles externes utilisés via API / MCP ne sont pas connus. Une valeur indisponible n’est pas comptée comme zéro ; les sommes connues peuvent donc être incomplètes. Aucun contenu de question ou réponse n’est conservé dans ces mesures. Tous les comptes de la période sont affichés. Les filtres Mesures, Cron et CalDAV ne concernent pas ce suivi.',
         'caldav.title' => 'Suivi CalDAV', 'caldav.sort' => 'Classement CalDAV',
         'caldav.requests' => 'Appels CalDAV', 'caldav.cpu' => 'CPU PHP CalDAV (secondes)',
         'caldav.users' => 'Utilisateurs les plus consommateurs de CalDAV',
@@ -597,23 +599,21 @@ if ($allowed) {
             <?php if (empty($aiUsage['available'])): ?><p><?= siteStatsEscape(siteStatsT('monitor.missing')) ?></p>
             <?php else: $aiTotals = $aiUsage['totals']; ?>
             <div class="site-stats-metrics">
-                <?php foreach (['ai.model_requests' => $aiTotals['model_requests'], 'ai.exchange_requests' => $aiTotals['exchange_requests'], 'ai.tokens' => $aiTotals['tokens'], 'ai.errors' => $aiTotals['errors']] as $label => $value): ?>
+                <?php foreach (['ai.users' => $aiTotals['users'], 'monitor.requests' => $aiTotals['requests'], 'ai.tokens' => $aiTotals['tokens'], 'ai.errors' => $aiTotals['errors']] as $label => $value): ?>
                 <div class="site-stats-metric generic-soft-panel generic-soft-panel--stack"><span><?= siteStatsEscape(siteStatsT($label)) ?></span><strong><?= $label === 'ai.tokens' && $value === null && (int)$aiTotals['model_requests'] > 0 ? siteStatsEscape(siteStatsT('monitor.unavailable')) : siteStatsNumber($value ?? 0) ?></strong></div>
                 <?php endforeach; ?>
             </div>
+            <p class="site-stats-notes"><?= siteStatsEscape(siteStatsT('ai.summary')) ?></p>
             <p class="site-stats-notes"><?= siteStatsEscape(siteStatsT('ai.coverage')) ?> : <?= siteStatsNumber($aiTotals['measured_requests']) ?> / <?= siteStatsNumber($aiTotals['model_requests'] ?? 0) ?></p>
             <?php if (!$aiUsage['rows']): ?><p><?= siteStatsEscape(siteStatsT('stats.chart.empty')) ?></p><?php else: ?>
             <div class="site-stats-table-scroll"><table class="site-stats-table" id="ai-usage-table"><thead><tr>
-                <?php foreach (['caldav.contact', 'monitor.organization', 'ai.source', 'ai.feature', 'monitor.requests', 'ai.errors', 'ai.input_tokens', 'ai.output_tokens', 'ai.tokens', 'ai.characters', 'ai.audio_bytes'] as $label): ?><th><?= siteStatsEscape(siteStatsT($label)) ?></th><?php endforeach; ?>
+                <?php foreach (['ai.person', 'monitor.requests', 'ai.tokens', 'ai.errors'] as $label): ?><th scope="col"><?= siteStatsEscape(siteStatsT($label)) ?></th><?php endforeach; ?>
             </tr></thead><tbody>
             <?php foreach ($aiUsage['rows'] as $row): ?>
-                <tr><th><?= siteStatsEscape(trim((string)$row['name']) ?: ($row['IDuser'] ? siteStatsT('caldav.unknown', ['id' => $row['IDuser']]) : siteStatsT('ai.background'))) ?><br><?= siteStatsEscape($row['email'] ?? '') ?></th>
-                    <td><?= siteStatsEscape($row['organization_name'] ?? siteStatsT('monitor.unassigned')) ?></td>
-                    <td><?= siteStatsEscape(siteStatsT('ai.' . $row['origin'])) ?></td>
-                    <td><?= siteStatsEscape(implode(' / ', array_filter([$row['feature'], $row['provider'], $row['model']]))) ?></td>
-                    <td><?= siteStatsNumber($row['requests']) ?></td><td><?= siteStatsNumber($row['errors']) ?></td>
-                    <?php foreach (['input_tokens', 'output_tokens', 'total_tokens'] as $field): ?><td><?= $row['kind'] !== 'model' ? '-' : ($row[$field] === null ? siteStatsEscape(siteStatsT('monitor.unavailable')) : siteStatsNumber($row[$field])) ?></td><?php endforeach; ?>
-                    <td><?= siteStatsNumber($row['input_chars']) ?> / <?= siteStatsNumber($row['output_chars']) ?></td><td><?= siteStatsNumber($row['audio_bytes']) ?></td>
+                <tr><th scope="row"><?= siteStatsEscape(trim((string)$row['name']) ?: ($row['IDuser'] ? siteStatsT('caldav.unknown', ['id' => $row['IDuser']]) : siteStatsT('ai.unassigned'))) ?><br><?= siteStatsEscape($row['email'] ?? '') ?></th>
+                    <td><?= siteStatsNumber($row['requests']) ?></td>
+                    <td><?= (int)$row['model_requests'] === 0 ? '-' : ($row['total_tokens'] === null ? siteStatsEscape(siteStatsT('monitor.unavailable')) : siteStatsNumber($row['total_tokens'])) ?></td>
+                    <td><?= siteStatsNumber($row['errors']) ?></td>
                 </tr>
             <?php endforeach; ?></tbody></table></div><?php endif; endif; ?>
         </section>

@@ -212,6 +212,12 @@ $infoHtml = (string)ob_get_clean();
             </div>
             <?php endif; ?>
         <?php endif; ?>
+        <?php
+        if ($allowed) {
+            require_once dirname(__DIR__) . '/common/document/pv-references.php';
+            commonPvReferencesAssets($document, $userId, '#omoDocumentReaderPreview');
+        }
+        ?>
     </main>
     <?php if ($allowed && $shareLink && ($document->supportsHtmlContent() || $document->isPvDocument())): ?>
     <script src="<?= commonAssetUrl('/omo/document_share.js') ?>" defer></script>

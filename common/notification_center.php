@@ -16,10 +16,13 @@ if (!function_exists('notificationCenterT')) {
             'notification.meeting.reason' => ['text' => 'Motif : {reason}', 'context' => 'Reason provided by the visitor.'],
             'notification.meeting.method' => ['text' => 'Lieu ou moyen de rencontre : {method}', 'context' => 'Contact details for the booked appointment.'],
             'notification.member' => ['text' => 'Un membre', 'context' => 'Fallback when a notification actor cannot be identified.'],
-            'notification.pv.review_preference' => ['text' => 'Passage en relecture des PV auxquels j’ai assisté', 'context' => 'PV review notification preference.'],
-            'notification.pv.closed_preference' => ['text' => 'Clôture des PV auxquels je suis invité', 'context' => 'PV closure notification preference.'],
+            'notification.pv.review_preference' => ['text' => 'Passage en relecture des PV auxquels j’ai assisté, sans référence à mon compte', 'context' => 'PV review notification preference when the reader is not referenced.'],
+            'notification.pv.review_referenced_preference' => ['text' => 'Passage en relecture des PV auxquels je suis invité, avec des références à mon compte', 'context' => 'PV review notification preference for referenced invitees, including absent invitees.'],
+            'notification.pv.closed_preference' => ['text' => 'Validation des PV auxquels je suis invité, sans référence à mon compte', 'context' => 'PV validation notification preference when the reader is not referenced.'],
+            'notification.pv.closed_referenced_preference' => ['text' => 'Validation des PV auxquels je suis invité, avec des références à mon compte', 'context' => 'PV validation notification preference when the reader is referenced.'],
+            'notification.pv.references_body' => ['text' => 'Ce PV contient des références à votre compte.', 'context' => 'Additional information in a PV stage notification sent to a referenced reader.'],
             'notification.pv.review_title' => ['text' => 'PV en relecture - {title}', 'context' => 'PV review notification title.'],
-            'notification.pv.review_body' => ['text' => 'Le PV "{title}" est disponible pour relecture. Sa clôture automatique est prévue le {deadline}.', 'context' => 'Notification sent to people present at the meeting.'],
+            'notification.pv.review_body' => ['text' => 'Le PV "{title}" est disponible pour relecture. Sa clôture automatique est prévue le {deadline}.', 'context' => 'Notification sent to meeting attendees and referenced invitees.'],
             'notification.pv.closed_title' => ['text' => 'PV clôturé - {title}', 'context' => 'PV closure notification title.'],
             'notification.pv.closed_body' => ['text' => 'Le PV "{title}" est clôturé. Vous pouvez consulter sa version définitive.', 'context' => 'Notification sent to all invitees after manual closure.'],
             'notification.pv.closed_auto_body' => ['text' => 'Le délai de relecture du PV "{title}" est terminé. Le PV a été clôturé automatiquement et sa version définitive est disponible.', 'context' => 'Notification sent to all invitees after automatic closure.'],
@@ -99,7 +102,9 @@ if (!function_exists('notificationCenterEventCatalog')) {
             'user_login_known_device' => notificationCenterT('notification.login.known'),
             'meeting_booking_created' => notificationCenterT('notification.meeting.preference'),
             'document_pv_review_started' => notificationCenterT('notification.pv.review_preference'),
+            'document_pv_review_started_referenced' => notificationCenterT('notification.pv.review_referenced_preference'),
             'document_pv_closed' => notificationCenterT('notification.pv.closed_preference'),
+            'document_pv_closed_referenced' => notificationCenterT('notification.pv.closed_referenced_preference'),
             'decision_proposal_owner' => 'Nouvelle proposition dans mes scrutins',
             'decision_proposal_participant' => 'Nouvelle proposition dans un scrutin auquel je participe',
             'decision_chat_proposal_owner' => 'Nouveau commentaire sur mes propositions',
@@ -128,7 +133,10 @@ if (!function_exists('notificationCenterEventGroupCatalog')) {
     {
         return [
             'personal' => ['applicationHash' => '', 'eventKeys' => ['user_login_new_device', 'user_login_known_device', 'meeting_booking_created']],
-            'documents' => ['applicationHash' => 'documents', 'eventKeys' => ['document_pv_review_started', 'document_pv_closed']],
+            'documents' => ['applicationHash' => 'documents', 'eventKeys' => [
+                'document_pv_review_started_referenced', 'document_pv_review_started',
+                'document_pv_closed_referenced', 'document_pv_closed',
+            ]],
             'decisions' => [
                 'applicationHash' => 'decision',
                 'eventKeys' => [
@@ -208,8 +216,14 @@ if (!function_exists('notificationCenterDispatchPvStage')) {
         $title = notificationCenterT($review ? 'notification.pv.review_title' : 'notification.pv.closed_title', $variables);
         $body = notificationCenterT($review ? 'notification.pv.review_body'
             : (!empty($payload['automatic']) ? 'notification.pv.closed_auto_body' : 'notification.pv.closed_body'), $variables);
-        notificationCenterCreateForUsers($oid, $key, $payload['userIds'] ?? [], 'document-pv-stage-' . $item->getId(),
-            $title, $body, '/omo/o/' . $oid . '#documents-d' . $document->getId());
+        $userIds = array_map('intval', $payload['userIds'] ?? []);
+        $referencedUserIds = array_values(array_intersect($userIds, array_map('intval', $payload['referencedUserIds'] ?? [])));
+        foreach ([$key => array_values(array_diff($userIds, $referencedUserIds)), $key . '_referenced' => $referencedUserIds] as $eventKey => $recipients) {
+            if (!$recipients) continue;
+            $recipientBody = $eventKey === $key ? $body : $body . ' ' . notificationCenterT('notification.pv.references_body');
+            notificationCenterCreateForUsers($oid, $eventKey, $recipients, 'document-pv-stage-' . $item->getId(),
+                $title, $recipientBody, '/omo/o/' . $oid . '#documents-d' . $document->getId());
+        }
         foreach ($payload['guests'] ?? [] as $guest) {
             $email = $guest['email'];
             if (in_array($email, $payload['sentEmails'] ?? [], true)) continue;

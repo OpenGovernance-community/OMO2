@@ -112,12 +112,15 @@ try {
         commonAiRecordUsage('exchange', '', '', 'abc', '12345', ['usage' => ['total_tokens' => 999]], 200);
         commonAiSetUsageContext($uid, $oid, 'omo_list_records', 'api');
         commonAiRecordUsage('exchange', '', '', 'abc', 'error', [], 403);
-        $rows = AiUsage::dashboard('2000-01-01', '2100-01-01', $oid)['rows']; mcpCheck(count($rows) === 5, 'Separate origins, providers and kinds');
-        $by = []; foreach ($rows as $row) $by[$row['provider'] ?: $row['origin']] = $row;
-        mcpCheck((int)$by['openai']['total_tokens'] === 16 && (int)$by['anthropic']['total_tokens'] === 21, 'Provider token counts include Anthropic cache');
-        mcpCheck($by['openai_compatible']['total_tokens'] === null && (int)$by['openai_compatible']['input_chars'] === 1, 'Unknown tokens stay null and characters count Unicode');
-        mcpCheck($by['mcp']['total_tokens'] === null && (int)$by['mcp']['output_chars'] === 5 && (int)$by['api']['errors'] === 1, 'Exchange metrics never invent model tokens; failures counted');
+        $usage = AiUsage::dashboard('2000-01-01', '2100-01-01', $oid);
+        mcpCheck(count($usage['rows']) === 1 && (int)$usage['totals']['users'] === 1, 'Origins, providers and kinds are grouped by person');
+        $row = $usage['rows'][0];
+        mcpCheck((int)$row['IDuser'] === $uid && (int)$row['requests'] === 5 && (int)$row['model_requests'] === 3, 'All calls for the account are combined');
+        mcpCheck((int)$row['total_tokens'] === 37 && (int)$row['measured_requests'] === 2, 'Known tokens include Anthropic cache; unknown tokens stay unmeasured');
+        mcpCheck((int)$row['input_chars'] === 17 && (int)$row['output_chars'] === 31 && (int)$row['errors'] === 1, 'Characters count Unicode; failures are combined');
+        $mcp = AiUsage::dashboard('2000-01-01', '2100-01-01', $oid, 'mcp')['rows'][0];
+        mcpCheck((int)$mcp['requests'] === 1 && $mcp['total_tokens'] === null && (int)$mcp['output_chars'] === 5, 'Origin filter applies before grouping; exchanges never invent model tokens');
         mcpCheck(AiUsage::dashboard('2000-01-01', '2100-01-01', $other)['rows'] === [], 'Usage summary isolated by organization');
     } finally { $pdo->rollBack(); }
-    echo "PASS organization entitlement, nominal threshold, OAuth scope/revocation, identity uniqueness, legacy duplicates, token rotation and separate usage counters\n";
+    echo "PASS organization entitlement, nominal threshold, OAuth scope/revocation, identity uniqueness, legacy duplicates, token rotation and usage grouped by person\n";
 } finally { mcpCleanup($items); }

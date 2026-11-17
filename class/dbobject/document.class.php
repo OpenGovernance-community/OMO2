@@ -2627,6 +2627,108 @@
 			return ['status' => false, 'text' => self::uiMessage('participant_introuvable')];
 		}
 
+		public function getPvReferenceIdentities(int $viewerUserId, array $additionalUserIds = []): array
+		{
+			if (!$this->isPvDocument() || $viewerUserId <= 0) return [];
+			$organizationId = (int)$this->get('IDorganization');
+			$event = $this->getAssociatedEvent();
+			$entries = $event instanceof Event
+				? $event->getAttendanceEntries($organizationId)
+				: $this->getInvitationEntries($organizationId);
+			$userIds = [$viewerUserId => $viewerUserId];
+			foreach ($additionalUserIds as $userId) {
+				if ((int)$userId > 0) $userIds[(int)$userId] = (int)$userId;
+			}
+			$identities = [];
+			foreach ($entries as $index => $entry) {
+				$userId = (int)($entry['userId'] ?? 0);
+				if ($userId > 0) {
+					$userIds[$userId] = $userId;
+					continue;
+				}
+				$label = trim((string)($entry['displayLabel'] ?? ''));
+				if ($label !== '' && !str_contains($label, '@')) {
+					$identities[] = ['key' => 'external:' . $index, 'fullName' => $label];
+				}
+			}
+			foreach ($userIds as $userId) {
+				$user = new User();
+				if (!$user->load($userId)) continue;
+				$firstname = trim((string)$user->get('firstname'));
+				$lastname = trim((string)$user->get('lastname'));
+				$identities[] = [
+					'key' => 'user:' . $userId,
+					'firstname' => $firstname,
+					'fullName' => $firstname !== '' && $lastname !== '' ? $firstname . ' ' . $lastname : '',
+					'username' => $user->getScopedUsername($organizationId),
+				];
+			}
+			return $identities;
+		}
+
+		private static function normalizePvReferenceAlias(string $value): string
+		{
+			if (class_exists(\Normalizer::class)) $value = \Normalizer::normalize($value, \Normalizer::FORM_C);
+			return trim((string)preg_replace('/\s+/u', ' ', mb_strtolower($value, 'UTF-8')));
+		}
+
+		/** Keep inline formatting continuous without joining distinct paragraphs. */
+		private static function getPvReferenceNodeText(\Dom\Node $node): string
+		{
+			if ($node instanceof \Dom\Text) return $node->textContent;
+			if (!($node instanceof \Dom\Element)) return '';
+			$tag = strtolower($node->localName);
+			$style = (string)$node->getAttribute('style');
+			if (in_array($tag, ['script', 'style', 'template', 'textarea', 'input', 'select'], true)
+				|| $node->hasAttribute('hidden') || $node->getAttribute('aria-hidden') === 'true'
+				|| preg_match('/(?:^|;)\s*(?:display\s*:\s*none|visibility\s*:\s*(?:hidden|collapse)|opacity\s*:\s*0(?:\.0*)?)\s*(?:!important\s*)?(?:;|$)/i', $style)) return "\0";
+			$block = in_array($tag, ['p', 'div', 'li', 'br', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'tr', 'td', 'th', 'section', 'article', 'blockquote'], true);
+			$text = $block ? "\0" : '';
+			foreach ($node->childNodes as $child) $text .= self::getPvReferenceNodeText($child);
+			return $text . ($block ? "\0" : '');
+		}
+
+		/** Resolve references in each recipient's readable report, using the navigator's alias precedence. */
+		public function getPvReferencedUserIds(array $userIds): array
+		{
+			$userIds = array_values(array_unique(array_filter(array_map('intval', $userIds), static fn(int $id): bool => $id > 0)));
+			if (!$this->isPvDocument() || !$userIds) return [];
+			$aliases = [];
+			foreach ($this->getPvReferenceIdentities($userIds[0], $userIds) as $identity) {
+				foreach (['username', 'fullName', 'firstname'] as $field) {
+					$key = self::normalizePvReferenceAlias((string)($identity[$field] ?? ''));
+					if ($key === '') continue;
+					$aliases[$key][$field === 'firstname' ? 'firstnames' : 'strong'][$identity['key']] = true;
+				}
+			}
+			if (!$aliases) return [];
+			uksort($aliases, static fn(string $left, string $right): int => mb_strlen($right, 'UTF-8') <=> mb_strlen($left, 'UTF-8'));
+			$choices = array_map(static fn(string $alias): string => str_replace(' ', '\s+', preg_quote($alias, '~')), array_keys($aliases));
+			$pattern = '~(?<![\p{L}\p{M}\p{N}_.+@-])@(' . implode('|', $choices) . ')(?![\p{L}\p{M}\p{N}_@-]|\.[\p{L}\p{N}])~iu';
+			$fieldClasses = ['omo-document-pv__point-title', 'omo-document-pv__point-content', 'omo-document-pv__group-title', 'common-pv-report__title'];
+			$query = '//*[' . implode(' or ', array_map(static fn(string $class): string =>
+				'contains(concat(" ", normalize-space(@class), " "), " ' . $class . ' ")', $fieldClasses)) . ']';
+			$referencedUserIds = [];
+			foreach ($userIds as $userId) {
+				$html = $this->getReaderContent($userId);
+				$dom = \Dom\HTMLDocument::createFromString('<!doctype html><html><body>' . $html . '</body></html>', LIBXML_NOERROR, 'UTF-8');
+				$xpath = new \Dom\XPath($dom);
+				$text = (string)$this->get('title') . "\0" . (string)$this->get('description');
+				foreach ($xpath->query($query) as $field) $text .= "\0" . self::getPvReferenceNodeText($field);
+				if (class_exists(\Normalizer::class)) $text = \Normalizer::normalize($text, \Normalizer::FORM_C);
+				preg_match_all($pattern, $text, $matches);
+				foreach ($matches[1] as $match) {
+					$alias = $aliases[self::normalizePvReferenceAlias($match)] ?? [];
+					$recipients = $alias['strong'] ?? ($alias['firstnames'] ?? []);
+					if (isset($recipients['user:' . $userId])) {
+						$referencedUserIds[] = $userId;
+						break;
+					}
+				}
+			}
+			return $referencedUserIds;
+		}
+
 		public function getPvPointAuthorOptions(int $organizationId = 0): array
 		{
 			$organizationId = $organizationId > 0 ? (int)$organizationId : (int)$this->get('IDorganization');
@@ -2951,15 +3053,15 @@
 			return \DateTimeImmutable::createFromInterface($startedAt)->modify('+' . $organization->getPvDocumentSettings()['reviewDays'] . ' days');
 		}
 
-		/** Snapshot the actual audience, including email guests, at each transition. */
-		public function getPvStageNotificationAudience(string $stage): array
+		/** Include absent invitees when preparing reference-aware review recipients. */
+		public function getPvStageNotificationAudience(string $stage, bool $includeAbsent = false): array
 		{
 			$oid = (int)$this->get('IDorganization');
 			$event = $this->getAssociatedEvent();
 			if ($event instanceof Event && (int)$event->get('IDorganization') !== $oid) return [];
 			$entries = $event instanceof Event ? $event->getAttendanceEntries($oid) : $this->getInvitationAttendanceEntries($oid);
 			return array_values(array_filter($entries, static fn(array $entry): bool =>
-				$stage === self::PV_STAGE_VALIDATED || !empty($entry['isPresent'])));
+				$includeAbsent || $stage === self::PV_STAGE_VALIDATED || !empty($entry['isPresent'])));
 		}
 
 		private function persistPvStage(string $nextStage, int $userId, \DateTimeImmutable $now): array

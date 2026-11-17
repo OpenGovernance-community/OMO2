@@ -280,7 +280,7 @@ if ($associatedEvent instanceof \dbObject\Event) {
         <?php if ($description !== '' || $associatedEvent instanceof \dbObject\Event): ?>
         <header class="omo-document-detail__intro generic-stack">
             <?php if ($description !== ''): ?>
-                <div class="omo-document-detail__summary omo-card">
+                <div class="omo-document-detail__summary omo-card" data-common-pv-reference-text>
                     <?= nl2br($escape($description)) ?>
                 </div>
             <?php endif; ?>
@@ -493,6 +493,10 @@ if ($associatedEvent instanceof \dbObject\Event) {
             <?php endif; ?>
         </footer>
     </article>
+    <?php
+    require_once dirname(__DIR__, 3) . '/common/document/pv-references.php';
+    commonPvReferencesAssets($document, $currentUserId, '.omo-document-detail');
+    ?>
 </div>
 
 <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/documents/detail.css') ?>">

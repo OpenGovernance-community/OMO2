@@ -1,0 +1,43 @@
+.common-pv-references {
+    --param-floating-panel-width: 300px;
+    /* PV readers also open in the full-screen meeting drawer (z-index 2400). */
+    --param-floating-panel-z-index: 2410;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2, 8px);
+}
+
+.common-pv-references[hidden] {
+    display: none;
+}
+
+.common-pv-references--inline {
+    padding: 4px;
+}
+
+.common-pv-references--inline .common-pv-references__count {
+    white-space: nowrap;
+}
+
+.common-pv-references__count {
+    flex: 1;
+}
+
+.common-pv-references__handle {
+    flex-shrink: 0;
+    touch-action: none;
+}
+
+::highlight(pv-references) {
+    background-color: hsl(45 80% 88%);
+    color: #422006;
+}
+
+::highlight(pv-reference-current) {
+    background-color: hsl(45 100% 55%);
+    color: #422006;
+}
+
+@media print {
+    .common-pv-references { display: none; }
+}

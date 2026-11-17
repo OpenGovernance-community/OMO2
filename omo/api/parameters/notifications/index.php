@@ -29,8 +29,10 @@ $sourceLang = [
     'notifications.preferences.group.calendar' => ['text' => 'Calendrier', 'context' => 'Title of the calendar notification preference group.'],
     'notifications.preferences.group.projects' => ['text' => 'Projets', 'context' => 'Title of the project notification preference group.'],
     'notifications.preferences.group.documents' => ['text' => 'Documents / PV', 'context' => 'Title of the PV notification preference group.'],
-    'notifications.preferences.event.document_pv_review_started' => ['text' => 'Passage en relecture des PV auxquels j’ai assisté', 'context' => 'Review notification for meeting attendees.'],
-    'notifications.preferences.event.document_pv_closed' => ['text' => 'Clôture des PV auxquels je suis invité (manuelle ou automatique)', 'context' => 'Closure notification for all meeting invitees.'],
+    'notifications.preferences.event.document_pv_review_started' => ['text' => 'Passage en relecture des PV auxquels j’ai assisté, sans référence à mon compte', 'context' => 'Review notification for meeting attendees who are not referenced.'],
+    'notifications.preferences.event.document_pv_review_started_referenced' => ['text' => 'Passage en relecture des PV auxquels je suis invité, avec des références à mon compte', 'context' => 'Review notification for referenced invitees, including absent invitees.'],
+    'notifications.preferences.event.document_pv_closed' => ['text' => 'Validation des PV auxquels je suis invité, sans référence à mon compte', 'context' => 'Validation notification for invitees who are not referenced.'],
+    'notifications.preferences.event.document_pv_closed_referenced' => ['text' => 'Validation des PV auxquels je suis invité, avec des références à mon compte', 'context' => 'Validation notification for invitees who are referenced.'],
     'notifications.preferences.header.event' => ['text' => 'Événement', 'context' => 'Header for the event column in notification preferences.'],
     'notifications.preferences.event.decision_proposal_owner' => ['text' => 'Ajout d’une proposition à mes scrutins', 'context' => 'Preference label for proposals added to decisions owned by the user.'],
     'notifications.preferences.event.decision_proposal_participant' => ['text' => 'Ajout d’une proposition aux scrutins auxquels je participe', 'context' => 'Preference label for proposals added to decisions where the user participates.'],
@@ -196,6 +198,7 @@ $configuration = [
                 ?>
                 <div class="omo-notification-preferences-grid__row" role="row">
                     <span class="omo-notification-preferences-grid__event" role="rowheader">
+                        <input type="hidden" name="preferences[<?= htmlspecialchars($eventKey, ENT_QUOTES, 'UTF-8') ?>][configured]" value="1">
                         <span><?= htmlspecialchars($eventLabel, ENT_QUOTES, 'UTF-8') ?></span>
                         <?php if (in_array($eventKey, $reminderEventKeys, true)): ?>
                         <span class="omo-notification-preferences-grid__reminder-days">

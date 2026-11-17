@@ -2756,6 +2756,10 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             return;
         }
 
+        const referenceStage = String(documentPayload.pvStage || '');
+        if (root.getAttribute('data-common-pv-reference-stage') !== referenceStage) {
+            root.setAttribute('data-common-pv-reference-stage', referenceStage);
+        }
         syncEventExtensionUi(documentPayload);
 
         if (secretaryName instanceof Element) {
@@ -3695,6 +3699,25 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             return Number(card.getAttribute('data-omo-pv-point-card') || 0);
         }).filter(function (pointId) {
             return Number.isInteger(pointId) && pointId > 0;
+        });
+    }
+
+    function hasUnfinishedPointContent() {
+        return Object.values(currentPointPayloads).some(function (point) {
+            if (point.isGroup || point.isHandled) return false;
+            const card = pointsContainer.querySelector('[data-omo-pv-point-card="' + point.id + '"]');
+            if (!card) return false;
+            const editorHost = card.querySelector('[data-omo-pv-point-editor-host]');
+            const htmlField = editorHost && editorHost.__omoPvPointField;
+            const source = card.querySelector('[data-omo-pv-point-content-source]');
+            const readonly = card.querySelector('.omo-document-pv__point-content');
+            let html = source ? String(source.value || '') : (readonly ? readonly.innerHTML : '');
+            if (htmlField && typeof htmlField.getValue === 'function') html = String(htmlField.getValue() || '');
+            const template = document.createElement('template');
+            template.innerHTML = html;
+            template.content.querySelectorAll('script, style, template').forEach(node => node.remove());
+            return String(template.content.textContent || '').replace(/[\u200B-\u200D\uFEFF]/g, '').trim() !== ''
+                || template.content.querySelector('[data-omo-embed-type], img, iframe, video, audio, object, embed, svg, canvas, table, hr') !== null;
         });
     }
 
@@ -6217,8 +6240,11 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
                 return;
             }
 
-            if (nextStage === 'review' && !window.confirm(reviewIrreversibleMessage)) {
-                return;
+            if (nextStage === 'review') {
+                const reviewMessage = hasUnfinishedPointContent()
+                    ? pageConfig.reviewUnfinishedContentMessage + '\n\n' + reviewIrreversibleMessage
+                    : reviewIrreversibleMessage;
+                if (!window.confirm(reviewMessage)) return;
             }
 
             if (nextStage === 'validated') {

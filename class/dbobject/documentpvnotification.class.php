@@ -21,8 +21,8 @@ class DocumentPvNotification extends DbObject
     public static function enqueue(Document $document, string $stage, \DateTimeImmutable $now, bool $automatic): void
     {
         $oid = (int)$document->get('IDorganization');
-        $userIds = []; $guests = []; $knownEmails = [];
-        foreach ($document->getPvStageNotificationAudience($stage) as $entry) {
+        $userIds = []; $presentUserIds = []; $guests = []; $knownEmails = [];
+        foreach ($document->getPvStageNotificationAudience($stage, true) as $entry) {
             $uid = (int)($entry['userId'] ?? 0);
             $email = mb_strtolower(trim((string)($entry['email'] ?? '')), 'UTF-8');
             if ($uid <= 0 && filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -34,23 +34,34 @@ class DocumentPvNotification extends DbObject
             }
             if ($uid > 0) {
                 $userIds[$uid] = $uid;
+                if (!empty($entry['isPresent'])) $presentUserIds[$uid] = $uid;
                 $user = new User();
                 if ($user->load($uid)) {
                     foreach ([$email, $user->get('email'), $user->getScopedEmail($oid)] as $knownEmail) {
-                        $knownEmails[mb_strtolower(trim((string)$knownEmail), 'UTF-8')] = true;
+                        $knownEmails[mb_strtolower(trim((string)$knownEmail), 'UTF-8')] = $uid;
                     }
                 }
-            } elseif (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            } elseif (filter_var($email, FILTER_VALIDATE_EMAIL)
+                && ($stage === Document::PV_STAGE_VALIDATED || !empty($entry['isPresent']))) {
                 $guests[$email] = ['email' => $email];
             }
         }
         foreach ($guests as $email => &$guest) {
-            if (isset($knownEmails[$email])) { unset($guests[$email]); continue; }
+            if (isset($knownEmails[$email])) {
+                $uid = $knownEmails[$email];
+                $presentUserIds[$uid] = $uid;
+                unset($guests[$email]);
+                continue;
+            }
             $link = DocumentShareLink::getOrCreatePvParticipantLink($document, $document->getCreatedByUserId(), $email);
             if (!$link) throw new \RuntimeException('Unable to prepare PV guest notification link.');
             $guest['url'] = $link->buildPvParticipationUrl();
         }
         unset($guest);
+        $referencedUserIds = $document->getPvReferencedUserIds(array_values($userIds));
+        if ($stage === Document::PV_STAGE_REVIEW) {
+            $userIds = array_intersect_key($userIds, $presentUserIds + array_fill_keys($referencedUserIds, true));
+        }
         $deadline = $document->getPvReviewDeadline();
         $item = new self();
         $item->set('IDdocument', $document->getId());
@@ -58,6 +69,7 @@ class DocumentPvNotification extends DbObject
         $item->set('created_at', $now);
         $item->set('parameters', ['organizationId' => $oid, 'title' => (string)$document->get('title'),
             'userIds' => array_values($userIds), 'guests' => array_values($guests), 'automatic' => $automatic,
+            'referencedUserIds' => $referencedUserIds,
             'deadline' => $deadline?->format('d.m.Y H:i'), 'sentEmails' => []]);
         $result = $item->save();
         if (empty($result['status'])) throw new \RuntimeException('Unable to queue PV stage notifications.');

@@ -4,6 +4,20 @@ Ce fichier garde une vue d'ensemble courte des évolutions récentes, avec un an
 
 Les dates déjà indiquées sont conservées. Les dates manquantes sont reconstituées à partir de la première apparition des entrées dans l'historique GitHub, en heure Europe/Zurich ; elles correspondent à leur ajout au journal, pas nécessairement à leur mise en production.
 
+## 2026-11-17
+
+- Statistiques du site : l’utilisation de l’IA et des intégrations est regroupée sur une ligne par personne, toutes fonctions, organisations, origines et tous modèles confondus. La synthèse affiche les personnes, les appels, les jetons et les échecs ; les filtres restent disponibles et le tableau présente tous les comptes de la période.
+
+- Les notifications des PV disposent de quatre réglages complets pour choisir les canaux du passage en relecture et de la validation, avec ou sans références à son compte. En relecture, les personnes invitées et citées sont notifiées même si elles étaient absentes. La détection respecte les noms, les usernames et les passages accessibles au destinataire. Les nouvelles lignes reprennent les préférences existantes jusqu’à leur personnalisation. Les libellés de validation sont simplifiés.
+
+- Dans l’éditeur des PV en relecture, le navigateur de références prend la place du chronomètre dans la barre supérieure. Il repère aussi les mentions dans les champs éditables et propose directement le compteur et les flèches de navigation.
+
+- Le navigateur de références des PV dispose d’une poignée à droite pour déplacer le panneau à la souris ou au doigt. Un clic réduit le panneau à sa poignée, un second le déploie. Le panneau reste accessible dans les limites de l’écran.
+
+- Lors du passage d’un PV en relecture, la confirmation avertit désormais si des points non cochés comme traités contiennent du texte, des images ou des éléments intégrés.
+
+- Les PV en relecture et validés repèrent les mentions du compte connecté sans distinction de casse. Un panneau fixe affiche « Référence 1 sur 3 » et actualise la position sélectionnée avec les flèches. Les références sont surlignées dans une teinte pâle, plus saturée pour celle sélectionnée. La première référence est sélectionnée dès l’ouverture. Les noms complets et les usernames des invités ont priorité sur les prénoms, tandis qu’un prénom seul peut concerner plusieurs homonymes.
+
 ## 2026-11-16
 
 - Sélecteurs d’espaces / lisibilité : les rôles directs du cercle ou du groupe affiché portent leur libellé dès la navigation dans leur parent, y compris dans les sélecteurs de destination limités par les droits.
