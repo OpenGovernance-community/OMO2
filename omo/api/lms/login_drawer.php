@@ -10,6 +10,7 @@ $organizationColor = commonGetOrganizationExplicitColor($org);
 $authSourceLang = commonGetAuthPhpSourceLang();
 $authLang = commonAuthLoadBundle('common_auth_page', $authSourceLang);
 $config = [
+	'csrfToken' => commonCsrfToken(),
 	'loginSendPath' => '/common/login_send.php',
 	'loginVerifyPath' => '/common/login_verify.php',
 	'returnTo' => $returnTo,

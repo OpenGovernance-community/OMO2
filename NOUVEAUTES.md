@@ -4,6 +4,10 @@ Ce fichier garde une vue d'ensemble courte des évolutions récentes, avec un an
 
 Les dates déjà indiquées sont conservées. Les dates manquantes sont reconstituées à partir de la première apparition des entrées dans l'historique GitHub, en heure Europe/Zurich ; elles correspondent à leur ajout au journal, pas nécessairement à leur mise en production.
 
+## 2026-11-18
+
+- Sécurité : les POST du navigateur vérifient la même origine, y compris avant connexion. Les retours de connexion refusent les chemins pouvant rediriger vers un autre domaine. Les fichiers HTML, SVG et autres formats actifs sont téléchargés au lieu de s’exécuter dans le navigateur sur le domaine du site. Mise à jour ciblée des dépendances de lecture des tableurs et de Symfony.
+
 ## 2026-11-17
 
 - Statistiques du site : l’utilisation de l’IA et des intégrations est regroupée sur une ligne par personne, toutes fonctions, organisations, origines et tous modèles confondus. La synthèse affiche les personnes, les appels, les jetons et les échecs ; les filtres restent disponibles et le tableau présente tous les comptes de la période.

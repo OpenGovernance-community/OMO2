@@ -56,7 +56,7 @@ function commonGuardBrowserMutation(): void
     // Stateless transports authenticate independently of the browser session.
     $path = parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH);
     if (preg_match('~^/(?:api/v1(?:/|$)|mcp/(?:token|register|revoke|index)\.php$|mcp/?$|omo/api/(?:carddav|caldav)(?:/|$)|telegram/memo_hook\.php$)~', (string)$path)) return;
-    if ((int)($_SESSION['currentUser'] ?? 0) <= 0) return;
+    // Anonymous forms, including login, require the same browser-origin protection.
     if (commonBrowserMutationIsAllowed($_SERVER, $_POST, $_SESSION)) return;
     http_response_code(403);
     header('Content-Type: application/json; charset=UTF-8');

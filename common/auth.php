@@ -183,28 +183,19 @@ function commonCanAccessWithoutLogin(?array $organizationContext = null)
 
 function commonNormalizeLocalPath($path, $fallback = '/')
 {
-    $path = is_string($path) ? trim($path) : '';
-    $fallback = is_string($fallback) && $fallback !== '' ? $fallback : '/';
-
-    if ($path === '') {
-        return $fallback;
+    // Browsers treat backslashes as slashes in HTTP redirects. Validate the fallback too.
+    foreach ([$path, $fallback, '/'] as $candidate) {
+        if (!is_string($candidate) || preg_match('~[\x00-\x1f\x7f\\\\]~', $candidate)) {
+            continue;
+        }
+        $candidate = trim($candidate);
+        if ($candidate === '' || str_starts_with($candidate, '//')
+            || preg_match('/^[a-z][a-z0-9+\-.]*:/i', $candidate)) {
+            continue;
+        }
+        return $candidate[0] === '/' ? $candidate : '/' . $candidate;
     }
-
-    $path = str_replace(["\r", "\n"], '', $path);
-
-    if (preg_match('/^[a-z][a-z0-9+\-.]*:/i', $path)) {
-        return $fallback;
-    }
-
-    if (strpos($path, '//') === 0) {
-        return $fallback;
-    }
-
-    if ($path[0] !== '/') {
-        $path = '/' . ltrim($path, '/');
-    }
-
-    return $path;
+    return '/';
 }
 
 function commonGetRequestedOrganizationId()
@@ -3199,6 +3190,7 @@ function commonHandleMagicLoginVerify($defaultReturnTo = '/')
         <p><?= htmlspecialchars(commonAuthT('auth.page.verify.description', [], $lang, $sourceLang)) ?></p>
         <div class="auth-state-status" id="verifyStatus"><?= htmlspecialchars(commonAuthT('auth.page.verify.status', [], $lang, $sourceLang)) ?></div>
         <form id="verifyFallbackForm" method="post" action="/common/login_verify.php">
+            <input type="hidden" name="_csrf" value="<?= htmlspecialchars(commonCsrfToken()) ?>">
             <input type="hidden" name="token" value="<?= htmlspecialchars($token) ?>">
             <input type="hidden" name="code" value="<?= htmlspecialchars($code) ?>">
             <input type="hidden" name="return_to" value="<?= htmlspecialchars($returnTo) ?>">
@@ -3678,6 +3670,7 @@ function commonRenderMagicLoginPage(array $options = [])
     $publicLayout = ($options['layout'] ?? '') === 'public';
 
     $config = [
+        'csrfToken' => commonCsrfToken(),
         'loginSendPath' => $loginSendPath,
         'loginPasswordPath' => '/common/login_password.php',
         'loginResetRequestPath' => '/common/login_reset_request.php',
@@ -3810,6 +3803,7 @@ function commonRenderMagicLoginPage(array $options = [])
                 <button type="button" id="authTotpSubmit"><?= htmlspecialchars(commonAuthT('auth.button.validate_mfa', [], $lang, $sourceLang)) ?></button>
             </div>
             <form id="authVerifyForm" method="post" action="/common/login_verify.php" style="display:none;">
+                <input type="hidden" name="_csrf" value="<?= htmlspecialchars(commonCsrfToken()) ?>">
                 <input type="hidden" name="token" id="authVerifyToken" value="">
                 <input type="hidden" name="code" id="authVerifyCode" value="">
                 <input type="hidden" name="return_to" value="<?= htmlspecialchars($returnTo) ?>">

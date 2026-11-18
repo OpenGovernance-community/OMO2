@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../ui_translations.php';
 require_once __DIR__ . '/shared.php';
+require_once dirname(__DIR__, 4) . '/common/document/download.php';
 
 $context = omoDocumentsNextcloudLoadFolder((int)($_GET['id'] ?? 0), (int)($_GET['oid'] ?? $_SESSION['currentOrganization'] ?? 0));
 if (empty($context['status'])) {
@@ -27,17 +28,11 @@ if (empty($downloadResult['status'])) {
 }
 
 $downloadName = basename($remotePath);
-$asciiFallbackName = trim((string)preg_replace('/[^A-Za-z0-9._-]+/', '-', $downloadName), '-.');
-if ($asciiFallbackName === '') {
-    $asciiFallbackName = 'document';
-}
 $contentType = omoDocumentsNextcloudFileMimeType($downloadName, (string)($downloadResult['contentType'] ?? ''));
 $body = (string)($downloadResult['body'] ?? '');
 $contentLength = max(0, (int)($downloadResult['contentLength'] ?? strlen($body)));
 
-header('X-Content-Type-Options: nosniff');
-header('Content-Type: ' . $contentType);
-header('Content-Disposition: ' . (!empty($_GET['inline']) ? 'inline' : 'attachment') . '; filename="' . addcslashes($asciiFallbackName, "\\\"") . '"; filename*=UTF-8\'\'' . rawurlencode($downloadName));
+commonDocumentFileSendHeaders($downloadName, $contentType, !empty($_GET['inline']));
 if ($contentLength > 0) {
     header('Content-Length: ' . $contentLength);
 }

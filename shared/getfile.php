@@ -1,7 +1,8 @@
-<?
+<?php
 	require_once($_SERVER['DOCUMENT_ROOT']."/config.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/shared_functions.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/shared/telegram.php");
+	require_once dirname(__DIR__) . '/common/document/download.php';
 
 	// Initialise le login
 	$connected=checklogin();
@@ -25,8 +26,7 @@
 				die('Unable to download Telegram file');
 			}
 
-			header('Content-Type: '.$media->get("contenttype"));
-			header('Content-Disposition: inline; filename="'.$media->get("filename").'"');
+			commonDocumentFileSendHeaders((string)$media->get('filename'), (string)$media->get('contenttype'), true);
 			echo $download['content'];
 		
 	}

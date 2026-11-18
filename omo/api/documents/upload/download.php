@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../ui_translations.php';
+require_once dirname(__DIR__, 4) . '/common/document/download.php';
 if (isset($_GET['pv_document_id'])) {
     require_once dirname(__DIR__, 4) . '/shared_functions.php';
     require_once dirname(__DIR__, 4) . '/common/auth.php';
@@ -111,12 +112,6 @@ if (!is_array($downloadResult) || empty($downloadResult['status'])) {
 }
 
 $downloadName = $version ? (string)$version->get('storedfilename') : $document->getStoredFileDownloadName();
-$asciiFallbackName = preg_replace('/[^A-Za-z0-9._-]+/', '-', $downloadName);
-$asciiFallbackName = trim((string)$asciiFallbackName, '-.');
-if ($asciiFallbackName === '') {
-    $asciiFallbackName = 'document-' . (int)$document->getId();
-}
-
 $contentType = trim((string)($downloadResult['contentType'] ?? 'application/octet-stream'));
 if ($contentType === '' || $contentType === 'application/octet-stream') {
     $storedMimeType = trim($version ? (string)$version->get('storedfilemime') : $document->getStoredFileMimeType());
@@ -132,9 +127,7 @@ $inline = !$isVersionRequest && !empty($_GET['inline'])
             || str_starts_with($document->getStoredFileMimeType(), 'video/'))));
 
 header('Cache-Control: private, no-store');
-header('X-Content-Type-Options: nosniff');
-header('Content-Type: ' . $contentType);
-header('Content-Disposition: ' . ($inline ? 'inline' : 'attachment') . '; filename="' . addcslashes($asciiFallbackName, "\\\"") . '"; filename*=UTF-8\'\'' . rawurlencode($downloadName));
+commonDocumentFileSendHeaders($downloadName, $contentType, $inline);
 if ($contentLength > 0) {
     header('Content-Length: ' . $contentLength);
 }

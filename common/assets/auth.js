@@ -650,6 +650,7 @@
         setStatus(t('auth.status.password_signing_in'));
 
         const body = new URLSearchParams();
+        body.set('_csrf', config.csrfToken || '');
         body.set('email', email);
         body.set('password', password);
         body.set('remember', remember && remember.checked ? '1' : '0');
@@ -716,6 +717,7 @@
         setStatus(t('auth.status.reset_sending'));
 
         const body = new URLSearchParams();
+        body.set('_csrf', config.csrfToken || '');
         body.set('email', email);
 
         fetch(config.loginResetRequestPath || '/common/login_reset_request.php', {
@@ -797,6 +799,7 @@
         }
 
         const body = new URLSearchParams();
+        body.set('_csrf', config.csrfToken || '');
         body.set('email', buildEmail());
         body.set('remember', remember && remember.checked ? '1' : '0');
         body.set('return_to', config.returnTo || '/');
@@ -920,6 +923,7 @@
         }
 
         const body = new URLSearchParams();
+        body.set('_csrf', config.csrfToken || '');
         body.set('token', token);
         body.set('code', code);
         body.set('return_to', config.returnTo || '/');
@@ -1012,6 +1016,7 @@
         if (totpSubmit) totpSubmit.disabled = true;
         setStatus(t('auth.status.verifying_mfa'));
         const body = new URLSearchParams();
+        body.set('_csrf', config.csrfToken || '');
         body.set('token', token);
         body.set('code', code);
         body.set('return_to', config.returnTo || '/');
